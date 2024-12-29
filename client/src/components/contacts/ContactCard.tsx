@@ -9,7 +9,14 @@ import {
   ChevronDown,
   ChevronRight,
   Plus,
-  Trash2
+  Trash2,
+  Users,
+  Heart,
+  Baby,
+  Briefcase,
+  UserCircle2,
+  UserMinus,
+  UserPlus,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -26,9 +33,20 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ContactForm } from "./ContactForm";
-import { type Contact } from "@/lib/types";
+import { type Contact, type RelationshipType } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
+
+const quickAddRelationships: Array<{
+  type: RelationshipType;
+  icon: React.ComponentType<any>;
+  label: string;
+}> = [
+  { type: "child", icon: Baby, label: "Add Child" },
+  { type: "sibling", icon: Users, label: "Add Sibling" },
+  { type: "friend", icon: UserMinus, label: "Add Friend" },
+  { type: "co-worker", icon: Briefcase, label: "Add Co-worker" },
+];
 
 interface ContactCardProps {
   contact: Contact;
@@ -39,6 +57,7 @@ export function ContactCard({ contact, children = [] }: ContactCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isAddingChild, setIsAddingChild] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [selectedRelationType, setSelectedRelationType] = useState<RelationshipType | null>(null);
   const queryClient = useQueryClient();
 
   const deleteContact = useMutation({
@@ -52,6 +71,11 @@ export function ContactCard({ contact, children = [] }: ContactCardProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
     },
   });
+
+  const handleQuickAdd = (type: RelationshipType) => {
+    setSelectedRelationType(type);
+    setIsAddingChild(true);
+  };
 
   return (
     <Card className="relative">
@@ -156,20 +180,40 @@ export function ContactCard({ contact, children = [] }: ContactCardProps) {
               </DialogHeader>
               <ContactForm
                 parentId={contact.id}
-                onSuccess={() => setIsAddingChild(false)}
+                initialData={{ relationshipType: selectedRelationType }}
+                onSuccess={() => {
+                  setIsAddingChild(false);
+                  setSelectedRelationType(null);
+                }}
               />
             </DialogContent>
           </Dialog>
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-4"
-            onClick={() => setIsAddingChild(true)}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Related Contact
-          </Button>
+          <div className="mt-4 space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              {quickAddRelationships.map(({ type, icon: Icon, label }) => (
+                <Button
+                  key={type}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                  onClick={() => handleQuickAdd(type)}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </Button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => setIsAddingChild(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Other Relation
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
