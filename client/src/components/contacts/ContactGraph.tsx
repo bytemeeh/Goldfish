@@ -19,19 +19,6 @@ import {
   HeartHandshake,
 } from "lucide-react";
 
-// Icon mapping for different relationship types
-const relationshipIcons: Record<RelationshipType, typeof User> = {
-  sibling: Users,
-  mother: Heart,
-  father: UserCircle2,
-  brother: UserPlus,
-  friend: Users,
-  child: Baby,
-  "co-worker": Briefcase,
-  spouse: HeartHandshake,
-  "boyfriend/girlfriend": Heart
-};
-
 // Category-based color scheme
 const categoryColors = {
   family: "#22c55e",    // Green
@@ -52,6 +39,19 @@ const relationshipCategories: Record<RelationshipType, keyof typeof categoryColo
   "boyfriend/girlfriend": "romantic"
 };
 
+// Icon mapping for different relationship types
+const relationshipIcons: Record<RelationshipType, typeof User> = {
+  sibling: Users,
+  mother: Heart,
+  father: UserCircle2,
+  brother: UserPlus,
+  friend: Users,
+  child: Baby,
+  "co-worker": Briefcase,
+  spouse: HeartHandshake,
+  "boyfriend/girlfriend": Heart
+};
+
 const defaultColor = "#64748b"; // Slate 500 for better contrast
 
 export function ContactGraph() {
@@ -61,7 +61,6 @@ export function ContactGraph() {
     queryKey: ["/api/contacts"],
   });
 
-  // Transform contacts data into graph format with hierarchical layout
   const graphData = useCallback(() => {
     if (!contacts) return { nodes: [], links: [] };
 
@@ -79,10 +78,8 @@ export function ContactGraph() {
         ? relationshipIcons[contact.relationshipType]
         : User,
       contact,
-      // Position personal card at center
       fx: contact.isMe ? 0 : undefined,
       fy: contact.isMe ? 0 : undefined,
-      // Add category for layout calculations
       category: contact.relationshipType 
         ? relationshipCategories[contact.relationshipType]
         : "other"
@@ -111,54 +108,55 @@ export function ContactGraph() {
     return { nodes, links };
   }, [contacts]);
 
-  // Apply force layout adjustments
+  // Setup force simulation
   useEffect(() => {
     if (graphRef.current) {
       const fg = graphRef.current;
-      fg.d3Force('charge').strength(-800); // Stronger repulsion
-      fg.d3Force('link').distance(200); // Longer links
 
-      // Add radial force to organize nodes by category
-      const radialForce = (alpha: number) => {
-        const centerX = 0;
-        const centerY = 0;
-        const radius = 300; // Radius for category arrangement
+      // Configure force simulation
+      fg.d3Force('charge')?.strength(-800);
+      fg.d3Force('link')?.distance(200);
 
-        fg.graphData().nodes.forEach((node: any) => {
-          if (node.contact.isMe) return; // Skip personal card (center)
+      // Add custom forces
+      const simulation = fg.d3Force();
+      if (simulation) {
+        simulation.force('radial', function(alpha: number) {
+          const nodes = fg.graphData().nodes;
+          const centerX = 0;
+          const centerY = 0;
+          const radius = 300;
 
-          // Calculate angle based on category
-          let angle = 0;
-          switch (node.category) {
-            case 'family':
-              angle = Math.PI / 2; // Top
-              break;
-            case 'friends':
-              angle = Math.PI; // Right
-              break;
-            case 'professional':
-              angle = -Math.PI / 2; // Bottom
-              break;
-            case 'romantic':
-              angle = 0; // Left
-              break;
-            default:
-              angle = Math.random() * 2 * Math.PI; // Random for uncategorized
-          }
+          nodes.forEach((node: any) => {
+            if (node.contact.isMe) return;
 
-          // Calculate target position
-          const targetX = centerX + radius * Math.cos(angle);
-          const targetY = centerY + radius * Math.sin(angle);
+            let angle = 0;
+            switch (node.category) {
+              case 'family':
+                angle = Math.PI / 2;
+                break;
+              case 'friends':
+                angle = Math.PI;
+                break;
+              case 'professional':
+                angle = -Math.PI / 2;
+                break;
+              case 'romantic':
+                angle = 0;
+                break;
+              default:
+                angle = Math.random() * 2 * Math.PI;
+            }
 
-          // Move node towards target
-          node.vx = (node.vx || 0) + (targetX - node.x) * alpha;
-          node.vy = (node.vy || 0) + (targetY - node.y) * alpha;
+            const targetX = centerX + radius * Math.cos(angle);
+            const targetY = centerY + radius * Math.sin(angle);
+
+            node.vx = (node.vx || 0) + (targetX - node.x) * alpha;
+            node.vy = (node.vy || 0) + (targetY - node.y) * alpha;
+          });
         });
-      };
-
-      fg.d3Force('radial', radialForce);
+      }
     }
-  }, []);
+  }, [contacts]);
 
   const handleNodeClick = useCallback((node: any) => {
     setSelectedNode(selectedNode?.id === node.id ? null : node);
@@ -178,7 +176,10 @@ export function ContactGraph() {
             <h3 className="text-lg font-semibold">{selectedNode.contact.name}</h3>
           </div>
           {selectedNode.contact.relationshipType && (
-            <Badge variant="relationship" className="mb-4 capitalize">
+            <Badge
+              variant="relationship"
+              className="mb-4 capitalize"
+            >
               {selectedNode.contact.relationshipType.replace('-', ' ')}
             </Badge>
           )}
@@ -241,11 +242,9 @@ export function ContactGraph() {
           linkWidth={1.5}
           linkColor={() => "#e2e8f0"}
           nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
-            const Icon = node.icon;
             const size = node.val;
-            const iconSize = size * 1.5;
 
-            // Draw icon background
+            // Draw node background
             ctx.beginPath();
             ctx.arc(node.x, node.y, size, 0, 2 * Math.PI);
             ctx.fillStyle = selectedNode?.id === node.id 
@@ -253,27 +252,23 @@ export function ContactGraph() {
               : "rgba(255, 255, 255, 0.9)";
             ctx.fill();
 
-            // Draw icon border
+            // Draw node border
             ctx.strokeStyle = node.color;
             ctx.lineWidth = selectedNode?.id === node.id || node.contact.isMe ? 3 : 2;
             ctx.stroke();
 
-            // Draw icon path
-            ctx.save();
-            ctx.translate(node.x - iconSize/2, node.y - iconSize/2);
-            ctx.scale(iconSize/24, iconSize/24);
-
-            const path = new Path2D('M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z');
+            // Draw simple icon (circle with initial)
             ctx.fillStyle = node.color;
-            ctx.fill(path);
-            ctx.restore();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = `${size}px Inter`;
+            ctx.fillText(node.name[0], node.x, node.y);
 
-            // Draw label
+            // Draw label below node
             const label = node.name;
             const fontSize = node.contact.isMe ? 16/globalScale : 14/globalScale;
             ctx.font = `${fontSize}px Inter, sans-serif`;
             ctx.fillStyle = "#020617";
-            ctx.textAlign = "center";
             ctx.fillText(label, node.x, node.y + size + fontSize);
           }}
           linkCanvasObject={(link: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
@@ -319,7 +314,8 @@ export function ContactGraph() {
           }}
           onNodeClick={handleNodeClick}
           cooldownTicks={100}
-          enableZoomPanInteraction={true}
+          enablePanInteraction={true}
+          enableZoomInteraction={true}
           enableNodeDrag={true}
           minZoom={0.5}
           maxZoom={3}
