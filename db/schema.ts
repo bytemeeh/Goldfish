@@ -27,7 +27,7 @@ export const contactsRelations = relations(contacts, ({ one, many }) => ({
 // Create Zod schemas with proper validation
 export const insertContactSchema = createInsertSchema(contacts, {
   name: z.string().min(1, "Name is required"),
-  email: z.string().email().optional().nullable(),
+  email: z.string().email("Invalid email").nullable().optional().or(z.literal('')),
   phone: z.string().optional().nullable(),
   birthday: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),

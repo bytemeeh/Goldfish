@@ -18,11 +18,11 @@ import { useToast } from "@/hooks/use-toast";
 
 const contactSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  email: z.string().email().optional().or(z.literal("")),
-  phone: z.string().optional().or(z.literal("")),
-  birthday: z.string().optional().or(z.literal("")),
-  notes: z.string().optional().or(z.literal("")),
-  parentId: z.number().optional(),
+  email: z.string().email("Invalid email").optional().or(z.literal('')),
+  phone: z.string().optional().or(z.literal('')),
+  birthday: z.string().optional().or(z.literal('')),
+  notes: z.string().optional().or(z.literal('')),
+  parentId: z.number().optional().nullable(),
 });
 
 interface ContactFormProps {
@@ -43,12 +43,20 @@ export function ContactForm({ onSuccess, initialData, parentId }: ContactFormPro
       phone: initialData?.phone || "",
       birthday: initialData?.birthday || "",
       notes: initialData?.notes || "",
-      parentId: parentId || initialData?.parentId,
+      parentId: parentId || initialData?.parentId || null,
     },
   });
 
-  const { mutate, isLoading } = useMutation({
+  const { mutate, isPending } = useMutation({
     mutationFn: async (data: z.infer<typeof contactSchema>) => {
+      const cleanedData = {
+        ...data,
+        email: data.email || null,
+        phone: data.phone || null,
+        birthday: data.birthday || null,
+        notes: data.notes || null,
+      };
+
       const url = initialData?.id 
         ? `/api/contacts/${initialData.id}`
         : "/api/contacts";
@@ -56,13 +64,13 @@ export function ContactForm({ onSuccess, initialData, parentId }: ContactFormPro
       const res = await fetch(url, {
         method: initialData?.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(cleanedData),
         credentials: 'include',
       });
 
       if (!res.ok) {
-        const error = await res.text();
-        throw new Error(error || "Failed to save contact");
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to save contact");
       }
 
       return res.json();
@@ -98,7 +106,7 @@ export function ContactForm({ onSuccess, initialData, parentId }: ContactFormPro
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
+              <FormLabel>Name *</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -112,7 +120,7 @@ export function ContactForm({ onSuccess, initialData, parentId }: ContactFormPro
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>Email (optional)</FormLabel>
               <FormControl>
                 <Input type="email" {...field} />
               </FormControl>
@@ -126,7 +134,7 @@ export function ContactForm({ onSuccess, initialData, parentId }: ContactFormPro
           name="phone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Phone</FormLabel>
+              <FormLabel>Phone (optional)</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -140,7 +148,7 @@ export function ContactForm({ onSuccess, initialData, parentId }: ContactFormPro
           name="birthday"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Birthday</FormLabel>
+              <FormLabel>Birthday (optional)</FormLabel>
               <FormControl>
                 <Input type="date" {...field} />
               </FormControl>
@@ -154,7 +162,7 @@ export function ContactForm({ onSuccess, initialData, parentId }: ContactFormPro
           name="notes"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Notes</FormLabel>
+              <FormLabel>Notes (optional)</FormLabel>
               <FormControl>
                 <Textarea {...field} />
               </FormControl>
@@ -163,8 +171,8 @@ export function ContactForm({ onSuccess, initialData, parentId }: ContactFormPro
           )}
         />
 
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Saving..." : initialData?.id ? "Update Contact" : "Add Contact"}
+        <Button type="submit" disabled={isPending}>
+          {isPending ? "Saving..." : initialData?.id ? "Update Contact" : "Add Contact"}
         </Button>
       </form>
     </Form>
