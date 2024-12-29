@@ -7,6 +7,10 @@ export interface Contact {
   notes?: string;
   parentId?: number;
   relationshipType?: RelationshipType;
+  isMe?: boolean;
+  shareToken?: string;
+  shareDepth?: number;
+  shareableUntil?: string;
   createdAt: string;
   updatedAt: string;
 }

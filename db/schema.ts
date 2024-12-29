@@ -1,4 +1,4 @@
-import { pgTable, text, serial, date, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, date, timestamp, integer, boolean } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -24,6 +24,10 @@ export const contacts = pgTable("contacts", {
   notes: text("notes"),
   parentId: integer("parent_id").references(() => contacts.id, { onDelete: "cascade" }),
   relationshipType: text("relationship_type"),
+  isMe: boolean("is_me").default(false),
+  shareToken: text("share_token").unique(),
+  shareDepth: integer("share_depth"), // How many levels deep to share (null means all)
+  shareableUntil: timestamp("shareable_until", { mode: "string" }),
   createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }).notNull().defaultNow(),
 });
@@ -46,6 +50,10 @@ export const insertContactSchema = createInsertSchema(contacts, {
   notes: z.string().optional().nullable(),
   parentId: z.number().optional().nullable(),
   relationshipType: z.enum(relationshipTypes).optional().nullable(),
+  isMe: z.boolean().optional(),
+  shareToken: z.string().optional().nullable(),
+  shareDepth: z.number().optional().nullable(),
+  shareableUntil: z.string().optional().nullable(),
 });
 
 export const selectContactSchema = createSelectSchema(contacts);

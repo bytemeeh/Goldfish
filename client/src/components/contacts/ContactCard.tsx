@@ -67,13 +67,15 @@ export function ContactCard({ contact, children = [] }: ContactCardProps) {
           ) : null}
         </Button>
 
-        <div className="flex-1 flex items-center gap-2">
-          <h3 className="text-lg font-semibold">{contact.name}</h3>
-          {contact.relationshipType && (
-            <Badge variant="secondary" className="capitalize">
-              {contact.relationshipType}
-            </Badge>
-          )}
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold">{contact.name}</h3>
+            {contact.relationshipType && (
+              <Badge variant="outline" className="capitalize">
+                {contact.relationshipType.replace('-', ' ')}
+              </Badge>
+            )}
+          </div>
         </div>
 
         <DropdownMenu>
