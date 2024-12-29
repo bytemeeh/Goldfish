@@ -100,8 +100,14 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
   });
 
   const onSubmit = form.handleSubmit((data) => {
-    console.log('Submitting form data:', data);
-    mutate(data);
+    console.log('Submitting form data:', {
+      ...data,
+      relationshipType: data.relationshipType || null, // Ensure relationship type is explicitly set
+    });
+    mutate({
+      ...data,
+      relationshipType: data.relationshipType || null,
+    });
   });
 
   return (

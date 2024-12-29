@@ -29,6 +29,11 @@ export function registerRoutes(app: Express): Server {
         birthday: contacts.birthday,
         notes: contacts.notes,
         parentId: contacts.parentId,
+        relationshipType: contacts.relationshipType,
+        isMe: contacts.isMe,
+        shareToken: contacts.shareToken,
+        shareDepth: contacts.shareDepth,
+        shareableUntil: contacts.shareableUntil,
         similarity: sql<number>`similarity(${contacts.name}, ${filters.name || ''})`
       }).from(contacts);
 
