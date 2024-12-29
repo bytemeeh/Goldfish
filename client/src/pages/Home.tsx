@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, List, Network } from "lucide-react";
+import { Plus, List, Network, User } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,7 @@ type ViewMode = "list" | "graph";
 export function Home() {
   const [filters, setFilters] = useState<SearchFilters>({});
   const [isAddingContact, setIsAddingContact] = useState(false);
+  const [isEditingPersonal, setIsEditingPersonal] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   return (
@@ -43,6 +44,23 @@ export function Home() {
               >
                 <Network className="h-4 w-4" />
               </Button>
+              <Dialog open={isEditingPersonal} onOpenChange={setIsEditingPersonal}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9">
+                    <User className="mr-2 h-4 w-4" />
+                    Edit Personal Card
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Edit Personal Card</DialogTitle>
+                  </DialogHeader>
+                  <ContactForm 
+                    onSuccess={() => setIsEditingPersonal(false)} 
+                    isPersonalCard={true}
+                  />
+                </DialogContent>
+              </Dialog>
               <Dialog open={isAddingContact} onOpenChange={setIsAddingContact}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="h-9">
