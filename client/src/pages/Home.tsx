@@ -11,12 +11,12 @@ import {
 import { ContactForm } from "@/components/contacts/ContactForm";
 import { ContactList } from "@/components/contacts/ContactList";
 import { ContactGraph } from "@/components/contacts/ContactGraph";
-import { SearchBar } from "@/components/contacts/SearchBar";
+import { SearchBar, type SearchFilters } from "@/components/contacts/SearchBar";
 
 type ViewMode = "list" | "graph";
 
 export function Home() {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState<SearchFilters>({});
   const [isAddingContact, setIsAddingContact] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
 
@@ -26,10 +26,7 @@ export function Home() {
         <h1 className="text-3xl font-bold mb-4">Contacts</h1>
         <div className="flex gap-4">
           <div className="flex-1">
-            <SearchBar
-              value={searchQuery}
-              onChange={setSearchQuery}
-            />
+            <SearchBar onSearch={setFilters} />
           </div>
           <div className="flex gap-2">
             <Button
@@ -65,7 +62,7 @@ export function Home() {
       </div>
 
       {viewMode === "list" ? (
-        <ContactList searchQuery={searchQuery} />
+        <ContactList searchFilters={filters} />
       ) : (
         <ContactGraph />
       )}

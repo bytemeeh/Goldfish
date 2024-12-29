@@ -2,18 +2,22 @@ import { useQuery } from "@tanstack/react-query";
 import { ContactCard } from "./ContactCard";
 import { type Contact } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { SearchFilters } from "./SearchBar";
 
 interface ContactListProps {
-  searchQuery?: string;
+  searchFilters: SearchFilters;
 }
 
-export function ContactList({ searchQuery }: ContactListProps) {
+export function ContactList({ searchFilters }: ContactListProps) {
   const { data: contacts, isLoading } = useQuery<Contact[]>({
-    queryKey: ["/api/contacts", searchQuery],
+    queryKey: ["/api/contacts", searchFilters],
     queryFn: async () => {
-      const url = searchQuery
-        ? `/api/contacts?search=${encodeURIComponent(searchQuery)}`
-        : "/api/contacts";
+      const params = new URLSearchParams();
+      Object.entries(searchFilters).forEach(([key, value]) => {
+        if (value) params.append(key, value);
+      });
+
+      const url = `/api/contacts${params.toString() ? `?${params.toString()}` : ''}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch contacts");
       return res.json();

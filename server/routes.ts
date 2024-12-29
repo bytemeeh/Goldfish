@@ -2,20 +2,70 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
 import { contacts } from "@db/schema";
-import { eq, like } from "drizzle-orm";
+import { and, or, eq, ilike, sql } from "drizzle-orm";
+
+interface SearchFilters {
+  name?: string;
+  email?: string;
+  phone?: string;
+  notes?: string;
+}
 
 export function registerRoutes(app: Express): Server {
   // Contacts API
   app.get("/api/contacts", async (req, res) => {
-    const search = req.query.search as string | undefined;
+    const filters: SearchFilters = {};
+    if (req.query.name) filters.name = req.query.name as string;
+    if (req.query.email) filters.email = req.query.email as string;
+    if (req.query.phone) filters.phone = req.query.phone as string;
+    if (req.query.notes) filters.notes = req.query.notes as string;
 
     try {
-      const query = db.select().from(contacts);
+      const query = db.select({
+        id: contacts.id,
+        name: contacts.name,
+        email: contacts.email,
+        phone: contacts.phone,
+        birthday: contacts.birthday,
+        notes: contacts.notes,
+        parentId: contacts.parentId,
+        similarity: sql<number>`similarity(${contacts.name}, ${filters.name || ''})`
+      }).from(contacts);
 
-      if (search) {
-        query.where(
-          like(contacts.name, `%${search}%`)
+      // Build WHERE conditions based on filters
+      const conditions = [];
+
+      if (filters.name) {
+        conditions.push(
+          sql`similarity(${contacts.name}, ${filters.name}) > 0.3`
         );
+      }
+
+      if (filters.email) {
+        conditions.push(
+          ilike(contacts.email, `%${filters.email}%`)
+        );
+      }
+
+      if (filters.phone) {
+        conditions.push(
+          ilike(contacts.phone, `%${filters.phone}%`)
+        );
+      }
+
+      if (filters.notes) {
+        conditions.push(
+          ilike(contacts.notes, `%${filters.notes}%`)
+        );
+      }
+
+      if (conditions.length > 0) {
+        query.where(or(...conditions));
+      }
+
+      // Order by similarity if name search is present
+      if (filters.name) {
+        query.orderBy(sql`similarity(${contacts.name}, ${filters.name}) DESC`);
       }
 
       const result = await query;
@@ -26,6 +76,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Keep other routes unchanged
   app.get("/api/contacts/:id", async (req, res) => {
     const { id } = req.params;
 
