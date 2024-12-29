@@ -71,7 +71,7 @@ export function ContactCard({ contact, children = [] }: ContactCardProps) {
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-semibold">{contact.name}</h3>
             {contact.relationshipType && (
-              <Badge variant="outline" className="capitalize">
+              <Badge variant="secondary" className="capitalize">
                 {contact.relationshipType.replace('-', ' ')}
               </Badge>
             )}
