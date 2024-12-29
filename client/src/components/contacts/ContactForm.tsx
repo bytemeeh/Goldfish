@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { type Contact } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { RelationshipTypeSelector } from "./RelationshipTypeSelector";
 
 const contactSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -23,6 +24,7 @@ const contactSchema = z.object({
   birthday: z.string().optional().or(z.literal('')),
   notes: z.string().optional().or(z.literal('')),
   parentId: z.number().optional().nullable(),
+  relationshipType: z.string().optional().nullable(),
 });
 
 interface ContactFormProps {
@@ -44,6 +46,7 @@ export function ContactForm({ onSuccess, initialData, parentId }: ContactFormPro
       birthday: initialData?.birthday || "",
       notes: initialData?.notes || "",
       parentId: parentId || initialData?.parentId || null,
+      relationshipType: initialData?.relationshipType || null,
     },
   });
 
@@ -114,6 +117,25 @@ export function ContactForm({ onSuccess, initialData, parentId }: ContactFormPro
             </FormItem>
           )}
         />
+
+        {parentId && (
+          <FormField
+            control={form.control}
+            name="relationshipType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Relationship Type</FormLabel>
+                <FormControl>
+                  <RelationshipTypeSelector 
+                    value={field.value as any} 
+                    onChange={field.onChange}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           control={form.control}

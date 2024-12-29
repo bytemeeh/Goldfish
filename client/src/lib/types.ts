@@ -6,6 +6,7 @@ export interface Contact {
   birthday?: string;
   notes?: string;
   parentId?: number;
+  relationshipType?: RelationshipType;
   createdAt: string;
   updatedAt: string;
 }
@@ -19,6 +20,7 @@ export interface Relationship {
 }
 
 export type RelationshipLabel = "friend" | "spouse" | "child" | "sibling" | "custom";
+export type RelationshipType = "sibling" | "mother" | "father" | "brother" | "friend" | "child" | "co-worker";
 
 export interface ContactWithChildren extends Contact {
   children?: Contact[];

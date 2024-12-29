@@ -3,6 +3,16 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const relationshipTypes = [
+  "sibling",
+  "mother",
+  "father",
+  "brother",
+  "friend",
+  "child",
+  "co-worker"
+] as const;
+
 export const contacts = pgTable("contacts", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -11,6 +21,7 @@ export const contacts = pgTable("contacts", {
   birthday: date("birthday", { mode: 'string' }),
   notes: text("notes"),
   parentId: integer("parent_id").references(() => contacts.id, { onDelete: "cascade" }),
+  relationshipType: text("relationship_type"),
   createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }).notNull().defaultNow(),
 });
@@ -32,6 +43,7 @@ export const insertContactSchema = createInsertSchema(contacts, {
   birthday: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   parentId: z.number().optional().nullable(),
+  relationshipType: z.enum(relationshipTypes).optional().nullable(),
 });
 
 export const selectContactSchema = createSelectSchema(contacts);
@@ -39,3 +51,4 @@ export const selectContactSchema = createSelectSchema(contacts);
 // Export types
 export type Contact = typeof contacts.$inferSelect;
 export type NewContact = typeof contacts.$inferInsert;
+export type RelationshipType = typeof relationshipTypes[number];

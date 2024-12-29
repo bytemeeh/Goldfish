@@ -24,6 +24,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { ContactForm } from "./ContactForm";
 import { type Contact } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -66,8 +67,13 @@ export function ContactCard({ contact, children = [] }: ContactCardProps) {
           ) : null}
         </Button>
 
-        <div className="flex-1">
+        <div className="flex-1 flex items-center gap-2">
           <h3 className="text-lg font-semibold">{contact.name}</h3>
+          {contact.relationshipType && (
+            <Badge variant="secondary" className="capitalize">
+              {contact.relationshipType}
+            </Badge>
+          )}
         </div>
 
         <DropdownMenu>
