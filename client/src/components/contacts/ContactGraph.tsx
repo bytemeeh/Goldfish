@@ -5,17 +5,17 @@ import { type Contact, type RelationshipType } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { 
-  Mail, 
-  Phone, 
-  Cake, 
-  User, 
-  Users, 
-  Heart, 
-  Baby, 
-  Briefcase, 
-  UserCircle2, 
-  UserPlus, 
+import {
+  Mail,
+  Phone,
+  Cake,
+  User,
+  Users,
+  Heart,
+  Baby,
+  Briefcase,
+  UserCircle2,
+  UserPlus,
   HeartHandshake,
 } from "lucide-react";
 
@@ -64,91 +64,94 @@ export function ContactGraph() {
   const graphData = useCallback(() => {
     if (!contacts) return { nodes: [], links: [] };
 
-    const meNode = contacts.find(c => c.isMe);
-    if (!meNode) return { nodes: [], links: [] };
-
     const nodes = contacts.map(contact => ({
       id: contact.id.toString(),
       name: contact.name,
       val: contact.isMe ? 24 : 16,
-      color: contact.relationshipType 
+      color: contact.relationshipType
         ? categoryColors[relationshipCategories[contact.relationshipType]]
         : defaultColor,
-      icon: contact.relationshipType 
+      icon: contact.relationshipType
         ? relationshipIcons[contact.relationshipType]
         : User,
       contact,
+      // Fix position for root nodes
       fx: contact.isMe ? 0 : undefined,
       fy: contact.isMe ? 0 : undefined,
-      category: contact.relationshipType 
+      // Add hierarchy level for layout
+      level: contact.isMe ? 0 : contact.parentId ? 2 : 1,
+      category: contact.relationshipType
         ? relationshipCategories[contact.relationshipType]
         : "other"
     }));
 
+    // Create links based on parent-child relationships
     const links = contacts
       .filter(contact => contact.parentId || contact.isMe)
-      .map(contact => {
-        if (contact.isMe) {
-          return contacts
-            .filter(c => c.parentId === contact.id)
-            .map(child => ({
-              source: contact.id.toString(),
-              target: child.id.toString(),
-              label: child.relationshipType || 'connected to'
-            }));
-        }
-        return {
-          source: (contact.parentId || meNode.id).toString(),
-          target: contact.id.toString(),
-          label: contact.relationshipType || 'connected to'
-        };
-      })
-      .flat();
+      .flatMap(contact => {
+        const children = contacts.filter(c => c.parentId === contact.id);
+        return children.map(child => ({
+          source: contact.id.toString(),
+          target: child.id.toString(),
+          value: 1
+        }));
+      });
 
     return { nodes, links };
   }, [contacts]);
 
-  // Setup force simulation
   useEffect(() => {
     if (graphRef.current) {
       const fg = graphRef.current;
 
       // Configure force simulation
-      fg.d3Force('charge')?.strength(-800);
-      fg.d3Force('link')?.distance(200);
+      fg.d3Force('charge')?.strength(-1000);
+      fg.d3Force('link')?.distance(d => d.source.level === 0 ? 200 : 100);
 
-      // Add custom forces
+      // Add hierarchical force
       const simulation = fg.d3Force();
       if (simulation) {
         simulation.force('radial', function(alpha: number) {
           const nodes = fg.graphData().nodes;
-          const centerX = 0;
-          const centerY = 0;
-          const radius = 300;
+          const radius = 250;
 
           nodes.forEach((node: any) => {
             if (node.contact.isMe) return;
 
+            // Calculate angle based on category and parent relationship
             let angle = 0;
-            switch (node.category) {
-              case 'family':
-                angle = Math.PI / 2;
-                break;
-              case 'friends':
-                angle = Math.PI;
-                break;
-              case 'professional':
-                angle = -Math.PI / 2;
-                break;
-              case 'romantic':
-                angle = 0;
-                break;
-              default:
-                angle = Math.random() * 2 * Math.PI;
+            const parentNode = nodes.find((n: any) => n.id === node.contact.parentId?.toString());
+
+            if (parentNode) {
+              // Child nodes should orbit around their parent
+              angle = parentNode.x ? Math.atan2(parentNode.y, parentNode.x) : 0;
+            } else {
+              // Root nodes should be positioned by category
+              switch (node.category) {
+                case 'family':
+                  angle = Math.PI / 2;
+                  break;
+                case 'friends':
+                  angle = Math.PI;
+                  break;
+                case 'professional':
+                  angle = -Math.PI / 2;
+                  break;
+                case 'romantic':
+                  angle = 0;
+                  break;
+                default:
+                  angle = Math.random() * 2 * Math.PI;
+              }
             }
 
-            const targetX = centerX + radius * Math.cos(angle);
-            const targetY = centerY + radius * Math.sin(angle);
+            const distance = node.contact.parentId ? radius * 0.5 : radius;
+            const targetX = node.contact.parentId
+              ? (parentNode?.x || 0) + distance * Math.cos(angle) * 0.5
+              : distance * Math.cos(angle);
+            const targetY = node.contact.parentId
+              ? (parentNode?.y || 0) + distance * Math.sin(angle) * 0.5
+              : distance * Math.sin(angle);
 
             node.vx = (node.vx || 0) + (targetX - node.x) * alpha;
             node.vy = (node.vy || 0) + (targetY - node.y) * alpha;
@@ -247,7 +250,7 @@ export function ContactGraph() {
             // Draw node background
             ctx.beginPath();
             ctx.arc(node.x, node.y, size, 0, 2 * Math.PI);
-            ctx.fillStyle = selectedNode?.id === node.id 
+            ctx.fillStyle = selectedNode?.id === node.id
               ? "#ffffff"
               : "rgba(255, 255, 255, 0.9)";
             ctx.fill();
@@ -266,7 +269,7 @@ export function ContactGraph() {
 
             // Draw label below node
             const label = node.name;
-            const fontSize = node.contact.isMe ? 16/globalScale : 14/globalScale;
+            const fontSize = node.contact.isMe ? 16 / globalScale : 14 / globalScale;
             ctx.font = `${fontSize}px Inter, sans-serif`;
             ctx.fillStyle = "#020617";
             ctx.fillText(label, node.x, node.y + size + fontSize);
@@ -286,7 +289,7 @@ export function ContactGraph() {
             // Draw relationship label when zoomed in
             if (globalScale > 1.5) {
               const label = link.label;
-              const fontSize = 12/globalScale;
+              const fontSize = 12 / globalScale;
               ctx.font = `${fontSize}px Inter, sans-serif`;
 
               // Position label at midpoint
@@ -295,12 +298,12 @@ export function ContactGraph() {
 
               // Add background for better readability
               const metrics = ctx.measureText(label);
-              const padding = 4/globalScale;
+              const padding = 4 / globalScale;
 
               ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
               ctx.fillRect(
-                midX - metrics.width/2 - padding,
-                midY - fontSize/2 - padding,
+                midX - metrics.width / 2 - padding,
+                midY - fontSize / 2 - padding,
                 metrics.width + padding * 2,
                 fontSize + padding * 2
               );

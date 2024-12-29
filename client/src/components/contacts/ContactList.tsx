@@ -53,14 +53,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
       }
 
       return res.json();
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to fetch contacts",
-        variant: "destructive",
-      });
-    },
+    }
   });
 
   if (isLoading) {
@@ -87,31 +80,40 @@ export function ContactList({ searchFilters }: ContactListProps) {
     );
   }
 
-  // Separate personal contact and categorize other contacts
+  // Separate contacts into root and children
   const personalContact = contacts.find(c => c.isMe);
-  const otherContacts = contacts.filter(c => !c.isMe && !c.parentId);
+  const rootContacts = contacts.filter(c => !c.parentId && !c.isMe);
   const childContacts = contacts.filter(c => c.parentId);
 
-  // Categorize contacts
+  // Build hierarchical structure
+  const buildHierarchy = (parentContacts: Contact[]) =>
+    parentContacts.map(contact => ({
+      ...contact,
+      children: childContacts
+        .filter(child => child.parentId === contact.id)
+        .map(child => ({
+          ...child,
+          children: buildHierarchy(childContacts.filter(c => c.parentId === child.id))
+        }))
+    }));
+
+  // Categorize root contacts
   const categorizedContacts = categories.map(category => ({
     ...category,
-    contacts: otherContacts.filter(contact => 
-      contact.relationshipType && category.types.includes(contact.relationshipType)
+    contacts: buildHierarchy(
+      rootContacts.filter(contact =>
+        contact.relationshipType && category.types.includes(contact.relationshipType)
+      )
     )
   }));
 
-  // Add uncategorized contacts to a separate group
-  const uncategorizedContacts = otherContacts.filter(contact => 
-    !contact.relationshipType || 
-    !categories.some(cat => cat.types.includes(contact.relationshipType!))
+  // Handle uncategorized contacts
+  const uncategorizedContacts = buildHierarchy(
+    rootContacts.filter(contact =>
+      !contact.relationshipType ||
+      !categories.some(cat => cat.types.includes(contact.relationshipType!))
+    )
   );
-
-  // Group contacts with their children
-  const addChildrenToContacts = (parentContacts: Contact[]) => 
-    parentContacts.map(contact => ({
-      ...contact,
-      children: childContacts.filter(child => child.parentId === contact.id)
-    }));
 
   return (
     <ScrollArea className="h-[calc(100vh-12rem)] pr-4">
@@ -120,7 +122,10 @@ export function ContactList({ searchFilters }: ContactListProps) {
         {personalContact && (
           <div>
             <h2 className="text-lg font-semibold mb-4 text-muted-foreground">Personal Card</h2>
-            <ContactCard contact={personalContact} />
+            <ContactCard 
+              contact={personalContact}
+              children={buildHierarchy(childContacts.filter(c => c.parentId === personalContact.id))}
+            />
           </div>
         )}
 
@@ -130,7 +135,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
             <div key={category.title}>
               <h2 className="text-lg font-semibold mb-4 text-muted-foreground">{category.title}</h2>
               <div className="space-y-4">
-                {addChildrenToContacts(category.contacts).map(contact => (
+                {category.contacts.map(contact => (
                   <ContactCard 
                     key={contact.id} 
                     contact={contact} 
@@ -147,7 +152,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
           <div>
             <h2 className="text-lg font-semibold mb-4 text-muted-foreground">Other Contacts</h2>
             <div className="space-y-4">
-              {addChildrenToContacts(uncategorizedContacts).map(contact => (
+              {uncategorizedContacts.map(contact => (
                 <ContactCard 
                   key={contact.id} 
                   contact={contact} 
