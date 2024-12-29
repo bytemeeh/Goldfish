@@ -1,8 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { contacts, relationships } from "@db/schema";
-import { and, eq, like, or } from "drizzle-orm/pg-core";
+import { contacts } from "@db/schema";
+import { sql } from "drizzle-orm";
+import { and, eq, ilike, or } from "drizzle-orm/pg-core";
 
 export function registerRoutes(app: Express): Server {
   // Contacts API
@@ -10,30 +11,20 @@ export function registerRoutes(app: Express): Server {
     const search = req.query.search as string | undefined;
 
     try {
-      let query = db.select().from(contacts);
+      const query = db.select().from(contacts);
 
       if (search) {
-        query = query.where(
+        query.where(
           or(
-            like(contacts.name, `%${search}%`),
-            like(contacts.email, `%${search}%`),
-            like(contacts.phone, `%${search}%`)
+            ilike(contacts.name, `%${search}%`),
+            ilike(contacts.email, `%${search}%`),
+            ilike(contacts.phone, `%${search}%`)
           )
         );
       }
 
       const result = await query;
-      const contactsWithChildren = await Promise.all(
-        result.map(async (contact) => {
-          const children = await db
-            .select()
-            .from(contacts)
-            .where(eq(contacts.parentId, contact.id));
-          return { ...contact, children };
-        })
-      );
-
-      res.json(contactsWithChildren);
+      res.json(result);
     } catch (error) {
       console.error('Error fetching contacts:', error);
       res.status(500).json({ message: "Failed to fetch contacts" });
@@ -83,7 +74,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const result = await db
         .update(contacts)
-        .set(req.body)
+        .set({ ...req.body, updatedAt: sql`CURRENT_TIMESTAMP` })
         .where(eq(contacts.id, parseInt(id)))
         .returning();
       res.json(result[0]);
@@ -102,34 +93,6 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error('Error deleting contact:', error);
       res.status(500).json({ message: "Failed to delete contact" });
-    }
-  });
-
-  // Relationships API
-  app.post("/api/relationships", async (req, res) => {
-    try {
-      const result = await db
-        .insert(relationships)
-        .values(req.body)
-        .returning();
-      res.json(result[0]);
-    } catch (error) {
-      console.error('Error creating relationship:', error);
-      res.status(500).json({ message: "Failed to create relationship" });
-    }
-  });
-
-  app.delete("/api/relationships/:id", async (req, res) => {
-    const { id } = req.params;
-
-    try {
-      await db
-        .delete(relationships)
-        .where(eq(relationships.id, parseInt(id)));
-      res.status(204).end();
-    } catch (error) {
-      console.error('Error deleting relationship:', error);
-      res.status(500).json({ message: "Failed to delete relationship" });
     }
   });
 
