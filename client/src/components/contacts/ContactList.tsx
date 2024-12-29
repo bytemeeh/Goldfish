@@ -77,21 +77,21 @@ export function ContactList({ searchFilters }: ContactListProps) {
     );
   }
 
-  // Find personal contact and root contacts
-  const personalContact = contacts.find(c => c.isMe);
-  const rootContacts = contacts.filter(c => !c.parentId && !c.isMe);
-
   // Helper function to build contact hierarchy
-  const buildHierarchy = (parentContact: Contact): Contact => {
-    const children = contacts.filter(c => c.parentId === parentContact.id);
+  const buildHierarchy = (contact: Contact): Contact => {
+    const children = contacts.filter(c => c.parentId === contact.id);
     return {
-      ...parentContact,
+      ...contact,
       children: children.map(buildHierarchy)
     };
   };
 
-  // Process all contacts into hierarchical structure
+  // Build the complete contact hierarchy
+  const rootContacts = contacts.filter(c => !c.parentId && !c.isMe);
   const processedContacts = rootContacts.map(buildHierarchy);
+
+  // Find and process personal contact
+  const personalContact = contacts.find(c => c.isMe);
   const personalHierarchy = personalContact ? buildHierarchy(personalContact) : null;
 
   // Categorize contacts
@@ -105,7 +105,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
   // Handle uncategorized contacts
   const uncategorizedContacts = processedContacts.filter(contact =>
     !contact.relationshipType ||
-    !categories.some(cat => cat.types.includes(contact.relationshipType!))
+    !categories.some(cat => contact.relationshipType && cat.types.includes(contact.relationshipType))
   );
 
   return (

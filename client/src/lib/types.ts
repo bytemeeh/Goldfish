@@ -13,6 +13,7 @@ export interface Contact {
   shareableUntil?: string;
   createdAt: string;
   updatedAt: string;
+  children?: Contact[];
 }
 
 export type RelationshipType = 
@@ -25,7 +26,3 @@ export type RelationshipType =
   | "co-worker"
   | "spouse"
   | "boyfriend/girlfriend";
-
-export interface ContactWithChildren extends Contact {
-  children?: Contact[];
-}
