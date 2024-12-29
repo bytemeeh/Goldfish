@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { type Contact } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 const contactSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -32,6 +33,8 @@ interface ContactFormProps {
 
 export function ContactForm({ onSuccess, initialData, parentId }: ContactFormProps) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+
   const form = useForm<z.infer<typeof contactSchema>>({
     resolver: zodResolver(contactSchema),
     defaultValues: {
@@ -49,28 +52,47 @@ export function ContactForm({ onSuccess, initialData, parentId }: ContactFormPro
       const url = initialData?.id 
         ? `/api/contacts/${initialData.id}`
         : "/api/contacts";
-      
+
       const res = await fetch(url, {
         method: initialData?.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        credentials: 'include',
       });
-      
+
       if (!res.ok) {
-        throw new Error("Failed to save contact");
+        const error = await res.text();
+        throw new Error(error || "Failed to save contact");
       }
-      
+
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      toast({
+        title: "Success",
+        description: initialData?.id ? "Contact updated" : "Contact created",
+      });
       onSuccess?.();
     },
+    onError: (error: Error) => {
+      console.error('Form submission error:', error);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = form.handleSubmit((data) => {
+    console.log('Submitting form data:', data);
+    mutate(data);
   });
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit((data) => mutate(data))} className="space-y-4">
+      <form onSubmit={onSubmit} className="space-y-4">
         <FormField
           control={form.control}
           name="name"
@@ -84,7 +106,7 @@ export function ContactForm({ onSuccess, initialData, parentId }: ContactFormPro
             </FormItem>
           )}
         />
-        
+
         <FormField
           control={form.control}
           name="email"

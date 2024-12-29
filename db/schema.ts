@@ -1,6 +1,7 @@
-import { pgTable, text, serial, date, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, date, timestamp, integer } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { z } from "zod";
 
 export const contacts = pgTable("contacts", {
   id: serial("id").primaryKey(),
@@ -9,7 +10,7 @@ export const contacts = pgTable("contacts", {
   email: text("email"),
   birthday: date("birthday", { mode: 'string' }),
   notes: text("notes"),
-  parentId: serial("parent_id").references(() => contacts.id, { onDelete: "cascade" }),
+  parentId: integer("parent_id").references(() => contacts.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }).notNull().defaultNow(),
 });
@@ -23,8 +24,16 @@ export const contactsRelations = relations(contacts, ({ one, many }) => ({
   children: many(contacts),
 }));
 
-// Create schemas
-export const insertContactSchema = createInsertSchema(contacts);
+// Create Zod schemas with proper validation
+export const insertContactSchema = createInsertSchema(contacts, {
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  birthday: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  parentId: z.number().optional().nullable(),
+});
+
 export const selectContactSchema = createSelectSchema(contacts);
 
 // Export types

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { contacts } from "@db/schema";
+import { contacts, insertContactSchema } from "@db/schema";
 import { and, or, eq, ilike, sql } from "drizzle-orm";
 
 interface SearchFilters {
@@ -105,16 +105,25 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/contacts", async (req, res) => {
     try {
+      console.log('Received contact data:', req.body);
+
+      // Validate the input data
+      const validatedData = insertContactSchema.parse(req.body);
+
       const now = new Date().toISOString();
       const result = await db.insert(contacts).values({
-        ...req.body,
+        ...validatedData,
         createdAt: now,
         updatedAt: now,
       }).returning();
+
+      console.log('Created contact:', result[0]);
       res.json(result[0]);
     } catch (error) {
       console.error('Error creating contact:', error);
-      res.status(500).json({ message: "Failed to create contact" });
+      res.status(400).json({ 
+        message: error instanceof Error ? error.message : "Failed to create contact" 
+      });
     }
   });
 
@@ -122,10 +131,13 @@ export function registerRoutes(app: Express): Server {
     const { id } = req.params;
 
     try {
+      // Validate the input data
+      const validatedData = insertContactSchema.parse(req.body);
+
       const result = await db
         .update(contacts)
         .set({ 
-          ...req.body,
+          ...validatedData,
           updatedAt: new Date().toISOString()
         })
         .where(eq(contacts.id, parseInt(id)))
@@ -133,7 +145,9 @@ export function registerRoutes(app: Express): Server {
       res.json(result[0]);
     } catch (error) {
       console.error('Error updating contact:', error);
-      res.status(500).json({ message: "Failed to update contact" });
+      res.status(400).json({ 
+        message: error instanceof Error ? error.message : "Failed to update contact" 
+      });
     }
   });
 

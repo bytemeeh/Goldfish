@@ -8,5 +8,6 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-const client = postgres(process.env.DATABASE_URL);
+// Create a new postgres client with native SSL support
+const client = postgres(process.env.DATABASE_URL, { ssl: 'require' });
 export const db = drizzle(client, { schema });
