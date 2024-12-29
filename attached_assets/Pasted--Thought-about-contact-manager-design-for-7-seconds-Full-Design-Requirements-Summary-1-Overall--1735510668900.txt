@@ -1,0 +1,95 @@
+
+
+Thought about contact manager design for 7 seconds
+Full Design & Requirements Summary
+
+1. Overall Purpose & Scope
+A minimal web-based contact manager that:
+Stores direct contacts (e.g., good friends) with optional contact info.
+Allows linking subcontacts (e.g., friend’s spouse or children) who may not have direct contact info.
+Maintains a simple, hierarchical relationship structure (e.g., me → friend → friend’s spouse/child).
+Offers a basic but functional UI with quick search and easy data entry.
+Future Goals (not in MVP):
+Offline support (e.g., PWA).
+Geofencing and location-based reminders or push notifications.
+LLM-based search and advanced data handling.
+Deeper privacy or compliance features.
+2. Core Features & Details
+Contact Fields
+
+Mandatory
+Name: Can be first name + last name, nickname, or any identifier. Must be unique within a “parent” contact or have an added differentiator to avoid duplicates.
+Relationship Link: If it’s a subcontact, it must link to exactly one “parent” contact.
+Optional
+Phone
+Email
+Birthday
+Notes (free-form)
+Relationship Structure
+
+Hierarchical: Each contact can have zero or more subcontacts.
+Default Labels: Friend, spouse, child, sibling (pre-populated).
+Custom Labels: Users can create custom relationship labels as needed (e.g., cousin, coworker).
+Multiple Levels: Potentially friend-of-a-friend’s spouse if users want to track it.
+Search
+
+Indexed Partial Matching:
+By default, search on name (the required field).
+Can extend to optional fields if provided (phone, email) to make searching easier.
+MVP Scope: Simple text-based partial matches (e.g., “Jo” finds “John” or “Jonas”).
+UI/UX
+
+Minimal Wireframe: A simple, functional layout emphasizing:
+Quick contact creation.
+Displaying subcontacts in a visually obvious parent-child manner.
+No Complex Branding: Focus on usability over aesthetics for the MVP.
+User Roles & Authentication
+
+None for MVP:
+The system can assume a single user or open access for now.
+No admin vs. regular user separation.
+Data Import/Export
+
+None in the MVP: All data entry is manual.
+3. Technical Architecture
+Application Architecture
+
+Monolithic for simplicity.
+Frontend (SPA using React or Vue) + Backend (Node/Express or similar).
+Hosted in the cloud (e.g., AWS, GCP) for easy deployment.
+Database
+
+PostgreSQL (relational DB).
+Schema Outline:
+Contacts Table:
+id (primary key)
+name (text)
+phone (text, nullable)
+email (text, nullable)
+birthday (date, nullable)
+notes (text, nullable)
+Relationships Table (or a self-referencing foreign key in Contacts, e.g., parent_contact_id):
+parent_id
+child_id
+label (text, e.g., spouse, child)
+Search Implementation
+
+Index:
+Create a text index on name, and optionally on phone/email.
+Allow partial matching queries (e.g., using a Postgres LIKE pattern or trigram index for faster fuzzy matching).
+Security & Compliance
+
+MVP: Minimal approach.
+Use HTTPS (TLS) for data in transit.
+Encryption at rest is recommended but can be basic (like AWS RDS default encryption).
+No advanced role-based ACL or data anonymization.
+Future:
+Expand for GDPR/CCPA (data export, right to be forgotten) if needed.
+Offline & Geofencing
+
+Offline Support: Planned for later (e.g., a PWA with local caching, sync conflict resolution).
+Geofencing & Push Notifications: Also planned for a future mobile version or advanced browser notifications.
+Testing & QA
+
+MVP: Basic unit tests (contact creation, relationship linking, search checks).
+Longer Term: Automated integration tests, E2E tests, continuous deployment pipeline.
