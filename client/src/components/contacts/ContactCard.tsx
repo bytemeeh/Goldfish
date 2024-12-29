@@ -73,8 +73,11 @@ export function ContactCard({ contact, children = [] }: ContactCardProps) {
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-semibold leading-none">{contact.name}</h3>
             {contact.relationshipType && (
-              <Badge variant="secondary" className="capitalize font-normal">
-                {contact.relationshipType.replace('-', ' ')}
+              <Badge
+                variant="relationship"
+                className="capitalize font-normal cursor-default"
+              >
+                {contact.relationshipType.replace("-", " ")}
               </Badge>
             )}
           </div>
@@ -116,7 +119,7 @@ export function ContactCard({ contact, children = [] }: ContactCardProps) {
             <DropdownMenuItem onClick={() => setIsEditing(true)}>
               Edit
             </DropdownMenuItem>
-            <DropdownMenuItem 
+            <DropdownMenuItem
               className="text-destructive"
               onClick={() => deleteContact.mutate()}
             >
@@ -135,7 +138,7 @@ export function ContactCard({ contact, children = [] }: ContactCardProps) {
 
         {isExpanded && children.length > 0 && (
           <div className="mt-4 space-y-4">
-            {children.map(child => (
+            {children.map((child) => (
               <ContactCard key={child.id} contact={child} />
             ))}
           </div>
