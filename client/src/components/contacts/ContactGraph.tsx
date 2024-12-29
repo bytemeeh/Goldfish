@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { ForceGraph2D } from "react-force-graph";
 import { useQuery } from "@tanstack/react-query";
 import { type Contact, type RelationshipType } from "@/lib/types";
@@ -7,77 +7,72 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Mail, Phone, Cake } from "lucide-react";
 
-interface GraphData {
-  nodes: Array<{
-    id: string;
-    name: string;
-    val: number;
-    color: string;
-    contact: Contact;
-  }>;
-  links: Array<{
-    source: string;
-    target: string;
-    label: string;
-  }>;
-}
-
-interface NodeObject {
-  id: string;
-  name: string;
-  color: string;
-  x: number;
-  y: number;
-  contact: Contact;
-}
-
-// Color mapping for different relationship types
+// Simplified color mapping for different relationship types
 const relationshipColors: Record<RelationshipType, string> = {
-  sibling: "#22c55e",    // Green
-  mother: "#ec4899",     // Pink
-  father: "#3b82f6",     // Blue
-  brother: "#22c55e",    // Green
-  friend: "#f97316",     // Orange
-  child: "#a855f7",      // Purple
-  "co-worker": "#78716c", // Warm Gray
-  spouse: "#ec4899",      // Pink
-  "boyfriend/girlfriend": "#f43f5e" // Rose
+  sibling: "#22c55e",   // Green for family
+  mother: "#22c55e",    // Green for family
+  father: "#22c55e",    // Green for family
+  brother: "#22c55e",   // Green for family
+  friend: "#f97316",    // Orange for friends
+  child: "#22c55e",     // Green for family
+  "co-worker": "#3b82f6", // Blue for professional
+  spouse: "#ec4899",     // Pink for romantic
+  "boyfriend/girlfriend": "#ec4899" // Pink for romantic
 };
 
 const defaultColor = "#94a3b8"; // Slate 400 for contacts without relationships
 
 export function ContactGraph() {
-  const [selectedNode, setSelectedNode] = useState<NodeObject | null>(null);
+  const [selectedNode, setSelectedNode] = useState<any>(null);
   const { data: contacts } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
   });
 
   // Transform contacts data into graph format
-  const graphData = useCallback((): GraphData => {
+  const graphData = useCallback(() => {
     if (!contacts) return { nodes: [], links: [] };
+
+    const meNode = contacts.find(c => c.isMe);
+    if (!meNode) return { nodes: [], links: [] };
 
     const nodes = contacts.map(contact => ({
       id: contact.id.toString(),
       name: contact.name,
-      val: contact.isMe ? 8 : 4, // Make the user's node larger
+      val: contact.isMe ? 12 : 6, // Make personal card larger
       color: contact.relationshipType 
         ? relationshipColors[contact.relationshipType]
         : defaultColor,
       contact,
+      fx: contact.isMe ? 0 : undefined, // Fix personal card at center
+      fy: contact.isMe ? 0 : undefined,
     }));
 
     const links = contacts
-      .filter(contact => contact.parentId)
-      .map(contact => ({
-        source: contact.parentId!.toString(),
-        target: contact.id.toString(),
-        label: contact.relationshipType || 'connected to'
-      }));
+      .filter(contact => contact.parentId || contact.isMe)
+      .map(contact => {
+        // If it's a connection to personal card
+        if (contact.isMe) {
+          return contacts
+            .filter(c => c.parentId === contact.id)
+            .map(child => ({
+              source: contact.id.toString(),
+              target: child.id.toString(),
+              label: child.relationshipType || 'connected to'
+            }));
+        }
+        // Regular parent-child connection
+        return {
+          source: (contact.parentId || meNode.id).toString(),
+          target: contact.id.toString(),
+          label: contact.relationshipType || 'connected to'
+        };
+      })
+      .flat();
 
     return { nodes, links };
   }, [contacts]);
 
-  const handleNodeClick = useCallback((node: NodeObject) => {
+  const handleNodeClick = useCallback((node: any) => {
     setSelectedNode(selectedNode?.id === node.id ? null : node);
   }, [selectedNode]);
 
@@ -117,28 +112,30 @@ export function ContactGraph() {
                 {format(new Date(selectedNode.contact.birthday), "PPP")}
               </div>
             )}
-            {selectedNode.contact.notes && (
-              <p className="text-muted-foreground mt-2 italic">
-                {selectedNode.contact.notes}
-              </p>
-            )}
           </div>
         </Card>
       )}
 
-      {/* Legend */}
+      {/* Simplified Legend */}
       <Card className="absolute top-4 right-4 p-4 bg-card/95 backdrop-blur-sm z-10">
-        <h3 className="font-semibold mb-2">Relationship Types</h3>
+        <h3 className="font-semibold mb-2">Contact Types</h3>
         <div className="space-y-1.5">
-          {Object.entries(relationshipColors).map(([type, color]) => (
-            <div key={type} className="flex items-center gap-2">
-              <div 
-                className="w-3 h-3 rounded-full" 
-                style={{ backgroundColor: color }}
-              />
-              <span className="text-sm capitalize">{type.replace('-', ' ')}</span>
-            </div>
-          ))}
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-[#22c55e]" />
+            <span className="text-sm">Family</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-[#f97316]" />
+            <span className="text-sm">Friend</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-[#3b82f6]" />
+            <span className="text-sm">Professional</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-[#ec4899]" />
+            <span className="text-sm">Romantic</span>
+          </div>
         </div>
       </Card>
 
@@ -146,31 +143,39 @@ export function ContactGraph() {
         <ForceGraph2D
           graphData={graphData()}
           nodeLabel="name"
-          nodeRelSize={3}
+          nodeRelSize={4}
           linkWidth={1.5}
-          linkColor={() => "#cbd5e1"} // Slate 300
-          nodeCanvasObject={(node: NodeObject, ctx: CanvasRenderingContext2D, globalScale: number) => {
+          linkColor={() => "#cbd5e1"}
+          d3Force={(d3) => {
+            // Center force for personal card
+            d3.force('center', d3.forceCenter(0, 0));
+            // Stronger repulsion between nodes
+            d3.force('charge').strength(-200);
+            // Shorter links
+            d3.force('link').distance(100);
+          }}
+          nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
             const label = node.name;
-            const fontSize = 14/globalScale;
+            const fontSize = node.contact.isMe ? 16/globalScale : 14/globalScale;
             ctx.font = `${fontSize}px Inter, sans-serif`;
 
             // Draw node
             ctx.beginPath();
             ctx.arc(node.x, node.y, node.val, 0, 2 * Math.PI);
             ctx.fillStyle = selectedNode?.id === node.id 
-              ? "#020617" // Slate 950 for selected node
+              ? "#020617"
               : node.color;
             ctx.fill();
 
-            // Draw border for selected node
-            if (selectedNode?.id === node.id) {
+            // Draw border for selected node or personal card
+            if (selectedNode?.id === node.id || node.contact.isMe) {
               ctx.strokeStyle = node.color;
               ctx.lineWidth = 2;
               ctx.stroke();
             }
 
             // Draw label
-            ctx.fillStyle = "#020617"; // Slate 950
+            ctx.fillStyle = "#020617";
             ctx.textAlign = "center";
             ctx.fillText(label, node.x, node.y + node.val + fontSize);
           }}
@@ -179,16 +184,16 @@ export function ContactGraph() {
             const end = link.target;
 
             // Draw line
-            ctx.strokeStyle = "#cbd5e1"; // Slate 300
+            ctx.strokeStyle = "#cbd5e1";
             ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.moveTo(start.x, start.y);
             ctx.lineTo(end.x, end.y);
             ctx.stroke();
 
-            // Draw relationship label
-            const label = link.label;
-            if (label && globalScale > 1.5) { // Only show labels when zoomed in
+            // Draw relationship label when zoomed in
+            if (globalScale > 1.5) {
+              const label = link.label;
               const fontSize = 12/globalScale;
               ctx.font = `${fontSize}px Inter, sans-serif`;
 
@@ -209,7 +214,7 @@ export function ContactGraph() {
               );
 
               // Draw text
-              ctx.fillStyle = "#475569"; // Slate 600
+              ctx.fillStyle = "#475569";
               ctx.textAlign = "center";
               ctx.textBaseline = "middle";
               ctx.fillText(label, midX, midY);
@@ -219,6 +224,8 @@ export function ContactGraph() {
           cooldownTicks={100}
           enableZoomPanInteraction={true}
           enableNodeDrag={true}
+          minZoom={0.5}
+          maxZoom={3}
         />
       </div>
     </div>
