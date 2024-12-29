@@ -2,8 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
 import { contacts } from "@db/schema";
-import { sql } from "drizzle-orm";
-import { and, eq, ilike, or } from "drizzle-orm/pg-core";
+import { eq, ilike } from "drizzle-orm/pg-core";
 
 export function registerRoutes(app: Express): Server {
   // Contacts API
@@ -15,11 +14,7 @@ export function registerRoutes(app: Express): Server {
 
       if (search) {
         query.where(
-          or(
-            ilike(contacts.name, `%${search}%`),
-            ilike(contacts.email, `%${search}%`),
-            ilike(contacts.phone, `%${search}%`)
-          )
+          ilike(contacts.name, `%${search}%`)
         );
       }
 
@@ -74,7 +69,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const result = await db
         .update(contacts)
-        .set({ ...req.body, updatedAt: sql`CURRENT_TIMESTAMP` })
+        .set({ ...req.body, updatedAt: new Date() })
         .where(eq(contacts.id, parseInt(id)))
         .returning();
       res.json(result[0]);

@@ -1,5 +1,5 @@
 import { pgTable, text, serial, date, timestamp } from "drizzle-orm/pg-core";
-import { relations, sql } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
 export const contacts = pgTable("contacts", {
@@ -10,8 +10,8 @@ export const contacts = pgTable("contacts", {
   birthday: date("birthday", { mode: 'string' }),
   notes: text("notes"),
   parentId: serial("parent_id").references(() => contacts.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // Define relations for the self-referential relationship
