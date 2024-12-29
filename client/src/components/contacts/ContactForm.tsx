@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { type Contact, type RelationshipType } from "@/lib/types"; // Updated import
+import { type Contact, type RelationshipType } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { RelationshipTypeSelector } from "./RelationshipTypeSelector";
@@ -24,16 +24,18 @@ const contactSchema = z.object({
   birthday: z.string().optional().or(z.literal('')),
   notes: z.string().optional().or(z.literal('')),
   parentId: z.number().optional().nullable(),
-  relationshipType: z.string().optional().nullable(),
+  relationshipType: z.enum(['sibling', 'mother', 'father', 'brother', 'friend', 'child', 'co-worker', 'spouse', 'boyfriend/girlfriend'] as const).optional().nullable(),
+  isMe: z.boolean().optional(),
 });
 
 interface ContactFormProps {
   onSuccess?: () => void;
   initialData?: Partial<Contact>;
   parentId?: number;
+  isPersonalCard?: boolean;
 }
 
-export function ContactForm({ onSuccess, initialData, parentId }: ContactFormProps) {
+export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }: ContactFormProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -47,6 +49,7 @@ export function ContactForm({ onSuccess, initialData, parentId }: ContactFormPro
       notes: initialData?.notes || "",
       parentId: parentId || initialData?.parentId || null,
       relationshipType: initialData?.relationshipType || null,
+      isMe: isPersonalCard || initialData?.isMe || false,
     },
   });
 
@@ -109,7 +112,7 @@ export function ContactForm({ onSuccess, initialData, parentId }: ContactFormPro
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name *</FormLabel>
+              <FormLabel>Name {isPersonalCard ? "(You)" : "*"}</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -118,22 +121,24 @@ export function ContactForm({ onSuccess, initialData, parentId }: ContactFormPro
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="relationshipType"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Relationship Type</FormLabel>
-              <FormControl>
-                <RelationshipTypeSelector 
-                  value={field.value as RelationshipType} 
-                  onChange={field.onChange}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {!isPersonalCard && (
+          <FormField
+            control={form.control}
+            name="relationshipType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Relationship Type</FormLabel>
+                <FormControl>
+                  <RelationshipTypeSelector 
+                    value={field.value as RelationshipType} 
+                    onChange={field.onChange}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           control={form.control}
