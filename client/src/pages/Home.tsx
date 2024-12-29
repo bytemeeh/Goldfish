@@ -12,7 +12,9 @@ import { ContactForm } from "@/components/contacts/ContactForm";
 import { ContactList } from "@/components/contacts/ContactList";
 import { ContactGraph } from "@/components/contacts/ContactGraph";
 import { SearchBar, type SearchFilters } from "@/components/contacts/SearchBar";
-import { useToast } from "@/hooks/use-toast";
+import { ShareDialog } from "@/components/contacts/ShareDialog";
+import { useQuery } from "@tanstack/react-query";
+import type { Contact } from "@/lib/types";
 
 type ViewMode = "list" | "graph";
 
@@ -20,41 +22,12 @@ export function Home() {
   const [filters, setFilters] = useState<SearchFilters>({});
   const [isAddingContact, setIsAddingContact] = useState(false);
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
-  const { toast } = useToast();
 
-  const handleShare = async () => {
-    try {
-      const shareToken = await generateShareToken();
-      const shareUrl = `${window.location.origin}/contacts/shared/${shareToken}`;
-      await navigator.clipboard.writeText(shareUrl);
-
-      toast({
-        title: "Share Link Copied!",
-        description: "The share link has been copied to your clipboard.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to generate share link.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  async function generateShareToken(): Promise<string> {
-    const response = await fetch('/api/contacts/share', {
-      method: 'POST',
-      credentials: 'include',
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to generate share token');
-    }
-
-    const data = await response.json();
-    return data.shareToken;
-  }
+  const { data: contacts } = useQuery<Contact[]>({
+    queryKey: ["/api/contacts"],
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -100,7 +73,7 @@ export function Home() {
                 variant="outline"
                 size="sm"
                 className="h-9"
-                onClick={handleShare}
+                onClick={() => setIsSharing(true)}
               >
                 <Share2 className="mr-2 h-4 w-4" />
                 Share Contacts
@@ -133,6 +106,14 @@ export function Home() {
               <ContactGraph />
             )}
           </div>
+
+          {contacts && (
+            <ShareDialog
+              open={isSharing}
+              onOpenChange={setIsSharing}
+              contacts={contacts}
+            />
+          )}
         </div>
       </div>
     </div>

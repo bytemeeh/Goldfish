@@ -1,5 +1,5 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { drizzle } from "drizzle-orm/neon-http";
+import { neon } from '@neondatabase/serverless';
 import * as schema from "@db/schema";
 
 if (!process.env.DATABASE_URL) {
@@ -8,6 +8,5 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Create a new postgres client with native SSL support
-const client = postgres(process.env.DATABASE_URL, { ssl: 'require' });
-export const db = drizzle(client, { schema });
+const sql = neon(process.env.DATABASE_URL);
+export const db = drizzle(sql);

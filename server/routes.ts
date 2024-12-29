@@ -89,37 +89,28 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/contacts/share", async (req, res) => {
     try {
+      const { contactIds } = req.body;
+
+      if (!Array.isArray(contactIds) || contactIds.length === 0) {
+        return res.status(400).json({ message: "No contacts selected for sharing" });
+      }
+
       // Generate a unique share token
       const shareToken = randomBytes(32).toString('hex');
-
-      // Default share depth of 1 level (direct contacts only)
-      const shareDepth = 1;
 
       // Set expiration to 7 days from now
       const shareableUntil = new Date();
       shareableUntil.setDate(shareableUntil.getDate() + 7);
 
-      // Find the user's personal contact
-      const [personalContact] = await db
-        .select()
-        .from(contacts)
-        .where(eq(contacts.isMe, true))
-        .limit(1);
-
-      if (!personalContact) {
-        return res.status(404).json({ message: "Personal contact not found" });
-      }
-
-      // Update the personal contact with share details
+      // Update all selected contacts with share details
       await db
         .update(contacts)
         .set({
           shareToken,
-          shareDepth,
           shareableUntil: shareableUntil.toISOString(),
           updatedAt: new Date().toISOString()
         })
-        .where(eq(contacts.id, personalContact.id));
+        .where(sql`id = ANY(${contactIds})`);
 
       res.json({ shareToken });
     } catch (error) {
