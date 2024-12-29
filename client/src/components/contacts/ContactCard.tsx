@@ -9,7 +9,7 @@ import {
   ChevronDown,
   ChevronRight,
   Plus,
-  Trash2,
+  User,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -54,33 +54,61 @@ export function ContactCard({ contact, children = [] }: ContactCardProps) {
   });
 
   return (
-    <Card className="relative">
-      <CardHeader className="flex flex-row items-center space-x-2 pb-2">
+    <Card className="relative border-l-4 border-l-primary/20 hover:border-l-primary/40 transition-colors">
+      <CardHeader className="flex flex-row items-start space-x-4 pb-2">
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6"
+          className="h-6 w-6 mt-1"
           onClick={() => setIsExpanded(!isExpanded)}
         >
           {children.length > 0 ? (
             isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
-          ) : null}
+          ) : (
+            <User className="h-4 w-4 text-muted-foreground" />
+          )}
         </Button>
 
-        <div className="flex-1">
+        <div className="flex-1 space-y-1">
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold">{contact.name}</h3>
+            <h3 className="text-lg font-semibold leading-none">{contact.name}</h3>
             {contact.relationshipType && (
-              <Badge variant="secondary" className="capitalize">
+              <Badge variant="secondary" className="capitalize font-normal">
                 {contact.relationshipType.replace('-', ' ')}
               </Badge>
+            )}
+          </div>
+          <div className="space-y-1">
+            {contact.email && (
+              <div className="flex items-center text-sm text-muted-foreground">
+                <Mail className="mr-2 h-4 w-4" />
+                <a href={`mailto:${contact.email}`} className="hover:text-primary transition-colors">
+                  {contact.email}
+                </a>
+              </div>
+            )}
+
+            {contact.phone && (
+              <div className="flex items-center text-sm text-muted-foreground">
+                <Phone className="mr-2 h-4 w-4" />
+                <a href={`tel:${contact.phone}`} className="hover:text-primary transition-colors">
+                  {contact.phone}
+                </a>
+              </div>
+            )}
+
+            {contact.birthday && (
+              <div className="flex items-center text-sm text-muted-foreground">
+                <Cake className="mr-2 h-4 w-4" />
+                {format(new Date(contact.birthday), "PPP")}
+              </div>
             )}
           </div>
         </div>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="h-8 w-8">
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -99,80 +127,53 @@ export function ContactCard({ contact, children = [] }: ContactCardProps) {
       </CardHeader>
 
       <CardContent>
-        <div className="space-y-2">
-          {contact.email && (
-            <div className="flex items-center text-sm">
-              <Mail className="mr-2 h-4 w-4" />
-              <a href={`mailto:${contact.email}`} className="text-primary">
-                {contact.email}
-              </a>
-            </div>
-          )}
+        {contact.notes && (
+          <p className="text-sm text-muted-foreground mb-4">
+            {contact.notes}
+          </p>
+        )}
 
-          {contact.phone && (
-            <div className="flex items-center text-sm">
-              <Phone className="mr-2 h-4 w-4" />
-              <a href={`tel:${contact.phone}`} className="text-primary">
-                {contact.phone}
-              </a>
-            </div>
-          )}
+        {isExpanded && children.length > 0 && (
+          <div className="mt-4 space-y-4">
+            {children.map(child => (
+              <ContactCard key={child.id} contact={child} />
+            ))}
+          </div>
+        )}
 
-          {contact.birthday && (
-            <div className="flex items-center text-sm">
-              <Cake className="mr-2 h-4 w-4" />
-              {format(new Date(contact.birthday), "PPP")}
-            </div>
-          )}
+        <Dialog open={isEditing} onOpenChange={setIsEditing}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Contact</DialogTitle>
+            </DialogHeader>
+            <ContactForm
+              initialData={contact}
+              onSuccess={() => setIsEditing(false)}
+            />
+          </DialogContent>
+        </Dialog>
 
-          {contact.notes && (
-            <p className="text-sm text-muted-foreground mt-2">
-              {contact.notes}
-            </p>
-          )}
+        <Dialog open={isAddingChild} onOpenChange={setIsAddingChild}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Related Contact</DialogTitle>
+            </DialogHeader>
+            <ContactForm
+              parentId={contact.id}
+              onSuccess={() => setIsAddingChild(false)}
+            />
+          </DialogContent>
+        </Dialog>
 
-          {isExpanded && children.length > 0 && (
-            <div className="mt-4 pl-6 space-y-4 border-l">
-              {children.map(child => (
-                <ContactCard key={child.id} contact={child} />
-              ))}
-            </div>
-          )}
-
-          <Dialog open={isEditing} onOpenChange={setIsEditing}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Edit Contact</DialogTitle>
-              </DialogHeader>
-              <ContactForm
-                initialData={contact}
-                onSuccess={() => setIsEditing(false)}
-              />
-            </DialogContent>
-          </Dialog>
-
-          <Dialog open={isAddingChild} onOpenChange={setIsAddingChild}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add Related Contact</DialogTitle>
-              </DialogHeader>
-              <ContactForm
-                parentId={contact.id}
-                onSuccess={() => setIsAddingChild(false)}
-              />
-            </DialogContent>
-          </Dialog>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-4 w-full"
-            onClick={() => setIsAddingChild(true)}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Related Contact
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-4 w-full hover:bg-primary/5"
+          onClick={() => setIsAddingChild(true)}
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Add Related Contact
+        </Button>
       </CardContent>
     </Card>
   );

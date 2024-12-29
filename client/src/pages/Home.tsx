@@ -21,51 +21,58 @@ export function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-4">Contacts</h1>
-        <div className="flex gap-4">
-          <div className="flex-1">
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
+        <div className="space-y-6">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <h1 className="text-4xl font-bold tracking-tight">Contacts</h1>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={viewMode === "list" ? "default" : "outline"}
+                onClick={() => setViewMode("list")}
+                size="icon"
+                className="h-9 w-9"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "graph" ? "default" : "outline"}
+                onClick={() => setViewMode("graph")}
+                size="icon"
+                className="h-9 w-9"
+              >
+                <Network className="h-4 w-4" />
+              </Button>
+              <Dialog open={isAddingContact} onOpenChange={setIsAddingContact}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="h-9">
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Contact
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add New Contact</DialogTitle>
+                  </DialogHeader>
+                  <ContactForm onSuccess={() => setIsAddingContact(false)} />
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+
+          <div className="w-full max-w-2xl">
             <SearchBar onSearch={setFilters} />
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant={viewMode === "list" ? "default" : "outline"}
-              onClick={() => setViewMode("list")}
-              size="icon"
-            >
-              <List className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "graph" ? "default" : "outline"}
-              onClick={() => setViewMode("graph")}
-              size="icon"
-            >
-              <Network className="h-4 w-4" />
-            </Button>
-            <Dialog open={isAddingContact} onOpenChange={setIsAddingContact}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Contact
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add New Contact</DialogTitle>
-                </DialogHeader>
-                <ContactForm onSuccess={() => setIsAddingContact(false)} />
-              </DialogContent>
-            </Dialog>
+
+          <div className="mt-6">
+            {viewMode === "list" ? (
+              <ContactList searchFilters={filters} />
+            ) : (
+              <ContactGraph />
+            )}
           </div>
         </div>
       </div>
-
-      {viewMode === "list" ? (
-        <ContactList searchFilters={filters} />
-      ) : (
-        <ContactGraph />
-      )}
     </div>
   );
 }

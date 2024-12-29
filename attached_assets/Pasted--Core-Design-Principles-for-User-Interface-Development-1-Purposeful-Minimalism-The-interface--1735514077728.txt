@@ -1,0 +1,68 @@
+# Core Design Principles for User Interface Development
+
+## 1. Purposeful Minimalism
+
+The interface should prioritize core user tasks while eliminating unnecessary complexity. Every element must serve a clear purpose that directly benefits the user experience.
+
+### Implementation Guidelines
+- Strip interfaces down to essential functions that directly serve user goals
+- Organize tools and features based on user workflow patterns
+- Remove decorative elements that don't enhance usability
+- Question every element: "Does this help users complete their core tasks?"
+
+## 2. Systematic Consistency 
+
+Maintain visual and functional coherence across all interface components to build user trust and reduce cognitive load.
+
+### Implementation Guidelines
+- Develop and strictly adhere to a unified design system
+- Standardize interactive patterns across all features
+- Maintain consistent spacing, typography, and color usage
+- Ensure predictable behavior patterns throughout the interface
+
+## 3. Functional Clarity
+
+Design choices should communicate functionality clearly, helping users understand how to interact with the interface intuitively.
+
+### Implementation Guidelines
+- Use visual hierarchy to guide users through tasks
+- Employ familiar patterns and conventions where appropriate
+- Make interactive elements clearly distinguishable
+- Provide clear feedback for all user actions
+
+## 4. Authentic Presentation
+
+Interface elements should be honest in their presentation and function, avoiding deceptive or unnecessarily complex design patterns.
+
+### Implementation Guidelines
+- Use straightforward, clear labeling
+- Avoid misleading visual metaphors
+- Present data and status accurately
+- Make system state and capabilities transparent to users
+
+## 5. Sustainable Design
+
+Focus on creating lasting value through timeless design patterns rather than following temporary trends.
+
+### Implementation Guidelines
+- Choose established patterns over novelty
+- Build flexible systems that can evolve with user needs
+- Focus on fundamental user goals rather than fleeting preferences
+- Design for long-term usability over short-term appeal
+
+## Core Principles for Decision Making
+
+When evaluating design choices, ask:
+1. Does this serve the user's primary goals?
+2. Does it maintain systematic consistency?
+3. Does it communicate function clearly?
+4. Is it honest and straightforward?
+5. Will it remain effective over time?
+
+## Anti-Patterns to Avoid
+
+- Adding features without clear user benefit
+- Mixing inconsistent design patterns
+- Using decorative elements that don't enhance understanding
+- Implementing trendy designs that may quickly become dated
+- Creating complex solutions for simple problems
