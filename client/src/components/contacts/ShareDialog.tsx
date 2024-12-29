@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -24,20 +24,22 @@ export function ShareDialog({ open, onOpenChange, contacts }: ShareDialogProps) 
   const [selectedContacts, setSelectedContacts] = useState<ContactWithSelection[]>([]);
 
   // Initialize contacts with selection state when dialog opens
-  const initializeContacts = () => {
-    const rootContacts = contacts.filter(c => !c.parentId);
-    const childContacts = contacts.filter(c => c.parentId);
+  useEffect(() => {
+    if (open) {
+      const rootContacts = contacts.filter(c => !c.parentId);
+      const childContacts = contacts.filter(c => c.parentId);
 
-    const contactsWithSelection: ContactWithSelection[] = rootContacts.map(contact => ({
-      ...contact,
-      selected: false,
-      children: childContacts
-        .filter(child => child.parentId === contact.id)
-        .map(child => ({ ...child, selected: false }))
-    }));
+      const contactsWithSelection: ContactWithSelection[] = rootContacts.map(contact => ({
+        ...contact,
+        selected: false,
+        children: childContacts
+          .filter(child => child.parentId === contact.id)
+          .map(child => ({ ...child, selected: false }))
+      }));
 
-    setSelectedContacts(contactsWithSelection);
-  };
+      setSelectedContacts(contactsWithSelection);
+    }
+  }, [contacts, open]);
 
   // Handle parent contact selection
   const handleParentSelect = (contactId: number, checked: boolean) => {
@@ -118,13 +120,6 @@ export function ShareDialog({ open, onOpenChange, contacts }: ShareDialogProps) 
       });
     }
   };
-
-  // Reset selection state when dialog opens
-  useState(() => {
-    if (open) {
-      initializeContacts();
-    }
-  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
