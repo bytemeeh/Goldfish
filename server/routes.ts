@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
 import { contacts } from "@db/schema";
-import { eq, ilike } from "drizzle-orm/pg-core";
+import { eq, like } from "drizzle-orm";
 
 export function registerRoutes(app: Express): Server {
   // Contacts API
@@ -14,7 +14,7 @@ export function registerRoutes(app: Express): Server {
 
       if (search) {
         query.where(
-          ilike(contacts.name, `%${search}%`)
+          like(contacts.name, `%${search}%`)
         );
       }
 
