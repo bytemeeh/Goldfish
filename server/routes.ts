@@ -42,7 +42,10 @@ export function registerRoutes(app: Express): Server {
 
       if (filters.name) {
         conditions.push(
-          sql`similarity(${contacts.name}, ${filters.name}) > 0.3`
+          or(
+            sql`similarity(${contacts.name}, ${filters.name}) > 0.1`,
+            ilike(contacts.name, `%${filters.name}%`)
+          )
         );
       }
 
@@ -68,9 +71,11 @@ export function registerRoutes(app: Express): Server {
         query.where(or(...conditions));
       }
 
-      // Order by similarity if name search is present
+      // Order by similarity if name search is present, then by name
       if (filters.name) {
         query.orderBy(sql`similarity(${contacts.name}, ${filters.name}) DESC`);
+      } else {
+        query.orderBy(contacts.name);
       }
 
       const result = await query;
