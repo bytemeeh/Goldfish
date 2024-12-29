@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { db } from "@db";
 import { contacts, insertContactSchema } from "@db/schema";
 import { and, or, eq, ilike, sql } from "drizzle-orm";
+import { randomBytes } from "crypto";
 
 interface SearchFilters {
   name?: string;
@@ -83,6 +84,47 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error('Error fetching contacts:', error);
       res.status(500).json({ message: "Failed to fetch contacts" });
+    }
+  });
+
+  app.post("/api/contacts/share", async (req, res) => {
+    try {
+      // Generate a unique share token
+      const shareToken = randomBytes(32).toString('hex');
+
+      // Default share depth of 1 level (direct contacts only)
+      const shareDepth = 1;
+
+      // Set expiration to 7 days from now
+      const shareableUntil = new Date();
+      shareableUntil.setDate(shareableUntil.getDate() + 7);
+
+      // Find the user's personal contact
+      const [personalContact] = await db
+        .select()
+        .from(contacts)
+        .where(eq(contacts.isMe, true))
+        .limit(1);
+
+      if (!personalContact) {
+        return res.status(404).json({ message: "Personal contact not found" });
+      }
+
+      // Update the personal contact with share details
+      await db
+        .update(contacts)
+        .set({
+          shareToken,
+          shareDepth,
+          shareableUntil: shareableUntil.toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(contacts.id, personalContact.id));
+
+      res.json({ shareToken });
+    } catch (error) {
+      console.error('Error generating share token:', error);
+      res.status(500).json({ message: "Failed to generate share token" });
     }
   });
 

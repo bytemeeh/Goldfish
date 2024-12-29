@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, List, Network, User } from "lucide-react";
+import { Plus, List, Network, User, Share2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import { ContactForm } from "@/components/contacts/ContactForm";
 import { ContactList } from "@/components/contacts/ContactList";
 import { ContactGraph } from "@/components/contacts/ContactGraph";
 import { SearchBar, type SearchFilters } from "@/components/contacts/SearchBar";
+import { useToast } from "@/hooks/use-toast";
 
 type ViewMode = "list" | "graph";
 
@@ -20,6 +21,40 @@ export function Home() {
   const [isAddingContact, setIsAddingContact] = useState(false);
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const { toast } = useToast();
+
+  const handleShare = async () => {
+    try {
+      const shareToken = await generateShareToken();
+      const shareUrl = `${window.location.origin}/contacts/shared/${shareToken}`;
+      await navigator.clipboard.writeText(shareUrl);
+
+      toast({
+        title: "Share Link Copied!",
+        description: "The share link has been copied to your clipboard.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate share link.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  async function generateShareToken(): Promise<string> {
+    const response = await fetch('/api/contacts/share', {
+      method: 'POST',
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to generate share token');
+    }
+
+    const data = await response.json();
+    return data.shareToken;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -61,6 +96,15 @@ export function Home() {
                   />
                 </DialogContent>
               </Dialog>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={handleShare}
+              >
+                <Share2 className="mr-2 h-4 w-4" />
+                Share Contacts
+              </Button>
               <Dialog open={isAddingContact} onOpenChange={setIsAddingContact}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="h-9">
