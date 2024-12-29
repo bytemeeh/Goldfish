@@ -10,7 +10,9 @@ export const relationshipTypes = [
   "brother",
   "friend",
   "child",
-  "co-worker"
+  "co-worker",
+  "spouse",
+  "boyfriend/girlfriend"
 ] as const;
 
 export const contacts = pgTable("contacts", {

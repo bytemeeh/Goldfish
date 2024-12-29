@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { type Contact } from "@/lib/types";
+import { type Contact, type RelationshipType } from "@/lib/types"; // Updated import
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { RelationshipTypeSelector } from "./RelationshipTypeSelector";
@@ -118,24 +118,22 @@ export function ContactForm({ onSuccess, initialData, parentId }: ContactFormPro
           )}
         />
 
-        {parentId && (
-          <FormField
-            control={form.control}
-            name="relationshipType"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Relationship Type</FormLabel>
-                <FormControl>
-                  <RelationshipTypeSelector 
-                    value={field.value as any} 
-                    onChange={field.onChange}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
+        <FormField
+          control={form.control}
+          name="relationshipType"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Relationship Type</FormLabel>
+              <FormControl>
+                <RelationshipTypeSelector 
+                  value={field.value as RelationshipType} 
+                  onChange={field.onChange}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}

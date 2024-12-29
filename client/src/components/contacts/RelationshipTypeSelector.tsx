@@ -1,7 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { type RelationshipType } from "@/lib/types";
-import { Users, Heart, Baby, Briefcase, UserCircle2, UserMinus, UserPlus } from "lucide-react";
+import { 
+  Users, 
+  Heart, 
+  Baby, 
+  Briefcase, 
+  UserCircle2, 
+  UserPlus, 
+  HeartHandshake,
+} from "lucide-react";
 
 interface RelationshipTypeSelectorProps {
   value?: RelationshipType;
@@ -17,9 +25,11 @@ const relationshipTypes: Array<{
   { type: "mother", icon: Heart, label: "Mother" },
   { type: "father", icon: UserCircle2, label: "Father" },
   { type: "brother", icon: UserPlus, label: "Brother" },
-  { type: "friend", icon: UserMinus, label: "Friend" },
+  { type: "friend", icon: Users, label: "Friend" },
   { type: "child", icon: Baby, label: "Child" },
-  { type: "co-worker", icon: Briefcase, label: "Co-worker" }
+  { type: "co-worker", icon: Briefcase, label: "Co-worker" },
+  { type: "spouse", icon: HeartHandshake, label: "Spouse" },
+  { type: "boyfriend/girlfriend", icon: Heart, label: "Boyfriend/Girlfriend" }
 ];
 
 export function RelationshipTypeSelector({ value, onChange }: RelationshipTypeSelectorProps) {

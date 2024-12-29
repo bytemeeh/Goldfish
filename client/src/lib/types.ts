@@ -11,16 +11,16 @@ export interface Contact {
   updatedAt: string;
 }
 
-export interface Relationship {
-  id: number;
-  parentId: number;
-  childId: number;
-  label: RelationshipLabel;
-  createdAt: string;
-}
-
-export type RelationshipLabel = "friend" | "spouse" | "child" | "sibling" | "custom";
-export type RelationshipType = "sibling" | "mother" | "father" | "brother" | "friend" | "child" | "co-worker";
+export type RelationshipType = 
+  | "sibling"
+  | "mother"
+  | "father"
+  | "brother"
+  | "friend"
+  | "child"
+  | "co-worker"
+  | "spouse"
+  | "boyfriend/girlfriend";
 
 export interface ContactWithChildren extends Contact {
   children?: Contact[];
