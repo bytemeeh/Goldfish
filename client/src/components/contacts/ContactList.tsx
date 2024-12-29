@@ -3,7 +3,6 @@ import { ContactCard } from "./ContactCard";
 import { type Contact } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { SearchFilters } from "./SearchBar";
-import { useToast } from "@/hooks/use-toast";
 
 interface ContactListProps {
   searchFilters: SearchFilters;
@@ -34,8 +33,6 @@ const categories: ContactCategory[] = [
 ];
 
 export function ContactList({ searchFilters }: ContactListProps) {
-  const { toast } = useToast();
-
   const { data: contacts, isLoading, error } = useQuery<Contact[]>({
     queryKey: ["/api/contacts", searchFilters],
     queryFn: async () => {
@@ -80,51 +77,47 @@ export function ContactList({ searchFilters }: ContactListProps) {
     );
   }
 
-  // Separate contacts into root and children
+  // Find personal contact and root contacts
   const personalContact = contacts.find(c => c.isMe);
   const rootContacts = contacts.filter(c => !c.parentId && !c.isMe);
-  const childContacts = contacts.filter(c => c.parentId);
 
-  // Build hierarchical structure
-  const buildHierarchy = (parentContacts: Contact[]) =>
-    parentContacts.map(contact => ({
-      ...contact,
-      children: childContacts
-        .filter(child => child.parentId === contact.id)
-        .map(child => ({
-          ...child,
-          children: buildHierarchy(childContacts.filter(c => c.parentId === child.id))
-        }))
-    }));
+  // Helper function to build contact hierarchy
+  const buildHierarchy = (parentContact: Contact): Contact => {
+    const children = contacts.filter(c => c.parentId === parentContact.id);
+    return {
+      ...parentContact,
+      children: children.map(buildHierarchy)
+    };
+  };
 
-  // Categorize root contacts
+  // Process all contacts into hierarchical structure
+  const processedContacts = rootContacts.map(buildHierarchy);
+  const personalHierarchy = personalContact ? buildHierarchy(personalContact) : null;
+
+  // Categorize contacts
   const categorizedContacts = categories.map(category => ({
     ...category,
-    contacts: buildHierarchy(
-      rootContacts.filter(contact =>
-        contact.relationshipType && category.types.includes(contact.relationshipType)
-      )
+    contacts: processedContacts.filter(contact =>
+      contact.relationshipType && category.types.includes(contact.relationshipType)
     )
   }));
 
   // Handle uncategorized contacts
-  const uncategorizedContacts = buildHierarchy(
-    rootContacts.filter(contact =>
-      !contact.relationshipType ||
-      !categories.some(cat => cat.types.includes(contact.relationshipType!))
-    )
+  const uncategorizedContacts = processedContacts.filter(contact =>
+    !contact.relationshipType ||
+    !categories.some(cat => cat.types.includes(contact.relationshipType!))
   );
 
   return (
     <ScrollArea className="h-[calc(100vh-12rem)] pr-4">
       <div className="space-y-8">
         {/* Personal Contact Card */}
-        {personalContact && (
+        {personalHierarchy && (
           <div>
             <h2 className="text-lg font-semibold mb-4 text-muted-foreground">Personal Card</h2>
             <ContactCard 
-              contact={personalContact}
-              children={buildHierarchy(childContacts.filter(c => c.parentId === personalContact.id))}
+              contact={personalHierarchy}
+              children={personalHierarchy.children}
             />
           </div>
         )}
@@ -139,7 +132,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
                   <ContactCard 
                     key={contact.id} 
                     contact={contact} 
-                    children={contact.children}
+                    children={contact.children || []}
                   />
                 ))}
               </div>
@@ -156,7 +149,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
                 <ContactCard 
                   key={contact.id} 
                   contact={contact} 
-                  children={contact.children}
+                  children={contact.children || []}
                 />
               ))}
             </div>

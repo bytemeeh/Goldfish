@@ -64,6 +64,10 @@ export function ContactGraph() {
   const graphData = useCallback(() => {
     if (!contacts) return { nodes: [], links: [] };
 
+    // Find the personal contact (me)
+    const meContact = contacts.find(c => c.isMe);
+    if (!meContact) return { nodes: [], links: [] };
+
     const nodes = contacts.map(contact => ({
       id: contact.id.toString(),
       name: contact.name,
@@ -75,26 +79,44 @@ export function ContactGraph() {
         ? relationshipIcons[contact.relationshipType]
         : User,
       contact,
-      // Fix position for root nodes
       fx: contact.isMe ? 0 : undefined,
       fy: contact.isMe ? 0 : undefined,
-      // Add hierarchy level for layout
       level: contact.isMe ? 0 : contact.parentId ? 2 : 1,
       category: contact.relationshipType
         ? relationshipCategories[contact.relationshipType]
         : "other"
     }));
 
-    // Create links based on parent-child relationships
-    const links = contacts
-      .filter(contact => contact.parentId || contact.isMe)
-      .flatMap(contact => {
-        const children = contacts.filter(c => c.parentId === contact.id);
-        return children.map(child => ({
-          source: contact.id.toString(),
-          target: child.id.toString(),
-          value: 1
-        }));
+    // Create links for all relationships
+    const links = [];
+
+    // Add parent-child links
+    contacts
+      .filter(contact => contact.parentId)
+      .forEach(contact => {
+        links.push({
+          source: contact.parentId!.toString(),
+          target: contact.id.toString(),
+          value: 1,
+          relationship: contact.relationshipType
+        });
+      });
+
+    // Add spouse links (bidirectional)
+    contacts
+      .filter(contact => contact.relationshipType === 'spouse')
+      .forEach(spouse => {
+        if (!links.some(link => 
+          (link.source === meContact.id.toString() && link.target === spouse.id.toString()) ||
+          (link.source === spouse.id.toString() && link.target === meContact.id.toString())
+        )) {
+          links.push({
+            source: meContact.id.toString(),
+            target: spouse.id.toString(),
+            value: 1,
+            relationship: 'spouse'
+          });
+        }
       });
 
     return { nodes, links };
@@ -105,8 +127,13 @@ export function ContactGraph() {
       const fg = graphRef.current;
 
       // Configure force simulation
-      fg.d3Force('charge')?.strength(-1000);
-      fg.d3Force('link')?.distance(d => d.source.level === 0 ? 200 : 100);
+      fg.d3Force('charge')?.strength(-1200);
+      fg.d3Force('link')?.distance(d => {
+        // Shorter distance for spouse relationships
+        if (d.relationship === 'spouse') return 100;
+        // Standard distance for parent-child relationships
+        return d.source.level === 0 ? 200 : 150;
+      });
 
       // Add hierarchical force
       const simulation = fg.d3Force();
@@ -118,15 +145,27 @@ export function ContactGraph() {
           nodes.forEach((node: any) => {
             if (node.contact.isMe) return;
 
-            // Calculate angle based on category and parent relationship
             let angle = 0;
             const parentNode = nodes.find((n: any) => n.id === node.contact.parentId?.toString());
 
-            if (parentNode) {
-              // Child nodes should orbit around their parent
+            if (node.contact.relationshipType === 'spouse') {
+              // Position spouses closer to the center
+              angle = Math.PI / 4; // 45 degrees
+              const distance = radius * 0.4;
+              const targetX = distance * Math.cos(angle);
+              const targetY = distance * Math.sin(angle);
+              node.vx = (node.vx || 0) + (targetX - node.x) * alpha;
+              node.vy = (node.vy || 0) + (targetY - node.y) * alpha;
+            } else if (parentNode) {
+              // Child nodes orbit around their parent
               angle = parentNode.x ? Math.atan2(parentNode.y, parentNode.x) : 0;
+              const distance = radius * 0.6;
+              const targetX = parentNode.x + distance * Math.cos(angle) * 0.5;
+              const targetY = parentNode.y + distance * Math.sin(angle) * 0.5;
+              node.vx = (node.vx || 0) + (targetX - node.x) * alpha;
+              node.vy = (node.vy || 0) + (targetY - node.y) * alpha;
             } else {
-              // Root nodes should be positioned by category
+              // Root nodes positioned by category
               switch (node.category) {
                 case 'family':
                   angle = Math.PI / 2;
@@ -143,18 +182,11 @@ export function ContactGraph() {
                 default:
                   angle = Math.random() * 2 * Math.PI;
               }
+              const targetX = radius * Math.cos(angle);
+              const targetY = radius * Math.sin(angle);
+              node.vx = (node.vx || 0) + (targetX - node.x) * alpha;
+              node.vy = (node.vy || 0) + (targetY - node.y) * alpha;
             }
-
-            const distance = node.contact.parentId ? radius * 0.5 : radius;
-            const targetX = node.contact.parentId
-              ? (parentNode?.x || 0) + distance * Math.cos(angle) * 0.5
-              : distance * Math.cos(angle);
-            const targetY = node.contact.parentId
-              ? (parentNode?.y || 0) + distance * Math.sin(angle) * 0.5
-              : distance * Math.sin(angle);
-
-            node.vx = (node.vx || 0) + (targetX - node.x) * alpha;
-            node.vy = (node.vy || 0) + (targetY - node.y) * alpha;
           });
         });
       }
@@ -288,7 +320,7 @@ export function ContactGraph() {
 
             // Draw relationship label when zoomed in
             if (globalScale > 1.5) {
-              const label = link.label;
+              const label = link.relationship || ''; // Use relationship type if available
               const fontSize = 12 / globalScale;
               ctx.font = `${fontSize}px Inter, sans-serif`;
 
