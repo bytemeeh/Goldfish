@@ -79,20 +79,43 @@ export function ContactList({ searchFilters }: ContactListProps) {
 
   // Helper function to build contact hierarchy
   const buildHierarchy = (contact: Contact): Contact => {
-    const children = contacts.filter(c => c.parentId === contact.id);
+    // Get direct children
+    const directChildren = contacts.filter(c => c.parentId === contact.id);
+
+    // If this is a spouse relationship, include their children too
+    const spouseChildren = contact.relationshipType === 'spouse' 
+      ? contacts.filter(c => c.parentId === contact.id)
+      : [];
+
+    // Combine and remove duplicates
+    const allChildren = [...new Set([...directChildren, ...spouseChildren])];
+
     return {
       ...contact,
-      children: children.map(buildHierarchy)
+      children: allChildren.map(buildHierarchy)
     };
   };
 
-  // Build the complete contact hierarchy
-  const rootContacts = contacts.filter(c => !c.parentId && !c.isMe);
-  const processedContacts = rootContacts.map(buildHierarchy);
-
-  // Find and process personal contact
+  // Find me (personal contact) and root contacts
   const personalContact = contacts.find(c => c.isMe);
+  const rootContacts = contacts.filter(c => !c.parentId && !c.isMe);
+
+  // Build hierarchies
+  const processedContacts = rootContacts.map(buildHierarchy);
   const personalHierarchy = personalContact ? buildHierarchy(personalContact) : null;
+
+  // Ensure spouse relationships are included in personal hierarchy
+  if (personalHierarchy) {
+    const spouses = contacts.filter(c => 
+      c.parentId === personalHierarchy.id && 
+      c.relationshipType === 'spouse'
+    );
+
+    personalHierarchy.children = [
+      ...(personalHierarchy.children || []),
+      ...spouses.map(buildHierarchy)
+    ];
+  }
 
   // Categorize contacts
   const categorizedContacts = categories.map(category => ({
