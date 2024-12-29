@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { ForceGraph2D } from "react-force-graph";
 import { useQuery } from "@tanstack/react-query";
 import { type Contact, type RelationshipType } from "@/lib/types";
@@ -15,7 +15,8 @@ import {
   Baby, 
   Briefcase, 
   UserCircle2, 
-  HeartHandshake 
+  UserPlus, 
+  HeartHandshake,
 } from "lucide-react";
 
 // Icon mapping for different relationship types
@@ -23,7 +24,7 @@ const relationshipIcons: Record<RelationshipType, typeof User> = {
   sibling: Users,
   mother: Heart,
   father: UserCircle2,
-  brother: Users,
+  brother: UserPlus,
   friend: Users,
   child: Baby,
   "co-worker": Briefcase,
@@ -31,27 +32,36 @@ const relationshipIcons: Record<RelationshipType, typeof User> = {
   "boyfriend/girlfriend": Heart
 };
 
-// Simplified color scheme for better visual hierarchy
-const relationshipColors: Record<RelationshipType, string> = {
-  sibling: "#22c55e",    // Green for family
-  mother: "#22c55e",     // Green for family
-  father: "#22c55e",     // Green for family
-  brother: "#22c55e",    // Green for family
-  friend: "#f97316",     // Orange for friends
-  child: "#22c55e",      // Green for family
-  "co-worker": "#3b82f6", // Blue for professional
-  spouse: "#ec4899",     // Pink for romantic
-  "boyfriend/girlfriend": "#ec4899" // Pink for romantic
+// Category-based color scheme
+const categoryColors = {
+  family: "#22c55e",    // Green
+  friends: "#f97316",   // Orange
+  professional: "#3b82f6", // Blue
+  romantic: "#ec4899",  // Pink
+};
+
+const relationshipCategories: Record<RelationshipType, keyof typeof categoryColors> = {
+  sibling: "family",
+  mother: "family",
+  father: "family",
+  brother: "family",
+  friend: "friends",
+  child: "family",
+  "co-worker": "professional",
+  spouse: "romantic",
+  "boyfriend/girlfriend": "romantic"
 };
 
 const defaultColor = "#64748b"; // Slate 500 for better contrast
 
 export function ContactGraph() {
   const [selectedNode, setSelectedNode] = useState<any>(null);
+  const graphRef = useRef<any>();
   const { data: contacts } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
   });
 
+  // Transform contacts data into graph format with hierarchical layout
   const graphData = useCallback(() => {
     if (!contacts) return { nodes: [], links: [] };
 
@@ -61,16 +71,21 @@ export function ContactGraph() {
     const nodes = contacts.map(contact => ({
       id: contact.id.toString(),
       name: contact.name,
-      val: contact.isMe ? 24 : 16, // Larger icons for better visibility
+      val: contact.isMe ? 24 : 16,
       color: contact.relationshipType 
-        ? relationshipColors[contact.relationshipType]
+        ? categoryColors[relationshipCategories[contact.relationshipType]]
         : defaultColor,
       icon: contact.relationshipType 
         ? relationshipIcons[contact.relationshipType]
         : User,
       contact,
-      fx: contact.isMe ? 0 : undefined, // Fix personal card at center
+      // Position personal card at center
+      fx: contact.isMe ? 0 : undefined,
       fy: contact.isMe ? 0 : undefined,
+      // Add category for layout calculations
+      category: contact.relationshipType 
+        ? relationshipCategories[contact.relationshipType]
+        : "other"
     }));
 
     const links = contacts
@@ -95,6 +110,55 @@ export function ContactGraph() {
 
     return { nodes, links };
   }, [contacts]);
+
+  // Apply force layout adjustments
+  useEffect(() => {
+    if (graphRef.current) {
+      const fg = graphRef.current;
+      fg.d3Force('charge').strength(-800); // Stronger repulsion
+      fg.d3Force('link').distance(200); // Longer links
+
+      // Add radial force to organize nodes by category
+      const radialForce = (alpha: number) => {
+        const centerX = 0;
+        const centerY = 0;
+        const radius = 300; // Radius for category arrangement
+
+        fg.graphData().nodes.forEach((node: any) => {
+          if (node.contact.isMe) return; // Skip personal card (center)
+
+          // Calculate angle based on category
+          let angle = 0;
+          switch (node.category) {
+            case 'family':
+              angle = Math.PI / 2; // Top
+              break;
+            case 'friends':
+              angle = Math.PI; // Right
+              break;
+            case 'professional':
+              angle = -Math.PI / 2; // Bottom
+              break;
+            case 'romantic':
+              angle = 0; // Left
+              break;
+            default:
+              angle = Math.random() * 2 * Math.PI; // Random for uncategorized
+          }
+
+          // Calculate target position
+          const targetX = centerX + radius * Math.cos(angle);
+          const targetY = centerY + radius * Math.sin(angle);
+
+          // Move node towards target
+          node.vx = (node.vx || 0) + (targetX - node.x) * alpha;
+          node.vy = (node.vy || 0) + (targetY - node.y) * alpha;
+        });
+      };
+
+      fg.d3Force('radial', radialForce);
+    }
+  }, []);
 
   const handleNodeClick = useCallback((node: any) => {
     setSelectedNode(selectedNode?.id === node.id ? null : node);
@@ -147,22 +211,22 @@ export function ContactGraph() {
 
       {/* Legend */}
       <Card className="absolute top-4 right-4 p-4 bg-card/95 backdrop-blur-sm z-10">
-        <h3 className="font-semibold mb-2">Relationship Types</h3>
+        <h3 className="font-semibold mb-2">Categories</h3>
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-[#22c55e]" />
+            <Users className="h-4 w-4" style={{ color: categoryColors.family }} />
             <span className="text-sm">Family</span>
           </div>
           <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-[#f97316]" />
-            <span className="text-sm">Friend</span>
+            <Users className="h-4 w-4" style={{ color: categoryColors.friends }} />
+            <span className="text-sm">Friends</span>
           </div>
           <div className="flex items-center gap-2">
-            <Briefcase className="h-4 w-4 text-[#3b82f6]" />
+            <Briefcase className="h-4 w-4" style={{ color: categoryColors.professional }} />
             <span className="text-sm">Professional</span>
           </div>
           <div className="flex items-center gap-2">
-            <Heart className="h-4 w-4 text-[#ec4899]" />
+            <Heart className="h-4 w-4" style={{ color: categoryColors.romantic }} />
             <span className="text-sm">Romantic</span>
           </div>
         </div>
@@ -170,19 +234,12 @@ export function ContactGraph() {
 
       <div className="w-full h-full border rounded-lg bg-card overflow-hidden">
         <ForceGraph2D
+          ref={graphRef}
           graphData={graphData()}
           nodeLabel="name"
           nodeRelSize={6}
           linkWidth={1.5}
-          linkColor={() => "#cbd5e1"}
-          d3Force={(d3: any) => {
-            // Center force for personal card
-            d3.force('center', d3.forceCenter(0, 0));
-            // Stronger repulsion between nodes
-            d3.force('charge').strength(-400);
-            // Longer links for better spacing
-            d3.force('link').distance(150);
-          }}
+          linkColor={() => "#e2e8f0"}
           nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
             const Icon = node.icon;
             const size = node.val;
@@ -204,14 +261,12 @@ export function ContactGraph() {
             // Draw icon path
             ctx.save();
             ctx.translate(node.x - iconSize/2, node.y - iconSize/2);
-            ctx.scale(iconSize/24, iconSize/24); // Scale icon to fit
+            ctx.scale(iconSize/24, iconSize/24);
 
-            //The following line is a placeholder.  The actual icon rendering is complex and depends on the Lucide icon.  This needs to be replaced with correct rendering logic
             const path = new Path2D('M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z');
             ctx.fillStyle = node.color;
             ctx.fill(path);
             ctx.restore();
-
 
             // Draw label
             const label = node.name;

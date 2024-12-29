@@ -19,9 +19,35 @@ interface ContactWithSelection extends Contact {
   children?: ContactWithSelection[];
 }
 
+interface ContactCategory {
+  title: string;
+  types: string[];
+  contacts: ContactWithSelection[];
+}
+
+const categories: ContactCategory[] = [
+  {
+    title: "Family",
+    types: ["mother", "father", "brother", "sibling", "child", "spouse"],
+    contacts: [],
+  },
+  {
+    title: "Friends",
+    types: ["friend", "boyfriend/girlfriend"],
+    contacts: [],
+  },
+  {
+    title: "Professional",
+    types: ["co-worker"],
+    contacts: [],
+  },
+];
+
 export function ShareDialog({ open, onOpenChange, contacts }: ShareDialogProps) {
   const { toast } = useToast();
   const [selectedContacts, setSelectedContacts] = useState<ContactWithSelection[]>([]);
+  const [categorizedContacts, setCategorizedContacts] = useState<ContactCategory[]>([]);
+  const [uncategorizedContacts, setUncategorizedContacts] = useState<ContactWithSelection[]>([]);
 
   // Initialize contacts with selection state when dialog opens
   useEffect(() => {
@@ -29,6 +55,7 @@ export function ShareDialog({ open, onOpenChange, contacts }: ShareDialogProps) 
       const rootContacts = contacts.filter(c => !c.parentId);
       const childContacts = contacts.filter(c => c.parentId);
 
+      // Add selection state to all contacts
       const contactsWithSelection: ContactWithSelection[] = rootContacts.map(contact => ({
         ...contact,
         selected: false,
@@ -37,42 +64,78 @@ export function ShareDialog({ open, onOpenChange, contacts }: ShareDialogProps) 
           .map(child => ({ ...child, selected: false }))
       }));
 
+      // Categorize contacts
+      const categorized = categories.map(category => ({
+        ...category,
+        contacts: contactsWithSelection.filter(contact => 
+          contact.relationshipType && category.types.includes(contact.relationshipType)
+        )
+      }));
+
+      // Find uncategorized contacts
+      const uncategorized = contactsWithSelection.filter(contact => 
+        !contact.relationshipType || 
+        !categories.some(cat => cat.types.includes(contact.relationshipType!))
+      );
+
+      setCategorizedContacts(categorized);
+      setUncategorizedContacts(uncategorized);
       setSelectedContacts(contactsWithSelection);
     }
   }, [contacts, open]);
 
   // Handle parent contact selection
   const handleParentSelect = (contactId: number, checked: boolean) => {
-    setSelectedContacts(prev => prev.map(contact => {
-      if (contact.id === contactId) {
-        return {
-          ...contact,
-          selected: checked,
-          children: contact.children?.map(child => ({
-            ...child,
-            selected: checked // Auto-select/deselect children
-          }))
-        };
-      }
-      return contact;
-    }));
+    const updateContacts = (contacts: ContactWithSelection[]) =>
+      contacts.map(contact => {
+        if (contact.id === contactId) {
+          return {
+            ...contact,
+            selected: checked,
+            children: contact.children?.map(child => ({
+              ...child,
+              selected: checked // Auto-select/deselect children
+            }))
+          };
+        }
+        return contact;
+      });
+
+    setCategorizedContacts(prev => 
+      prev.map(category => ({
+        ...category,
+        contacts: updateContacts(category.contacts)
+      }))
+    );
+    setUncategorizedContacts(prev => updateContacts(prev));
+    setSelectedContacts(prev => updateContacts(prev));
   };
 
   // Handle child contact selection
   const handleChildSelect = (parentId: number, childId: number, checked: boolean) => {
-    setSelectedContacts(prev => prev.map(contact => {
-      if (contact.id === parentId) {
-        return {
-          ...contact,
-          children: contact.children?.map(child => 
-            child.id === childId 
-              ? { ...child, selected: checked }
-              : child
-          )
-        };
-      }
-      return contact;
-    }));
+    const updateContacts = (contacts: ContactWithSelection[]) =>
+      contacts.map(contact => {
+        if (contact.id === parentId) {
+          return {
+            ...contact,
+            children: contact.children?.map(child => 
+              child.id === childId 
+                ? { ...child, selected: checked }
+                : child
+            )
+          };
+        }
+        return contact;
+      });
+
+    setCategorizedContacts(prev => 
+      prev.map(category => ({
+        ...category,
+        contacts: updateContacts(category.contacts)
+      }))
+    );
+    setUncategorizedContacts(prev => updateContacts(prev));
+    setSelectedContacts(prev => updateContacts(prev));
   };
 
   // Generate share link for selected contacts
@@ -121,6 +184,47 @@ export function ShareDialog({ open, onOpenChange, contacts }: ShareDialogProps) 
     }
   };
 
+  const ContactGroup = ({ contact }: { contact: ContactWithSelection }) => (
+    <Card key={contact.id} className="p-4">
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id={`contact-${contact.id}`}
+            checked={contact.selected}
+            onCheckedChange={(checked) => handleParentSelect(contact.id, checked as boolean)}
+          />
+          <label
+            htmlFor={`contact-${contact.id}`}
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            {contact.name}
+          </label>
+        </div>
+        {contact.children && contact.children.length > 0 && (
+          <div className="ml-6 space-y-2">
+            {contact.children.map(child => (
+              <div key={child.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`contact-${child.id}`}
+                  checked={child.selected}
+                  onCheckedChange={(checked) => 
+                    handleChildSelect(contact.id, child.id, checked as boolean)
+                  }
+                />
+                <label
+                  htmlFor={`contact-${child.id}`}
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  {child.name}
+                </label>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -128,47 +232,32 @@ export function ShareDialog({ open, onOpenChange, contacts }: ShareDialogProps) 
           <DialogTitle>Share Contacts</DialogTitle>
         </DialogHeader>
         <ScrollArea className="h-[60vh] pr-4">
-          <div className="space-y-4">
-            {selectedContacts.map(contact => (
-              <Card key={contact.id} className="p-4">
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`contact-${contact.id}`}
-                      checked={contact.selected}
-                      onCheckedChange={(checked) => handleParentSelect(contact.id, checked as boolean)}
-                    />
-                    <label
-                      htmlFor={`contact-${contact.id}`}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      {contact.name}
-                    </label>
+          <div className="space-y-6">
+            {/* Categorized Contacts */}
+            {categorizedContacts.map(category => (
+              category.contacts.length > 0 && (
+                <div key={category.title}>
+                  <h3 className="font-semibold mb-3">{category.title}</h3>
+                  <div className="space-y-3">
+                    {category.contacts.map(contact => (
+                      <ContactGroup key={contact.id} contact={contact} />
+                    ))}
                   </div>
-                  {contact.children && contact.children.length > 0 && (
-                    <div className="ml-6 space-y-2">
-                      {contact.children.map(child => (
-                        <div key={child.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`contact-${child.id}`}
-                            checked={child.selected}
-                            onCheckedChange={(checked) => 
-                              handleChildSelect(contact.id, child.id, checked as boolean)
-                            }
-                          />
-                          <label
-                            htmlFor={`contact-${child.id}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            {child.name}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
-              </Card>
+              )
             ))}
+
+            {/* Uncategorized Contacts */}
+            {uncategorizedContacts.length > 0 && (
+              <div>
+                <h3 className="font-semibold mb-3">Other Contacts</h3>
+                <div className="space-y-3">
+                  {uncategorizedContacts.map(contact => (
+                    <ContactGroup key={contact.id} contact={contact} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </ScrollArea>
         <div className="flex justify-end space-x-2 mt-4">
