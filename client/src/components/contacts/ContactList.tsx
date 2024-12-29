@@ -3,29 +3,56 @@ import { ContactCard } from "./ContactCard";
 import { type Contact } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { SearchFilters } from "./SearchBar";
+import { useToast } from "@/hooks/use-toast";
 
 interface ContactListProps {
   searchFilters: SearchFilters;
 }
 
 export function ContactList({ searchFilters }: ContactListProps) {
-  const { data: contacts, isLoading } = useQuery<Contact[]>({
+  const { toast } = useToast();
+
+  const { data: contacts, isLoading, error } = useQuery<Contact[]>({
     queryKey: ["/api/contacts", searchFilters],
     queryFn: async () => {
       const params = new URLSearchParams();
       Object.entries(searchFilters).forEach(([key, value]) => {
-        if (value) params.append(key, value);
+        if (value) params.append(key, value.trim());
       });
 
-      const url = `/api/contacts${params.toString() ? `?${params.toString()}` : ''}`;
+      const url = `/api/contacts${params.toString() ? `?${params}` : ''}`;
       const res = await fetch(url);
-      if (!res.ok) throw new Error("Failed to fetch contacts");
+
+      if (!res.ok) {
+        const error = await res.text();
+        throw new Error(error);
+      }
+
       return res.json();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to fetch contacts",
+        variant: "destructive",
+      });
     },
   });
 
   if (isLoading) {
-    return <div className="p-4">Loading contacts...</div>;
+    return (
+      <div className="p-4 text-center text-muted-foreground">
+        Loading contacts...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 text-center text-destructive">
+        Error: {error instanceof Error ? error.message : "Failed to fetch contacts"}
+      </div>
+    );
   }
 
   if (!contacts?.length) {
