@@ -10,8 +10,8 @@ export const contacts = pgTable("contacts", {
   birthday: date("birthday", { mode: 'string' }),
   notes: text("notes"),
   parentId: serial("parent_id").references(() => contacts.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }).notNull().defaultNow(),
 });
 
 // Define relations for the self-referential relationship

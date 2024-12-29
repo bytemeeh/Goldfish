@@ -76,7 +76,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Keep other routes unchanged
   app.get("/api/contacts/:id", async (req, res) => {
     const { id } = req.params;
 
@@ -106,7 +105,12 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/contacts", async (req, res) => {
     try {
-      const result = await db.insert(contacts).values(req.body).returning();
+      const now = new Date().toISOString();
+      const result = await db.insert(contacts).values({
+        ...req.body,
+        createdAt: now,
+        updatedAt: now,
+      }).returning();
       res.json(result[0]);
     } catch (error) {
       console.error('Error creating contact:', error);
@@ -120,7 +124,10 @@ export function registerRoutes(app: Express): Server {
     try {
       const result = await db
         .update(contacts)
-        .set({ ...req.body, updatedAt: new Date() })
+        .set({ 
+          ...req.body,
+          updatedAt: new Date().toISOString()
+        })
         .where(eq(contacts.id, parseInt(id)))
         .returning();
       res.json(result[0]);
