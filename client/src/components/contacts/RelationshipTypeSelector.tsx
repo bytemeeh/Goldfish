@@ -24,19 +24,21 @@ const relationshipTypes: Array<{
 
 export function RelationshipTypeSelector({ value, onChange }: RelationshipTypeSelectorProps) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div className="flex flex-wrap gap-2">
       {relationshipTypes.map(({ type, icon: Icon, label }) => (
         <Button
           key={type}
           variant="outline"
-          size="lg"
+          size="sm"
           className={cn(
-            "h-auto py-4 flex flex-col gap-2 items-center justify-center transition-all",
-            value === type && "bg-primary text-primary-foreground border-primary"
+            "flex items-center gap-2 transition-all",
+            value === type 
+              ? "bg-primary text-primary-foreground border-primary" 
+              : "hover:bg-secondary"
           )}
           onClick={() => onChange(type)}
         >
-          <Icon className="h-5 w-5" />
+          <Icon className="h-4 w-4" />
           <span>{label}</span>
         </Button>
       ))}
