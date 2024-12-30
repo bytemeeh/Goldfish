@@ -54,23 +54,42 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
   });
 
   // Calculate indentation and nested styles based on level
-  const indentClass = level > 0 ? `ml-${Math.min(level * 6, 24)}` : '';
-  const levelBackgroundClass = level > 0 ? `bg-background/[0.${Math.min(level * 2, 8)}]` : '';
-  const borderColor = level === 0 ? 'primary' : `primary/[0.${Math.max(8 - level * 2, 3)}]`;
+  const indentClass = level > 0 ? `ml-${Math.min(level * 8, 32)}` : '';
+  const borderOpacity = Math.max(90 - level * 20, 30); // Decreases opacity with depth
+  const borderColor = `border-primary opacity-${borderOpacity}`;
+  const bgOpacity = Math.min((level + 1) * 5, 20); // Increases background opacity with depth
 
   return (
     <div className={`relative ${indentClass}`}>
-      {/* Connection line for nested items */}
+      {/* Connection lines for nested items */}
       {level > 0 && (
-        <div className="absolute -left-4 top-0 bottom-0 w-px bg-primary/20" />
+        <>
+          {/* Vertical connection line */}
+          <div className="absolute -left-4 top-0 bottom-0 w-0.5 bg-primary/20" />
+          {/* Horizontal connection line */}
+          <div className="absolute -left-4 top-6 w-4 h-0.5 bg-primary/20" />
+        </>
       )}
 
-      <Card className={`relative border-l-4 border-l-${borderColor} hover:border-l-primary/60 transition-colors ${levelBackgroundClass}`}>
+      <Card 
+        className={`
+          relative
+          border-l-4 
+          ${borderColor}
+          hover:border-l-primary/90 
+          transition-colors
+          bg-background/[0.${bgOpacity}]
+          ${level > 0 ? 'shadow-sm' : 'shadow-md'}
+        `}
+      >
         <CardHeader className="flex flex-row items-start space-x-4 pb-2">
           <Button
             variant="ghost"
             size="icon"
-            className={`h-6 w-6 mt-1 ${children.length > 0 ? 'text-primary hover:text-primary/80' : 'text-muted-foreground'}`}
+            className={`
+              h-6 w-6 mt-1
+              ${children.length > 0 ? 'text-primary hover:text-primary/80' : 'text-muted-foreground'}
+            `}
             onClick={() => setIsExpanded(!isExpanded)}
           >
             {children.length > 0 ? (
@@ -185,7 +204,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
 
       {/* Render children with increased nesting level */}
       {isExpanded && children.length > 0 && (
-        <div className="space-y-4 mt-4">
+        <div className="space-y-6 mt-6">
           {children.map((child) => (
             <ContactCard 
               key={child.id} 
