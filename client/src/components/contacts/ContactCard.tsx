@@ -38,6 +38,7 @@ import { ContactForm } from "./ContactForm";
 import { type Contact, type RelationshipType } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
+import cn from 'classnames';
 
 // Icon mapping for different relationship types
 const relationshipIcons: Record<RelationshipType, React.ComponentType<any>> = {
@@ -85,6 +86,14 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
 
   // Get relationship icon if available
   const RelationshipIcon = contact.relationshipType ? relationshipIcons[contact.relationshipType] : null;
+
+  // Assumed to be defined elsewhere, providing color categories for relationship types.
+  const relationshipCategories = {
+    family: ["mother", "father", "sibling", "brother", "child", "spouse"],
+    friends: ["friend", "boyfriend/girlfriend"],
+    professional: ["co-worker"],
+  };
+
 
   return (
     <div className={`relative ${indentClass}`}>
@@ -188,19 +197,31 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                   {contact.relationshipType && (
                     <div className="flex items-center gap-2 mt-1.5">
                       {RelationshipIcon && (
-                        <RelationshipIcon className="h-3.5 w-3.5 text-primary/70" />
+                        <RelationshipIcon
+                          className={cn(
+                            "h-3.5 w-3.5",
+                            relationshipCategories.family.includes(contact.relationshipType)
+                              ? "text-[hsl(var(--chart-1))]"
+                              : relationshipCategories.friends.includes(contact.relationshipType)
+                              ? "text-[hsl(var(--chart-2))]"
+                              : relationshipCategories.professional.includes(contact.relationshipType)
+                              ? "text-[hsl(var(--chart-3))]"
+                              : "text-muted-foreground"
+                          )}
+                        />
                       )}
                       <Badge
                         variant="outline"
-                        className="
-                          capitalize font-normal text-xs
-                          bg-primary/5
-                          text-primary/70
-                          hover:bg-primary/10
-                          transition-colors
-                          border-0
-                          px-2 py-0
-                        "
+                        className={cn(
+                          "capitalize font-normal text-xs border-0 px-2 py-0",
+                          relationshipCategories.family.includes(contact.relationshipType)
+                            ? "bg-[hsl(var(--chart-1)/0.1)] text-[hsl(var(--chart-1))]"
+                            : relationshipCategories.friends.includes(contact.relationshipType)
+                            ? "bg-[hsl(var(--chart-2)/0.1)] text-[hsl(var(--chart-2))]"
+                            : relationshipCategories.professional.includes(contact.relationshipType)
+                            ? "bg-[hsl(var(--chart-3)/0.1)] text-[hsl(var(--chart-3))]"
+                            : "bg-muted/20 text-muted-foreground"
+                        )}
                       >
                         {contact.relationshipType.replace("-", " ")}
                       </Badge>

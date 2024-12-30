@@ -61,23 +61,23 @@ export function RelationshipTypeSelector({
   // Otherwise, show all types for root-level contacts
   const availableTypes = validChildTypes || Object.keys(relationshipIcons) as RelationshipType[];
 
-  // Get category for styling
-  const getTypeCategory = (type: RelationshipType): keyof typeof relationshipCategories | "other" => {
-    for (const [category, types] of Object.entries(relationshipCategories)) {
-      if (types.includes(type)) return category as keyof typeof relationshipCategories;
+  // Helper function to get the appropriate color class based on relationship type
+  const getRelationshipColorClass = (type: RelationshipType, isSelected: boolean): string => {
+    if (isSelected) {
+      return "bg-primary text-primary-foreground border-primary";
     }
-    return "other";
-  };
 
-  // Get color variable based on category
-  const getCategoryColor = (type: RelationshipType): string => {
-    const category = getTypeCategory(type);
-    switch(category) {
-      case "family": return "--chart-1";
-      case "friends": return "--chart-2";
-      case "professional": return "--chart-3";
-      default: return "--muted";
+    if (relationshipCategories.family.includes(type)) {
+      return "border-[hsl(var(--chart-1))] text-[hsl(var(--chart-1))] hover:bg-[hsl(var(--chart-1)/0.1)]";
     }
+    if (relationshipCategories.friends.includes(type)) {
+      return "border-[hsl(var(--chart-2))] text-[hsl(var(--chart-2))] hover:bg-[hsl(var(--chart-2)/0.1)]";
+    }
+    if (relationshipCategories.professional.includes(type)) {
+      return "border-[hsl(var(--chart-3))] text-[hsl(var(--chart-3))] hover:bg-[hsl(var(--chart-3)/0.1)]";
+    }
+
+    return "border-muted text-muted-foreground hover:bg-muted/10";
   };
 
   return (
@@ -85,13 +85,13 @@ export function RelationshipTypeSelector({
       {/* Family relationships */}
       {availableTypes.some(type => relationshipCategories.family.includes(type)) && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-muted-foreground">Family</h4>
+          <h4 className="text-sm font-medium" style={{ color: 'hsl(var(--chart-1))' }}>Family</h4>
           <div className="flex flex-wrap gap-2">
             {availableTypes
               .filter(type => relationshipCategories.family.includes(type))
               .map((type) => {
                 const Icon = relationshipIcons[type];
-                const colorVar = getCategoryColor(type);
+                const isSelected = value === type;
                 return (
                   <Button
                     key={type}
@@ -100,21 +100,14 @@ export function RelationshipTypeSelector({
                     size="sm"
                     className={cn(
                       "flex items-center gap-2 transition-all",
-                      value === type 
-                        ? "bg-primary text-primary-foreground border-primary" 
-                        : `hover:bg-[hsl(var(${colorVar})/0.1)] border-[hsl(var(${colorVar})/0.2)]`
+                      getRelationshipColorClass(type, isSelected)
                     )}
                     onClick={(e) => {
                       e.preventDefault();
                       onChange(type);
                     }}
                   >
-                    <Icon className={cn(
-                      "h-4 w-4",
-                      value === type 
-                        ? "text-primary-foreground" 
-                        : `text-[hsl(var(${colorVar})/0.8)]`
-                    )} />
+                    <Icon className="h-4 w-4" />
                     <span>{relationshipLabels[type]}</span>
                   </Button>
                 );
@@ -126,13 +119,13 @@ export function RelationshipTypeSelector({
       {/* Friends relationships */}
       {availableTypes.some(type => relationshipCategories.friends.includes(type)) && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-muted-foreground">Friends</h4>
+          <h4 className="text-sm font-medium" style={{ color: 'hsl(var(--chart-2))' }}>Friends</h4>
           <div className="flex flex-wrap gap-2">
             {availableTypes
               .filter(type => relationshipCategories.friends.includes(type))
               .map((type) => {
                 const Icon = relationshipIcons[type];
-                const colorVar = getCategoryColor(type);
+                const isSelected = value === type;
                 return (
                   <Button
                     key={type}
@@ -141,21 +134,14 @@ export function RelationshipTypeSelector({
                     size="sm"
                     className={cn(
                       "flex items-center gap-2 transition-all",
-                      value === type 
-                        ? "bg-primary text-primary-foreground border-primary" 
-                        : `hover:bg-[hsl(var(${colorVar})/0.1)] border-[hsl(var(${colorVar})/0.2)]`
+                      getRelationshipColorClass(type, isSelected)
                     )}
                     onClick={(e) => {
                       e.preventDefault();
                       onChange(type);
                     }}
                   >
-                    <Icon className={cn(
-                      "h-4 w-4",
-                      value === type 
-                        ? "text-primary-foreground" 
-                        : `text-[hsl(var(${colorVar})/0.8)]`
-                    )} />
+                    <Icon className="h-4 w-4" />
                     <span>{relationshipLabels[type]}</span>
                   </Button>
                 );
@@ -167,13 +153,13 @@ export function RelationshipTypeSelector({
       {/* Professional relationships */}
       {availableTypes.some(type => relationshipCategories.professional.includes(type)) && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-muted-foreground">Professional</h4>
+          <h4 className="text-sm font-medium" style={{ color: 'hsl(var(--chart-3))' }}>Professional</h4>
           <div className="flex flex-wrap gap-2">
             {availableTypes
               .filter(type => relationshipCategories.professional.includes(type))
               .map((type) => {
                 const Icon = relationshipIcons[type];
-                const colorVar = getCategoryColor(type);
+                const isSelected = value === type;
                 return (
                   <Button
                     key={type}
@@ -182,21 +168,14 @@ export function RelationshipTypeSelector({
                     size="sm"
                     className={cn(
                       "flex items-center gap-2 transition-all",
-                      value === type 
-                        ? "bg-primary text-primary-foreground border-primary" 
-                        : `hover:bg-[hsl(var(${colorVar})/0.1)] border-[hsl(var(${colorVar})/0.2)]`
+                      getRelationshipColorClass(type, isSelected)
                     )}
                     onClick={(e) => {
                       e.preventDefault();
                       onChange(type);
                     }}
                   >
-                    <Icon className={cn(
-                      "h-4 w-4",
-                      value === type 
-                        ? "text-primary-foreground" 
-                        : `text-[hsl(var(${colorVar})/0.8)]`
-                    )} />
+                    <Icon className="h-4 w-4" />
                     <span>{relationshipLabels[type]}</span>
                   </Button>
                 );
