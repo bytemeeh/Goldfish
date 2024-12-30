@@ -9,18 +9,12 @@ import ForceGraph2D from "react-force-graph-2d";
 import type { NodeObject, LinkObject } from "react-force-graph-2d";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Helper function to convert CSS HSL variable to rgba
-function hslToRgba(variable: string, alpha: number = 1): string {
-  // Create a temporary div to compute the style
-  const div = document.createElement('div');
-  div.style.color = `hsl(var(${variable}))`;
-  document.body.appendChild(div);
-  const color = window.getComputedStyle(div).color;
-  document.body.removeChild(div);
-
-  // Extract RGB values
-  const rgb = color.match(/\d+/g)?.map(Number) || [0, 0, 0];
-  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
+// Helper function to get theme color
+function getThemeColor(colorVar: string, opacity: number = 1): string {
+  const root = document.documentElement;
+  const computedStyle = getComputedStyle(root);
+  const hslValue = computedStyle.getPropertyValue(colorVar).trim();
+  return `hsla(${hslValue}, ${opacity})`;
 }
 
 // Contact details component
@@ -77,7 +71,7 @@ interface GraphData {
 
 export function ContactGraph() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const graphRef = useRef<ForceGraph2D>(null);
+  const graphRef = useRef<any>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
@@ -86,7 +80,6 @@ export function ContactGraph() {
     queryKey: ["/api/contacts"],
   });
 
-  // Update dimensions on resize
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
@@ -104,17 +97,15 @@ export function ContactGraph() {
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Transform contacts data into graph format
   useEffect(() => {
     if (!contacts?.length) return;
 
     try {
       const meContact = contacts.find(c => c.isMe);
 
-      // Get color based on relationship type
       const getNodeColor = (contact: Contact): string => {
-        if (contact.isMe) return hslToRgba('--primary');
-        if (!contact.relationshipType) return hslToRgba('--muted');
+        if (contact.isMe) return getThemeColor('--primary');
+        if (!contact.relationshipType) return getThemeColor('--muted');
 
         const categories = {
           family: ["mother", "father", "brother", "sibling", "child", "spouse"],
@@ -122,10 +113,10 @@ export function ContactGraph() {
           professional: ["co-worker"]
         };
 
-        if (categories.family.includes(contact.relationshipType)) return hslToRgba('--chart-1');
-        if (categories.friends.includes(contact.relationshipType)) return hslToRgba('--chart-2');
-        if (categories.professional.includes(contact.relationshipType)) return hslToRgba('--chart-3');
-        return hslToRgba('--muted');
+        if (categories.family.includes(contact.relationshipType)) return getThemeColor('--chart-1');
+        if (categories.friends.includes(contact.relationshipType)) return getThemeColor('--chart-2');
+        if (categories.professional.includes(contact.relationshipType)) return getThemeColor('--chart-3');
+        return getThemeColor('--muted');
       };
 
       const nodes: GraphNode[] = contacts.map(contact => ({
@@ -257,7 +248,7 @@ export function ContactGraph() {
               <div key={label} className="flex items-center gap-2">
                 <div 
                   className="w-3 h-3 rounded-full" 
-                  style={{ backgroundColor: `hsl(var(${color}))` }}
+                  style={{ backgroundColor: getThemeColor(color) }}
                 />
                 <span className="text-sm text-muted-foreground">{label}</span>
               </div>
@@ -280,17 +271,7 @@ export function ContactGraph() {
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          // Draw node glow effect
-          const gradient = ctx.createRadialGradient(node.x!, node.y!, 0, node.x!, node.y!, nodeSize * 2.5);
-          gradient.addColorStop(0, node.color.replace(')', ', 0.4)'));
-          gradient.addColorStop(0.5, node.color.replace(')', ', 0.2)'));
-          gradient.addColorStop(1, 'transparent');
-          ctx.fillStyle = gradient;
-          ctx.beginPath();
-          ctx.arc(node.x!, node.y!, nodeSize * 2.5, 0, 2 * Math.PI);
-          ctx.fill();
-
-          // Draw node circle
+          // Draw node with shadow
           ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
           ctx.shadowBlur = 8;
           ctx.shadowOffsetY = 2;
@@ -316,15 +297,15 @@ export function ContactGraph() {
           ctx.fill();
 
           ctx.shadowColor = 'transparent';
-          ctx.fillStyle = 'hsl(var(--foreground))';
+          ctx.fillStyle = getThemeColor('--foreground');
           ctx.fillText(label, node.x!, bgY);
         }}
-        linkColor={() => "rgba(0, 0, 0, 0.1)"}
+        linkColor={() => getThemeColor('--border', 0.1)}
         linkWidth={1}
         linkDirectionalParticles={4}
         linkDirectionalParticleWidth={2}
         linkDirectionalParticleSpeed={0.003}
-        linkDirectionalParticleColor={() => hslToRgba('--primary', 0.3)}
+        linkDirectionalParticleColor={() => getThemeColor('--primary', 0.3)}
         backgroundColor="transparent"
         onNodeClick={handleNodeClick}
         width={dimensions.width}
