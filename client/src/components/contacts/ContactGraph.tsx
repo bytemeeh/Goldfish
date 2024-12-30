@@ -9,7 +9,31 @@ import ForceGraph2D from "react-force-graph-2d";
 import type { NodeObject, LinkObject } from "react-force-graph-2d";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Helper function to get computed RGB color from CSS variable
+// Color palette configuration for Apple-style design
+const colorPalette = {
+  family: {
+    primary: "--chart-1",
+    gradient: ["1, 0.4", "0.8, 0.2", "0.6, 0.1"]
+  },
+  friends: {
+    primary: "--chart-2",
+    gradient: ["1, 0.4", "0.8, 0.2", "0.6, 0.1"]
+  },
+  professional: {
+    primary: "--chart-3",
+    gradient: ["1, 0.4", "0.8, 0.2", "0.6, 0.1"]
+  },
+  personal: {
+    primary: "--primary",
+    gradient: ["1, 0.45", "0.8, 0.25", "0.6, 0.15"]
+  },
+  default: {
+    primary: "--muted",
+    gradient: ["1, 0.3", "0.8, 0.15", "0.6, 0.05"]
+  }
+};
+
+// Helper function to get computed RGB color from CSS variable with opacity
 function getRGBColor(variable: string, opacity: number = 1): string {
   const root = document.documentElement;
   const computedStyle = getComputedStyle(root);
@@ -66,7 +90,7 @@ interface GraphNode extends NodeObject {
   relationshipType?: string;
   isMe?: boolean;
   color: string;
-  ringColor?: string;
+  gradientColors: string[];
 }
 
 interface GraphLink extends LinkObject {
@@ -114,61 +138,46 @@ export function ContactGraph() {
     try {
       const meContact = contacts.find(c => c.isMe);
 
-      const getNodeColors = (contact: Contact): { color: string, ringColor?: string } => {
+      const getNodeStyle = (contact: Contact): { color: string, gradientColors: string[] } => {
+        let palette;
+
         if (contact.isMe) {
-          return {
-            color: getRGBColor('--primary'),
-            ringColor: getRGBColor('--primary', 0.3)
+          palette = colorPalette.personal;
+        } else if (!contact.relationshipType) {
+          palette = colorPalette.default;
+        } else {
+          const categories = {
+            family: ["mother", "father", "brother", "sibling", "child", "spouse"],
+            friends: ["friend", "boyfriend/girlfriend"],
+            professional: ["co-worker"]
           };
-        }
 
-        if (!contact.relationshipType) {
-          return {
-            color: getRGBColor('--muted'),
-            ringColor: getRGBColor('--muted', 0.3)
-          };
-        }
-
-        const categories = {
-          family: ["mother", "father", "brother", "sibling", "child", "spouse"],
-          friends: ["friend", "boyfriend/girlfriend"],
-          professional: ["co-worker"]
-        };
-
-        if (categories.family.includes(contact.relationshipType)) {
-          return {
-            color: getRGBColor('--chart-1'),
-            ringColor: getRGBColor('--chart-1', 0.3)
-          };
-        }
-        if (categories.friends.includes(contact.relationshipType)) {
-          return {
-            color: getRGBColor('--chart-2'),
-            ringColor: getRGBColor('--chart-2', 0.3)
-          };
-        }
-        if (categories.professional.includes(contact.relationshipType)) {
-          return {
-            color: getRGBColor('--chart-3'),
-            ringColor: getRGBColor('--chart-3', 0.3)
-          };
+          if (categories.family.includes(contact.relationshipType)) {
+            palette = colorPalette.family;
+          } else if (categories.friends.includes(contact.relationshipType)) {
+            palette = colorPalette.friends;
+          } else if (categories.professional.includes(contact.relationshipType)) {
+            palette = colorPalette.professional;
+          } else {
+            palette = colorPalette.default;
+          }
         }
 
         return {
-          color: getRGBColor('--muted'),
-          ringColor: getRGBColor('--muted', 0.3)
+          color: getRGBColor(palette.primary),
+          gradientColors: palette.gradient.map(g => getRGBColor(palette.primary, parseFloat(g.split(', ')[1])))
         };
       };
 
       const nodes: GraphNode[] = contacts.map(contact => {
-        const colors = getNodeColors(contact);
+        const style = getNodeStyle(contact);
         return {
           id: contact.id,
           name: contact.name,
           relationshipType: contact.relationshipType,
           isMe: contact.isMe,
-          color: colors.color,
-          ringColor: colors.ringColor,
+          color: style.color,
+          gradientColors: style.gradientColors,
           x: Math.random() * 100,
           y: Math.random() * 100,
           vx: 0,
@@ -277,10 +286,10 @@ export function ContactGraph() {
           <h3 className="font-semibold mb-3 text-sm">Relationship Types</h3>
           <div className="space-y-2.5">
             {[
-              { label: "Family", color: "--chart-1" },
-              { label: "Friends", color: "--chart-2" },
-              { label: "Professional", color: "--chart-3" },
-              { label: "Personal Card", color: "--primary" }
+              { label: "Family", color: colorPalette.family.primary },
+              { label: "Friends", color: colorPalette.friends.primary },
+              { label: "Professional", color: colorPalette.professional.primary },
+              { label: "Personal Card", color: colorPalette.personal.primary }
             ].map(({ label, color }) => (
               <div key={label} className="flex items-center gap-2">
                 <div 
@@ -298,7 +307,6 @@ export function ContactGraph() {
         ref={graphRef}
         graphData={graphData}
         nodeLabel={node => node.name}
-        nodeColor={node => node.color}
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
           const label = node.name;
           const fontSize = Math.max(14/globalScale, 8);
@@ -308,68 +316,70 @@ export function ContactGraph() {
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          // Draw outer glow
-          if (node.ringColor) {
+          // Draw multi-layered glow effect
+          node.gradientColors.forEach((color, index) => {
+            const radius = nodeSize * (2 - index * 0.5);
             const gradient = ctx.createRadialGradient(
-              node.x!, node.y!, nodeSize * 0.5,
-              node.x!, node.y!, nodeSize * 2
+              node.x!, node.y!, radius * 0.3,
+              node.x!, node.y!, radius
             );
-            gradient.addColorStop(0, node.ringColor);
+            gradient.addColorStop(0, color);
             gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
             ctx.fillStyle = gradient;
             ctx.beginPath();
-            ctx.arc(node.x!, node.y!, nodeSize * 2, 0, 2 * Math.PI);
+            ctx.arc(node.x!, node.y!, radius, 0, 2 * Math.PI);
             ctx.fill();
-          }
+          });
 
-          // Draw node shadow
+          // Draw node with shadow and highlight
           ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
           ctx.shadowBlur = 5;
           ctx.shadowOffsetY = 2;
 
-          // Draw node
+          // Node base
           ctx.fillStyle = node.color;
           ctx.beginPath();
           ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI);
           ctx.fill();
 
-          // Draw highlight
+          // Node highlight
           ctx.shadowColor = 'transparent';
           const highlightGradient = ctx.createLinearGradient(
             node.x!, node.y! - nodeSize,
             node.x!, node.y! + nodeSize
           );
-          highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
+          highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
           highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
           ctx.fillStyle = highlightGradient;
           ctx.beginPath();
           ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI);
           ctx.fill();
 
-          // Draw text background
+          // Draw text with frosted glass effect
           const textWidth = ctx.measureText(label).width;
           const bgHeight = fontSize * 1.5;
           const bgWidth = textWidth + 16;
           const bgY = node.y! + nodeSize * 2;
 
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+          // Text background with blur effect
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
           ctx.shadowBlur = 4;
           ctx.beginPath();
           ctx.roundRect(node.x! - bgWidth/2, bgY - bgHeight/2, bgWidth, bgHeight, 4);
           ctx.fill();
 
-          // Draw text
+          // Text
           ctx.shadowColor = 'transparent';
           ctx.fillStyle = getRGBColor('--foreground');
           ctx.fillText(label, node.x!, bgY);
         }}
-        linkColor={() => getRGBColor('--border', 0.15)}
+        linkColor={() => getRGBColor('--border', 0.12)}
         linkWidth={1}
         linkDirectionalParticles={4}
         linkDirectionalParticleWidth={2}
         linkDirectionalParticleSpeed={0.003}
-        linkDirectionalParticleColor={() => getRGBColor('--primary', 0.3)}
+        linkDirectionalParticleColor={() => getRGBColor('--primary', 0.25)}
         backgroundColor="transparent"
         onNodeClick={handleNodeClick}
         width={dimensions.width}
