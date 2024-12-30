@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { ContactCard } from "./ContactCard";
 import { type Contact } from "@/lib/types";
@@ -118,12 +119,6 @@ export function ContactList({ searchFilters }: ContactListProps) {
     !c.parentId // No parent
   );
 
-  // Build hierarchies for root contacts
-  const processedContacts = rootContacts.map(contact => ({
-    ...contact,
-    children: buildHierarchy(contact.id)
-  }));
-
   // Build personal contact hierarchy
   let personalHierarchy = null;
   if (personalContact) {
@@ -133,24 +128,6 @@ export function ContactList({ searchFilters }: ContactListProps) {
     };
     console.log('Personal hierarchy:', personalHierarchy);
   }
-
-  // Categorize contacts
-  const categorizedContacts = categories.map(category => ({
-    ...category,
-    contacts: processedContacts.filter(contact =>
-      contact.relationshipType &&
-      category.types.includes(contact.relationshipType)
-    )
-  }));
-
-  // Get uncategorized contacts
-  const uncategorizedContacts = processedContacts.filter(contact =>
-    !contact.relationshipType ||
-    !categories.some(cat => 
-      contact.relationshipType && 
-      cat.types.includes(contact.relationshipType)
-    )
-  );
 
   // Categorize root contacts by relationship type
   const categorizedContacts = categories.map(category => ({
@@ -191,24 +168,6 @@ export function ContactList({ searchFilters }: ContactListProps) {
             />
           </div>
         )}
-
-        {/* Categorized Contacts */}
-        {categorizedContacts.map(category => (
-          category.contacts.length > 0 && (
-            <div key={category.title}>
-              <h2 className="text-lg font-semibold mb-4 text-muted-foreground">{category.title}</h2>
-              <div className="space-y-4">
-                {category.contacts.map(contact => (
-                  <ContactCard 
-                    key={contact.id} 
-                    contact={contact}
-                    children={contact.children}
-                  />
-                ))}
-              </div>
-            </div>
-          )
-        ))}
 
         {/* Categorized Contacts */}
         {categorizedContacts.map(category => (
