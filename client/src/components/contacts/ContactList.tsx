@@ -77,90 +77,48 @@ export function ContactList({ searchFilters }: ContactListProps) {
     );
   }
 
-  console.log('Initial contacts:', contacts.map(c => ({
-    id: c.id,
-    name: c.name,
-    parentId: c.parentId,
-    relationshipType: c.relationshipType
-  })));
-
   // Find personal contact (me)
   const personalContact = contacts.find(c => c.isMe);
   console.log('Personal contact:', personalContact);
 
-  // Helper function to get all descendants for a contact
-  const getDescendants = (contactId: number, maxDepth: number = 4, currentDepth: number = 0): Contact[] => {
-    if (currentDepth >= maxDepth) return [];
+  // Helper function to build hierarchy for a contact
+  const buildHierarchy = (contactId: number | null = null, depth: number = 0): Contact[] => {
+    if (depth >= 4) return []; // Limit to 4 layers deep
 
     const children = contacts.filter(c => c.parentId === contactId);
-    console.log(`Depth ${currentDepth} - Found children for ${contactId}:`, children.map(c => ({
-      id: c.id,
-      name: c.name,
-      relationshipType: c.relationshipType
-    })));
+    console.log(`Building hierarchy at depth ${depth} for contact ${contactId}, found children:`,
+      children.map(c => ({
+        id: c.id,
+        name: c.name,
+        relationshipType: c.relationshipType
+      }))
+    );
 
     return children.map(child => ({
       ...child,
-      children: getDescendants(child.id, maxDepth, currentDepth + 1)
+      children: buildHierarchy(child.id, depth + 1)
     }));
   };
 
-  // Helper function to get all ancestors for a contact
-  const getAncestors = (contactId: number | null, maxDepth: number = 4, currentDepth: number = 0): Contact[] => {
-    if (!contactId || currentDepth >= maxDepth) return [];
-
-    const parent = contacts.find(c => c.id === contactId);
-    if (!parent) return [];
-
-    console.log(`Depth ${currentDepth} - Found parent for ${contactId}:`, {
-      id: parent.id,
-      name: parent.name,
-      relationshipType: parent.relationshipType
-    });
-
-    return [
-      {
-        ...parent,
-        children: getAncestors(parent.parentId, maxDepth, currentDepth + 1)
-      }
-    ];
-  };
-
-  // Build complete hierarchy for a contact including both ancestors and descendants
-  const buildCompleteHierarchy = (contact: Contact): Contact => {
-    console.log(`Building complete hierarchy for ${contact.name}`);
-
-    // Get all descendants
-    const descendants = getDescendants(contact.id);
-    console.log(`Found descendants for ${contact.name}:`, descendants);
-
-    // Get all ancestors
-    const ancestors = getAncestors(contact.parentId);
-    console.log(`Found ancestors for ${contact.name}:`, ancestors);
-
-    return {
-      ...contact,
-      children: [
-        ...descendants,
-        ...(ancestors.length > 0 ? ancestors : [])
-      ]
-    };
-  };
-
-  // Process root contacts (excluding personal contact)
+  // Get root contacts (excluding personal contact)
   const rootContacts = contacts.filter(c => 
     !c.isMe && // Not personal contact
     !c.parentId // No parent
   );
-  console.log('Root contacts:', rootContacts);
 
-  const processedContacts = rootContacts.map(contact => buildCompleteHierarchy(contact));
-  console.log('Processed contacts:', processedContacts);
+  // Build hierarchies for root contacts
+  const processedContacts = rootContacts.map(contact => ({
+    ...contact,
+    children: buildHierarchy(contact.id)
+  }));
 
   // Build personal contact hierarchy
   let personalHierarchy = null;
   if (personalContact) {
-    personalHierarchy = buildCompleteHierarchy(personalContact);
+    personalHierarchy = {
+      ...personalContact,
+      children: buildHierarchy(personalContact.id)
+    };
     console.log('Personal hierarchy:', personalHierarchy);
   }
 
