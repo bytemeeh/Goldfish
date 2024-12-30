@@ -43,39 +43,39 @@ export const relationshipCascadeRules: RelationshipCascadeRule[] = [
   },
   {
     parentType: "mother",
-    validChildTypes: ["sibling"],
+    validChildTypes: ["sibling", "spouse"],
     cascadeUpdates: {
-      sibling: "sibling" // Siblings of your mother are your aunts/uncles (simplified as sibling for now)
+      sibling: "sibling", // Siblings of your mother are your aunts/uncles (simplified as sibling)
+      spouse: "father" // Spouse of your mother is your father
     }
   },
   {
     parentType: "father",
-    validChildTypes: ["sibling"],
+    validChildTypes: ["sibling", "spouse"],
     cascadeUpdates: {
-      sibling: "sibling"
+      sibling: "sibling", // Siblings of your father are your aunts/uncles (simplified as sibling)
+      spouse: "mother" // Spouse of your father is your mother
     }
   },
   {
     parentType: "sibling",
     validChildTypes: ["spouse", "child"],
-    cascadeUpdates: {
-      child: "child" // Children of your sibling are your nieces/nephews (simplified as child for now)
-    }
+    // No cascade updates - spouse of sibling remains spouse of sibling, their children are their children
   },
   {
     parentType: "friend",
     validChildTypes: ["spouse", "child", "friend"],
-    cascadeUpdates: {
-      child: "child",
-      friend: "friend"
-    }
+    // No cascade updates - relationships of friends don't affect your relationship to them
   },
   {
     parentType: "child",
     validChildTypes: ["spouse", "child"],
-    cascadeUpdates: {
-      child: "child" // Children of your child are your grandchildren (simplified as child for now)
-    }
+    // No cascade updates - relationships of children don't affect your relationship to them
+  },
+  {
+    parentType: "co-worker",
+    validChildTypes: ["spouse", "child"],
+    // No cascade updates - relationships of co-workers don't affect your relationship to them
   }
 ];
 
@@ -107,20 +107,12 @@ export const contactsRelations = relations(contacts, ({ one, many }) => ({
 
 // Helper function to get valid child relationship types for a given parent type
 export function getValidChildRelationshipTypes(parentType: RelationshipType | null | undefined): RelationshipType[] {
-  console.log('Getting valid child types for parent type:', parentType);
-
   if (!parentType) {
-    console.log('No parent type, returning all relationship types');
     return relationshipTypes;
   }
 
   const rule = relationshipCascadeRules.find(r => r.parentType === parentType);
-  console.log('Found cascade rule:', rule);
-
-  const validTypes = rule?.validChildTypes ?? [];
-  console.log('Valid child types:', validTypes);
-
-  return validTypes;
+  return rule?.validChildTypes ?? [];
 }
 
 // Helper function to get cascaded relationship type
@@ -128,15 +120,8 @@ export function getCascadedRelationshipType(
   parentType: RelationshipType,
   childType: RelationshipType
 ): RelationshipType | undefined {
-  console.log('Getting cascaded relationship type:', { parentType, childType });
-
   const rule = relationshipCascadeRules.find(r => r.parentType === parentType);
-  console.log('Found cascade rule:', rule);
-
-  const cascadedType = rule?.cascadeUpdates?.[childType];
-  console.log('Cascaded type:', cascadedType);
-
-  return cascadedType;
+  return rule?.cascadeUpdates?.[childType];
 }
 
 // Create Zod schemas with proper validation
