@@ -50,7 +50,7 @@ function ContactDetails({ contact }: { contact: Contact }) {
         </div>
       )}
       {contact.notes && (
-        <p className="text-sm text-muted-foreground">{contact.notes}</p>
+        <p className="text-sm text-muted-foreground mt-2">{contact.notes}</p>
       )}
     </div>
   );
