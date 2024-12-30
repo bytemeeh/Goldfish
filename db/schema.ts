@@ -15,6 +15,8 @@ export const relationshipTypes = [
   "boyfriend/girlfriend"
 ] as const;
 
+export type RelationshipType = (typeof relationshipTypes)[number];
+
 // Define relationship cascading rules
 export type RelationshipCascadeRule = {
   parentType: RelationshipType;
@@ -85,7 +87,7 @@ export const contacts = pgTable("contacts", {
   birthday: date("birthday", { mode: 'string' }),
   notes: text("notes"),
   parentId: integer("parent_id").references(() => contacts.id, { onDelete: "cascade" }),
-  relationshipType: text("relationship_type"),
+  relationshipType: text("relationship_type", { enum: relationshipTypes }),
   isMe: boolean("is_me").default(false),
   shareToken: text("share_token").unique(),
   shareDepth: integer("share_depth"), // How many levels deep to share (null means all)
@@ -104,8 +106,8 @@ export const contactsRelations = relations(contacts, ({ one, many }) => ({
 }));
 
 // Helper function to get valid child relationship types for a given parent type
-export function getValidChildRelationshipTypes(parentType?: RelationshipType): RelationshipType[] {
-  if (!parentType) return relationshipTypes as RelationshipType[];
+export function getValidChildRelationshipTypes(parentType: RelationshipType | null | undefined): RelationshipType[] {
+  if (!parentType) return relationshipTypes;
 
   const rule = relationshipCascadeRules.find(r => r.parentType === parentType);
   return rule?.validChildTypes ?? [];
@@ -123,7 +125,7 @@ export function getCascadedRelationshipType(
 // Create Zod schemas with proper validation
 export const insertContactSchema = createInsertSchema(contacts, {
   name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email").nullable().optional().or(z.literal('')),
+  email: z.string().email("Invalid email").nullable().optional(),
   phone: z.string().optional().nullable(),
   birthday: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
@@ -140,4 +142,3 @@ export const selectContactSchema = createSelectSchema(contacts);
 // Export types
 export type Contact = typeof contacts.$inferSelect;
 export type NewContact = typeof contacts.$inferInsert;
-export type RelationshipType = typeof relationshipTypes[number];

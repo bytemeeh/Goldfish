@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { contacts, insertContactSchema, getCascadedRelationshipType, getValidChildRelationshipTypes } from "@db/schema";
+import { contacts, insertContactSchema, getCascadedRelationshipType, getValidChildRelationshipTypes, type RelationshipType } from "@db/schema";
 import { and, or, eq, ilike, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
 
@@ -12,7 +12,7 @@ interface SearchFilters {
   notes?: string;
 }
 
-async function updateRelationshipsCascading(contactId: number, newParentId: number | null, newRelationType: string | null) {
+async function updateRelationshipsCascading(contactId: number, newParentId: number | null, newRelationType: RelationshipType | null) {
   // Get the contact and its children
   const [contact] = await db
     .select()
@@ -31,11 +31,12 @@ async function updateRelationshipsCascading(contactId: number, newParentId: numb
   for (const child of children) {
     if (child.relationshipType && newRelationType) {
       const cascadedType = getCascadedRelationshipType(
-        newRelationType as any,
-        child.relationshipType as any
+        newRelationType,
+        child.relationshipType as RelationshipType
       );
 
       if (cascadedType) {
+        // Update this child's relationship type
         await db
           .update(contacts)
           .set({
@@ -61,21 +62,7 @@ export function registerRoutes(app: Express): Server {
     if (req.query.notes) filters.notes = req.query.notes as string;
 
     try {
-      const query = db.select({
-        id: contacts.id,
-        name: contacts.name,
-        email: contacts.email,
-        phone: contacts.phone,
-        birthday: contacts.birthday,
-        notes: contacts.notes,
-        parentId: contacts.parentId,
-        relationshipType: contacts.relationshipType,
-        isMe: contacts.isMe,
-        shareToken: contacts.shareToken,
-        shareDepth: contacts.shareDepth,
-        shareableUntil: contacts.shareableUntil,
-        similarity: sql<number>`similarity(${contacts.name}, ${filters.name || ''})`
-      }).from(contacts);
+      const query = db.select().from(contacts);
 
       // Build WHERE conditions based on filters
       const conditions = [];
@@ -90,71 +77,29 @@ export function registerRoutes(app: Express): Server {
       }
 
       if (filters.email) {
-        conditions.push(
-          ilike(contacts.email, `%${filters.email}%`)
-        );
+        conditions.push(ilike(contacts.email, `%${filters.email}%`));
       }
 
       if (filters.phone) {
-        conditions.push(
-          ilike(contacts.phone, `%${filters.phone}%`)
-        );
+        conditions.push(ilike(contacts.phone, `%${filters.phone}%`));
       }
 
       if (filters.notes) {
-        conditions.push(
-          ilike(contacts.notes, `%${filters.notes}%`)
-        );
+        conditions.push(ilike(contacts.notes, `%${filters.notes}%`));
       }
 
       if (conditions.length > 0) {
         query.where(or(...conditions));
       }
 
-      // Order by similarity if name search is present, then by name
-      if (filters.name) {
-        query.orderBy(sql`similarity(${contacts.name}, ${filters.name}) DESC`);
-      } else {
-        query.orderBy(contacts.name);
-      }
+      // Order by name
+      query.orderBy(contacts.name);
 
       const result = await query;
       res.json(result);
     } catch (error) {
       console.error('Error fetching contacts:', error);
       res.status(500).json({ message: "Failed to fetch contacts" });
-    }
-  });
-
-  app.post("/api/contacts/share", async (req, res) => {
-    try {
-      const { contactIds } = req.body;
-
-      if (!Array.isArray(contactIds) || contactIds.length === 0) {
-        return res.status(400).json({ message: "No contacts selected for sharing" });
-      }
-
-      // Generate a unique share token
-      const shareToken = randomBytes(32).toString('hex');
-
-      // Set expiration to 7 days from now
-      const shareableUntil = new Date();
-      shareableUntil.setDate(shareableUntil.getDate() + 7);
-
-      // Update all selected contacts with share details
-      await db
-        .update(contacts)
-        .set({
-          shareToken,
-          shareableUntil: shareableUntil.toISOString(),
-          updatedAt: new Date().toISOString()
-        })
-        .where(sql`id = ANY(${contactIds})`);
-
-      res.json({ shareToken });
-    } catch (error) {
-      console.error('Error generating share token:', error);
-      res.status(500).json({ message: "Failed to generate share token" });
     }
   });
 
@@ -174,7 +119,7 @@ export function registerRoutes(app: Express): Server {
 
       // Get valid relationship types for children of this contact
       const validChildTypes = contact.relationshipType
-        ? getValidChildRelationshipTypes(contact.relationshipType as any)
+        ? getValidChildRelationshipTypes(contact.relationshipType as RelationshipType)
         : [];
 
       const children = await db
@@ -199,22 +144,25 @@ export function registerRoutes(app: Express): Server {
       const validatedData = insertContactSchema.parse(req.body);
 
       const now = new Date().toISOString();
-      const result = await db.insert(contacts).values({
-        ...validatedData,
-        createdAt: now,
-        updatedAt: now,
-      }).returning();
+      const [newContact] = await db
+        .insert(contacts)
+        .values({
+          ...validatedData,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
 
       if (validatedData.parentId && validatedData.relationshipType) {
         // Trigger cascading updates if this is a child contact
         await updateRelationshipsCascading(
-          result[0].id,
+          newContact.id,
           validatedData.parentId,
-          validatedData.relationshipType
+          validatedData.relationshipType as RelationshipType
         );
       }
 
-      res.json(result[0]);
+      res.json(newContact);
     } catch (error) {
       console.error('Error creating contact:', error);
       res.status(400).json({ 
@@ -230,7 +178,7 @@ export function registerRoutes(app: Express): Server {
       // Validate the input data
       const validatedData = insertContactSchema.parse(req.body);
 
-      const result = await db
+      const [updatedContact] = await db
         .update(contacts)
         .set({ 
           ...validatedData,
@@ -244,11 +192,11 @@ export function registerRoutes(app: Express): Server {
         await updateRelationshipsCascading(
           parseInt(id),
           validatedData.parentId,
-          validatedData.relationshipType
+          validatedData.relationshipType as RelationshipType
         );
       }
 
-      res.json(result[0]);
+      res.json(updatedContact);
     } catch (error) {
       console.error('Error updating contact:', error);
       res.status(400).json({ 
