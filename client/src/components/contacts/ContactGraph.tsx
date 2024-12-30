@@ -391,9 +391,53 @@ export function ContactGraph() {
         d3AlphaMin={0.05}
         cooldownTicks={100}
         nodeRelSize={6}
-        d3Force="link"
-        d3ForceStrength={-2000}
-        d3ForceDistance={100}
+        d3Force={(d3) => {
+          // Center force
+          d3.forceCenter(dimensions.width / 2, dimensions.height / 2)
+            .strength(0.05);
+
+          // Charge force for node repulsion
+          d3.forceManyBody()
+            .strength(-1000);
+
+          // Link force
+          d3.forceLink()
+            .id((d: any) => d.id)
+            .distance(100);
+
+          // Add clustering force based on relationship type
+          d3.forceX((d: any) => {
+            if (!d.relationshipType) return dimensions.width / 2;
+            const types = {
+              'spouse': -200,
+              'child': 0,
+              'friend': 200,
+              'co-worker': 400,
+              'mother': -300,
+              'father': -300,
+              'brother': -100,
+              'sibling': -100,
+              'boyfriend/girlfriend': 300
+            };
+            return (dimensions.width / 2) + (types[d.relationshipType as keyof typeof types] || 0);
+          }).strength(0.5);
+
+          d3.forceY((d: any) => {
+            if (!d.relationshipType) return dimensions.height / 2;
+            const types = {
+              'spouse': -100,
+              'child': 200,
+              'friend': -100,
+              'co-worker': 100,
+              'mother': -200,
+              'father': -200,
+              'brother': 0,
+              'sibling': 0,
+              'boyfriend/girlfriend': 0
+            };
+            return (dimensions.height / 2) + (types[d.relationshipType as keyof typeof types] || 0);
+          }).strength(0.3);
+        })}
         backgroundColor="transparent"
         onNodeClick={handleNodeClick}
         width={dimensions.width}
