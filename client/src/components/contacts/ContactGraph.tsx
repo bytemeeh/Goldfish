@@ -392,21 +392,19 @@ export function ContactGraph() {
         cooldownTicks={100}
         nodeRelSize={6}
         d3Force={(d3) => {
-          // Center force
-          d3.forceCenter(dimensions.width / 2, dimensions.height / 2)
+          const simulation = d3;
+          
+          simulation.forceCenter(dimensions.width / 2, dimensions.height / 2)
             .strength(0.05);
 
-          // Charge force for node repulsion
-          d3.forceManyBody()
+          simulation.forceManyBody()
             .strength(-1000);
 
-          // Link force
-          d3.forceLink()
+          simulation.forceLink()
             .id((d: any) => d.id)
             .distance(100);
 
-          // Add clustering force based on relationship type
-          d3.forceX((d: any) => {
+          const forceX = simulation.forceX((d: any) => {
             if (!d.relationshipType) return dimensions.width / 2;
             const types = {
               'spouse': -200,
@@ -422,7 +420,7 @@ export function ContactGraph() {
             return (dimensions.width / 2) + (types[d.relationshipType as keyof typeof types] || 0);
           }).strength(0.5);
 
-          d3.forceY((d: any) => {
+          const forceY = simulation.forceY((d: any) => {
             if (!d.relationshipType) return dimensions.height / 2;
             const types = {
               'spouse': -100,
@@ -437,7 +435,9 @@ export function ContactGraph() {
             };
             return (dimensions.height / 2) + (types[d.relationshipType as keyof typeof types] || 0);
           }).strength(0.3);
-        })}
+
+          return simulation;
+        }}
         backgroundColor="transparent"
         onNodeClick={handleNodeClick}
         width={dimensions.width}
