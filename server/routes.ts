@@ -50,7 +50,6 @@ async function updateRelationshipsCascading(contactId: number, newParentId: numb
       if (cascadedType) {
         console.log(`Updating child ${child.id} relationship type to ${cascadedType}`);
 
-        // Update this child's relationship type
         await db
           .update(contacts)
           .set({
@@ -76,40 +75,35 @@ export function registerRoutes(app: Express): Server {
     if (req.query.notes) filters.notes = req.query.notes as string;
 
     try {
-      const query = db.select().from(contacts);
+      console.log('Fetching contacts with filters:', filters);
+      const result = await db
+        .select({
+          id: contacts.id,
+          name: contacts.name,
+          phone: contacts.phone,
+          email: contacts.email,
+          birthday: contacts.birthday,
+          notes: contacts.notes,
+          parentId: contacts.parentId,
+          relationshipType: contacts.relationshipType,
+          isMe: contacts.isMe,
+          shareToken: contacts.shareToken,
+          shareDepth: contacts.shareDepth,
+          shareableUntil: contacts.shareableUntil,
+          createdAt: contacts.createdAt,
+          updatedAt: contacts.updatedAt,
+        })
+        .from(contacts)
+        .orderBy(contacts.name);
 
-      // Build WHERE conditions based on filters
-      const conditions = [];
+      console.log('Found contacts:', result.length);
+      console.log('Contact hierarchy:', result.map(c => ({
+        id: c.id,
+        name: c.name,
+        parentId: c.parentId,
+        relationshipType: c.relationshipType
+      })));
 
-      if (filters.name) {
-        conditions.push(
-          or(
-            sql`similarity(${contacts.name}, ${filters.name}) > 0.1`,
-            ilike(contacts.name, `%${filters.name}%`)
-          )
-        );
-      }
-
-      if (filters.email) {
-        conditions.push(ilike(contacts.email, `%${filters.email}%`));
-      }
-
-      if (filters.phone) {
-        conditions.push(ilike(contacts.phone, `%${filters.phone}%`));
-      }
-
-      if (filters.notes) {
-        conditions.push(ilike(contacts.notes, `%${filters.notes}%`));
-      }
-
-      if (conditions.length > 0) {
-        query.where(or(...conditions));
-      }
-
-      // Order by name
-      query.orderBy(contacts.name);
-
-      const result = await query;
       res.json(result);
     } catch (error) {
       console.error('Error fetching contacts:', error);
@@ -136,14 +130,30 @@ export function registerRoutes(app: Express): Server {
         ? getValidChildRelationshipTypes(contact.relationshipType as RelationshipType)
         : [];
 
-      const children = await db
+      // Get all related contacts (both parent and children)
+      const relatedContacts = await db
         .select()
         .from(contacts)
-        .where(eq(contacts.parentId, contact.id));
+        .where(
+          or(
+            eq(contacts.parentId, contact.id),
+            contact.parentId ? eq(contacts.id, contact.parentId) : sql`false`
+          )
+        );
+
+      console.log(`Found ${relatedContacts.length} related contacts for ${contact.name}:`, 
+        relatedContacts.map(c => ({
+          id: c.id,
+          name: c.name,
+          relationshipType: c.relationshipType,
+          parentId: c.parentId
+        }))
+      );
 
       res.json({ 
         ...contact, 
-        children,
+        children: relatedContacts.filter(c => c.parentId === contact.id),
+        parent: relatedContacts.find(c => c.id === contact.parentId),
         validChildTypes 
       });
     } catch (error) {
