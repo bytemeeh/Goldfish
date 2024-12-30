@@ -13,13 +13,20 @@ interface SearchFilters {
 }
 
 async function updateRelationshipsCascading(contactId: number, newParentId: number | null, newRelationType: RelationshipType | null) {
+  console.log(`Cascading update for contact ${contactId}:`, { newParentId, newRelationType });
+
   // Get the contact and its children
   const [contact] = await db
     .select()
     .from(contacts)
     .where(eq(contacts.id, contactId));
 
-  if (!contact) return;
+  if (!contact) {
+    console.log(`No contact found with id ${contactId}`);
+    return;
+  }
+
+  console.log('Contact found:', contact);
 
   // Get all descendants to update their relationship types
   const children = await db
@@ -27,15 +34,23 @@ async function updateRelationshipsCascading(contactId: number, newParentId: numb
     .from(contacts)
     .where(eq(contacts.parentId, contactId));
 
+  console.log(`Found ${children.length} children for contact ${contactId}:`, children);
+
   // Update children's relationship types based on cascade rules
   for (const child of children) {
     if (child.relationshipType && newRelationType) {
+      console.log(`Processing child ${child.id} with relationship type ${child.relationshipType}`);
+
       const cascadedType = getCascadedRelationshipType(
         newRelationType,
         child.relationshipType as RelationshipType
       );
 
+      console.log(`Cascaded type for child ${child.id}:`, cascadedType);
+
       if (cascadedType) {
+        console.log(`Updating child ${child.id} relationship type to ${cascadedType}`);
+
         // Update this child's relationship type
         await db
           .update(contacts)
@@ -43,7 +58,8 @@ async function updateRelationshipsCascading(contactId: number, newParentId: numb
             relationshipType: cascadedType,
             updatedAt: new Date().toISOString()
           })
-          .where(eq(contacts.id, child.id));
+          .where(eq(contacts.id, child.id))
+          .returning();
 
         // Recursively update this child's descendants
         await updateRelationshipsCascading(child.id, child.parentId, cascadedType);
@@ -140,8 +156,11 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/contacts", async (req, res) => {
     try {
+      console.log('Creating new contact with data:', req.body);
+
       // Validate the input data
       const validatedData = insertContactSchema.parse(req.body);
+      console.log('Validated data:', validatedData);
 
       const now = new Date().toISOString();
       const [newContact] = await db
@@ -153,7 +172,10 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
+      console.log('Created new contact:', newContact);
+
       if (validatedData.parentId && validatedData.relationshipType) {
+        console.log('Initiating cascade update for new contact');
         // Trigger cascading updates if this is a child contact
         await updateRelationshipsCascading(
           newContact.id,
@@ -175,8 +197,10 @@ export function registerRoutes(app: Express): Server {
     const { id } = req.params;
 
     try {
+      console.log(`Updating contact with ID ${id}, Data: `, req.body);
       // Validate the input data
       const validatedData = insertContactSchema.parse(req.body);
+      console.log('Validated data:', validatedData);
 
       const [updatedContact] = await db
         .update(contacts)
@@ -186,9 +210,11 @@ export function registerRoutes(app: Express): Server {
         })
         .where(eq(contacts.id, parseInt(id)))
         .returning();
+      console.log('Updated contact:', updatedContact);
 
       // Trigger cascading updates if relationship type changed
       if (validatedData.relationshipType) {
+        console.log('Initiating cascade update for updated contact');
         await updateRelationshipsCascading(
           parseInt(id),
           validatedData.parentId,

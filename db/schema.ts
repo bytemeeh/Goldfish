@@ -107,10 +107,20 @@ export const contactsRelations = relations(contacts, ({ one, many }) => ({
 
 // Helper function to get valid child relationship types for a given parent type
 export function getValidChildRelationshipTypes(parentType: RelationshipType | null | undefined): RelationshipType[] {
-  if (!parentType) return relationshipTypes;
+  console.log('Getting valid child types for parent type:', parentType);
+
+  if (!parentType) {
+    console.log('No parent type, returning all relationship types');
+    return relationshipTypes;
+  }
 
   const rule = relationshipCascadeRules.find(r => r.parentType === parentType);
-  return rule?.validChildTypes ?? [];
+  console.log('Found cascade rule:', rule);
+
+  const validTypes = rule?.validChildTypes ?? [];
+  console.log('Valid child types:', validTypes);
+
+  return validTypes;
 }
 
 // Helper function to get cascaded relationship type
@@ -118,8 +128,15 @@ export function getCascadedRelationshipType(
   parentType: RelationshipType,
   childType: RelationshipType
 ): RelationshipType | undefined {
+  console.log('Getting cascaded relationship type:', { parentType, childType });
+
   const rule = relationshipCascadeRules.find(r => r.parentType === parentType);
-  return rule?.cascadeUpdates?.[childType];
+  console.log('Found cascade rule:', rule);
+
+  const cascadedType = rule?.cascadeUpdates?.[childType];
+  console.log('Cascaded type:', cascadedType);
+
+  return cascadedType;
 }
 
 // Create Zod schemas with proper validation
