@@ -20,8 +20,26 @@ function hslToRgba(variable: string, alpha: number = 1): string {
   return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
 }
 
-// Ambient animation frame counter
-let animationFrame = 0;
+// Animation state management
+const useAnimationFrame = () => {
+  const frame = useRef(0);
+  const lastTime = useRef(performance.now());
+
+  const getAnimationState = useCallback(() => {
+    const currentTime = performance.now();
+    const deltaTime = (currentTime - lastTime.current) / 1000; // Convert to seconds
+    lastTime.current = currentTime;
+    frame.current += 1;
+
+    return {
+      frame: frame.current,
+      time: currentTime / 1000,
+      deltaTime
+    };
+  }, []);
+
+  return getAnimationState;
+};
 
 // Contact details component
 function ContactDetails({ contact }: { contact: Contact }) {
@@ -62,14 +80,16 @@ interface GraphNode extends NodeObject {
   relationshipType?: string;
   isMe?: boolean;
   color: string;
-  pulsePhase?: number;
+  pulsePhase: number;
+  pulseSpeed: number;
 }
 
 interface GraphLink extends LinkObject {
   source: GraphNode;
   target: GraphNode;
   type: string;
-  particleSpeed?: number;
+  particleSpeed: number;
+  particleSpread: number;
 }
 
 interface GraphData {
@@ -83,6 +103,7 @@ export function ContactGraph() {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
+  const getAnimationState = useAnimationFrame();
 
   const { data: contacts, isLoading, error } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
@@ -111,7 +132,6 @@ export function ContactGraph() {
     try {
       const meContact = contacts.find(c => c.isMe);
 
-      // Get color based on relationship type
       const getNodeColor = (contact: Contact): string => {
         if (contact.isMe) return hslToRgba('--primary');
         if (!contact.relationshipType) return hslToRgba('--muted');
@@ -135,6 +155,7 @@ export function ContactGraph() {
         isMe: contact.isMe,
         color: getNodeColor(contact),
         pulsePhase: Math.random() * Math.PI * 2,
+        pulseSpeed: 0.5 + Math.random() * 0.5,
         x: 0,
         y: 0,
         vx: 0,
@@ -154,7 +175,8 @@ export function ContactGraph() {
             source: sourceNode,
             target: targetNode,
             type: contact.relationshipType || "undefined",
-            particleSpeed: 0.002 + Math.random() * 0.003
+            particleSpeed: 0.002 + Math.random() * 0.003,
+            particleSpread: Math.random() * 0.5
           });
         }
       });
@@ -171,7 +193,8 @@ export function ContactGraph() {
               source: meNode,
               target: contactNode,
               type: contact.relationshipType || "undefined",
-              particleSpeed: 0.002 + Math.random() * 0.003
+              particleSpeed: 0.002 + Math.random() * 0.003,
+              particleSpread: Math.random() * 0.5
             });
           }
         });
@@ -283,10 +306,11 @@ export function ContactGraph() {
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          // Calculate pulse effect
+          const { time } = getAnimationState();
           const pulseNode = node as GraphNode;
           const pulsePhase = pulseNode.pulsePhase || 0;
-          const pulseIntensity = Math.sin(animationFrame * 0.02 + pulsePhase) * 0.2 + 0.8;
+          const pulseSpeed = pulseNode.pulseSpeed || 1;
+          const pulseIntensity = Math.sin(time * pulseSpeed + pulsePhase) * 0.2 + 0.8;
 
           // Draw ambient glow
           const gradient = ctx.createRadialGradient(node.x!, node.y!, 0, node.x!, node.y!, nodeSize * 3);
@@ -327,9 +351,6 @@ export function ContactGraph() {
           ctx.shadowColor = 'transparent';
           ctx.fillStyle = 'hsl(var(--foreground))';
           ctx.fillText(label, node.x!, bgY);
-
-          // Update animation frame
-          animationFrame++;
         }}
         linkColor={() => "rgba(0, 0, 0, 0.1)"}
         linkWidth={1}
@@ -337,7 +358,8 @@ export function ContactGraph() {
         linkDirectionalParticleWidth={2}
         linkDirectionalParticleSpeed={d => (d as GraphLink).particleSpeed || 0.003}
         linkDirectionalParticleColor={() => {
-          const phase = Math.sin(animationFrame * 0.02) * 0.2 + 0.8;
+          const { time } = getAnimationState();
+          const phase = Math.sin(time * 2) * 0.2 + 0.8;
           return hslToRgba('--primary', 0.3 * phase);
         }}
         backgroundColor="transparent"
