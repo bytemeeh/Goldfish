@@ -315,14 +315,14 @@ export function ContactGraph() {
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          // Draw multi-layered glow effect
+          // Draw multi-layered glow effect with reduced intensity
           node.gradientColors.forEach((color, index) => {
             const radius = nodeSize * (2 - index * 0.5);
             const gradient = ctx.createRadialGradient(
               node.x!, node.y!, radius * 0.3,
               node.x!, node.y!, radius
             );
-            gradient.addColorStop(0, color);
+            gradient.addColorStop(0, color.replace(/[\d.]+\)$/, '0.02)')); // Reduce opacity by 90%
             gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
             ctx.fillStyle = gradient;
             ctx.beginPath();
@@ -330,9 +330,9 @@ export function ContactGraph() {
             ctx.fill();
           });
 
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-          ctx.shadowBlur = 5;
-          ctx.shadowOffsetY = 2;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.02)';
+          ctx.shadowBlur = 2;
+          ctx.shadowOffsetY = 1;
 
           // Node base
           ctx.fillStyle = node.color;
