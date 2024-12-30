@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { ContactCard } from "./ContactCard";
 import { type Contact } from "@/lib/types";
@@ -54,11 +55,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
   });
 
   if (isLoading) {
-    return (
-      <div className="p-4 text-center text-muted-foreground">
-        Loading contacts...
-      </div>
-    );
+    return <div className="p-4 text-center text-muted-foreground">Loading contacts...</div>;
   }
 
   if (error) {
@@ -70,22 +67,14 @@ export function ContactList({ searchFilters }: ContactListProps) {
   }
 
   if (!contacts?.length) {
-    return (
-      <div className="p-4 text-center text-muted-foreground">
-        No contacts found
-      </div>
-    );
+    return <div className="p-4 text-center text-muted-foreground">No contacts found</div>;
   }
 
-  // Find personal contact (me)
   const personalContact = contacts.find(c => c.isMe);
-  console.log('Personal contact:', personalContact);
 
-  // Helper function to build hierarchy for a contact
   const buildHierarchy = (contactId: number | null = null, depth: number = 0): Contact[] => {
-    if (depth >= 4) return []; // Limit to 4 layers deep
+    if (depth >= 4) return [];
 
-    // For the root level (personal contact's direct relationships)
     if (depth === 0 && contactId === personalContact?.id) {
       const directRelations = contacts.filter(c => 
         c.parentId === contactId || 
@@ -98,49 +87,38 @@ export function ContactList({ searchFilters }: ContactListProps) {
     }
 
     const children = contacts.filter(c => c.parentId === contactId);
-    console.log(`Building hierarchy at depth ${depth} for contact ${contactId}, found children:`,
-      children.map(c => ({
-        id: c.id,
-        name: c.name,
-        relationshipType: c.relationshipType
-      }))
-    );
-
     return children.map(child => ({
       ...child,
       children: buildHierarchy(child.id, depth + 1)
     }));
   };
 
-  // Get root contacts (excluding personal contact)
   const rootContacts = contacts.filter(c => 
-    !c.isMe && // Not personal contact
-    !c.parentId // No parent
+    !c.isMe && 
+    !c.parentId
   );
 
-  // Build personal contact hierarchy
   let personalHierarchy = null;
   if (personalContact) {
     personalHierarchy = {
       ...personalContact,
       children: buildHierarchy(personalContact.id)
     };
-    console.log('Personal hierarchy:', personalHierarchy);
   }
 
-  // Categorize root contacts by relationship type
   const categorizedContacts = categories.map(category => ({
     ...category,
-    contacts: rootContacts.filter(contact =>
-      contact.relationshipType &&
-      category.types.includes(contact.relationshipType)
-    ).map(contact => ({
-      ...contact,
-      children: buildHierarchy(contact.id)
-    }))
+    contacts: rootContacts
+      .filter(contact => 
+        contact.relationshipType && 
+        category.types.includes(contact.relationshipType)
+      )
+      .map(contact => ({
+        ...contact,
+        children: buildHierarchy(contact.id)
+      }))
   }));
 
-  // Get uncategorized contacts
   const uncategorizedContacts = rootContacts
     .filter(contact =>
       !contact.relationshipType ||
@@ -157,7 +135,6 @@ export function ContactList({ searchFilters }: ContactListProps) {
   return (
     <ScrollArea className="h-[calc(100vh-12rem)] pr-4">
       <div className="space-y-8">
-        {/* Personal Contact Card with all relationships */}
         {personalHierarchy && (
           <div>
             <h2 className="text-lg font-semibold mb-4 text-muted-foreground">Personal Card</h2>
@@ -168,7 +145,6 @@ export function ContactList({ searchFilters }: ContactListProps) {
           </div>
         )}
 
-        {/* Categorized Contacts */}
         {categorizedContacts.map(category => 
           category.contacts.length > 0 && (
             <div key={category.title}>
@@ -186,7 +162,6 @@ export function ContactList({ searchFilters }: ContactListProps) {
           )
         )}
 
-        {/* Uncategorized Contacts */}
         {uncategorizedContacts.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold mb-4 text-muted-foreground">Other Contacts</h2>
