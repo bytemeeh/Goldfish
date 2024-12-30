@@ -155,6 +155,32 @@ export function ContactList({ searchFilters }: ContactListProps) {
       children: buildHierarchy(contact.id)
     }));
 
+  // Organize root contacts by category
+  const categorizedRootContacts = categories.map(category => ({
+    ...category,
+    contacts: rootContacts.filter(contact => 
+      contact.relationshipType && 
+      category.types.includes(contact.relationshipType)
+    ).map(contact => ({
+      ...contact,
+      children: buildHierarchy(contact.id)
+    }))
+  }));
+
+  // Get uncategorized root contacts
+  const uncategorizedRootContacts = rootContacts
+    .filter(contact => 
+      !contact.relationshipType || 
+      !categories.some(cat => 
+        contact.relationshipType && 
+        cat.types.includes(contact.relationshipType)
+      )
+    )
+    .map(contact => ({
+      ...contact,
+      children: buildHierarchy(contact.id)
+    }));
+
   return (
     <ScrollArea className="h-[calc(100vh-12rem)] pr-4">
       <div className="space-y-8">
@@ -167,6 +193,24 @@ export function ContactList({ searchFilters }: ContactListProps) {
               children={personalHierarchy.children}
             />
           </div>
+        )}
+
+        {/* Categorized Contacts */}
+        {categorizedRootContacts.map(category => 
+          category.contacts.length > 0 && (
+            <div key={category.title}>
+              <h2 className="text-lg font-semibold mb-4 text-muted-foreground">{category.title}</h2>
+              <div className="space-y-4">
+                {category.contacts.map(contact => (
+                  <ContactCard 
+                    key={contact.id} 
+                    contact={contact}
+                    children={contact.children}
+                  />
+                ))}
+              </div>
+            </div>
+          )
         )}
 
         {/* Categorized Contacts */}
