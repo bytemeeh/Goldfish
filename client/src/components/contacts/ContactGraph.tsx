@@ -12,41 +12,37 @@ import { motion, AnimatePresence } from "framer-motion";
 // Color palette configuration for Apple-style design
 const colorPalette = {
   family: {
-    primary: "--chart-1",
+    primary: "hsl(142, 76%, 36%)",  // Direct HSL value instead of CSS variable
     gradient: ["1, 0.4", "0.8, 0.2", "0.6, 0.1"]
   },
   friends: {
-    primary: "--chart-2",
+    primary: "hsl(45, 93%, 47%)",   // Direct HSL value instead of CSS variable
     gradient: ["1, 0.4", "0.8, 0.2", "0.6, 0.1"]
   },
   professional: {
-    primary: "--chart-3",
+    primary: "hsl(211, 100%, 50%)", // Direct HSL value instead of CSS variable
     gradient: ["1, 0.4", "0.8, 0.2", "0.6, 0.1"]
   },
   personal: {
-    primary: "--primary",
+    primary: "hsl(211, 100%, 50%)", // For the main user node
     gradient: ["1, 0.45", "0.8, 0.25", "0.6, 0.15"]
   },
   default: {
-    primary: "--muted",
+    primary: "hsl(215, 16%, 47%)",
     gradient: ["1, 0.3", "0.8, 0.15", "0.6, 0.05"]
   }
 };
 
-// Helper function to get computed RGB color from CSS variable with opacity
-function getRGBColor(variable: string, opacity: number = 1): string {
-  const root = document.documentElement;
-  const computedStyle = getComputedStyle(root);
-  const hsl = computedStyle.getPropertyValue(variable).trim();
-
+// Helper function to convert HSL to RGB
+function hslToRgb(hslString: string, opacity: number = 1): string {
   // Create temporary element to convert HSL to RGB
   const temp = document.createElement('div');
-  temp.style.color = `hsl(${hsl})`;
+  temp.style.color = hslString;
   document.body.appendChild(temp);
   const rgb = getComputedStyle(temp).color;
   document.body.removeChild(temp);
 
-  // Extract RGB values and return with opacity
+  // Extract RGB values
   const [r, g, b] = rgb.match(/\d+/g)?.map(Number) || [0, 0, 0];
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
@@ -164,8 +160,11 @@ export function ContactGraph() {
         }
 
         return {
-          color: getRGBColor(palette.primary),
-          gradientColors: palette.gradient.map(g => getRGBColor(palette.primary, parseFloat(g.split(', ')[1])))
+          color: palette.primary,
+          gradientColors: palette.gradient.map(g => {
+            const [_, opacity] = g.split(', ');
+            return hslToRgb(palette.primary, parseFloat(opacity));
+          })
         };
       };
 
@@ -294,7 +293,7 @@ export function ContactGraph() {
               <div key={label} className="flex items-center gap-2">
                 <div 
                   className="w-3 h-3 rounded-full" 
-                  style={{ backgroundColor: getRGBColor(color) }}
+                  style={{ backgroundColor: hslToRgb(color) }}
                 />
                 <span className="text-sm text-muted-foreground">{label}</span>
               </div>
@@ -331,7 +330,6 @@ export function ContactGraph() {
             ctx.fill();
           });
 
-          // Draw node with shadow and highlight
           ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
           ctx.shadowBlur = 5;
           ctx.shadowOffsetY = 2;
@@ -342,7 +340,6 @@ export function ContactGraph() {
           ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI);
           ctx.fill();
 
-          // Node highlight
           ctx.shadowColor = 'transparent';
           const highlightGradient = ctx.createLinearGradient(
             node.x!, node.y! - nodeSize,
@@ -355,13 +352,11 @@ export function ContactGraph() {
           ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI);
           ctx.fill();
 
-          // Draw text with frosted glass effect
           const textWidth = ctx.measureText(label).width;
           const bgHeight = fontSize * 1.5;
           const bgWidth = textWidth + 16;
           const bgY = node.y! + nodeSize * 2;
 
-          // Text background with blur effect
           ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
           ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
           ctx.shadowBlur = 4;
@@ -369,17 +364,16 @@ export function ContactGraph() {
           ctx.roundRect(node.x! - bgWidth/2, bgY - bgHeight/2, bgWidth, bgHeight, 4);
           ctx.fill();
 
-          // Text
           ctx.shadowColor = 'transparent';
-          ctx.fillStyle = getRGBColor('--foreground');
+          ctx.fillStyle = "hsl(0, 0%, 100%)"; // Assuming '--foreground' maps to white
           ctx.fillText(label, node.x!, bgY);
         }}
-        linkColor={() => getRGBColor('--border', 0.12)}
+        linkColor={() => "rgba(0, 0, 0, 0.1)"}
         linkWidth={1}
         linkDirectionalParticles={4}
         linkDirectionalParticleWidth={2}
         linkDirectionalParticleSpeed={0.003}
-        linkDirectionalParticleColor={() => getRGBColor('--primary', 0.25)}
+        linkDirectionalParticleColor={() => "rgba(0, 0, 0, 0.2)"}
         backgroundColor="transparent"
         onNodeClick={handleNodeClick}
         width={dimensions.width}
