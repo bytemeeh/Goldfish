@@ -95,7 +95,12 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
   };
 
   return (
-    <div className={`relative ${indentClass}`}>
+    <div className={`relative ${indentClass} group`}>
+      {level > 0 && (
+        <div className="absolute -left-16 top-4 text-xs text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity">
+          Level {level}
+        </div>
+      )}
       {level > 0 && (
         <>
           {/* Connection line with refined styling */}
