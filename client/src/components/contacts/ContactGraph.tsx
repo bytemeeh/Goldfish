@@ -11,17 +11,17 @@ import { motion, AnimatePresence } from "framer-motion";
 
 // Helper function to convert CSS HSL variable to rgba
 function hslToRgba(variable: string, alpha: number = 1): string {
-  // Create a temporary div to compute the style
   const div = document.createElement('div');
   div.style.color = `hsl(var(${variable}))`;
   document.body.appendChild(div);
   const color = window.getComputedStyle(div).color;
   document.body.removeChild(div);
-
-  // Extract RGB values
   const rgb = color.match(/\d+/g)?.map(Number) || [0, 0, 0];
   return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
 }
+
+// Ambient animation frame counter
+let animationFrame = 0;
 
 // Contact details component
 function ContactDetails({ contact }: { contact: Contact }) {
@@ -62,12 +62,14 @@ interface GraphNode extends NodeObject {
   relationshipType?: string;
   isMe?: boolean;
   color: string;
+  pulsePhase?: number; // Add phase for pulsing effect
 }
 
 interface GraphLink extends LinkObject {
   source: GraphNode;
   target: GraphNode;
   type: string;
+  particleSpeed?: number; // Dynamic speed for each link
 }
 
 interface GraphData {
@@ -134,6 +136,7 @@ export function ContactGraph() {
         relationshipType: contact.relationshipType,
         isMe: contact.isMe,
         color: getNodeColor(contact),
+        pulsePhase: Math.random() * Math.PI * 2, // Random phase for varied pulsing
         x: 0,
         y: 0,
         vx: 0,
@@ -152,7 +155,8 @@ export function ContactGraph() {
           links.push({
             source: sourceNode,
             target: targetNode,
-            type: contact.relationshipType || "undefined"
+            type: contact.relationshipType || "undefined",
+            particleSpeed: 0.002 + Math.random() * 0.003 // Random speed variation
           });
         }
       });
@@ -168,7 +172,8 @@ export function ContactGraph() {
             links.push({
               source: meNode,
               target: contactNode,
-              type: contact.relationshipType || "undefined"
+              type: contact.relationshipType || "undefined",
+              particleSpeed: 0.002 + Math.random() * 0.003
             });
           }
         });
@@ -280,23 +285,28 @@ export function ContactGraph() {
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          // Draw node glow effect
-          const gradient = ctx.createRadialGradient(node.x!, node.y!, 0, node.x!, node.y!, nodeSize * 2.5);
-          gradient.addColorStop(0, node.color.replace(')', ', 0.4)'));
-          gradient.addColorStop(0.5, node.color.replace(')', ', 0.2)'));
+          // Calculate pulse effect
+          const pulseNode = node as GraphNode;
+          const pulsePhase = pulseNode.pulsePhase || 0;
+          const pulseIntensity = Math.sin(animationFrame * 0.02 + pulsePhase) * 0.2 + 0.8;
+
+          // Draw ambient glow
+          const gradient = ctx.createRadialGradient(node.x!, node.y!, 0, node.x!, node.y!, nodeSize * 3);
+          gradient.addColorStop(0, node.color.replace(')', `, ${0.4 * pulseIntensity})`));
+          gradient.addColorStop(0.5, node.color.replace(')', `, ${0.2 * pulseIntensity})`));
           gradient.addColorStop(1, 'transparent');
           ctx.fillStyle = gradient;
           ctx.beginPath();
-          ctx.arc(node.x!, node.y!, nodeSize * 2.5, 0, 2 * Math.PI);
+          ctx.arc(node.x!, node.y!, nodeSize * 3, 0, 2 * Math.PI);
           ctx.fill();
 
-          // Draw node circle
+          // Draw node with dynamic shadow
           ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
-          ctx.shadowBlur = 8;
+          ctx.shadowBlur = 8 * pulseIntensity;
           ctx.shadowOffsetY = 2;
           ctx.fillStyle = node.color;
           ctx.beginPath();
-          ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI);
+          ctx.arc(node.x!, node.y!, nodeSize * pulseIntensity, 0, 2 * Math.PI);
           ctx.fill();
 
           // Reset shadow for text
@@ -318,13 +328,20 @@ export function ContactGraph() {
           ctx.shadowColor = 'transparent';
           ctx.fillStyle = 'hsl(var(--foreground))';
           ctx.fillText(label, node.x!, bgY);
+
+          // Update animation frame
+          animationFrame++;
         }}
         linkColor={() => "rgba(0, 0, 0, 0.1)"}
         linkWidth={1}
-        linkDirectionalParticles={4}
+        linkDirectionalParticles={6}
         linkDirectionalParticleWidth={2}
-        linkDirectionalParticleSpeed={0.003}
-        linkDirectionalParticleColor={() => hslToRgba('--primary', 0.3)}
+        linkDirectionalParticleSpeed={d => (d as GraphLink).particleSpeed || 0.003}
+        linkDirectionalParticleColor={link => {
+          const l = link as GraphLink;
+          const phase = Math.sin(animationFrame * 0.02) * 0.2 + 0.8;
+          return hslToRgba('--primary', 0.3 * phase);
+        }}
         backgroundColor="transparent"
         onNodeClick={handleNodeClick}
         width={dimensions.width}
