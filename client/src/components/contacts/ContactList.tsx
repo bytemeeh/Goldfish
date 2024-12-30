@@ -83,6 +83,13 @@ export function ContactList({ searchFilters }: ContactListProps) {
   const personalContact = contacts.find(c => c.isMe);
   console.log('Found personal contact:', personalContact);
 
+  // Find all top-level contacts (those without parents or direct children of personal contact)
+  const rootContacts = contacts.filter(c => 
+    !c.parentId || // No parent
+    (personalContact && c.parentId === personalContact.id) // Direct child of personal contact
+  );
+  console.log('Found root contacts:', rootContacts);
+
   // Helper function to build contact hierarchy
   const buildHierarchy = (contacts: Contact[], parentId: number | null = null): Contact[] => {
     // Get immediate children for this parent
@@ -96,29 +103,28 @@ export function ContactList({ searchFilters }: ContactListProps) {
     }));
   };
 
-  // Process all root-level contacts (including those without a parent)
-  const rootContacts = contacts.filter(c => !c.parentId);
-  console.log('Found root contacts:', rootContacts);
-
   // Build hierarchies for each root contact
   const processedContacts = rootContacts.map(contact => ({
     ...contact,
     children: buildHierarchy(contacts, contact.id)
   }));
+  console.log('Processed contacts with hierarchy:', processedContacts);
 
-  // Categorize contacts that aren't the personal contact
+  // Categorize contacts (excluding personal contact and its direct relations)
   const categorizedContacts = categories.map(category => ({
     ...category,
     contacts: processedContacts.filter(contact =>
       !contact.isMe && // Not the personal contact
+      !(personalContact && contact.parentId === personalContact.id) && // Not a direct relation of personal contact
       contact.relationshipType &&
       category.types.includes(contact.relationshipType)
     )
   }));
 
-  // Get uncategorized contacts (excluding personal contact and its children)
+  // Get uncategorized contacts
   const uncategorizedContacts = processedContacts.filter(contact =>
     !contact.isMe && // Not the personal contact
+    !(personalContact && contact.parentId === personalContact.id) && // Not a direct relation of personal contact
     (!contact.relationshipType || // No relationship type
     !categories.some(cat => contact.relationshipType && cat.types.includes(contact.relationshipType)))
   );
@@ -126,7 +132,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
   return (
     <ScrollArea className="h-[calc(100vh-12rem)] pr-4">
       <div className="space-y-8">
-        {/* Personal Contact Card */}
+        {/* Personal Contact Card with direct relations */}
         {personalContact && (
           <div>
             <h2 className="text-lg font-semibold mb-4 text-muted-foreground">Personal Card</h2>
