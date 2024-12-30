@@ -9,7 +9,7 @@ import {
   Cake,
 } from "lucide-react";
 import { format } from "date-fns";
-import ForceGraph2D, { ForceGraphMethods } from "react-force-graph-2d";
+import ForceGraph2D, { type ForceGraphMethods } from "react-force-graph-2d";
 
 // Contact details component
 function ContactDetails({ contact }: { contact: Contact }) {
@@ -57,8 +57,8 @@ interface GraphNode {
 }
 
 interface GraphLink {
-  source: number;
-  target: number;
+  source: GraphNode;
+  target: GraphNode;
   type: string;
 }
 
@@ -69,9 +69,9 @@ interface GraphData {
 
 export function ContactGraph() {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const containerRef = useRef<HTMLDivElement>(null);
-  const graphRef = useRef<ForceGraphMethods>();
+  const graphRef = useRef<ForceGraphMethods<GraphNode, GraphLink>>();
 
   const { data: contacts, error } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
@@ -140,11 +140,19 @@ export function ContactGraph() {
     })),
     links: contacts
       .filter(contact => contact.parentId)
-      .map(contact => ({
-        source: contact.parentId!,
-        target: contact.id,
-        type: contact.relationshipType || "undefined"
-      }))
+      .map(contact => {
+        const sourceNode = graphData.nodes.find(n => n.id === contact.parentId);
+        const targetNode = graphData.nodes.find(n => n.id === contact.id);
+
+        if (!sourceNode || !targetNode) return null;
+
+        return {
+          source: sourceNode,
+          target: targetNode,
+          type: contact.relationshipType || "undefined"
+        };
+      })
+      .filter((link): link is GraphLink => link !== null)
   };
 
   const handleNodeClick = useCallback((node: GraphNode) => {
@@ -206,12 +214,13 @@ export function ContactGraph() {
         nodeLabel={node => (node as GraphNode).name}
         nodeColor={node => (node as GraphNode).color}
         nodeCanvasObject={(node, ctx, globalScale) => {
-          const label = (node as GraphNode).name;
+          const n = node as GraphNode;
+          const label = n.name;
           const fontSize = 12/globalScale;
           ctx.font = `${fontSize}px Sans-Serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillStyle = (node as GraphNode).color;
+          ctx.fillStyle = n.color;
 
           // Draw node circle
           ctx.beginPath();
