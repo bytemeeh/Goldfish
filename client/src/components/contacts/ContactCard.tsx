@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Plus,
   User,
+  AlertCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -54,10 +55,13 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
   });
 
   // Calculate indentation and nested styles based on level
-  const indentClass = level > 0 ? `ml-${Math.min(level * 8, 32)}` : '';
+  const indentClass = level > 0 ? `ml-${Math.min(level * 12, 48)}` : '';
   const borderOpacity = Math.max(90 - level * 20, 30); // Decreases opacity with depth
   const borderColor = `border-primary opacity-${borderOpacity}`;
   const bgOpacity = Math.min((level + 1) * 5, 20); // Increases background opacity with depth
+
+  // Check if max depth is reached
+  const isMaxDepth = level >= 3; // 0-based index, so level 3 is the 4th layer
 
   return (
     <div className={`relative ${indentClass}`}>
@@ -166,15 +170,22 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
             </p>
           )}
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full hover:bg-primary/5"
-            onClick={() => setIsAddingChild(true)}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Related Contact
-          </Button>
+          {isMaxDepth ? (
+            <div className="flex items-center justify-center p-2 bg-muted/50 rounded-md">
+              <AlertCircle className="h-4 w-4 text-muted-foreground mr-2" />
+              <span className="text-sm text-muted-foreground">Maximum relationship depth reached</span>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full hover:bg-primary/5"
+              onClick={() => setIsAddingChild(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Related Contact
+            </Button>
+          )}
 
           <Dialog open={isEditing} onOpenChange={setIsEditing}>
             <DialogContent>
