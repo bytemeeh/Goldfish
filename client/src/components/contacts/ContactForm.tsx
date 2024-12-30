@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { type Contact, type RelationshipType } from "@/lib/types";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { RelationshipTypeSelector } from "./RelationshipTypeSelector";
 
@@ -38,6 +38,12 @@ interface ContactFormProps {
 export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }: ContactFormProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Fetch parent contact if parentId is provided
+  const { data: parentContact } = useQuery<Contact>({
+    queryKey: ['/api/contacts', parentId],
+    enabled: !!parentId,
+  });
 
   const form = useForm<z.infer<typeof contactSchema>>({
     resolver: zodResolver(contactSchema),
@@ -130,12 +136,13 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  Relationship Type {parentId ? "(to parent contact)" : "(to you)"}
+                  Relationship Type {parentId ? `(to ${parentContact?.name || 'parent contact'})` : "(to you)"}
                 </FormLabel>
                 <FormControl>
                   <RelationshipTypeSelector 
                     value={field.value as RelationshipType} 
                     onChange={field.onChange}
+                    parentContact={parentContact}
                   />
                 </FormControl>
                 <FormMessage />
