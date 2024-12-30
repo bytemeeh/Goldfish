@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef, useEffect } from "react";
+import { useCallback, useState, useRef } from "react";
 import { ForceGraph2D } from "react-force-graph";
 import { useQuery } from "@tanstack/react-query";
 import { type Contact, type RelationshipType } from "@/lib/types";
@@ -17,6 +17,8 @@ import {
   UserCircle2,
   UserPlus,
   HeartHandshake,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 
 // Category-based color scheme
@@ -54,22 +56,48 @@ const relationshipIcons: Record<RelationshipType, typeof User> = {
 
 const defaultColor = "#64748b"; // Slate 500 for better contrast
 
+interface NodeData {
+  id: string;
+  name: string;
+  val: number;
+  color: string;
+  icon: typeof User;
+  contact: Contact;
+  x: number;
+  y: number;
+  level: number;
+  hasChildren?: boolean;
+  isCollapsed?: boolean;
+}
+
 export function ContactGraph() {
-  const [selectedNode, setSelectedNode] = useState<any>(null);
+  const [selectedNode, setSelectedNode] = useState<NodeData | null>(null);
+  const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
   const graphRef = useRef<any>();
   const { data: contacts } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
   });
 
+  const toggleNodeCollapse = useCallback((nodeId: string) => {
+    setCollapsedNodes(prev => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+      } else {
+        next.add(nodeId);
+      }
+      return next;
+    });
+  }, []);
+
   const graphData = useCallback(() => {
     if (!contacts) return { nodes: [], links: [] };
 
-    // Find the personal contact (me)
     const meContact = contacts.find(c => c.isMe);
     if (!meContact) return { nodes: [], links: [] };
 
-    const nodes = [];
-    const links = [];
+    const nodes: NodeData[] = [];
+    const links: any[] = [];
     const processedIds = new Set<number>();
 
     // Helper function to calculate node positions
@@ -87,15 +115,12 @@ export function ContactGraph() {
       let x;
 
       if (level === 0) {
-        // Center the root node
         x = 0;
       } else if (parentX !== undefined && parentY !== undefined) {
-        // Position relative to parent
         const spreadWidth = (totalInLevel - 1) * nodeSpacing;
         const startX = parentX - spreadWidth / 2;
         x = startX + (index * nodeSpacing);
       } else {
-        // Position in level if no parent
         const spreadWidth = (totalInLevel - 1) * nodeSpacing;
         const startX = -spreadWidth / 2;
         x = startX + (index * nodeSpacing);
@@ -104,8 +129,30 @@ export function ContactGraph() {
       return { x, y };
     };
 
+    // Helper function to check if a node should be visible
+    const isNodeVisible = (contact: Contact): boolean => {
+      if (contact.isMe) return true;
+      if (!contact.parentId) return true;
+
+      const parentId = contact.parentId.toString();
+      if (collapsedNodes.has(parentId)) return false;
+
+      // Check if any ancestor is collapsed
+      let currentContact = contact;
+      while (currentContact.parentId) {
+        if (collapsedNodes.has(currentContact.parentId.toString())) {
+          return false;
+        }
+        const parent = contacts.find(c => c.id === currentContact.parentId);
+        if (!parent) break;
+        currentContact = parent;
+      }
+      return true;
+    };
+
     // Add root node (me)
     const rootPos = calculateNodePosition(0, 0, 1);
+    const rootChildren = contacts.filter(c => c.parentId === meContact.id || (!c.parentId && !c.isMe));
     nodes.push({
       id: meContact.id.toString(),
       name: meContact.name,
@@ -114,7 +161,9 @@ export function ContactGraph() {
       icon: User,
       contact: meContact,
       ...rootPos,
-      level: 0
+      level: 0,
+      hasChildren: rootChildren.length > 0,
+      isCollapsed: collapsedNodes.has(meContact.id.toString())
     });
     processedIds.add(meContact.id);
 
@@ -124,10 +173,12 @@ export function ContactGraph() {
       (!c.parentId || c.parentId === meContact.id)
     );
 
-    // Add direct connections (level 1)
+    // Add direct connections and their children if not collapsed
     directConnections.forEach((contact, index) => {
-      if (!processedIds.has(contact.id)) {
+      if (!processedIds.has(contact.id) && isNodeVisible(contact)) {
         const pos = calculateNodePosition(1, index, directConnections.length);
+        const children = contacts.filter(c => c.parentId === contact.id);
+
         nodes.push({
           id: contact.id.toString(),
           name: contact.name,
@@ -140,7 +191,9 @@ export function ContactGraph() {
             : User,
           contact,
           ...pos,
-          level: 1
+          level: 1,
+          hasChildren: children.length > 0,
+          isCollapsed: collapsedNodes.has(contact.id.toString())
         });
         processedIds.add(contact.id);
 
@@ -152,51 +205,59 @@ export function ContactGraph() {
           relationship: contact.relationshipType
         });
 
-        // Process children of this contact (level 2)
-        const children = contacts.filter(c => c.parentId === contact.id);
-        children.forEach((child, childIndex) => {
-          if (!processedIds.has(child.id)) {
-            const childPos = calculateNodePosition(
-              2, 
-              childIndex, 
-              children.length,
-              pos.x,
-              pos.y
-            );
-            nodes.push({
-              id: child.id.toString(),
-              name: child.name,
-              val: 12,
-              color: child.relationshipType
-                ? categoryColors[relationshipCategories[child.relationshipType]]
-                : defaultColor,
-              icon: child.relationshipType
-                ? relationshipIcons[child.relationshipType]
-                : User,
-              contact: child,
-              ...childPos,
-              level: 2
-            });
-            processedIds.add(child.id);
+        // Process children if parent is not collapsed
+        if (!collapsedNodes.has(contact.id.toString())) {
+          children.forEach((child, childIndex) => {
+            if (!processedIds.has(child.id) && isNodeVisible(child)) {
+              const childPos = calculateNodePosition(
+                2, 
+                childIndex, 
+                children.length,
+                pos.x,
+                pos.y
+              );
+              const grandchildren = contacts.filter(c => c.parentId === child.id);
 
-            // Add link to parent
-            links.push({
-              source: contact.id.toString(),
-              target: child.id.toString(),
-              value: 1,
-              relationship: child.relationshipType
-            });
-          }
-        });
+              nodes.push({
+                id: child.id.toString(),
+                name: child.name,
+                val: 12,
+                color: child.relationshipType
+                  ? categoryColors[relationshipCategories[child.relationshipType]]
+                  : defaultColor,
+                icon: child.relationshipType
+                  ? relationshipIcons[child.relationshipType]
+                  : User,
+                contact: child,
+                ...childPos,
+                level: 2,
+                hasChildren: grandchildren.length > 0,
+                isCollapsed: collapsedNodes.has(child.id.toString())
+              });
+              processedIds.add(child.id);
+
+              // Add link to parent
+              links.push({
+                source: contact.id.toString(),
+                target: child.id.toString(),
+                value: 1,
+                relationship: child.relationshipType
+              });
+            }
+          });
+        }
       }
     });
 
     return { nodes, links };
-  }, [contacts]);
+  }, [contacts, collapsedNodes]);
 
-  const handleNodeClick = useCallback((node: any) => {
+  const handleNodeClick = useCallback((node: NodeData) => {
+    if (node.hasChildren) {
+      toggleNodeCollapse(node.id);
+    }
     setSelectedNode(selectedNode?.id === node.id ? null : node);
-  }, [selectedNode]);
+  }, [selectedNode, toggleNodeCollapse]);
 
   if (!contacts) return null;
 
@@ -277,7 +338,7 @@ export function ContactGraph() {
           nodeRelSize={6}
           linkWidth={1.5}
           linkColor={() => "#e2e8f0"}
-          nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+          nodeCanvasObject={(node: NodeData, ctx: CanvasRenderingContext2D, globalScale: number) => {
             const size = node.val;
 
             // Draw node background
@@ -292,6 +353,26 @@ export function ContactGraph() {
             ctx.strokeStyle = node.color;
             ctx.lineWidth = selectedNode?.id === node.id || node.contact.isMe ? 3 : 2;
             ctx.stroke();
+
+            // Draw expand/collapse indicator if node has children
+            if (node.hasChildren) {
+              ctx.fillStyle = node.color;
+              ctx.beginPath();
+              const iconSize = size * 0.4;
+              if (node.isCollapsed) {
+                // Draw triangle pointing right
+                ctx.moveTo(node.x + size + 4, node.y);
+                ctx.lineTo(node.x + size + 4 + iconSize, node.y - iconSize / 2);
+                ctx.lineTo(node.x + size + 4 + iconSize, node.y + iconSize / 2);
+              } else {
+                // Draw triangle pointing down
+                ctx.moveTo(node.x + size + 4, node.y - iconSize / 2);
+                ctx.lineTo(node.x + size + 4 + iconSize, node.y);
+                ctx.lineTo(node.x + size + 4, node.y + iconSize / 2);
+              }
+              ctx.closePath();
+              ctx.fill();
+            }
 
             // Draw simple icon (circle with initial)
             ctx.fillStyle = node.color;
