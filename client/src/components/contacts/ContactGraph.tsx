@@ -50,6 +50,7 @@ interface GraphNode {
   relationshipType?: string;
   isMe?: boolean;
   color: string;
+  // Required by force-graph
   x?: number;
   y?: number;
   vx?: number;
@@ -68,13 +69,13 @@ interface GraphData {
 }
 
 export function ContactGraph() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const graphRef = useRef<ForceGraphMethods<GraphNode, GraphLink>>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
-  const containerRef = useRef<HTMLDivElement>(null);
-  const graphRef = useRef<ForceGraphMethods<GraphNode, GraphLink>>();
 
-  const { data: contacts, error } = useQuery<Contact[]>({
+  const { data: contacts, isLoading, error } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
   });
 
@@ -99,64 +100,79 @@ export function ContactGraph() {
 
   // Transform contacts data into graph format
   useEffect(() => {
-    if (!contacts) return;
+    if (!contacts?.length) return;
 
-    console.log('Processing contacts for graph:', contacts);
+    console.log('Processing contacts for graph:', contacts.length, 'contacts');
 
-    // Get color based on relationship type
-    const getNodeColor = (contact: Contact) => {
-      if (contact.isMe) return "#6366f1"; // Indigo for personal contact
-      if (!contact.relationshipType) return "#94a3b8"; // Slate for undefined
+    try {
+      // Get color based on relationship type
+      const getNodeColor = (contact: Contact): string => {
+        if (contact.isMe) return "#6366f1"; // Indigo for personal contact
+        if (!contact.relationshipType) return "#94a3b8"; // Slate for undefined
 
-      const categories = {
-        family: ["mother", "father", "brother", "sibling", "child", "spouse"],
-        friends: ["friend", "boyfriend/girlfriend"],
-        professional: ["co-worker"]
+        const categories = {
+          family: ["mother", "father", "brother", "sibling", "child", "spouse"],
+          friends: ["friend", "boyfriend/girlfriend"],
+          professional: ["co-worker"]
+        };
+
+        if (categories.family.includes(contact.relationshipType)) return "#22c55e";
+        if (categories.friends.includes(contact.relationshipType)) return "#f97316";
+        if (categories.professional.includes(contact.relationshipType)) return "#3b82f6";
+        return "#94a3b8";
       };
 
-      if (categories.family.includes(contact.relationshipType)) return "#22c55e";
-      if (categories.friends.includes(contact.relationshipType)) return "#f97316";
-      if (categories.professional.includes(contact.relationshipType)) return "#3b82f6";
-      return "#94a3b8";
-    };
+      // Create nodes first
+      const nodes: GraphNode[] = contacts.map(contact => ({
+        id: contact.id,
+        name: contact.name,
+        relationshipType: contact.relationshipType,
+        isMe: contact.isMe,
+        color: getNodeColor(contact)
+      }));
 
-    // Create nodes first
-    const nodes: GraphNode[] = contacts.map(contact => ({
-      id: contact.id,
-      name: contact.name,
-      relationshipType: contact.relationshipType,
-      isMe: contact.isMe,
-      color: getNodeColor(contact)
-    }));
+      console.log('Created nodes:', nodes.length, 'nodes');
 
-    console.log('Created nodes:', nodes);
+      // Then create links using the nodes
+      const links: GraphLink[] = [];
 
-    // Then create links using the nodes
-    const links: GraphLink[] = contacts
-      .filter(contact => contact.parentId)
-      .map(contact => {
+      contacts.forEach(contact => {
+        if (!contact.parentId) return;
+
         const sourceNode = nodes.find(n => n.id === contact.parentId);
         const targetNode = nodes.find(n => n.id === contact.id);
 
         if (!sourceNode || !targetNode) {
-          console.log('Missing nodes for link:', { contactId: contact.id, parentId: contact.parentId });
-          return null;
+          console.warn('Missing nodes for link:', { contactId: contact.id, parentId: contact.parentId });
+          return;
         }
 
-        return {
+        links.push({
           source: sourceNode,
           target: targetNode,
           type: contact.relationshipType || "undefined"
-        };
-      })
-      .filter((link): link is GraphLink => link !== null);
+        });
+      });
 
-    console.log('Created links:', links);
+      console.log('Created links:', links.length, 'links');
 
-    setGraphData({ nodes, links });
+      setGraphData({ nodes, links });
+    } catch (error) {
+      console.error('Error processing graph data:', error);
+    }
   }, [contacts]);
 
-  // Error state
+  // Handle node click
+  const handleNodeClick = useCallback((node: GraphNode) => {
+    if (!contacts) return;
+
+    const contact = contacts.find(c => c.id === node.id);
+    if (contact) {
+      console.log('Selected contact:', contact);
+      setSelectedContact(prev => prev?.id === contact.id ? null : contact);
+    }
+  }, [contacts]);
+
   if (error) {
     return (
       <div className="p-4 text-center text-destructive">
@@ -165,21 +181,13 @@ export function ContactGraph() {
     );
   }
 
-  // Loading state
-  if (!contacts) {
+  if (isLoading) {
     return (
       <div className="p-4 text-center text-muted-foreground">
         Loading contacts...
       </div>
     );
   }
-
-  const handleNodeClick = useCallback((node: GraphNode) => {
-    const contact = contacts.find(c => c.id === node.id);
-    if (contact) {
-      setSelectedContact(prev => prev?.id === contact.id ? null : contact);
-    }
-  }, [contacts]);
 
   return (
     <div 
