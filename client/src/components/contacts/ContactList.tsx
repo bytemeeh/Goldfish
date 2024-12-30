@@ -93,9 +93,10 @@ export function ContactList({ searchFilters }: ContactListProps) {
     }));
   };
 
-  const rootContacts = contacts.filter(c => 
+  // Get all non-personal contacts that should be categorized
+  const categorizableContacts = contacts.filter(c => 
     !c.isMe && 
-    !c.parentId
+    (c.parentId === null || c.relationshipType === 'sibling')
   );
 
   let personalHierarchy = null;
@@ -106,9 +107,10 @@ export function ContactList({ searchFilters }: ContactListProps) {
     };
   }
 
+  // Create categorized groups
   const categorizedContacts = categories.map(category => ({
     ...category,
-    contacts: rootContacts
+    contacts: categorizableContacts
       .filter(contact => 
         contact.relationshipType && 
         category.types.includes(contact.relationshipType)
@@ -117,9 +119,11 @@ export function ContactList({ searchFilters }: ContactListProps) {
         ...contact,
         children: buildHierarchy(contact.id)
       }))
+      .sort((a, b) => a.name.localeCompare(b.name))
   }));
 
-  const uncategorizedContacts = rootContacts
+  // Handle uncategorized contacts
+  const uncategorizedContacts = categorizableContacts
     .filter(contact =>
       !contact.relationshipType ||
       !categories.some(cat => 
@@ -130,7 +134,8 @@ export function ContactList({ searchFilters }: ContactListProps) {
     .map(contact => ({
       ...contact,
       children: buildHierarchy(contact.id)
-    }));
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <ScrollArea className="h-[calc(100vh-12rem)] pr-4">
