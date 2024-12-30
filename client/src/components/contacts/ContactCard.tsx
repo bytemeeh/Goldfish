@@ -87,13 +87,12 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
   // Get relationship icon if available
   const RelationshipIcon = contact.relationshipType ? relationshipIcons[contact.relationshipType] : null;
 
-  // Assumed to be defined elsewhere, providing color categories for relationship types.
+  // Relationship categories for styling
   const relationshipCategories = {
     family: ["mother", "father", "sibling", "brother", "child", "spouse"],
     friends: ["friend", "boyfriend/girlfriend"],
     professional: ["co-worker"],
   };
-
 
   return (
     <div className={`relative ${indentClass}`}>
