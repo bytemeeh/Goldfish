@@ -3,7 +3,6 @@ import { createServer, type Server } from "http";
 import { db } from "@db";
 import { contacts, insertContactSchema, getCascadedRelationshipType, getValidChildRelationshipTypes, type RelationshipType } from "@db/schema";
 import { and, or, eq, ilike, sql } from "drizzle-orm";
-import { randomBytes } from "crypto";
 
 interface SearchFilters {
   name?: string;
@@ -58,8 +57,7 @@ async function updateRelationshipsCascading(contactId: number, newParentId: numb
             relationshipType: cascadedType,
             updatedAt: new Date().toISOString()
           })
-          .where(eq(contacts.id, child.id))
-          .returning();
+          .where(eq(contacts.id, child.id));
 
         // Recursively update this child's descendants
         await updateRelationshipsCascading(child.id, child.parentId, cascadedType);
@@ -162,13 +160,10 @@ export function registerRoutes(app: Express): Server {
       const validatedData = insertContactSchema.parse(req.body);
       console.log('Validated data:', validatedData);
 
-      const now = new Date().toISOString();
       const [newContact] = await db
         .insert(contacts)
         .values({
           ...validatedData,
-          createdAt: now,
-          updatedAt: now,
         })
         .returning();
 
@@ -210,6 +205,7 @@ export function registerRoutes(app: Express): Server {
         })
         .where(eq(contacts.id, parseInt(id)))
         .returning();
+
       console.log('Updated contact:', updatedContact);
 
       // Trigger cascading updates if relationship type changed

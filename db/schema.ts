@@ -2,7 +2,9 @@ import { pgTable, text, serial, date, timestamp, integer, boolean } from "drizzl
 import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
+import type { PgTableFn } from 'drizzle-orm/pg-core';
 
+// Define relationship types first to avoid circular reference
 export const relationshipTypes = [
   "sibling",
   "mother",
@@ -15,7 +17,7 @@ export const relationshipTypes = [
   "boyfriend/girlfriend"
 ] as const;
 
-export type RelationshipType = (typeof relationshipTypes)[number];
+export type RelationshipType = typeof relationshipTypes[number];
 
 // Define relationship cascading rules
 export type RelationshipCascadeRule = {
@@ -31,7 +33,7 @@ export const relationshipCascadeRules: RelationshipCascadeRule[] = [
     parentType: "spouse",
     validChildTypes: ["child"],
     cascadeUpdates: {
-      child: "child" // Children of a spouse are also your children
+      child: "child"
     }
   },
   {
@@ -45,40 +47,37 @@ export const relationshipCascadeRules: RelationshipCascadeRule[] = [
     parentType: "mother",
     validChildTypes: ["sibling", "spouse"],
     cascadeUpdates: {
-      sibling: "sibling", // Siblings of your mother are your aunts/uncles (simplified as sibling)
-      spouse: "father" // Spouse of your mother is your father
+      sibling: "sibling",
+      spouse: "father"
     }
   },
   {
     parentType: "father",
     validChildTypes: ["sibling", "spouse"],
     cascadeUpdates: {
-      sibling: "sibling", // Siblings of your father are your aunts/uncles (simplified as sibling)
-      spouse: "mother" // Spouse of your father is your mother
+      sibling: "sibling",
+      spouse: "mother"
     }
   },
   {
     parentType: "sibling",
     validChildTypes: ["spouse", "child"],
-    // No cascade updates - spouse of sibling remains spouse of sibling, their children are their children
   },
   {
     parentType: "friend",
     validChildTypes: ["spouse", "child", "friend"],
-    // No cascade updates - relationships of friends don't affect your relationship to them
   },
   {
     parentType: "child",
     validChildTypes: ["spouse", "child"],
-    // No cascade updates - relationships of children don't affect your relationship to them
   },
   {
     parentType: "co-worker",
     validChildTypes: ["spouse", "child"],
-    // No cascade updates - relationships of co-workers don't affect your relationship to them
   }
 ];
 
+// Define the contacts table
 export const contacts = pgTable("contacts", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -90,7 +89,7 @@ export const contacts = pgTable("contacts", {
   relationshipType: text("relationship_type", { enum: relationshipTypes }),
   isMe: boolean("is_me").default(false),
   shareToken: text("share_token").unique(),
-  shareDepth: integer("share_depth"), // How many levels deep to share (null means all)
+  shareDepth: integer("share_depth"),
   shareableUntil: timestamp("shareable_until", { mode: "string" }),
   createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }).notNull().defaultNow(),
@@ -108,7 +107,7 @@ export const contactsRelations = relations(contacts, ({ one, many }) => ({
 // Helper function to get valid child relationship types for a given parent type
 export function getValidChildRelationshipTypes(parentType: RelationshipType | null | undefined): RelationshipType[] {
   if (!parentType) {
-    return relationshipTypes;
+    return [...relationshipTypes];
   }
 
   const rule = relationshipCascadeRules.find(r => r.parentType === parentType);

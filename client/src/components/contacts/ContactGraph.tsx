@@ -3,13 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { type Contact } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Mail,
-  Phone,
-  Cake,
-} from "lucide-react";
+import { Mail, Phone, Cake } from "lucide-react";
 import { format } from "date-fns";
-import ForceGraph2D, { type ForceGraphMethods } from "react-force-graph-2d";
+import ForceGraph2D from "react-force-graph-2d";
+import type { NodeObject, LinkObject } from "react-force-graph-2d";
 
 // Contact details component
 function ContactDetails({ contact }: { contact: Contact }) {
@@ -44,20 +41,15 @@ function ContactDetails({ contact }: { contact: Contact }) {
   );
 }
 
-interface GraphNode {
+interface GraphNode extends NodeObject {
   id: number;
   name: string;
   relationshipType?: string;
   isMe?: boolean;
   color: string;
-  // Required by force-graph
-  x?: number;
-  y?: number;
-  vx?: number;
-  vy?: number;
 }
 
-interface GraphLink {
+interface GraphLink extends LinkObject {
   source: GraphNode;
   target: GraphNode;
   type: string;
@@ -70,7 +62,7 @@ interface GraphData {
 
 export function ContactGraph() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const graphRef = useRef<ForceGraphMethods<GraphNode, GraphLink>>(null);
+  const graphRef = useRef<ForceGraph2D<GraphNode, GraphLink>>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
@@ -84,7 +76,6 @@ export function ContactGraph() {
     const updateDimensions = () => {
       if (containerRef.current) {
         const { offsetWidth, offsetHeight } = containerRef.current;
-        console.log('Updating dimensions:', { width: offsetWidth, height: offsetHeight });
         setDimensions({
           width: offsetWidth,
           height: offsetHeight
@@ -130,7 +121,11 @@ export function ContactGraph() {
         name: contact.name,
         relationshipType: contact.relationshipType,
         isMe: contact.isMe,
-        color: getNodeColor(contact)
+        color: getNodeColor(contact),
+        x: 0,
+        y: 0,
+        vx: 0,
+        vy: 0
       }));
 
       console.log('Created nodes:', nodes);
@@ -151,8 +146,8 @@ export function ContactGraph() {
         }
 
         links.push({
-          source: sourceNode,
-          target: targetNode,
+          source: sourceNode!,
+          target: targetNode!,
           type: contact.relationshipType || "undefined"
         });
       });
@@ -171,8 +166,8 @@ export function ContactGraph() {
           }
 
           links.push({
-            source: meNode,
-            target: contactNode,
+            source: meNode!,
+            target: contactNode!,
             type: contact.relationshipType || "undefined"
           });
         });
@@ -194,7 +189,7 @@ export function ContactGraph() {
   }, [contacts]);
 
   // Handle node click
-  const handleNodeClick = useCallback((node: GraphNode | undefined) => {
+  const handleNodeClick = useCallback((node: GraphNode | null) => {
     if (!contacts || !node) {
       console.log('Node click: Invalid node or no contacts available');
       return;
@@ -276,16 +271,15 @@ export function ContactGraph() {
       <ForceGraph2D
         ref={graphRef}
         graphData={graphData}
-        nodeLabel={node => (node as GraphNode).name}
-        nodeColor={node => (node as GraphNode).color}
+        nodeLabel={node => node.name}
+        nodeColor={node => node.color}
         nodeCanvasObject={(node, ctx, globalScale) => {
-          const n = node as GraphNode;
-          const label = n.name;
+          const label = node.name;
           const fontSize = 12/globalScale;
           ctx.font = `${fontSize}px Sans-Serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillStyle = n.color;
+          ctx.fillStyle = node.color;
 
           // Draw node circle
           ctx.beginPath();
