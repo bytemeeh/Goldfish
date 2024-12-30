@@ -79,43 +79,26 @@ export function ContactList({ searchFilters }: ContactListProps) {
 
   // Helper function to build contact hierarchy
   const buildHierarchy = (contact: Contact): Contact => {
-    // Get direct children
-    const directChildren = contacts.filter(c => c.parentId === contact.id);
+    // Get children for this contact
+    const children = contacts.filter(c => c.parentId === contact.id);
 
-    // If this is a spouse relationship, include their children too
-    const spouseChildren = contact.relationshipType === 'spouse' 
-      ? contacts.filter(c => c.parentId === contact.id)
-      : [];
+    // Process each child recursively
+    const processedChildren = children.map(buildHierarchy);
 
-    // Combine and remove duplicates
-    const allChildren = [...new Set([...directChildren, ...spouseChildren])];
-
+    // Return contact with its processed children
     return {
       ...contact,
-      children: allChildren.map(buildHierarchy)
+      children: processedChildren
     };
   };
 
-  // Find me (personal contact) and root contacts
+  // Find personal contact and root contacts
   const personalContact = contacts.find(c => c.isMe);
   const rootContacts = contacts.filter(c => !c.parentId && !c.isMe);
 
-  // Build hierarchies
+  // Process all contacts into hierarchical structure
   const processedContacts = rootContacts.map(buildHierarchy);
   const personalHierarchy = personalContact ? buildHierarchy(personalContact) : null;
-
-  // Ensure spouse relationships are included in personal hierarchy
-  if (personalHierarchy) {
-    const spouses = contacts.filter(c => 
-      c.parentId === personalHierarchy.id && 
-      c.relationshipType === 'spouse'
-    );
-
-    personalHierarchy.children = [
-      ...(personalHierarchy.children || []),
-      ...spouses.map(buildHierarchy)
-    ];
-  }
 
   // Categorize contacts
   const categorizedContacts = categories.map(category => ({
@@ -139,8 +122,8 @@ export function ContactList({ searchFilters }: ContactListProps) {
           <div>
             <h2 className="text-lg font-semibold mb-4 text-muted-foreground">Personal Card</h2>
             <ContactCard 
-              contact={personalHierarchy}
-              children={personalHierarchy.children}
+              contact={personalHierarchy} 
+              children={personalHierarchy.children || []}
             />
           </div>
         )}
@@ -154,7 +137,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
                 {category.contacts.map(contact => (
                   <ContactCard 
                     key={contact.id} 
-                    contact={contact} 
+                    contact={contact}
                     children={contact.children || []}
                   />
                 ))}
@@ -171,7 +154,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
               {uncategorizedContacts.map(contact => (
                 <ContactCard 
                   key={contact.id} 
-                  contact={contact} 
+                  contact={contact}
                   children={contact.children || []}
                 />
               ))}

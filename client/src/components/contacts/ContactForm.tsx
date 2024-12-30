@@ -100,10 +100,6 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
   });
 
   const onSubmit = form.handleSubmit((data) => {
-    console.log('Submitting form data:', {
-      ...data,
-      relationshipType: data.relationshipType || null, // Ensure relationship type is explicitly set
-    });
     mutate({
       ...data,
       relationshipType: data.relationshipType || null,
@@ -133,7 +129,9 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
             name="relationshipType"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Relationship Type</FormLabel>
+                <FormLabel>
+                  Relationship Type {parentId ? "(to parent contact)" : "(to you)"}
+                </FormLabel>
                 <FormControl>
                   <RelationshipTypeSelector 
                     value={field.value as RelationshipType} 
