@@ -355,7 +355,7 @@ export function ContactGraph() {
           const textWidth = ctx.measureText(label).width;
           const bgHeight = fontSize * 1.8;
           const bgWidth = textWidth + 24;
-          const bgY = node.y! + nodeSize * 2;
+          const bgY = node.y! + nodeSize * 3;
 
           // Enhanced background
           ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
@@ -382,7 +382,7 @@ export function ContactGraph() {
         cooldownTicks={50}
         nodeRelSize={6}
         d3Force="charge"
-        d3ForceStrength={-1000}
+        d3ForceStrength={-2000}
         backgroundColor="transparent"
         onNodeClick={handleNodeClick}
         width={dimensions.width}
@@ -390,6 +390,8 @@ export function ContactGraph() {
         d3AlphaDecay={0.01}
         d3VelocityDecay={0.4}
         cooldownTicks={100}
+        d3Force="link"
+        d3ForceDistance={100}
         onEngineStop={() => {
           if (graphRef.current) {
             graphRef.current.zoomToFit(400, 50);
