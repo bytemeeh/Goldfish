@@ -74,8 +74,13 @@ export function ContactGraph() {
     // Function to check if a contact should be connected directly to 'me'
     const isDirectConnection = (contact: Contact) => {
       if (contact.isMe) return false;
-      if (!contact.parentId) return true; // Root level contacts
-      return contact.parentId === meContact.id; // Direct children of me
+      // Direct connections are:
+      // 1. Root level contacts (no parent)
+      // 2. Direct children of me
+      // 3. Contacts with relationshipType 'spouse' and no parent (direct spouse)
+      return !contact.parentId || 
+             contact.parentId === meContact.id || 
+             (contact.relationshipType === 'spouse' && !contact.parentId);
     };
 
     // Create nodes for direct connections and their immediate relationships
@@ -116,7 +121,7 @@ export function ContactGraph() {
         });
         processedIds.add(contact.id);
 
-        // Add link to 'me' if it's a direct connection
+        // Add link to 'me' if it's a direct connection with no parent
         if (!contact.parentId) {
           links.push({
             source: meContact.id.toString(),
@@ -168,6 +173,8 @@ export function ContactGraph() {
       // Configure force simulation
       fg.d3Force('charge')?.strength(-1200);
       fg.d3Force('link')?.distance(d => {
+        // Shorter distance for spouse relationships at level 1
+        if (d.relationship === 'spouse' && d.source.level === 0) return 120;
         return d.source.level === 0 ? 200 : 150;
       });
 
@@ -195,26 +202,29 @@ export function ContactGraph() {
               node.vx = (node.vx || 0) + (targetX - node.x) * alpha;
               node.vy = (node.vy || 0) + (targetY - node.y) * alpha;
             } else {
-              // Root nodes positioned by category
-              switch (node.contact.relationshipType) {
-                case 'mother':
-                case 'father':
-                case 'brother':
-                case 'sibling':
-                  angle = Math.PI / 2; // Family at top
-                  break;
-                case 'friend':
-                case 'boyfriend/girlfriend':
-                  angle = Math.PI; // Friends at right
-                  break;
-                case 'co-worker':
-                  angle = -Math.PI / 2; // Professional at bottom
-                  break;
-                case 'spouse':
-                  angle = 0; // Spouse at left
-                  break;
-                default:
-                  angle = Math.random() * 2 * Math.PI;
+              // Position based on relationship type
+              if (node.contact.relationshipType === 'spouse') {
+                // Position spouse closer to center-right
+                angle = Math.PI / 6; // 30 degrees
+              } else {
+                // Other relationships positioned by type
+                switch (node.contact.relationshipType) {
+                  case 'mother':
+                  case 'father':
+                  case 'brother':
+                  case 'sibling':
+                    angle = Math.PI / 2; // Family at top
+                    break;
+                  case 'friend':
+                  case 'boyfriend/girlfriend':
+                    angle = Math.PI; // Friends at right
+                    break;
+                  case 'co-worker':
+                    angle = -Math.PI / 2; // Professional at bottom
+                    break;
+                  default:
+                    angle = Math.random() * 2 * Math.PI;
+                }
               }
               const targetX = radius * Math.cos(angle);
               const targetY = radius * Math.sin(angle);
