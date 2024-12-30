@@ -207,6 +207,8 @@ export function ContactGraph() {
     queryKey: ["/api/contacts"],
   });
 
+  console.log('Contacts data:', contacts); // Add logging for debugging
+
   // Error state
   if (error) {
     return (
@@ -225,17 +227,11 @@ export function ContactGraph() {
     );
   }
 
-  // Find the root contact (me)
+  // Build contact trees for both personal and other contacts
   const meContact = contacts.find(c => c.isMe);
-  if (!meContact) {
-    return (
-      <div className="p-4 text-center text-muted-foreground">
-        No personal contact found. Please set up your personal contact first.
-      </div>
-    );
-  }
+  const rootContacts = contacts.filter(c => !c.parentId && !c.isMe);
 
-  // Build the contact tree
+  // Helper function to build contact tree
   const buildContactTree = (contact: Contact): Contact & { children: Contact[] } => {
     const children = contacts
       .filter(c => c.parentId === contact.id)
@@ -243,7 +239,14 @@ export function ContactGraph() {
     return { ...contact, children };
   };
 
-  const contactTree = buildContactTree(meContact);
+  // Process personal contact tree if it exists
+  const personalTree = meContact ? buildContactTree(meContact) : null;
+
+  // Process other root contacts
+  const rootTrees = rootContacts.map(buildContactTree);
+
+  console.log('Personal tree:', personalTree); // Add logging for debugging
+  console.log('Root trees:', rootTrees); // Add logging for debugging
 
   // Toggle node expansion
   const handleToggle = (contactId: number) => {
@@ -272,18 +275,45 @@ export function ContactGraph() {
         </Card>
       )}
 
-      {/* Contact Tree */}
+      {/* Contact Trees */}
       <ScrollArea className="h-full">
-        <div className="p-8">
-          <ContactNode
-            contact={contactTree}
-            children={contactTree.children}
-            level={0}
-            onToggle={handleToggle}
-            expandedNodes={expandedNodes}
-            onSelect={setSelectedContact}
-            selectedId={selectedContact?.id || null}
-          />
+        <div className="p-8 space-y-8">
+          {/* Personal Contact Tree */}
+          {personalTree && (
+            <div>
+              <h2 className="text-lg font-semibold mb-4 text-muted-foreground">Personal Card</h2>
+              <ContactNode
+                contact={personalTree}
+                children={personalTree.children}
+                level={0}
+                onToggle={handleToggle}
+                expandedNodes={expandedNodes}
+                onSelect={setSelectedContact}
+                selectedId={selectedContact?.id || null}
+              />
+            </div>
+          )}
+
+          {/* Other Root Contact Trees */}
+          {rootTrees.length > 0 && (
+            <div>
+              <h2 className="text-lg font-semibold mb-4 text-muted-foreground">Other Contacts</h2>
+              <div className="space-y-4">
+                {rootTrees.map(tree => (
+                  <ContactNode
+                    key={tree.id}
+                    contact={tree}
+                    children={tree.children}
+                    level={0}
+                    onToggle={handleToggle}
+                    expandedNodes={expandedNodes}
+                    onSelect={setSelectedContact}
+                    selectedId={selectedContact?.id || null}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </ScrollArea>
     </div>
