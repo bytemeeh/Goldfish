@@ -96,11 +96,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
 
   return (
     <div className={`relative ${indentClass} group`}>
-      {level > 0 && (
-        <div className="absolute -left-4 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 text-sm font-bold bg-primary/20 rounded-full text-primary border-2 border-primary/30 shadow-sm">
-          L{level}
-        </div>
-      )}
+      
       {level > 0 && (
         <>
           {/* Connection line with refined styling */}
@@ -190,14 +186,21 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                 transition={{ duration: 0.2 }}
               >
                 <div className="flex flex-col">
-                  <h3 className={`
-                    ${level === 0 ? 'text-xl font-semibold' : 'text-lg font-medium'}
-                    tracking-tight
-                    text-foreground
-                    leading-none
-                  `}>
-                    {contact.name}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className={`
+                      ${level === 0 ? 'text-xl font-semibold' : 'text-lg font-medium'}
+                      tracking-tight
+                      text-foreground
+                      leading-none
+                    `}>
+                      {contact.name}
+                    </h3>
+                    {level > 0 && (
+                      <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-medium bg-primary/10 text-primary rounded-full">
+                        L{level}
+                      </span>
+                    )}
+                  </div>
                   {contact.relationshipType && (
                     <div className="flex items-center gap-2 mt-1.5">
                       {RelationshipIcon && (
