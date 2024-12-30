@@ -7,6 +7,7 @@ import { Mail, Phone, Cake, Heart, Users, Baby, Briefcase, UserCircle2, UserPlus
 import { format } from "date-fns";
 import ForceGraph2D from "react-force-graph-2d";
 import type { NodeObject, LinkObject } from "react-force-graph-2d";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Contact details component
 function ContactDetails({ contact }: { contact: Contact }) {
@@ -94,14 +95,12 @@ export function ContactGraph() {
     if (!contacts?.length) return;
 
     try {
-      console.log('Processing contacts for graph:', contacts.length, 'contacts');
       const meContact = contacts.find(c => c.isMe);
-      console.log('Found personal contact:', meContact);
 
       // Get color based on relationship type
       const getNodeColor = (contact: Contact): string => {
-        if (contact.isMe) return "hsl(var(--primary))"; // Primary color for personal contact
-        if (!contact.relationshipType) return "hsl(var(--muted))"; // Muted for undefined
+        if (contact.isMe) return "hsl(var(--primary))";
+        if (!contact.relationshipType) return "hsl(var(--muted))";
 
         const categories = {
           family: ["mother", "father", "brother", "sibling", "child", "spouse"],
@@ -115,7 +114,7 @@ export function ContactGraph() {
         return "hsl(var(--muted))";
       };
 
-      // Create nodes first
+      // Create nodes with enhanced visual properties
       const nodes: GraphNode[] = contacts.map(contact => ({
         id: contact.id,
         name: contact.name,
@@ -128,56 +127,46 @@ export function ContactGraph() {
         vy: 0
       }));
 
-      console.log('Created nodes:', nodes);
-
-      // Then create links using the nodes
+      // Create links with relationship information
       const links: GraphLink[] = [];
 
-      // First, handle explicit parent-child relationships
+      // Handle explicit parent-child relationships
       contacts.forEach(contact => {
         if (!contact.parentId) return;
 
         const sourceNode = nodes.find(n => n.id === contact.parentId);
         const targetNode = nodes.find(n => n.id === contact.id);
 
-        if (!sourceNode || !targetNode) {
-          console.warn('Missing nodes for parent-child link:', { contactId: contact.id, parentId: contact.parentId });
-          return;
+        if (sourceNode && targetNode) {
+          links.push({
+            source: sourceNode,
+            target: targetNode,
+            type: contact.relationshipType || "undefined"
+          });
         }
-
-        links.push({
-          source: sourceNode!,
-          target: targetNode!,
-          type: contact.relationshipType || "undefined"
-        });
       });
 
-      // Then, handle root-level relationships with personal contact
+      // Handle root-level relationships with personal contact
       if (meContact) {
         contacts.forEach(contact => {
-          if (contact.id === meContact.id || contact.parentId) return; // Skip self and children
+          if (contact.id === meContact.id || contact.parentId) return;
 
           const meNode = nodes.find(n => n.id === meContact.id);
           const contactNode = nodes.find(n => n.id === contact.id);
 
-          if (!meNode || !contactNode) {
-            console.warn('Missing nodes for personal contact link:', { contactId: contact.id });
-            return;
+          if (meNode && contactNode) {
+            links.push({
+              source: meNode,
+              target: contactNode,
+              type: contact.relationshipType || "undefined"
+            });
           }
-
-          links.push({
-            source: meNode!,
-            target: contactNode!,
-            type: contact.relationshipType || "undefined"
-          });
         });
       }
 
-      console.log('Created links:', links);
-
       setGraphData({ nodes, links });
 
-      // Reset zoom when data changes
+      // Center and zoom graph after data changes
       if (graphRef.current) {
         setTimeout(() => {
           graphRef.current?.zoomToFit(400, 50);
@@ -188,21 +177,12 @@ export function ContactGraph() {
     }
   }, [contacts]);
 
-  // Handle node click
+  // Handle node click with animation
   const handleNodeClick = useCallback((node: GraphNode | null) => {
-    if (!contacts || !node) {
-      console.log('Node click: Invalid node or no contacts available');
-      return;
-    }
-
-    console.log('Node clicked:', node);
+    if (!contacts || !node) return;
     const contact = contacts.find(c => c.id === node.id);
-
     if (contact) {
-      console.log('Selected contact:', contact);
       setSelectedContact(prev => prev?.id === contact.id ? null : contact);
-    } else {
-      console.warn('Could not find contact for node:', node);
     }
   }, [contacts]);
 
@@ -225,49 +205,64 @@ export function ContactGraph() {
   return (
     <div 
       ref={containerRef} 
-      className="relative w-full h-[calc(100vh-12rem)] bg-card rounded-lg border overflow-hidden"
+      className="relative w-full h-[calc(100vh-12rem)] bg-card rounded-lg border shadow-sm overflow-hidden"
     >
-      {/* Selected Contact Details */}
-      {selectedContact && (
-        <Card className="absolute top-4 left-4 w-80 p-4 bg-card/95 backdrop-blur-sm z-10">
-          <div className="space-y-4">
+      {/* Selected Contact Details with Animation */}
+      <AnimatePresence>
+        {selectedContact && (
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          >
+            <Card className="absolute top-4 left-4 w-80 p-4 bg-card/95 backdrop-blur-sm z-10 border-primary/10">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold">{selectedContact.name}</h3>
+                  {selectedContact.relationshipType && (
+                    <Badge variant="outline" className="capitalize">
+                      {selectedContact.relationshipType.replace("-", " ")}
+                    </Badge>
+                  )}
+                </div>
+                <ContactDetails contact={selectedContact} />
+              </div>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Graph Legend with Animation */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <Card className="absolute top-4 right-4 p-4 bg-card/95 backdrop-blur-sm z-10 border-primary/10">
+          <h3 className="font-semibold mb-3 text-sm">Relationship Types</h3>
+          <div className="space-y-2.5">
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold">{selectedContact.name}</h3>
-              {selectedContact.relationshipType && (
-                <Badge variant="outline" className="capitalize">
-                  {selectedContact.relationshipType.replace("-", " ")}
-                </Badge>
-              )}
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--chart-1))" }} />
+              <span className="text-sm text-muted-foreground">Family</span>
             </div>
-            <ContactDetails contact={selectedContact} />
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--chart-2))" }} />
+              <span className="text-sm text-muted-foreground">Friends</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--chart-3))" }} />
+              <span className="text-sm text-muted-foreground">Professional</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--primary))" }} />
+              <span className="text-sm text-muted-foreground">Personal Card</span>
+            </div>
           </div>
         </Card>
-      )}
+      </motion.div>
 
-      {/* Graph Legend */}
-      <Card className="absolute top-4 right-4 p-4 bg-card/95 backdrop-blur-sm z-10">
-        <h3 className="font-semibold mb-2">Categories</h3>
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--chart-1))" }} />
-            <span className="text-sm">Family</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--chart-2))" }} />
-            <span className="text-sm">Friends</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--chart-3))" }} />
-            <span className="text-sm">Professional</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--primary))" }} />
-            <span className="text-sm">Personal Card</span>
-          </div>
-        </div>
-      </Card>
-
-      {/* Force Graph */}
+      {/* Force Graph with Apple-style rendering */}
       <ForceGraph2D
         ref={graphRef}
         graphData={graphData}
@@ -275,40 +270,72 @@ export function ContactGraph() {
         nodeColor={node => node.color}
         nodeCanvasObject={(node, ctx, globalScale) => {
           const label = node.name;
-          const fontSize = 12/globalScale;
-          ctx.font = `${fontSize}px Inter,-apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+          const fontSize = Math.max(14/globalScale, 8);
+          const nodeSize = node.isMe ? 8 : 6;
+
+          ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillStyle = node.color;
 
-          // Draw node circle with a softer glow effect
+          // Draw node glow effect with Apple-style gradient
+          const gradient = ctx.createRadialGradient(node.x!, node.y!, 0, node.x!, node.y!, nodeSize * 2.5);
+          gradient.addColorStop(0, `${node.color}40`);
+          gradient.addColorStop(0.5, `${node.color}20`);
+          gradient.addColorStop(1, 'transparent');
+          ctx.fillStyle = gradient;
           ctx.beginPath();
-          ctx.arc(node.x!, node.y!, 5, 0, 2 * Math.PI);
+          ctx.arc(node.x!, node.y!, nodeSize * 2.5, 0, 2 * Math.PI);
           ctx.fill();
-          ctx.strokeStyle = node.color;
-          ctx.globalAlpha = 0.2;
-          ctx.lineWidth = 2;
-          ctx.stroke();
-          ctx.globalAlpha = 1;
 
-          // Draw text with a subtle shadow for better readability
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-          ctx.shadowBlur = 2;
-          ctx.fillStyle = 'hsl(var(--foreground))';
-          ctx.fillText(label, node.x!, node.y! + 12);
+          // Draw node circle with soft shadow and inner glow
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+          ctx.shadowBlur = 8;
+          ctx.shadowOffsetY = 2;
+
+          // Inner glow
+          const innerGradient = ctx.createRadialGradient(node.x!, node.y!, 0, node.x!, node.y!, nodeSize);
+          innerGradient.addColorStop(0, node.color);
+          innerGradient.addColorStop(1, node.color);
+
+          ctx.fillStyle = innerGradient;
+          ctx.beginPath();
+          ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI);
+          ctx.fill();
+
+          // Reset shadow for text
           ctx.shadowColor = 'transparent';
+
+          // Draw text with frosted glass effect background
+          const textWidth = ctx.measureText(label).width;
+          const bgHeight = fontSize * 1.5;
+          const bgWidth = textWidth + 16;
+          const bgY = node.y! + nodeSize * 2;
+
+          // Frosted background
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+          ctx.shadowBlur = 4;
+          ctx.beginPath();
+          ctx.roundRect(node.x! - bgWidth/2, bgY - bgHeight/2, bgWidth, bgHeight, 4);
+          ctx.fill();
+
+          // Draw text
+          ctx.shadowColor = 'transparent';
+          ctx.fillStyle = 'hsl(var(--foreground))';
+          ctx.fillText(label, node.x!, bgY);
         }}
-        nodeRelSize={8}
-        linkDirectionalParticles={2}
-        linkDirectionalParticleSpeed={0.005}
-        linkColor={() => "hsl(var(--border))"}
+        linkColor={() => "hsl(var(--border)/0.15)"}
+        linkWidth={1}
+        linkDirectionalParticles={4}
+        linkDirectionalParticleWidth={2}
+        linkDirectionalParticleSpeed={0.003}
+        linkDirectionalParticleColor={() => "hsl(var(--primary)/0.3)"}
         backgroundColor="transparent"
         onNodeClick={handleNodeClick}
         width={dimensions.width}
         height={dimensions.height}
-        d3AlphaDecay={0.01} // Slower decay for more stable layout
-        d3VelocityDecay={0.4} // Higher decay for less bouncy movement
-        linkLength={100} // Increase distance between connected nodes
+        d3AlphaDecay={0.01}
+        d3VelocityDecay={0.4}
         cooldownTicks={100}
         onEngineStop={() => {
           if (graphRef.current) {

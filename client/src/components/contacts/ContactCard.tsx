@@ -162,6 +162,31 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
             />
           )}
 
+          {/* Level indicator */}
+          <div 
+            className="absolute top-3 right-3 flex items-center gap-1.5 px-2 py-1 rounded-full bg-background/80 backdrop-blur-sm border border-border/40"
+            style={{
+              opacity: Math.max(0.9 - level * 0.2, 0.4)
+            }}
+          >
+            {Array.from({ length: level + 1 }).map((_, index) => (
+              <motion.div
+                key={index}
+                className="w-1 h-1 rounded-full transition-all duration-300"
+                initial={{ scale: 0.8, opacity: 0.6 }}
+                animate={{ 
+                  scale: index === level ? 1 : 0.8,
+                  opacity: index === level ? 1 : 0.6
+                }}
+                style={{
+                  backgroundColor: index === level 
+                    ? `hsl(var(--primary)/${Math.max(70 - level * 10, 40)}%)`
+                    : `hsl(var(--primary)/${Math.max(40 - level * 10, 20)}%)`
+                }}
+              />
+            ))}
+          </div>
+
           <CardHeader className="flex flex-row items-start space-x-4 pb-2">
             <motion.button
               className={`
