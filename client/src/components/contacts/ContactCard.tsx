@@ -8,12 +8,18 @@ import {
   Phone,
   Cake,
   ChevronDown,
-  ChevronRight,
   Plus,
   User,
   AlertCircle,
   Calendar,
   Clock,
+  Heart,
+  Users,
+  Baby,
+  Briefcase,
+  UserCircle2,
+  UserPlus,
+  HeartHandshake,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -29,9 +35,22 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ContactForm } from "./ContactForm";
-import { type Contact } from "@/lib/types";
+import { type Contact, type RelationshipType } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
+
+// Icon mapping for different relationship types
+const relationshipIcons: Record<RelationshipType, React.ComponentType<any>> = {
+  sibling: Users,
+  mother: Heart,
+  father: UserCircle2,
+  brother: UserPlus,
+  friend: Users,
+  child: Baby,
+  "co-worker": Briefcase,
+  spouse: HeartHandshake,
+  "boyfriend/girlfriend": Heart,
+};
 
 interface ContactCardProps {
   contact: Contact;
@@ -66,6 +85,9 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
   // Maximum depth is 4 levels (0-based index, so level 3 is the 4th layer)
   const isMaxDepth = level >= 3;
 
+  // Get relationship icon if available
+  const RelationshipIcon = contact.relationshipType ? relationshipIcons[contact.relationshipType] : null;
+
   return (
     <div className={`relative ${indentClass}`}>
       {level > 0 && (
@@ -80,7 +102,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
             }}
           />
           <div 
-            className="absolute -left-12 top-8 w-12 h-[1px]"
+            className="absolute -left-12 top-10 w-12 h-[1px]"
             style={{
               background: `linear-gradient(90deg, 
                 hsl(var(--primary)/${Math.max(40 - level * 8, 20)}%) 0%,
@@ -89,7 +111,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
           />
           {/* Connection node with subtle animation */}
           <motion.div 
-            className="absolute -left-[50px] top-[29px] w-3 h-3 rounded-full border bg-background"
+            className="absolute -left-[50px] top-[37px] w-3 h-3 rounded-full border bg-background"
             style={{
               borderColor: `hsl(var(--primary)/${Math.max(40 - level * 8, 20)}%)`
             }}
@@ -127,17 +149,27 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
             ${level === 0 ? 'shadow-md' : `shadow-sm hover:shadow-md`}
             transform-gpu
             hover:translate-x-1
+            overflow-hidden
           `}
           style={{
             borderColor: `hsl(var(--border)/${Math.max(20 - level * 5, 8)}%)`
           }}
         >
+          {/* Top highlight line for primary contacts */}
+          {level === 0 && (
+            <div 
+              className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent"
+            />
+          )}
+
           <CardHeader className="flex flex-row items-start space-x-4 pb-2">
             <motion.button
               className={`
-                h-6 w-6 mt-1
+                h-8 w-8 mt-1 flex items-center justify-center
                 ${children.length > 0 ? 'text-primary/70 hover:text-primary' : 'text-muted-foreground'}
                 transition-all duration-200
+                rounded-full
+                hover:bg-primary/5
               `}
               onClick={() => setIsExpanded(!isExpanded)}
               whileTap={{ scale: 0.9 }}
@@ -151,36 +183,50 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
               )}
             </motion.button>
 
-            <div className="flex-1 space-y-2">
+            <div className="flex-1 space-y-3">
               <motion.div 
-                className="flex items-center gap-2"
+                className="flex items-center gap-3"
                 animate={{ opacity: 1 }}
                 initial={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                <h3 
-                  className={`
-                    text-lg font-medium tracking-tight leading-none
-                    ${level === 0 
-                      ? 'text-foreground' 
-                      : `text-foreground/[0.${Math.max(90 - level * 10, 60)}]`}
-                  `}
-                >
-                  {contact.name}
-                </h3>
-                {contact.relationshipType && (
-                  <Badge
-                    variant="outline"
+                <div className="flex flex-col">
+                  <h3 
                     className={`
-                      capitalize font-normal 
-                      bg-primary/${Math.max(10 - level * 2, 5)}
-                      text-primary/${Math.max(70 - level * 10, 40)}
-                      border-0
+                      ${level === 0 
+                        ? 'text-xl font-semibold tracking-tight' 
+                        : 'text-lg font-medium tracking-tight'}
+                      leading-none
+                      ${level === 0 
+                        ? 'text-foreground' 
+                        : `text-foreground/[0.${Math.max(90 - level * 10, 60)}]`}
                     `}
                   >
-                    {contact.relationshipType.replace("-", " ")}
-                  </Badge>
-                )}
+                    {contact.name}
+                  </h3>
+                  {contact.relationshipType && (
+                    <div className="flex items-center gap-2 mt-1.5">
+                      {RelationshipIcon && (
+                        <RelationshipIcon className={`
+                          h-3.5 w-3.5
+                          text-primary/${Math.max(70 - level * 10, 40)}
+                        `} />
+                      )}
+                      <Badge
+                        variant="outline"
+                        className={`
+                          capitalize font-normal text-xs
+                          bg-primary/${Math.max(10 - level * 2, 5)}
+                          text-primary/${Math.max(70 - level * 10, 40)}
+                          border-0
+                          px-2 py-0
+                        `}
+                      >
+                        {contact.relationshipType.replace("-", " ")}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
               </motion.div>
 
               <AnimatePresence>
@@ -189,7 +235,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="space-y-2 overflow-hidden"
+                    className="space-y-2.5 overflow-hidden"
                   >
                     {contact.email && (
                       <motion.div 
@@ -316,11 +362,12 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                   transition-colors 
                   rounded-lg 
                   border-primary/${Math.max(20 - level * 5, 10)}
+                  group
                 `}
                 onClick={() => setIsAddingChild(true)}
               >
-                <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center mr-2">
-                  <Plus className="h-3.5 w-3.5 text-primary" />
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center mr-2 group-hover:bg-primary/20 transition-colors">
+                  <Plus className="h-4 w-4 text-primary" />
                 </div>
                 Add Related Contact
               </Button>
@@ -361,6 +408,11 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
             exit={{ opacity: 0, height: 0 }}
             className="space-y-6 mt-6"
           >
+            {children.length > 0 && level === 0 && (
+              <div className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider ml-12 mb-2">
+                Related Contacts
+              </div>
+            )}
             {children.map((child) => (
               <ContactCard
                 key={child.id}
