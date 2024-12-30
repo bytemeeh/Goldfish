@@ -1,6 +1,11 @@
 {
   "variant": "professional",
-  "primary": "hsl(211, 100%, 50%)", 
+  "primary": "hsl(211, 100%, 50%)",
   "appearance": "light",
-  "radius": 0.75 
+  "radius": 0.75,
+  "chart-1": "hsl(142, 76%, 36%)",
+  "chart-2": "hsl(45, 93%, 47%)",
+  "chart-3": "hsl(211, 100%, 50%)",
+  "chart-4": "hsl(280, 87%, 65%)",
+  "chart-5": "hsl(19, 97%, 57%)"
 }
