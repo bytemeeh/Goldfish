@@ -61,6 +61,7 @@ export function RelationshipTypeSelector({
         return (
           <Button
             key={type}
+            type="button" // Explicitly set type to prevent form submission
             variant="outline"
             size="sm"
             className={cn(
@@ -69,7 +70,10 @@ export function RelationshipTypeSelector({
                 ? "bg-primary text-primary-foreground border-primary" 
                 : "hover:bg-secondary"
             )}
-            onClick={() => onChange(type)}
+            onClick={(e) => {
+              e.preventDefault(); // Prevent any form submission
+              onChange(type);
+            }}
           >
             <Icon className="h-4 w-4" />
             <span>{relationshipLabels[type]}</span>

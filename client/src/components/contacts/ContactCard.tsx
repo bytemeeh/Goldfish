@@ -54,24 +54,23 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
     },
   });
 
-  // Calculate indentation and nested styles based on level
-  const indentClass = level > 0 ? `ml-${Math.min(level * 12, 48)}` : '';
-  const borderOpacity = Math.max(90 - level * 20, 30); // Decreases opacity with depth
+  const indentClass = level > 0 ? `ml-${Math.min(level * 16, 64)}` : '';
+  const borderOpacity = Math.max(90 - level * 15, 40);
   const borderColor = `border-primary opacity-${borderOpacity}`;
-  const bgOpacity = Math.min((level + 1) * 5, 20); // Increases background opacity with depth
+  const bgOpacity = Math.min((level + 1) * 8, 25);
 
-  // Check if max depth is reached
-  const isMaxDepth = level >= 3; // 0-based index, so level 3 is the 4th layer
+  // Maximum depth is 4 levels (0-based index, so level 3 is the 4th layer)
+  const isMaxDepth = level >= 3;
 
   return (
     <div className={`relative ${indentClass}`}>
-      {/* Connection lines for nested items */}
       {level > 0 && (
         <>
-          {/* Vertical connection line */}
-          <div className="absolute -left-4 top-0 bottom-0 w-0.5 bg-primary/20" />
-          {/* Horizontal connection line */}
-          <div className="absolute -left-4 top-6 w-4 h-0.5 bg-primary/20" />
+          {/* Enhanced connection lines with gradients */}
+          <div className="absolute -left-8 top-0 bottom-0 w-[2px] bg-gradient-to-b from-primary/50 to-primary/20" />
+          <div className="absolute -left-8 top-8 w-8 h-[2px] bg-gradient-to-r from-primary/50 to-primary/20" />
+          {/* Connection node indicator */}
+          <div className="absolute -left-[35px] top-[29px] w-4 h-4 rounded-full border-2 border-primary/40 bg-background/80 backdrop-blur-sm" />
         </>
       )}
 
@@ -81,11 +80,13 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
           border-l-4 
           ${borderColor}
           hover:border-l-primary/90 
-          transition-all duration-200 ease-in-out
+          transition-all duration-300 ease-in-out
           bg-background/[0.${bgOpacity}]
-          ${level > 0 ? 'shadow-sm' : 'shadow-md'}
+          ${level > 0 ? 'shadow-sm hover:shadow-md' : 'shadow-md'}
           backdrop-blur-sm
           rounded-xl
+          hover:translate-x-1.5
+          hover:bg-background/[0.${bgOpacity + 5}]
         `}
       >
         <CardHeader className="flex flex-row items-start space-x-4 pb-2">
@@ -109,7 +110,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
 
           <div className="flex-1 space-y-2">
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-medium tracking-tight text-foreground leading-none">
+              <h3 className={`text-lg font-medium tracking-tight leading-none ${level === 0 ? 'text-foreground' : `text-foreground/[0.${90 - level * 10}]`}`}>
                 {contact.name}
               </h3>
               {contact.relationshipType && (
@@ -130,7 +131,6 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                   </a>
                 </div>
               )}
-
               {contact.phone && (
                 <div className="flex items-center text-sm text-muted-foreground">
                   <Phone className="mr-2 h-4 w-4" />
@@ -139,7 +139,6 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                   </a>
                 </div>
               )}
-
               {contact.birthday && (
                 <div className="flex items-center text-sm text-muted-foreground">
                   <Cake className="mr-2 h-4 w-4" />
@@ -181,8 +180,8 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
           )}
 
           {isMaxDepth ? (
-            <div className="flex items-center justify-center p-3 bg-muted/30 rounded-xl backdrop-blur-sm">
-              <AlertCircle className="h-4 w-4 text-muted-foreground mr-2" />
+            <div className="flex items-center justify-center p-4 bg-muted/40 rounded-xl backdrop-blur-sm border border-primary/10">
+              <AlertCircle className="h-4 w-4 text-primary/60 mr-2" />
               <span className="text-sm text-muted-foreground font-medium">
                 Maximum relationship depth reached
               </span>
@@ -227,9 +226,8 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
         </CardContent>
       </Card>
 
-      {/* Render children with increased nesting level */}
       {isExpanded && children.length > 0 && (
-        <div className="space-y-6 mt-6">
+        <div className="space-y-8 mt-8">
           {children.map((child) => (
             <ContactCard
               key={child.id}

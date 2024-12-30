@@ -157,7 +157,7 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email (optional)</FormLabel>
+              <FormLabel>Email</FormLabel>
               <FormControl>
                 <Input type="email" {...field} />
               </FormControl>
@@ -171,7 +171,7 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
           name="phone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Phone (optional)</FormLabel>
+              <FormLabel>Phone</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -185,7 +185,7 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
           name="birthday"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Birthday (optional)</FormLabel>
+              <FormLabel>Birthday</FormLabel>
               <FormControl>
                 <Input type="date" {...field} />
               </FormControl>
@@ -199,7 +199,7 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
           name="notes"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Notes (optional)</FormLabel>
+              <FormLabel>Notes</FormLabel>
               <FormControl>
                 <Textarea {...field} />
               </FormControl>
@@ -208,9 +208,11 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
           )}
         />
 
-        <Button type="submit" disabled={isPending}>
-          {isPending ? "Saving..." : initialData?.id ? "Update Contact" : "Add Contact"}
-        </Button>
+        <div className="flex justify-end gap-2">
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Saving..." : initialData?.id ? "Update Contact" : "Add Contact"}
+          </Button>
+        </div>
       </form>
     </Form>
   );
