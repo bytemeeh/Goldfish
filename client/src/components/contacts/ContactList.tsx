@@ -89,25 +89,30 @@ export function ContactList({ searchFilters }: ContactListProps) {
   console.log('Personal contact:', personalContact);
 
   // Helper function to build contact hierarchy
-  const buildHierarchy = (parentId: number | null = null, level: number = 0): Contact[] => {
-    const directChildren = contacts.filter(c => c.parentId === parentId);
-    console.log(`Level ${level} - Found ${directChildren.length} children for parent ${parentId}:`, 
-      directChildren.map(c => ({
+  const buildHierarchy = (contactId: number | null = null, visited = new Set<number>()): Contact[] => {
+    // Get children for this contact
+    const children = contacts.filter(c => c.parentId === contactId);
+    console.log(`Building hierarchy for contact ${contactId}, found children:`, 
+      children.map(c => ({
         id: c.id,
         name: c.name,
         relationshipType: c.relationshipType
       }))
     );
 
-    return directChildren.map(child => {
-      const childrenOfChild = buildHierarchy(child.id, level + 1);
-      console.log(`Level ${level} - Built hierarchy for ${child.name}:`, 
-        childrenOfChild.map(c => ({
-          id: c.id,
-          name: c.name,
-          relationshipType: c.relationshipType
-        }))
-      );
+    return children.map(child => {
+      // Prevent infinite recursion
+      if (visited.has(child.id)) {
+        console.log(`Preventing circular reference for contact ${child.id}`);
+        return child;
+      }
+
+      const newVisited = new Set(visited);
+      newVisited.add(child.id);
+
+      // Get this child's children
+      const childrenOfChild = buildHierarchy(child.id, newVisited);
+      console.log(`Built hierarchy for ${child.name}:`, childrenOfChild);
 
       return {
         ...child,
@@ -116,33 +121,29 @@ export function ContactList({ searchFilters }: ContactListProps) {
     });
   };
 
-  // Get root level contacts (excluding personal contact and its direct children)
+  // Process all contacts into hierarchical structure
   const rootContacts = contacts.filter(c => 
     !c.isMe && // Not personal contact
-    !c.parentId && // No parent
-    !(personalContact && c.parentId === personalContact.id) // Not direct child of personal contact
+    !c.parentId // No parent
   );
   console.log('Root contacts:', rootContacts);
 
-  // Build hierarchies for root contacts
   const processedContacts = rootContacts.map(contact => ({
     ...contact,
     children: buildHierarchy(contact.id)
   }));
-  console.log('Processed root contacts:', processedContacts);
 
-  // Build personal contact hierarchy separately
+  // Build personal contact hierarchy
   let personalHierarchy = null;
   if (personalContact) {
-    const personalChildren = buildHierarchy(personalContact.id);
-    console.log('Personal contact children:', personalChildren);
+    // Get direct relationships for personal contact
     personalHierarchy = {
       ...personalContact,
-      children: personalChildren
+      children: buildHierarchy(personalContact.id)
     };
   }
 
-  // Categorize the root contacts (excluding personal contact hierarchy)
+  // Categorize contacts
   const categorizedContacts = categories.map(category => ({
     ...category,
     contacts: processedContacts.filter(contact =>
@@ -184,7 +185,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
                   <ContactCard 
                     key={contact.id} 
                     contact={contact}
-                    children={contact.children || []}
+                    children={contact.children}
                   />
                 ))}
               </div>
@@ -201,7 +202,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
                 <ContactCard 
                   key={contact.id} 
                   contact={contact}
-                  children={contact.children || []}
+                  children={contact.children}
                 />
               ))}
             </div>
