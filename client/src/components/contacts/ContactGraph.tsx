@@ -68,6 +68,7 @@ interface NodeData {
   level: number;
   hasChildren?: boolean;
   isCollapsed?: boolean;
+  childCount?: number;
 }
 
 export function ContactGraph() {
@@ -78,16 +79,50 @@ export function ContactGraph() {
     queryKey: ["/api/contacts"],
   });
 
-  const toggleNodeCollapse = useCallback((nodeId: string) => {
-    setCollapsedNodes(prev => {
-      const next = new Set(prev);
-      if (next.has(nodeId)) {
-        next.delete(nodeId);
-      } else {
-        next.add(nodeId);
-      }
-      return next;
-    });
+  const toggleNodeCollapse = useCallback((node: NodeData, event: MouseEvent) => {
+    // Check if click was on the expand/collapse indicator
+    const canvas = graphRef.current?.canvas;
+    if (!canvas) return;
+
+    const context = canvas.getContext('2d');
+    const { x, y } = node;
+    const size = node.val;
+    const iconSize = size * 0.4;
+
+    // Define the clickable area for the expand/collapse indicator
+    const indicatorX = x + size + 4;
+    const indicatorY = y;
+    const indicatorWidth = iconSize;
+    const indicatorHeight = iconSize;
+
+    // Get click coordinates relative to canvas
+    const rect = canvas.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const clickY = event.clientY - rect.top;
+
+    // Transform coordinates based on zoom and pan
+    const transform = context.getTransform();
+    const transformedX = (clickX - transform.e) / transform.a;
+    const transformedY = (clickY - transform.f) / transform.d;
+
+    // Check if click was within the indicator area
+    if (
+      transformedX >= indicatorX &&
+      transformedX <= indicatorX + indicatorWidth &&
+      transformedY >= indicatorY - indicatorHeight/2 &&
+      transformedY <= indicatorY + indicatorHeight/2
+    ) {
+      setCollapsedNodes(prev => {
+        const next = new Set(prev);
+        if (next.has(node.id)) {
+          next.delete(node.id);
+        } else {
+          next.add(node.id);
+        }
+        return next;
+      });
+      event.stopPropagation();
+    }
   }, []);
 
   const graphData = useCallback(() => {
@@ -100,6 +135,12 @@ export function ContactGraph() {
     const links: any[] = [];
     const processedIds = new Set<number>();
 
+    // Helper function to count total descendants
+    const countDescendants = (contactId: number): number => {
+      const children = contacts.filter(c => c.parentId === contactId);
+      return children.reduce((sum, child) => sum + 1 + countDescendants(child.id), 0);
+    };
+
     // Helper function to calculate node positions
     const calculateNodePosition = (
       level: number,
@@ -108,8 +149,8 @@ export function ContactGraph() {
       parentX?: number,
       parentY?: number
     ) => {
-      const levelSpacing = 300; // Vertical spacing between levels
-      const nodeSpacing = 200;  // Horizontal spacing between nodes
+      const levelSpacing = 250; // Vertical spacing between levels
+      const nodeSpacing = 180;  // Horizontal spacing between nodes
 
       const y = level * levelSpacing;
       let x;
@@ -133,9 +174,6 @@ export function ContactGraph() {
     const isNodeVisible = (contact: Contact): boolean => {
       if (contact.isMe) return true;
       if (!contact.parentId) return true;
-
-      const parentId = contact.parentId.toString();
-      if (collapsedNodes.has(parentId)) return false;
 
       // Check if any ancestor is collapsed
       let currentContact = contact;
@@ -163,7 +201,8 @@ export function ContactGraph() {
       ...rootPos,
       level: 0,
       hasChildren: rootChildren.length > 0,
-      isCollapsed: collapsedNodes.has(meContact.id.toString())
+      isCollapsed: collapsedNodes.has(meContact.id.toString()),
+      childCount: countDescendants(meContact.id)
     });
     processedIds.add(meContact.id);
 
@@ -178,6 +217,7 @@ export function ContactGraph() {
       if (!processedIds.has(contact.id) && isNodeVisible(contact)) {
         const pos = calculateNodePosition(1, index, directConnections.length);
         const children = contacts.filter(c => c.parentId === contact.id);
+        const descendantCount = countDescendants(contact.id);
 
         nodes.push({
           id: contact.id.toString(),
@@ -193,7 +233,8 @@ export function ContactGraph() {
           ...pos,
           level: 1,
           hasChildren: children.length > 0,
-          isCollapsed: collapsedNodes.has(contact.id.toString())
+          isCollapsed: collapsedNodes.has(contact.id.toString()),
+          childCount: descendantCount
         });
         processedIds.add(contact.id);
 
@@ -232,11 +273,12 @@ export function ContactGraph() {
                 ...childPos,
                 level: 2,
                 hasChildren: grandchildren.length > 0,
-                isCollapsed: collapsedNodes.has(child.id.toString())
+                isCollapsed: collapsedNodes.has(child.id.toString()),
+                childCount: countDescendants(child.id)
               });
               processedIds.add(child.id);
 
-              // Add link to parent
+              // Add link to parent with straight line
               links.push({
                 source: contact.id.toString(),
                 target: child.id.toString(),
@@ -252,9 +294,9 @@ export function ContactGraph() {
     return { nodes, links };
   }, [contacts, collapsedNodes]);
 
-  const handleNodeClick = useCallback((node: NodeData) => {
+  const handleNodeClick = useCallback((node: NodeData, event: MouseEvent) => {
     if (node.hasChildren) {
-      toggleNodeCollapse(node.id);
+      toggleNodeCollapse(node, event);
     }
     setSelectedNode(selectedNode?.id === node.id ? null : node);
   }, [selectedNode, toggleNodeCollapse]);
@@ -359,19 +401,35 @@ export function ContactGraph() {
               ctx.fillStyle = node.color;
               ctx.beginPath();
               const iconSize = size * 0.4;
+              const indicatorX = node.x + size + 4;
+              const indicatorY = node.y;
+
               if (node.isCollapsed) {
-                // Draw triangle pointing right
-                ctx.moveTo(node.x + size + 4, node.y);
-                ctx.lineTo(node.x + size + 4 + iconSize, node.y - iconSize / 2);
-                ctx.lineTo(node.x + size + 4 + iconSize, node.y + iconSize / 2);
+                // Draw expand button (►)
+                ctx.moveTo(indicatorX, indicatorY);
+                ctx.lineTo(indicatorX + iconSize, indicatorY - iconSize / 2);
+                ctx.lineTo(indicatorX + iconSize, indicatorY + iconSize / 2);
               } else {
-                // Draw triangle pointing down
-                ctx.moveTo(node.x + size + 4, node.y - iconSize / 2);
-                ctx.lineTo(node.x + size + 4 + iconSize, node.y);
-                ctx.lineTo(node.x + size + 4, node.y + iconSize / 2);
+                // Draw collapse button (▼)
+                ctx.moveTo(indicatorX, indicatorY - iconSize / 2);
+                ctx.lineTo(indicatorX + iconSize, indicatorY);
+                ctx.lineTo(indicatorX, indicatorY + iconSize / 2);
               }
               ctx.closePath();
               ctx.fill();
+
+              // Show child count if collapsed
+              if (node.isCollapsed && node.childCount) {
+                ctx.fillStyle = "#9ca3af"; // Gray
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = `${10/globalScale}px Inter`;
+                ctx.fillText(
+                  `+${node.childCount}`,
+                  indicatorX + iconSize + 15,
+                  indicatorY
+                );
+              }
             }
 
             // Draw simple icon (circle with initial)
@@ -392,7 +450,7 @@ export function ContactGraph() {
             const start = link.source;
             const end = link.target;
 
-            // Draw line
+            // Draw straight line
             ctx.strokeStyle = "#e2e8f0";
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -400,7 +458,7 @@ export function ContactGraph() {
             ctx.lineTo(end.x, end.y);
             ctx.stroke();
 
-            // Draw relationship label when zoomed in
+            // Draw relationship label
             if (globalScale > 1.5 && link.relationship) {
               const label = link.relationship;
               const fontSize = 12 / globalScale;
