@@ -53,23 +53,30 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
     },
   });
 
-  // Indent based on nesting level
-  const indentClass = level > 0 ? `ml-${Math.min(level * 4, 16)}` : '';
+  // Calculate indentation and nested styles based on level
+  const indentClass = level > 0 ? `ml-${Math.min(level * 6, 24)}` : '';
+  const levelBackgroundClass = level > 0 ? `bg-background/[0.${Math.min(level * 2, 8)}]` : '';
+  const borderColor = level === 0 ? 'primary' : `primary/[0.${Math.max(8 - level * 2, 3)}]`;
 
   return (
-    <div className={`space-y-4 ${indentClass}`}>
-      <Card className="relative border-l-4 border-l-primary/20 hover:border-l-primary/40 transition-colors">
+    <div className={`relative ${indentClass}`}>
+      {/* Connection line for nested items */}
+      {level > 0 && (
+        <div className="absolute -left-4 top-0 bottom-0 w-px bg-primary/20" />
+      )}
+
+      <Card className={`relative border-l-4 border-l-${borderColor} hover:border-l-primary/60 transition-colors ${levelBackgroundClass}`}>
         <CardHeader className="flex flex-row items-start space-x-4 pb-2">
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 mt-1"
+            className={`h-6 w-6 mt-1 ${children.length > 0 ? 'text-primary hover:text-primary/80' : 'text-muted-foreground'}`}
             onClick={() => setIsExpanded(!isExpanded)}
           >
             {children.length > 0 ? (
-              isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+              isExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />
             ) : (
-              <User className="h-4 w-4 text-muted-foreground" />
+              <User className="h-4 w-4" />
             )}
           </Button>
 
@@ -178,7 +185,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
 
       {/* Render children with increased nesting level */}
       {isExpanded && children.length > 0 && (
-        <div className="space-y-4">
+        <div className="space-y-4 mt-4">
           {children.map((child) => (
             <ContactCard 
               key={child.id} 
