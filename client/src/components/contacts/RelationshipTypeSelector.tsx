@@ -54,12 +54,6 @@ export function RelationshipTypeSelector({
   // Otherwise, show all types for root-level contacts
   const availableTypes = validChildTypes || Object.keys(relationshipIcons) as RelationshipType[];
 
-  const handleTypeSelect = (e: React.MouseEvent, type: RelationshipType) => {
-    e.preventDefault(); // Prevent form submission
-    e.stopPropagation(); // Stop event bubbling
-    onChange(type);
-  };
-
   return (
     <div className="flex flex-wrap gap-2">
       {availableTypes.map((type) => {
@@ -76,7 +70,10 @@ export function RelationshipTypeSelector({
                 ? "bg-primary text-primary-foreground border-primary" 
                 : "hover:bg-secondary"
             )}
-            onClick={(e) => handleTypeSelect(e, type)}
+            onClick={(e) => {
+              e.preventDefault(); // Prevent any form submission
+              onChange(type);
+            }}
           >
             <Icon className="h-4 w-4" />
             <span>{relationshipLabels[type]}</span>

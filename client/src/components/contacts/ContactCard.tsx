@@ -71,7 +71,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
       {level > 0 && (
         <>
           {/* Enhanced connection lines with refined gradients */}
-          <div
+          <div 
             className="absolute -left-12 top-0 bottom-0 w-[1px]"
             style={{
               background: `linear-gradient(180deg, 
@@ -79,7 +79,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                 hsl(var(--primary)/${Math.max(30 - level * 8, 15)}%) 100%)`
             }}
           />
-          <div
+          <div 
             className="absolute -left-12 top-8 w-12 h-[1px]"
             style={{
               background: `linear-gradient(90deg, 
@@ -88,7 +88,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
             }}
           />
           {/* Connection node with subtle animation */}
-          <motion.div
+          <motion.div 
             className="absolute -left-[50px] top-[29px] w-3 h-3 rounded-full border bg-background"
             style={{
               borderColor: `hsl(var(--primary)/${Math.max(40 - level * 8, 20)}%)`
@@ -152,17 +152,17 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
             </motion.button>
 
             <div className="flex-1 space-y-2">
-              <motion.div
+              <motion.div 
                 className="flex items-center gap-2"
                 animate={{ opacity: 1 }}
                 initial={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                <h3
+                <h3 
                   className={`
                     text-lg font-medium tracking-tight leading-none
-                    ${level === 0
-                      ? 'text-foreground'
+                    ${level === 0 
+                      ? 'text-foreground' 
                       : `text-foreground/[0.${Math.max(90 - level * 10, 60)}]`}
                   `}
                 >
@@ -192,15 +192,15 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                     className="space-y-2 overflow-hidden"
                   >
                     {contact.email && (
-                      <motion.div
+                      <motion.div 
                         className="flex items-center text-sm text-muted-foreground/90"
                         initial={{ x: -20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.1 }}
                       >
                         <Mail className="mr-2 h-4 w-4" />
-                        <a
-                          href={`mailto:${contact.email}`}
+                        <a 
+                          href={`mailto:${contact.email}`} 
                           className="hover:text-primary transition-colors"
                         >
                           {contact.email}
@@ -208,15 +208,15 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                       </motion.div>
                     )}
                     {contact.phone && (
-                      <motion.div
+                      <motion.div 
                         className="flex items-center text-sm text-muted-foreground/90"
                         initial={{ x: -20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.2 }}
                       >
                         <Phone className="mr-2 h-4 w-4" />
-                        <a
-                          href={`tel:${contact.phone}`}
+                        <a 
+                          href={`tel:${contact.phone}`} 
                           className="hover:text-primary transition-colors"
                         >
                           {contact.phone}
@@ -224,7 +224,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                       </motion.div>
                     )}
                     {contact.birthday && (
-                      <motion.div
+                      <motion.div 
                         className="flex items-center text-sm text-muted-foreground/90"
                         initial={{ x: -20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
@@ -235,7 +235,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                       </motion.div>
                     )}
                     {contact.notes && (
-                      <motion.p
+                      <motion.p 
                         className={`
                           text-sm text-muted-foreground/80 
                           mt-2 pl-4 
@@ -249,7 +249,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                       </motion.p>
                     )}
                     {(contact.createdAt || contact.updatedAt) && (
-                      <motion.div
+                      <motion.div 
                         className="flex flex-col gap-1 text-xs text-muted-foreground/50 mt-3"
                         initial={{ y: -10, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
@@ -319,18 +319,9 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                 `}
                 onClick={() => setIsAddingChild(true)}
               >
-                <motion.div
-                  className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center mr-2"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 400,
-                    damping: 25
-                  }}
-                >
-                  <Plus className="h-4 w-4 text-primary" />
-                </motion.div>
+                <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center mr-2">
+                  <Plus className="h-3.5 w-3.5 text-primary" />
+                </div>
                 Add Related Contact
               </Button>
             )}
