@@ -353,19 +353,22 @@ export function ContactGraph() {
           ctx.fill();
 
           const textWidth = ctx.measureText(label).width;
-          const bgHeight = fontSize * 1.5;
-          const bgWidth = textWidth + 16;
+          const bgHeight = fontSize * 1.8;
+          const bgWidth = textWidth + 24;
           const bgY = node.y! + nodeSize * 2;
 
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
-          ctx.shadowBlur = 4;
+          // Enhanced background
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
+          ctx.shadowBlur = 8;
           ctx.beginPath();
-          ctx.roundRect(node.x! - bgWidth/2, bgY - bgHeight/2, bgWidth, bgHeight, 4);
+          ctx.roundRect(node.x! - bgWidth/2, bgY - bgHeight/2, bgWidth, bgHeight, 6);
           ctx.fill();
 
+          // Text with better contrast
           ctx.shadowColor = 'transparent';
-          ctx.fillStyle = "hsl(0, 0%, 100%)"; // Assuming '--foreground' maps to white
+          ctx.fillStyle = "hsl(240, 10%, 15%)";
+          ctx.font = `500 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
           ctx.fillText(label, node.x!, bgY);
         }}
         linkColor={() => "rgba(0, 0, 0, 0.08)"}
