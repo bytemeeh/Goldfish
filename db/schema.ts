@@ -15,6 +15,68 @@ export const relationshipTypes = [
   "boyfriend/girlfriend"
 ] as const;
 
+// Define relationship cascading rules
+export type RelationshipCascadeRule = {
+  parentType: RelationshipType;
+  validChildTypes: RelationshipType[];
+  cascadeUpdates?: {
+    [K in RelationshipType]?: RelationshipType;
+  };
+};
+
+export const relationshipCascadeRules: RelationshipCascadeRule[] = [
+  {
+    parentType: "spouse",
+    validChildTypes: ["child"],
+    cascadeUpdates: {
+      child: "child" // Children of a spouse are also your children
+    }
+  },
+  {
+    parentType: "boyfriend/girlfriend",
+    validChildTypes: ["child"],
+    cascadeUpdates: {
+      child: "child"
+    }
+  },
+  {
+    parentType: "mother",
+    validChildTypes: ["sibling"],
+    cascadeUpdates: {
+      sibling: "sibling" // Siblings of your mother are your aunts/uncles (simplified as sibling for now)
+    }
+  },
+  {
+    parentType: "father",
+    validChildTypes: ["sibling"],
+    cascadeUpdates: {
+      sibling: "sibling"
+    }
+  },
+  {
+    parentType: "sibling",
+    validChildTypes: ["spouse", "child"],
+    cascadeUpdates: {
+      child: "child" // Children of your sibling are your nieces/nephews (simplified as child for now)
+    }
+  },
+  {
+    parentType: "friend",
+    validChildTypes: ["spouse", "child", "friend"],
+    cascadeUpdates: {
+      child: "child",
+      friend: "friend"
+    }
+  },
+  {
+    parentType: "child",
+    validChildTypes: ["spouse", "child"],
+    cascadeUpdates: {
+      child: "child" // Children of your child are your grandchildren (simplified as child for now)
+    }
+  }
+];
+
 export const contacts = pgTable("contacts", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -40,6 +102,23 @@ export const contactsRelations = relations(contacts, ({ one, many }) => ({
   }),
   children: many(contacts),
 }));
+
+// Helper function to get valid child relationship types for a given parent type
+export function getValidChildRelationshipTypes(parentType?: RelationshipType): RelationshipType[] {
+  if (!parentType) return relationshipTypes as RelationshipType[];
+
+  const rule = relationshipCascadeRules.find(r => r.parentType === parentType);
+  return rule?.validChildTypes ?? [];
+}
+
+// Helper function to get cascaded relationship type
+export function getCascadedRelationshipType(
+  parentType: RelationshipType,
+  childType: RelationshipType
+): RelationshipType | undefined {
+  const rule = relationshipCascadeRules.find(r => r.parentType === parentType);
+  return rule?.cascadeUpdates?.[childType];
+}
 
 // Create Zod schemas with proper validation
 export const insertContactSchema = createInsertSchema(contacts, {

@@ -40,7 +40,7 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
   const { toast } = useToast();
 
   // Fetch parent contact if parentId is provided
-  const { data: parentContact } = useQuery<Contact>({
+  const { data: parentContact } = useQuery<Contact & { validChildTypes: RelationshipType[] }>({
     queryKey: ['/api/contacts', parentId],
     enabled: !!parentId,
   });
@@ -143,6 +143,7 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
                     value={field.value as RelationshipType} 
                     onChange={field.onChange}
                     parentContact={parentContact}
+                    validChildTypes={parentContact?.validChildTypes}
                   />
                 </FormControl>
                 <FormMessage />

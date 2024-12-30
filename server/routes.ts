@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { contacts, insertContactSchema } from "@db/schema";
+import { contacts, insertContactSchema, getCascadedRelationshipType, getValidChildRelationshipTypes } from "@db/schema";
 import { and, or, eq, ilike, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
 
@@ -10,6 +10,45 @@ interface SearchFilters {
   email?: string;
   phone?: string;
   notes?: string;
+}
+
+async function updateRelationshipsCascading(contactId: number, newParentId: number | null, newRelationType: string | null) {
+  // Get the contact and its children
+  const [contact] = await db
+    .select()
+    .from(contacts)
+    .where(eq(contacts.id, contactId));
+
+  if (!contact) return;
+
+  // Get all descendants to update their relationship types
+  const children = await db
+    .select()
+    .from(contacts)
+    .where(eq(contacts.parentId, contactId));
+
+  // Update children's relationship types based on cascade rules
+  for (const child of children) {
+    if (child.relationshipType && newRelationType) {
+      const cascadedType = getCascadedRelationshipType(
+        newRelationType as any,
+        child.relationshipType as any
+      );
+
+      if (cascadedType) {
+        await db
+          .update(contacts)
+          .set({
+            relationshipType: cascadedType,
+            updatedAt: new Date().toISOString()
+          })
+          .where(eq(contacts.id, child.id));
+
+        // Recursively update this child's descendants
+        await updateRelationshipsCascading(child.id, child.parentId, cascadedType);
+      }
+    }
+  }
 }
 
 export function registerRoutes(app: Express): Server {
@@ -123,23 +162,31 @@ export function registerRoutes(app: Express): Server {
     const { id } = req.params;
 
     try {
-      const contact = await db
+      const [contact] = await db
         .select()
         .from(contacts)
         .where(eq(contacts.id, parseInt(id)))
         .limit(1);
 
-      if (!contact.length) {
-        res.status(404).json({ message: "Contact not found" });
-        return;
+      if (!contact) {
+        return res.status(404).json({ message: "Contact not found" });
       }
+
+      // Get valid relationship types for children of this contact
+      const validChildTypes = contact.relationshipType
+        ? getValidChildRelationshipTypes(contact.relationshipType as any)
+        : [];
 
       const children = await db
         .select()
         .from(contacts)
-        .where(eq(contacts.parentId, contact[0].id));
+        .where(eq(contacts.parentId, contact.id));
 
-      res.json({ ...contact[0], children });
+      res.json({ 
+        ...contact, 
+        children,
+        validChildTypes 
+      });
     } catch (error) {
       console.error('Error fetching contact:', error);
       res.status(500).json({ message: "Failed to fetch contact" });
@@ -148,8 +195,6 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/contacts", async (req, res) => {
     try {
-      console.log('Received contact data:', req.body);
-
       // Validate the input data
       const validatedData = insertContactSchema.parse(req.body);
 
@@ -160,7 +205,15 @@ export function registerRoutes(app: Express): Server {
         updatedAt: now,
       }).returning();
 
-      console.log('Created contact:', result[0]);
+      if (validatedData.parentId && validatedData.relationshipType) {
+        // Trigger cascading updates if this is a child contact
+        await updateRelationshipsCascading(
+          result[0].id,
+          validatedData.parentId,
+          validatedData.relationshipType
+        );
+      }
+
       res.json(result[0]);
     } catch (error) {
       console.error('Error creating contact:', error);
@@ -185,6 +238,16 @@ export function registerRoutes(app: Express): Server {
         })
         .where(eq(contacts.id, parseInt(id)))
         .returning();
+
+      // Trigger cascading updates if relationship type changed
+      if (validatedData.relationshipType) {
+        await updateRelationshipsCascading(
+          parseInt(id),
+          validatedData.parentId,
+          validatedData.relationshipType
+        );
+      }
+
       res.json(result[0]);
     } catch (error) {
       console.error('Error updating contact:', error);

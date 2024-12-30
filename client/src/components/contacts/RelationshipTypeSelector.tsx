@@ -15,88 +15,67 @@ interface RelationshipTypeSelectorProps {
   value?: RelationshipType;
   onChange: (type: RelationshipType) => void;
   parentContact?: Contact;
+  validChildTypes?: RelationshipType[];
 }
 
-// Define available relationship types based on parent context
-function getAvailableRelationships(parentContact?: Contact): Array<{
-  type: RelationshipType;
-  icon: React.ComponentType<any>;
-  label: string;
-}> {
-  // If no parent (root level), show all relationships relative to "me"
-  if (!parentContact) {
-    return [
-      { type: "sibling", icon: Users, label: "Sibling" },
-      { type: "mother", icon: Heart, label: "Mother" },
-      { type: "father", icon: UserCircle2, label: "Father" },
-      { type: "brother", icon: UserPlus, label: "Brother" },
-      { type: "friend", icon: Users, label: "Friend" },
-      { type: "child", icon: Baby, label: "Child" },
-      { type: "co-worker", icon: Briefcase, label: "Co-worker" },
-      { type: "spouse", icon: HeartHandshake, label: "Spouse" },
-      { type: "boyfriend/girlfriend", icon: Heart, label: "Boyfriend/Girlfriend" }
-    ];
-  }
+// Icon mapping for different relationship types
+const relationshipIcons: Record<RelationshipType, React.ComponentType<any>> = {
+  sibling: Users,
+  mother: Heart,
+  father: UserCircle2,
+  brother: UserPlus,
+  friend: Users,
+  child: Baby,
+  "co-worker": Briefcase,
+  spouse: HeartHandshake,
+  "boyfriend/girlfriend": Heart,
+};
 
-  // Based on parent's relationship type, return appropriate options
-  switch (parentContact.relationshipType) {
-    case "spouse":
-    case "boyfriend/girlfriend":
-      return [
-        { type: "child", icon: Baby, label: "Child" }
-      ];
-    case "friend":
-      return [
-        { type: "spouse", icon: HeartHandshake, label: "Spouse" },
-        { type: "child", icon: Baby, label: "Child" },
-        { type: "friend", icon: Users, label: "Friend" }
-      ];
-    case "sibling":
-      return [
-        { type: "spouse", icon: HeartHandshake, label: "Spouse" },
-        { type: "child", icon: Baby, label: "Child" }
-      ];
-    case "mother":
-    case "father":
-      return [
-        { type: "sibling", icon: Users, label: "Sibling" }
-      ];
-    case "child":
-      return [
-        { type: "spouse", icon: HeartHandshake, label: "Spouse" },
-        { type: "child", icon: Baby, label: "Child" }
-      ];
-    default:
-      return [
-        { type: "spouse", icon: HeartHandshake, label: "Spouse" },
-        { type: "child", icon: Baby, label: "Child" },
-        { type: "friend", icon: Users, label: "Friend" }
-      ];
-  }
-}
+// Labels for relationship types
+const relationshipLabels: Record<RelationshipType, string> = {
+  sibling: "Sibling",
+  mother: "Mother",
+  father: "Father",
+  brother: "Brother",
+  friend: "Friend",
+  child: "Child",
+  "co-worker": "Co-worker",
+  spouse: "Spouse",
+  "boyfriend/girlfriend": "Boyfriend/Girlfriend",
+};
 
-export function RelationshipTypeSelector({ value, onChange, parentContact }: RelationshipTypeSelectorProps) {
-  const availableRelationships = getAvailableRelationships(parentContact);
+export function RelationshipTypeSelector({ 
+  value, 
+  onChange, 
+  parentContact,
+  validChildTypes 
+}: RelationshipTypeSelectorProps) {
+  // If we have valid child types from the parent, use those
+  // Otherwise, show all types for root-level contacts
+  const availableTypes = validChildTypes || Object.keys(relationshipIcons) as RelationshipType[];
 
   return (
     <div className="flex flex-wrap gap-2">
-      {availableRelationships.map(({ type, icon: Icon, label }) => (
-        <Button
-          key={type}
-          variant="outline"
-          size="sm"
-          className={cn(
-            "flex items-center gap-2 transition-all",
-            value === type 
-              ? "bg-primary text-primary-foreground border-primary" 
-              : "hover:bg-secondary"
-          )}
-          onClick={() => onChange(type)}
-        >
-          <Icon className="h-4 w-4" />
-          <span>{label}</span>
-        </Button>
-      ))}
+      {availableTypes.map((type) => {
+        const Icon = relationshipIcons[type];
+        return (
+          <Button
+            key={type}
+            variant="outline"
+            size="sm"
+            className={cn(
+              "flex items-center gap-2 transition-all",
+              value === type 
+                ? "bg-primary text-primary-foreground border-primary" 
+                : "hover:bg-secondary"
+            )}
+            onClick={() => onChange(type)}
+          >
+            <Icon className="h-4 w-4" />
+            <span>{relationshipLabels[type]}</span>
+          </Button>
+        );
+      })}
     </div>
   );
 }
