@@ -75,7 +75,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
         </>
       )}
 
-      <Card 
+      <Card
         className={`
           relative
           border-l-4 
@@ -151,9 +151,9 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="h-8 w-8 hover:bg-primary/5 transition-colors"
               >
                 <MoreVertical className="h-4 w-4" />
@@ -194,7 +194,9 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
               className="w-full hover:bg-primary/5 transition-colors rounded-lg border-primary/20"
               onClick={() => setIsAddingChild(true)}
             >
-              <Plus className="mr-2 h-4 w-4" />
+              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center mr-2">
+                <Plus className="h-3.5 w-3.5 text-primary" />
+              </div>
               Add Related Contact
             </Button>
           )}
@@ -229,8 +231,8 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
       {isExpanded && children.length > 0 && (
         <div className="space-y-6 mt-6">
           {children.map((child) => (
-            <ContactCard 
-              key={child.id} 
+            <ContactCard
+              key={child.id}
               contact={child}
               children={child.children}
               level={level + 1}
