@@ -60,7 +60,7 @@ interface ContactCardProps {
 }
 
 export function ContactCard({ contact, children = [], level = 0 }: ContactCardProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false); // Changed to false by default
   const [isAddingChild, setIsAddingChild] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
