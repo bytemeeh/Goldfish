@@ -9,6 +9,20 @@ import ForceGraph2D from "react-force-graph-2d";
 import type { NodeObject, LinkObject } from "react-force-graph-2d";
 import { motion, AnimatePresence } from "framer-motion";
 
+// Helper function to convert CSS HSL variable to rgba
+function hslToRgba(variable: string, alpha: number = 1): string {
+  // Create a temporary div to compute the style
+  const div = document.createElement('div');
+  div.style.color = `hsl(var(${variable}))`;
+  document.body.appendChild(div);
+  const color = window.getComputedStyle(div).color;
+  document.body.removeChild(div);
+
+  // Extract RGB values
+  const rgb = color.match(/\d+/g)?.map(Number) || [0, 0, 0];
+  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
+}
+
 // Contact details component
 function ContactDetails({ contact }: { contact: Contact }) {
   return (
@@ -99,8 +113,8 @@ export function ContactGraph() {
 
       // Get color based on relationship type
       const getNodeColor = (contact: Contact): string => {
-        if (contact.isMe) return "hsl(var(--primary))";
-        if (!contact.relationshipType) return "hsl(var(--muted))";
+        if (contact.isMe) return hslToRgba('--primary');
+        if (!contact.relationshipType) return hslToRgba('--muted');
 
         const categories = {
           family: ["mother", "father", "brother", "sibling", "child", "spouse"],
@@ -108,13 +122,12 @@ export function ContactGraph() {
           professional: ["co-worker"]
         };
 
-        if (categories.family.includes(contact.relationshipType)) return "hsl(var(--chart-1))";
-        if (categories.friends.includes(contact.relationshipType)) return "hsl(var(--chart-2))";
-        if (categories.professional.includes(contact.relationshipType)) return "hsl(var(--chart-3))";
-        return "hsl(var(--muted))";
+        if (categories.family.includes(contact.relationshipType)) return hslToRgba('--chart-1');
+        if (categories.friends.includes(contact.relationshipType)) return hslToRgba('--chart-2');
+        if (categories.professional.includes(contact.relationshipType)) return hslToRgba('--chart-3');
+        return hslToRgba('--muted');
       };
 
-      // Create nodes with enhanced visual properties
       const nodes: GraphNode[] = contacts.map(contact => ({
         id: contact.id,
         name: contact.name,
@@ -127,10 +140,8 @@ export function ContactGraph() {
         vy: 0
       }));
 
-      // Create links with relationship information
       const links: GraphLink[] = [];
 
-      // Handle explicit parent-child relationships
       contacts.forEach(contact => {
         if (!contact.parentId) return;
 
@@ -146,7 +157,6 @@ export function ContactGraph() {
         }
       });
 
-      // Handle root-level relationships with personal contact
       if (meContact) {
         contacts.forEach(contact => {
           if (contact.id === meContact.id || contact.parentId) return;
@@ -166,7 +176,6 @@ export function ContactGraph() {
 
       setGraphData({ nodes, links });
 
-      // Center and zoom graph after data changes
       if (graphRef.current) {
         setTimeout(() => {
           graphRef.current?.zoomToFit(400, 50);
@@ -177,7 +186,6 @@ export function ContactGraph() {
     }
   }, [contacts]);
 
-  // Handle node click with animation
   const handleNodeClick = useCallback((node: GraphNode | null) => {
     if (!contacts || !node) return;
     const contact = contacts.find(c => c.id === node.id);
@@ -207,7 +215,6 @@ export function ContactGraph() {
       ref={containerRef} 
       className="relative w-full h-[calc(100vh-12rem)] bg-card rounded-lg border shadow-sm overflow-hidden"
     >
-      {/* Selected Contact Details with Animation */}
       <AnimatePresence>
         {selectedContact && (
           <motion.div
@@ -233,7 +240,6 @@ export function ContactGraph() {
         )}
       </AnimatePresence>
 
-      {/* Graph Legend with Animation */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -242,27 +248,24 @@ export function ContactGraph() {
         <Card className="absolute top-4 right-4 p-4 bg-card/95 backdrop-blur-sm z-10 border-primary/10">
           <h3 className="font-semibold mb-3 text-sm">Relationship Types</h3>
           <div className="space-y-2.5">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--chart-1))" }} />
-              <span className="text-sm text-muted-foreground">Family</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--chart-2))" }} />
-              <span className="text-sm text-muted-foreground">Friends</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--chart-3))" }} />
-              <span className="text-sm text-muted-foreground">Professional</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--primary))" }} />
-              <span className="text-sm text-muted-foreground">Personal Card</span>
-            </div>
+            {[
+              { label: "Family", color: "--chart-1" },
+              { label: "Friends", color: "--chart-2" },
+              { label: "Professional", color: "--chart-3" },
+              { label: "Personal Card", color: "--primary" }
+            ].map(({ label, color }) => (
+              <div key={label} className="flex items-center gap-2">
+                <div 
+                  className="w-3 h-3 rounded-full" 
+                  style={{ backgroundColor: `hsl(var(${color}))` }}
+                />
+                <span className="text-sm text-muted-foreground">{label}</span>
+              </div>
+            ))}
           </div>
         </Card>
       </motion.div>
 
-      {/* Force Graph with Apple-style rendering */}
       <ForceGraph2D
         ref={graphRef}
         graphData={graphData}
@@ -277,27 +280,21 @@ export function ContactGraph() {
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          // Draw node glow effect with Apple-style gradient
+          // Draw node glow effect
           const gradient = ctx.createRadialGradient(node.x!, node.y!, 0, node.x!, node.y!, nodeSize * 2.5);
-          gradient.addColorStop(0, `${node.color}40`);
-          gradient.addColorStop(0.5, `${node.color}20`);
+          gradient.addColorStop(0, node.color.replace(')', ', 0.4)'));
+          gradient.addColorStop(0.5, node.color.replace(')', ', 0.2)'));
           gradient.addColorStop(1, 'transparent');
           ctx.fillStyle = gradient;
           ctx.beginPath();
           ctx.arc(node.x!, node.y!, nodeSize * 2.5, 0, 2 * Math.PI);
           ctx.fill();
 
-          // Draw node circle with soft shadow and inner glow
+          // Draw node circle
           ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
           ctx.shadowBlur = 8;
           ctx.shadowOffsetY = 2;
-
-          // Inner glow
-          const innerGradient = ctx.createRadialGradient(node.x!, node.y!, 0, node.x!, node.y!, nodeSize);
-          innerGradient.addColorStop(0, node.color);
-          innerGradient.addColorStop(1, node.color);
-
-          ctx.fillStyle = innerGradient;
+          ctx.fillStyle = node.color;
           ctx.beginPath();
           ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI);
           ctx.fill();
@@ -311,7 +308,6 @@ export function ContactGraph() {
           const bgWidth = textWidth + 16;
           const bgY = node.y! + nodeSize * 2;
 
-          // Frosted background
           ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
           ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
           ctx.shadowBlur = 4;
@@ -319,17 +315,16 @@ export function ContactGraph() {
           ctx.roundRect(node.x! - bgWidth/2, bgY - bgHeight/2, bgWidth, bgHeight, 4);
           ctx.fill();
 
-          // Draw text
           ctx.shadowColor = 'transparent';
           ctx.fillStyle = 'hsl(var(--foreground))';
           ctx.fillText(label, node.x!, bgY);
         }}
-        linkColor={() => "hsl(var(--border)/0.15)"}
+        linkColor={() => "rgba(0, 0, 0, 0.1)"}
         linkWidth={1}
         linkDirectionalParticles={4}
         linkDirectionalParticleWidth={2}
         linkDirectionalParticleSpeed={0.003}
-        linkDirectionalParticleColor={() => "hsl(var(--primary)/0.3)"}
+        linkDirectionalParticleColor={() => hslToRgba('--primary', 0.3)}
         backgroundColor="transparent"
         onNodeClick={handleNodeClick}
         width={dimensions.width}
