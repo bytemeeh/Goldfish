@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type Contact } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Phone, Cake, Heart, Users, Baby, Briefcase, UserCircle2, UserPlus, HeartHandshake } from "lucide-react";
+import { Mail, Phone, Cake } from "lucide-react";
 import { format } from "date-fns";
 import ForceGraph2D from "react-force-graph-2d";
 import type { NodeObject, LinkObject } from "react-force-graph-2d";
@@ -62,14 +62,14 @@ interface GraphNode extends NodeObject {
   relationshipType?: string;
   isMe?: boolean;
   color: string;
-  pulsePhase?: number; // Add phase for pulsing effect
+  pulsePhase?: number;
 }
 
 interface GraphLink extends LinkObject {
   source: GraphNode;
   target: GraphNode;
   type: string;
-  particleSpeed?: number; // Dynamic speed for each link
+  particleSpeed?: number;
 }
 
 interface GraphData {
@@ -79,7 +79,7 @@ interface GraphData {
 
 export function ContactGraph() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const graphRef = useRef<ForceGraph2D>(null);
+  const graphRef = useRef<any>();
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
@@ -88,7 +88,6 @@ export function ContactGraph() {
     queryKey: ["/api/contacts"],
   });
 
-  // Update dimensions on resize
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
@@ -106,7 +105,6 @@ export function ContactGraph() {
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Transform contacts data into graph format
   useEffect(() => {
     if (!contacts?.length) return;
 
@@ -136,7 +134,7 @@ export function ContactGraph() {
         relationshipType: contact.relationshipType,
         isMe: contact.isMe,
         color: getNodeColor(contact),
-        pulsePhase: Math.random() * Math.PI * 2, // Random phase for varied pulsing
+        pulsePhase: Math.random() * Math.PI * 2,
         x: 0,
         y: 0,
         vx: 0,
@@ -156,7 +154,7 @@ export function ContactGraph() {
             source: sourceNode,
             target: targetNode,
             type: contact.relationshipType || "undefined",
-            particleSpeed: 0.002 + Math.random() * 0.003 // Random speed variation
+            particleSpeed: 0.002 + Math.random() * 0.003
           });
         }
       });
@@ -292,19 +290,20 @@ export function ContactGraph() {
 
           // Draw ambient glow
           const gradient = ctx.createRadialGradient(node.x!, node.y!, 0, node.x!, node.y!, nodeSize * 3);
-          gradient.addColorStop(0, node.color.replace(')', `, ${0.4 * pulseIntensity})`));
-          gradient.addColorStop(0.5, node.color.replace(')', `, ${0.2 * pulseIntensity})`));
+          const glowColor = (node as GraphNode).color;
+          gradient.addColorStop(0, glowColor.replace('1)', `${0.4 * pulseIntensity})`));
+          gradient.addColorStop(0.5, glowColor.replace('1)', `${0.2 * pulseIntensity})`));
           gradient.addColorStop(1, 'transparent');
           ctx.fillStyle = gradient;
           ctx.beginPath();
           ctx.arc(node.x!, node.y!, nodeSize * 3, 0, 2 * Math.PI);
           ctx.fill();
 
-          // Draw node with dynamic shadow
+          // Draw node
           ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
           ctx.shadowBlur = 8 * pulseIntensity;
           ctx.shadowOffsetY = 2;
-          ctx.fillStyle = node.color;
+          ctx.fillStyle = (node as GraphNode).color;
           ctx.beginPath();
           ctx.arc(node.x!, node.y!, nodeSize * pulseIntensity, 0, 2 * Math.PI);
           ctx.fill();
@@ -337,8 +336,7 @@ export function ContactGraph() {
         linkDirectionalParticles={6}
         linkDirectionalParticleWidth={2}
         linkDirectionalParticleSpeed={d => (d as GraphLink).particleSpeed || 0.003}
-        linkDirectionalParticleColor={link => {
-          const l = link as GraphLink;
+        linkDirectionalParticleColor={() => {
           const phase = Math.sin(animationFrame * 0.02) * 0.2 + 0.8;
           return hslToRgba('--primary', 0.3 * phase);
         }}
