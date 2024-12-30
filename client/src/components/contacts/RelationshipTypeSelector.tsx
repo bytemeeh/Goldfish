@@ -81,11 +81,11 @@ export function RelationshipTypeSelector({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Family relationships */}
       {availableTypes.some(type => relationshipCategories.family.includes(type)) && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium" style={{ color: 'hsl(var(--chart-1))' }}>Family</h4>
+          <h3 className="font-semibold mb-3" style={{ color: 'hsl(var(--chart-1))' }}>Family</h3>
           <div className="flex flex-wrap gap-2">
             {availableTypes
               .filter(type => relationshipCategories.family.includes(type))
@@ -119,7 +119,7 @@ export function RelationshipTypeSelector({
       {/* Friends relationships */}
       {availableTypes.some(type => relationshipCategories.friends.includes(type)) && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium" style={{ color: 'hsl(var(--chart-2))' }}>Friends</h4>
+          <h3 className="font-semibold mb-3" style={{ color: 'hsl(var(--chart-2))' }}>Friends</h3>
           <div className="flex flex-wrap gap-2">
             {availableTypes
               .filter(type => relationshipCategories.friends.includes(type))
@@ -153,7 +153,7 @@ export function RelationshipTypeSelector({
       {/* Professional relationships */}
       {availableTypes.some(type => relationshipCategories.professional.includes(type)) && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium" style={{ color: 'hsl(var(--chart-3))' }}>Professional</h4>
+          <h3 className="font-semibold mb-3" style={{ color: 'hsl(var(--chart-3))' }}>Professional</h3>
           <div className="flex flex-wrap gap-2">
             {availableTypes
               .filter(type => relationshipCategories.professional.includes(type))
