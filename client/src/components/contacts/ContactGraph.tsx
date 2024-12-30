@@ -180,7 +180,9 @@ export function ContactGraph() {
           x: Math.random() * 100,
           y: Math.random() * 100,
           vx: 0,
-          vy: 0
+          vy: 0,
+          fx: null,
+          fy: null
         };
       });
 
@@ -308,6 +310,10 @@ export function ContactGraph() {
         nodeLabel={node => node.name}
         nodeFixedDragOnly={false}
         nodeCanDrag={true}
+        enableNodeDrag={true}
+        nodeAutoColorBy="relationshipType"
+        warmupTicks={100}
+        cooldownTime={3000}
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
           node.fx = undefined; // Remove any fixed positions
           node.fy = undefined;
