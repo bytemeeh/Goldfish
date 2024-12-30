@@ -309,6 +309,8 @@ export function ContactGraph() {
         nodeFixedDragOnly={false}
         nodeCanDrag={true}
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
+          node.fx = undefined; // Remove any fixed positions
+          node.fy = undefined;
           const label = node.name;
           const fontSize = Math.max(12/globalScale, 6); //Reduced font size
           const nodeSize = node.isMe ? 8 : 6;
