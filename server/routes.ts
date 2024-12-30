@@ -3,12 +3,31 @@ import { createServer, type Server } from "http";
 import { db } from "@db";
 import { contacts, insertContactSchema, getCascadedRelationshipType, getValidChildRelationshipTypes, type RelationshipType } from "@db/schema";
 import { and, or, eq, ilike, sql } from "drizzle-orm";
+import NodeGeocoder from "node-geocoder";
+
+// Initialize geocoder
+const geocoder = NodeGeocoder({
+  provider: 'openstreetmap'
+});
 
 interface SearchFilters {
   name?: string;
   email?: string;
   phone?: string;
   notes?: string;
+}
+
+// Helper to calculate distance between two points
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
 }
 
 async function updateRelationshipsCascading(contactId: number, newParentId: number | null, newRelationType: RelationshipType | null) {
@@ -77,40 +96,33 @@ export function registerRoutes(app: Express): Server {
     try {
       console.log('Fetching contacts with filters:', filters);
       const result = await db
-        .select({
-          id: contacts.id,
-          name: contacts.name,
-          phone: contacts.phone,
-          email: contacts.email,
-          birthday: contacts.birthday,
-          notes: contacts.notes,
-          parentId: contacts.parentId,
-          relationshipType: contacts.relationshipType,
-          isMe: contacts.isMe,
-          shareToken: contacts.shareToken,
-          shareDepth: contacts.shareDepth,
-          shareableUntil: contacts.shareableUntil,
-          createdAt: contacts.createdAt,
-          updatedAt: contacts.updatedAt,
-        })
+        .select()
         .from(contacts)
         .orderBy(contacts.name);
 
-      console.log('Found contacts:', result.length);
-      console.log('Contact hierarchy:', result.map(c => ({
-        id: c.id,
-        name: c.name,
-        parentId: c.parentId,
-        relationshipType: c.relationshipType
-      })));
+      // Get user's location from IP (fallback to San Francisco coordinates)
+      const userLat = 37.7749; // San Francisco latitude
+      const userLon = -122.4194; // San Francisco longitude
 
-      res.json(result);
+      // Sort contacts by distance if they have coordinates
+      const sortedContacts = result
+        .map(contact => ({
+          ...contact,
+          distance: contact.latitude && contact.longitude
+            ? calculateDistance(userLat, userLon, Number(contact.latitude), Number(contact.longitude))
+            : Infinity
+        }))
+        .sort((a, b) => a.distance - b.distance);
+
+      console.log('Found contacts:', sortedContacts.length);
+      res.json(sortedContacts);
     } catch (error) {
       console.error('Error fetching contacts:', error);
       res.status(500).json({ message: "Failed to fetch contacts" });
     }
   });
 
+  // Single contact endpoint
   app.get("/api/contacts/:id", async (req, res) => {
     const { id } = req.params;
 
@@ -125,12 +137,10 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ message: "Contact not found" });
       }
 
-      // Get valid relationship types for children of this contact
       const validChildTypes = contact.relationshipType
         ? getValidChildRelationshipTypes(contact.relationshipType as RelationshipType)
         : [];
 
-      // Get all related contacts (both parent and children)
       const relatedContacts = await db
         .select()
         .from(contacts)
@@ -141,20 +151,11 @@ export function registerRoutes(app: Express): Server {
           )
         );
 
-      console.log(`Found ${relatedContacts.length} related contacts for ${contact.name}:`, 
-        relatedContacts.map(c => ({
-          id: c.id,
-          name: c.name,
-          relationshipType: c.relationshipType,
-          parentId: c.parentId
-        }))
-      );
-
       res.json({ 
-        ...contact, 
+        ...contact,
         children: relatedContacts.filter(c => c.parentId === contact.id),
         parent: relatedContacts.find(c => c.id === contact.parentId),
-        validChildTypes 
+        validChildTypes
       });
     } catch (error) {
       console.error('Error fetching contact:', error);
@@ -162,26 +163,32 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Create contact endpoint
   app.post("/api/contacts", async (req, res) => {
     try {
       console.log('Creating new contact with data:', req.body);
-
-      // Validate the input data
       const validatedData = insertContactSchema.parse(req.body);
-      console.log('Validated data:', validatedData);
+
+      // Geocode address if provided
+      if (validatedData.street && validatedData.city) {
+        try {
+          const addressStr = `${validatedData.street}, ${validatedData.city}${validatedData.state ? `, ${validatedData.state}` : ''}${validatedData.country ? `, ${validatedData.country}` : ''}`;
+          const [location] = await geocoder.geocode(addressStr);
+          if (location) {
+            validatedData.latitude = location.latitude;
+            validatedData.longitude = location.longitude;
+          }
+        } catch (error) {
+          console.error('Geocoding error:', error);
+        }
+      }
 
       const [newContact] = await db
         .insert(contacts)
-        .values({
-          ...validatedData,
-        })
+        .values(validatedData)
         .returning();
 
-      console.log('Created new contact:', newContact);
-
       if (validatedData.parentId && validatedData.relationshipType) {
-        console.log('Initiating cascade update for new contact');
-        // Trigger cascading updates if this is a child contact
         await updateRelationshipsCascading(
           newContact.id,
           validatedData.parentId,
@@ -198,14 +205,26 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Update contact endpoint
   app.put("/api/contacts/:id", async (req, res) => {
     const { id } = req.params;
 
     try {
-      console.log(`Updating contact with ID ${id}, Data: `, req.body);
-      // Validate the input data
       const validatedData = insertContactSchema.parse(req.body);
-      console.log('Validated data:', validatedData);
+
+      // Geocode new address if changed
+      if (validatedData.street && validatedData.city) {
+        try {
+          const addressStr = `${validatedData.street}, ${validatedData.city}${validatedData.state ? `, ${validatedData.state}` : ''}${validatedData.country ? `, ${validatedData.country}` : ''}`;
+          const [location] = await geocoder.geocode(addressStr);
+          if (location) {
+            validatedData.latitude = location.latitude;
+            validatedData.longitude = location.longitude;
+          }
+        } catch (error) {
+          console.error('Geocoding error:', error);
+        }
+      }
 
       const [updatedContact] = await db
         .update(contacts)
@@ -216,11 +235,7 @@ export function registerRoutes(app: Express): Server {
         .where(eq(contacts.id, parseInt(id)))
         .returning();
 
-      console.log('Updated contact:', updatedContact);
-
-      // Trigger cascading updates if relationship type changed
       if (validatedData.relationshipType) {
-        console.log('Initiating cascade update for updated contact');
         await updateRelationshipsCascading(
           parseInt(id),
           validatedData.parentId,
@@ -237,6 +252,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Delete contact endpoint
   app.delete("/api/contacts/:id", async (req, res) => {
     const { id } = req.params;
 
