@@ -92,30 +92,34 @@ export function ContactList({ searchFilters }: ContactListProps) {
     };
   };
 
-  // Find personal contact (me) and direct contacts (contacts with no parent or where parent is me)
+  // Find personal contact (me)
   const personalContact = contacts.find(c => c.isMe);
-  const directContacts = contacts.filter(c => 
-    (!c.parentId && !c.isMe) || 
-    (personalContact && c.parentId === personalContact.id) 
+
+  // Get contacts that should be shown in categories
+  // (contacts with no parent and not already shown under personal card)
+  const categoryContacts = contacts.filter(c => 
+    !c.isMe && // Not the personal contact
+    !c.parentId && // No parent (root level contact)
+    !(personalContact && c.parentId === personalContact.id) // Not a direct child of personal contact
   );
 
   // Process contacts into hierarchical structure
-  const processedDirectContacts = directContacts.map(buildHierarchy);
+  const processedCategoryContacts = categoryContacts.map(buildHierarchy);
 
   // For personal contact, process its hierarchy
   const personalHierarchy = personalContact ? buildHierarchy(personalContact) : null;
 
-  // Categorize only direct contacts
+  // Categorize contacts that aren't under personal card
   const categorizedContacts = categories.map(category => ({
     ...category,
-    contacts: processedDirectContacts.filter(contact =>
+    contacts: processedCategoryContacts.filter(contact =>
       contact.relationshipType &&
       category.types.includes(contact.relationshipType)
     )
   }));
 
-  // Handle uncategorized direct contacts
-  const uncategorizedContacts = processedDirectContacts.filter(contact =>
+  // Handle uncategorized contacts (that aren't under personal card)
+  const uncategorizedContacts = processedCategoryContacts.filter(contact =>
     !contact.relationshipType ||
     !categories.some(cat => contact.relationshipType && cat.types.includes(contact.relationshipType))
   );
