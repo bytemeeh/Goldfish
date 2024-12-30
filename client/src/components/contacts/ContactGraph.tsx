@@ -12,24 +12,24 @@ import { motion, AnimatePresence } from "framer-motion";
 // Color palette configuration for Apple-style design
 const colorPalette = {
   family: {
-    primary: "hsl(142, 76%, 36%)",  // Direct HSL value instead of CSS variable
-    gradient: ["1, 0.4", "0.8, 0.2", "0.6, 0.1"]
+    primary: "hsl(205, 100%, 50%)",  // Apple Blue
+    gradient: ["1, 0.5", "0.8, 0.3", "0.6, 0.15"]
   },
   friends: {
-    primary: "hsl(45, 93%, 47%)",   // Direct HSL value instead of CSS variable
-    gradient: ["1, 0.4", "0.8, 0.2", "0.6, 0.1"]
+    primary: "hsl(280, 100%, 50%)",  // Apple Purple
+    gradient: ["1, 0.5", "0.8, 0.3", "0.6, 0.15"]
   },
   professional: {
-    primary: "hsl(211, 100%, 50%)", // Direct HSL value instead of CSS variable
-    gradient: ["1, 0.4", "0.8, 0.2", "0.6, 0.1"]
+    primary: "hsl(30, 100%, 50%)",   // Apple Orange
+    gradient: ["1, 0.5", "0.8, 0.3", "0.6, 0.15"]
   },
   personal: {
-    primary: "hsl(211, 100%, 50%)", // For the main user node
-    gradient: ["1, 0.45", "0.8, 0.25", "0.6, 0.15"]
+    primary: "hsl(265, 100%, 50%)",  // Apple System Blue
+    gradient: ["1, 0.55", "0.8, 0.35", "0.6, 0.2"]
   },
   default: {
     primary: "hsl(215, 16%, 47%)",
-    gradient: ["1, 0.3", "0.8, 0.15", "0.6, 0.05"]
+    gradient: ["1, 0.4", "0.8, 0.25", "0.6, 0.1"]
   }
 };
 
@@ -368,12 +368,16 @@ export function ContactGraph() {
           ctx.fillStyle = "hsl(0, 0%, 100%)"; // Assuming '--foreground' maps to white
           ctx.fillText(label, node.x!, bgY);
         }}
-        linkColor={() => "rgba(0, 0, 0, 0.1)"}
-        linkWidth={1}
-        linkDirectionalParticles={4}
-        linkDirectionalParticleWidth={2}
-        linkDirectionalParticleSpeed={0.003}
-        linkDirectionalParticleColor={() => "rgba(0, 0, 0, 0.2)"}
+        linkColor={() => "rgba(0, 0, 0, 0.08)"}
+        linkWidth={1.5}
+        linkDirectionalParticles={3}
+        linkDirectionalParticleWidth={1.5}
+        linkDirectionalParticleSpeed={0.002}
+        linkDirectionalParticleColor={() => "rgba(0, 0, 0, 0.15)"}
+        d3VelocityDecay={0.3}
+        d3AlphaMin={0.05}
+        cooldownTicks={50}
+        nodeRelSize={8}
         backgroundColor="transparent"
         onNodeClick={handleNodeClick}
         width={dimensions.width}
