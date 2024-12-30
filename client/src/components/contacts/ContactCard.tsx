@@ -81,9 +81,11 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
           border-l-4 
           ${borderColor}
           hover:border-l-primary/90 
-          transition-colors
+          transition-all duration-200 ease-in-out
           bg-background/[0.${bgOpacity}]
           ${level > 0 ? 'shadow-sm' : 'shadow-md'}
+          backdrop-blur-sm
+          rounded-xl
         `}
       >
         <CardHeader className="flex flex-row items-start space-x-4 pb-2">
@@ -93,29 +95,33 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
             className={`
               h-6 w-6 mt-1
               ${children.length > 0 ? 'text-primary hover:text-primary/80' : 'text-muted-foreground'}
+              transition-transform duration-200
+              ${isExpanded ? 'rotate-0' : '-rotate-90'}
             `}
             onClick={() => setIsExpanded(!isExpanded)}
           >
             {children.length > 0 ? (
-              isExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />
+              <ChevronDown className="h-5 w-5" />
             ) : (
               <User className="h-4 w-4" />
             )}
           </Button>
 
-          <div className="flex-1 space-y-1">
+          <div className="flex-1 space-y-2">
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-semibold leading-none">{contact.name}</h3>
+              <h3 className="text-lg font-medium tracking-tight text-foreground leading-none">
+                {contact.name}
+              </h3>
               {contact.relationshipType && (
                 <Badge
                   variant="outline"
-                  className="capitalize font-normal cursor-default"
+                  className="capitalize font-normal bg-primary/5 text-primary border-0"
                 >
                   {contact.relationshipType.replace("-", " ")}
                 </Badge>
               )}
             </div>
-            <div className="space-y-1">
+            <div className="space-y-2">
               {contact.email && (
                 <div className="flex items-center text-sm text-muted-foreground">
                   <Mail className="mr-2 h-4 w-4" />
@@ -145,7 +151,11 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 hover:bg-primary/5 transition-colors"
+              >
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -165,21 +175,23 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
 
         <CardContent>
           {contact.notes && (
-            <p className="text-sm text-muted-foreground mb-4">
+            <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
               {contact.notes}
             </p>
           )}
 
           {isMaxDepth ? (
-            <div className="flex items-center justify-center p-2 bg-muted/50 rounded-md">
+            <div className="flex items-center justify-center p-3 bg-muted/30 rounded-xl backdrop-blur-sm">
               <AlertCircle className="h-4 w-4 text-muted-foreground mr-2" />
-              <span className="text-sm text-muted-foreground">Maximum relationship depth reached</span>
+              <span className="text-sm text-muted-foreground font-medium">
+                Maximum relationship depth reached
+              </span>
             </div>
           ) : (
             <Button
               variant="outline"
               size="sm"
-              className="w-full hover:bg-primary/5"
+              className="w-full hover:bg-primary/5 transition-colors rounded-lg border-primary/20"
               onClick={() => setIsAddingChild(true)}
             >
               <Plus className="mr-2 h-4 w-4" />
