@@ -306,6 +306,8 @@ export function ContactGraph() {
         ref={graphRef}
         graphData={graphData}
         nodeLabel={node => node.name}
+        nodeFixedDragOnly={false}
+        nodeCanDrag={true}
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
           const label = node.name;
           const fontSize = Math.max(12/globalScale, 6); //Reduced font size
@@ -389,8 +391,6 @@ export function ContactGraph() {
         width={dimensions.width}
         height={dimensions.height}
         d3AlphaDecay={0.01}
-        enableNodeDrag={true}
-        nodeCanDrag={true}
         onEngineStop={() => {
           if (graphRef.current) {
             graphRef.current.zoomToFit(400, 50);
