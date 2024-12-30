@@ -186,10 +186,10 @@ function ContactNode({
                   contact={child}
                   children={child.children}
                   level={level + 1}
-                  onToggle={handleToggle}
+                  onToggle={onToggle}
                   expandedNodes={expandedNodes}
-                  onSelect={setSelectedContact}
-                  selectedId={selectedContact?.id || null}
+                  onSelect={onSelect}
+                  selectedId={selectedId}
                 />
               ))}
             </motion.div>
