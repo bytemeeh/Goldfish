@@ -79,8 +79,6 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
 
   // Enhanced visual hierarchy with level-based styling
   const indentClass = level > 0 ? `ml-${Math.min(level * 24, 72)}` : '';
-  const bgOpacity = Math.min((level + 1) * 3, 15); // Subtle background changes
-  const borderOpacity = Math.max(85 - level * 10, 40); // Gradual border fading
 
   // Maximum depth is 4 levels (0-based index, so level 3 is the 4th layer)
   const isMaxDepth = level >= 3;
@@ -92,29 +90,16 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
     <div className={`relative ${indentClass}`}>
       {level > 0 && (
         <>
-          {/* Enhanced connection lines with refined gradients */}
+          {/* Connection line with refined styling */}
           <div
-            className="absolute -left-12 top-0 bottom-0 w-[1px]"
-            style={{
-              background: `linear-gradient(180deg, 
-                hsl(var(--primary)/${Math.max(40 - level * 8, 20)}%) 0%,
-                hsl(var(--primary)/${Math.max(30 - level * 8, 15)}%) 100%)`
-            }}
+            className="absolute -left-12 top-0 bottom-0 w-[1px] bg-border/20"
           />
           <div
-            className="absolute -left-12 top-10 w-12 h-[1px]"
-            style={{
-              background: `linear-gradient(90deg, 
-                hsl(var(--primary)/${Math.max(40 - level * 8, 20)}%) 0%,
-                hsl(var(--primary)/${Math.max(30 - level * 8, 15)}%) 100%)`
-            }}
+            className="absolute -left-12 top-10 w-12 h-[1px] bg-border/20"
           />
-          {/* Connection node with subtle animation */}
+          {/* Connection node with subtle styling */}
           <motion.div
-            className="absolute -left-[50px] top-[37px] w-3 h-3 rounded-full border bg-background"
-            style={{
-              borderColor: `hsl(var(--primary)/${Math.max(40 - level * 8, 20)}%)`
-            }}
+            className="absolute -left-[50px] top-[37px] w-2 h-2 rounded-full bg-border/40"
             whileHover={{ scale: 1.2 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
           />
@@ -139,53 +124,29 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
           className={`
             relative
             border
-            border-l-[3px]
-            border-l-primary/${borderOpacity}
-            hover:border-l-primary/${Math.min(borderOpacity + 20, 100)}
-            transition-all duration-300 ease-in-out
-            bg-background/[0.${bgOpacity}]
-            backdrop-blur-sm
             rounded-lg
-            ${level === 0 ? 'shadow-md' : `shadow-sm hover:shadow-md`}
+            ${level === 0 ? 'shadow-md' : 'shadow-sm hover:shadow-md'}
+            transition-all
+            duration-300
+            ease-in-out
+            hover:bg-accent/5
             transform-gpu
             hover:translate-x-1
-            overflow-hidden
           `}
-          style={{
-            borderColor: `hsl(var(--border)/${Math.max(20 - level * 5, 8)}%)`
-          }}
         >
-          {/* Top highlight line for primary contacts */}
-          {level === 0 && (
-            <div
-              className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent"
-            />
-          )}
-
           {/* Level indicator */}
-          <div
-            className="absolute top-3 right-3 flex items-center gap-1.5 px-2 py-1 rounded-full bg-background/80 backdrop-blur-sm border border-border/40"
-            style={{
-              opacity: Math.max(0.9 - level * 0.2, 0.4)
-            }}
-          >
-            {Array.from({ length: level + 1 }).map((_, index) => (
-              <motion.div
-                key={index}
-                className="w-1 h-1 rounded-full transition-all duration-300"
-                initial={{ scale: 0.8, opacity: 0.6 }}
-                animate={{
-                  scale: index === level ? 1 : 0.8,
-                  opacity: index === level ? 1 : 0.6
-                }}
-                style={{
-                  backgroundColor: index === level
-                    ? `hsl(var(--primary)/${Math.max(70 - level * 10, 40)}%)`
-                    : `hsl(var(--primary)/${Math.max(40 - level * 10, 20)}%)`
-                }}
-              />
-            ))}
-          </div>
+          {level > 0 && (
+            <div className="absolute -left-6 top-1/2 -translate-y-1/2 flex items-center">
+              <div className="flex items-center gap-1">
+                {Array.from({ length: level }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="w-1 h-3 rounded-full bg-primary/20"
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           <CardHeader className="flex flex-row items-start space-x-4 pb-2">
             <motion.button
@@ -216,36 +177,30 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                 transition={{ duration: 0.2 }}
               >
                 <div className="flex flex-col">
-                  <h3
-                    className={`
-                      ${level === 0
-                        ? 'text-xl font-semibold tracking-tight'
-                        : 'text-lg font-medium tracking-tight'}
-                      leading-none
-                      ${level === 0
-                        ? 'text-foreground'
-                        : `text-foreground/[0.${Math.max(90 - level * 10, 60)}]`}
-                    `}
-                  >
+                  <h3 className={`
+                    ${level === 0 ? 'text-xl font-semibold' : 'text-lg font-medium'}
+                    tracking-tight
+                    text-foreground
+                    leading-none
+                  `}>
                     {contact.name}
                   </h3>
                   {contact.relationshipType && (
                     <div className="flex items-center gap-2 mt-1.5">
                       {RelationshipIcon && (
-                        <RelationshipIcon className={`
-                          h-3.5 w-3.5
-                          text-primary/${Math.max(70 - level * 10, 40)}
-                        `} />
+                        <RelationshipIcon className="h-3.5 w-3.5 text-primary/70" />
                       )}
                       <Badge
                         variant="outline"
-                        className={`
+                        className="
                           capitalize font-normal text-xs
-                          bg-primary/${Math.max(10 - level * 2, 5)}
-                          text-primary/${Math.max(70 - level * 10, 40)}
+                          bg-primary/5
+                          text-primary/70
+                          hover:bg-primary/10
+                          transition-colors
                           border-0
                           px-2 py-0
-                        `}
+                        "
                       >
                         {contact.relationshipType.replace("-", " ")}
                       </Badge>
@@ -371,7 +326,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
 
           <CardContent>
             {isMaxDepth ? (
-              <div className="flex items-center justify-center p-4 bg-muted/20 rounded-lg backdrop-blur-sm border border-primary/10">
+              <div className="flex items-center justify-center p-4 bg-muted/20 rounded-lg border border-primary/10">
                 <AlertCircle className="h-4 w-4 text-primary/40 mr-2" />
                 <span className="text-sm text-muted-foreground/70 font-medium">
                   Maximum relationship depth reached
@@ -381,14 +336,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
               <Button
                 variant="outline"
                 size="sm"
-                className={`
-                  w-full 
-                  hover:bg-primary/5 
-                  transition-colors 
-                  rounded-lg 
-                  border-primary/${Math.max(20 - level * 5, 10)}
-                  group
-                `}
+                className="w-full hover:bg-primary/5 transition-colors rounded-lg group"
                 onClick={() => setIsAddingChild(true)}
               >
                 <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center mr-2 group-hover:bg-primary/20 transition-colors">
