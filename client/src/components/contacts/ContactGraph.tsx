@@ -308,7 +308,7 @@ export function ContactGraph() {
         nodeLabel={node => node.name}
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
           const label = node.name;
-          const fontSize = Math.max(14/globalScale, 8);
+          const fontSize = Math.max(12/globalScale, 6); //Reduced font size
           const nodeSize = node.isMe ? 8 : 6;
 
           ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
@@ -380,7 +380,9 @@ export function ContactGraph() {
         d3VelocityDecay={0.3}
         d3AlphaMin={0.05}
         cooldownTicks={50}
-        nodeRelSize={8}
+        nodeRelSize={6}
+        d3Force="charge"
+        d3ForceStrength={-1000}
         backgroundColor="transparent"
         onNodeClick={handleNodeClick}
         width={dimensions.width}
