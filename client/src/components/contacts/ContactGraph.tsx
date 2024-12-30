@@ -3,18 +3,28 @@ import { useQuery } from "@tanstack/react-query";
 import { type Contact } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Phone, Cake, Heart, Users, Baby, Briefcase, UserCircle2, UserPlus, HeartHandshake } from "lucide-react";
+import { Mail, Phone, Cake } from "lucide-react";
 import { format } from "date-fns";
 import ForceGraph2D from "react-force-graph-2d";
 import type { NodeObject, LinkObject } from "react-force-graph-2d";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Helper function to get theme color
-function getThemeColor(colorVar: string, opacity: number = 1): string {
+// Helper function to get computed RGB color from CSS variable
+function getRGBColor(variable: string, opacity: number = 1): string {
   const root = document.documentElement;
   const computedStyle = getComputedStyle(root);
-  const hslValue = computedStyle.getPropertyValue(colorVar).trim();
-  return `hsla(${hslValue}, ${opacity})`;
+  const hsl = computedStyle.getPropertyValue(variable).trim();
+
+  // Create temporary element to convert HSL to RGB
+  const temp = document.createElement('div');
+  temp.style.color = `hsl(${hsl})`;
+  document.body.appendChild(temp);
+  const rgb = getComputedStyle(temp).color;
+  document.body.removeChild(temp);
+
+  // Extract RGB values and return with opacity
+  const [r, g, b] = rgb.match(/\d+/g)?.map(Number) || [0, 0, 0];
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
 // Contact details component
@@ -56,6 +66,7 @@ interface GraphNode extends NodeObject {
   relationshipType?: string;
   isMe?: boolean;
   color: string;
+  ringColor?: string;
 }
 
 interface GraphLink extends LinkObject {
@@ -76,7 +87,7 @@ export function ContactGraph() {
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
 
-  const { data: contacts, isLoading, error } = useQuery<Contact[]>({
+  const { data: contacts } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
   });
 
@@ -103,9 +114,20 @@ export function ContactGraph() {
     try {
       const meContact = contacts.find(c => c.isMe);
 
-      const getNodeColor = (contact: Contact): string => {
-        if (contact.isMe) return getThemeColor('--primary');
-        if (!contact.relationshipType) return getThemeColor('--muted');
+      const getNodeColors = (contact: Contact): { color: string, ringColor?: string } => {
+        if (contact.isMe) {
+          return {
+            color: getRGBColor('--primary'),
+            ringColor: getRGBColor('--primary', 0.3)
+          };
+        }
+
+        if (!contact.relationshipType) {
+          return {
+            color: getRGBColor('--muted'),
+            ringColor: getRGBColor('--muted', 0.3)
+          };
+        }
 
         const categories = {
           family: ["mother", "father", "brother", "sibling", "child", "spouse"],
@@ -113,23 +135,46 @@ export function ContactGraph() {
           professional: ["co-worker"]
         };
 
-        if (categories.family.includes(contact.relationshipType)) return getThemeColor('--chart-1');
-        if (categories.friends.includes(contact.relationshipType)) return getThemeColor('--chart-2');
-        if (categories.professional.includes(contact.relationshipType)) return getThemeColor('--chart-3');
-        return getThemeColor('--muted');
+        if (categories.family.includes(contact.relationshipType)) {
+          return {
+            color: getRGBColor('--chart-1'),
+            ringColor: getRGBColor('--chart-1', 0.3)
+          };
+        }
+        if (categories.friends.includes(contact.relationshipType)) {
+          return {
+            color: getRGBColor('--chart-2'),
+            ringColor: getRGBColor('--chart-2', 0.3)
+          };
+        }
+        if (categories.professional.includes(contact.relationshipType)) {
+          return {
+            color: getRGBColor('--chart-3'),
+            ringColor: getRGBColor('--chart-3', 0.3)
+          };
+        }
+
+        return {
+          color: getRGBColor('--muted'),
+          ringColor: getRGBColor('--muted', 0.3)
+        };
       };
 
-      const nodes: GraphNode[] = contacts.map(contact => ({
-        id: contact.id,
-        name: contact.name,
-        relationshipType: contact.relationshipType,
-        isMe: contact.isMe,
-        color: getNodeColor(contact),
-        x: 0,
-        y: 0,
-        vx: 0,
-        vy: 0
-      }));
+      const nodes: GraphNode[] = contacts.map(contact => {
+        const colors = getNodeColors(contact);
+        return {
+          id: contact.id,
+          name: contact.name,
+          relationshipType: contact.relationshipType,
+          isMe: contact.isMe,
+          color: colors.color,
+          ringColor: colors.ringColor,
+          x: Math.random() * 100,
+          y: Math.random() * 100,
+          vx: 0,
+          vy: 0
+        };
+      });
 
       const links: GraphLink[] = [];
 
@@ -185,15 +230,7 @@ export function ContactGraph() {
     }
   }, [contacts]);
 
-  if (error) {
-    return (
-      <div className="p-4 text-center text-destructive">
-        Error loading contacts: {error instanceof Error ? error.message : "Unknown error"}
-      </div>
-    );
-  }
-
-  if (isLoading) {
+  if (!contacts) {
     return (
       <div className="p-4 text-center text-muted-foreground">
         Loading contacts...
@@ -248,7 +285,7 @@ export function ContactGraph() {
               <div key={label} className="flex items-center gap-2">
                 <div 
                   className="w-3 h-3 rounded-full" 
-                  style={{ backgroundColor: getThemeColor(color) }}
+                  style={{ backgroundColor: getRGBColor(color) }}
                 />
                 <span className="text-sm text-muted-foreground">{label}</span>
               </div>
@@ -262,7 +299,7 @@ export function ContactGraph() {
         graphData={graphData}
         nodeLabel={node => node.name}
         nodeColor={node => node.color}
-        nodeCanvasObject={(node, ctx, globalScale) => {
+        nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
           const label = node.name;
           const fontSize = Math.max(14/globalScale, 8);
           const nodeSize = node.isMe ? 8 : 6;
@@ -271,41 +308,68 @@ export function ContactGraph() {
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          // Draw node with shadow
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
-          ctx.shadowBlur = 8;
+          // Draw outer glow
+          if (node.ringColor) {
+            const gradient = ctx.createRadialGradient(
+              node.x!, node.y!, nodeSize * 0.5,
+              node.x!, node.y!, nodeSize * 2
+            );
+            gradient.addColorStop(0, node.ringColor);
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(node.x!, node.y!, nodeSize * 2, 0, 2 * Math.PI);
+            ctx.fill();
+          }
+
+          // Draw node shadow
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+          ctx.shadowBlur = 5;
           ctx.shadowOffsetY = 2;
+
+          // Draw node
           ctx.fillStyle = node.color;
           ctx.beginPath();
           ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI);
           ctx.fill();
 
-          // Reset shadow for text
+          // Draw highlight
           ctx.shadowColor = 'transparent';
+          const highlightGradient = ctx.createLinearGradient(
+            node.x!, node.y! - nodeSize,
+            node.x!, node.y! + nodeSize
+          );
+          highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
+          highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+          ctx.fillStyle = highlightGradient;
+          ctx.beginPath();
+          ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI);
+          ctx.fill();
 
-          // Draw text with frosted glass effect background
+          // Draw text background
           const textWidth = ctx.measureText(label).width;
           const bgHeight = fontSize * 1.5;
           const bgWidth = textWidth + 16;
           const bgY = node.y! + nodeSize * 2;
 
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
           ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
           ctx.shadowBlur = 4;
           ctx.beginPath();
           ctx.roundRect(node.x! - bgWidth/2, bgY - bgHeight/2, bgWidth, bgHeight, 4);
           ctx.fill();
 
+          // Draw text
           ctx.shadowColor = 'transparent';
-          ctx.fillStyle = getThemeColor('--foreground');
+          ctx.fillStyle = getRGBColor('--foreground');
           ctx.fillText(label, node.x!, bgY);
         }}
-        linkColor={() => getThemeColor('--border', 0.1)}
+        linkColor={() => getRGBColor('--border', 0.15)}
         linkWidth={1}
         linkDirectionalParticles={4}
         linkDirectionalParticleWidth={2}
         linkDirectionalParticleSpeed={0.003}
-        linkDirectionalParticleColor={() => getThemeColor('--primary', 0.3)}
+        linkDirectionalParticleColor={() => getRGBColor('--primary', 0.3)}
         backgroundColor="transparent"
         onNodeClick={handleNodeClick}
         width={dimensions.width}
