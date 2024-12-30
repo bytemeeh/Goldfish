@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type Contact } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Phone, Cake } from "lucide-react";
+import { Mail, Phone, Cake, Heart, Users, Baby, Briefcase, UserCircle2, UserPlus, HeartHandshake } from "lucide-react";
 import { format } from "date-fns";
 import ForceGraph2D from "react-force-graph-2d";
 import type { NodeObject, LinkObject } from "react-force-graph-2d";
@@ -62,7 +62,7 @@ interface GraphData {
 
 export function ContactGraph() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const graphRef = useRef<ForceGraph2D<GraphNode, GraphLink>>(null);
+  const graphRef = useRef<ForceGraph2D>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
@@ -100,8 +100,8 @@ export function ContactGraph() {
 
       // Get color based on relationship type
       const getNodeColor = (contact: Contact): string => {
-        if (contact.isMe) return "#6366f1"; // Indigo for personal contact
-        if (!contact.relationshipType) return "#94a3b8"; // Slate for undefined
+        if (contact.isMe) return "hsl(var(--primary))"; // Primary color for personal contact
+        if (!contact.relationshipType) return "hsl(var(--muted))"; // Muted for undefined
 
         const categories = {
           family: ["mother", "father", "brother", "sibling", "child", "spouse"],
@@ -109,10 +109,10 @@ export function ContactGraph() {
           professional: ["co-worker"]
         };
 
-        if (categories.family.includes(contact.relationshipType)) return "#22c55e";
-        if (categories.friends.includes(contact.relationshipType)) return "#f97316";
-        if (categories.professional.includes(contact.relationshipType)) return "#3b82f6";
-        return "#94a3b8";
+        if (categories.family.includes(contact.relationshipType)) return "hsl(var(--chart-1))";
+        if (categories.friends.includes(contact.relationshipType)) return "hsl(var(--chart-2))";
+        if (categories.professional.includes(contact.relationshipType)) return "hsl(var(--chart-3))";
+        return "hsl(var(--muted))";
       };
 
       // Create nodes first
@@ -249,19 +249,19 @@ export function ContactGraph() {
         <h3 className="font-semibold mb-2">Categories</h3>
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#22c55e" }} />
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--chart-1))" }} />
             <span className="text-sm">Family</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#f97316" }} />
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--chart-2))" }} />
             <span className="text-sm">Friends</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#3b82f6" }} />
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--chart-3))" }} />
             <span className="text-sm">Professional</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#6366f1" }} />
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--primary))" }} />
             <span className="text-sm">Personal Card</span>
           </div>
         </div>
@@ -276,36 +276,43 @@ export function ContactGraph() {
         nodeCanvasObject={(node, ctx, globalScale) => {
           const label = node.name;
           const fontSize = 12/globalScale;
-          ctx.font = `${fontSize}px Sans-Serif`;
+          ctx.font = `${fontSize}px Inter,-apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillStyle = node.color;
 
-          // Draw node circle
+          // Draw node circle with a softer glow effect
           ctx.beginPath();
           ctx.arc(node.x!, node.y!, 5, 0, 2 * Math.PI);
           ctx.fill();
+          ctx.strokeStyle = node.color;
+          ctx.globalAlpha = 0.2;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
 
-          // Draw text
-          ctx.fillStyle = '#64748b';
-          ctx.fillText(label, node.x!, node.y! + 10);
+          // Draw text with a subtle shadow for better readability
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+          ctx.shadowBlur = 2;
+          ctx.fillStyle = 'hsl(var(--foreground))';
+          ctx.fillText(label, node.x!, node.y! + 12);
+          ctx.shadowColor = 'transparent';
         }}
         nodeRelSize={8}
         linkDirectionalParticles={2}
         linkDirectionalParticleSpeed={0.005}
-        linkColor={() => "#94a3b8"}
+        linkColor={() => "hsl(var(--border))"}
         backgroundColor="transparent"
         onNodeClick={handleNodeClick}
         width={dimensions.width}
         height={dimensions.height}
         d3AlphaDecay={0.01} // Slower decay for more stable layout
         d3VelocityDecay={0.4} // Higher decay for less bouncy movement
-        d3Force="link" // Enable link force
         linkLength={100} // Increase distance between connected nodes
         cooldownTicks={100}
         onEngineStop={() => {
           if (graphRef.current) {
-            graphRef.current.zoomToFit(400, 50); // Increase padding to show all nodes
+            graphRef.current.zoomToFit(400, 50);
           }
         }}
       />
