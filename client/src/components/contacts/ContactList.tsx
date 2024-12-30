@@ -88,59 +88,80 @@ export function ContactList({ searchFilters }: ContactListProps) {
   const personalContact = contacts.find(c => c.isMe);
   console.log('Personal contact:', personalContact);
 
-  // Helper function to build contact hierarchy
-  const buildHierarchy = (contactId: number | null = null, visited = new Set<number>()): Contact[] => {
-    // Get children for this contact
+  // Helper function to get all descendants for a contact
+  const getDescendants = (contactId: number, maxDepth: number = 4, currentDepth: number = 0): Contact[] => {
+    if (currentDepth >= maxDepth) return [];
+
     const children = contacts.filter(c => c.parentId === contactId);
-    console.log(`Building hierarchy for contact ${contactId}, found children:`, 
-      children.map(c => ({
-        id: c.id,
-        name: c.name,
-        relationshipType: c.relationshipType
-      }))
-    );
+    console.log(`Depth ${currentDepth} - Found children for ${contactId}:`, children.map(c => ({
+      id: c.id,
+      name: c.name,
+      relationshipType: c.relationshipType
+    })));
 
-    return children.map(child => {
-      // Prevent infinite recursion
-      if (visited.has(child.id)) {
-        console.log(`Preventing circular reference for contact ${child.id}`);
-        return child;
-      }
-
-      const newVisited = new Set(visited);
-      newVisited.add(child.id);
-
-      // Get this child's children
-      const childrenOfChild = buildHierarchy(child.id, newVisited);
-      console.log(`Built hierarchy for ${child.name}:`, childrenOfChild);
-
-      return {
-        ...child,
-        children: childrenOfChild
-      };
-    });
+    return children.map(child => ({
+      ...child,
+      children: getDescendants(child.id, maxDepth, currentDepth + 1)
+    }));
   };
 
-  // Process all contacts into hierarchical structure
+  // Helper function to get all ancestors for a contact
+  const getAncestors = (contactId: number | null, maxDepth: number = 4, currentDepth: number = 0): Contact[] => {
+    if (!contactId || currentDepth >= maxDepth) return [];
+
+    const parent = contacts.find(c => c.id === contactId);
+    if (!parent) return [];
+
+    console.log(`Depth ${currentDepth} - Found parent for ${contactId}:`, {
+      id: parent.id,
+      name: parent.name,
+      relationshipType: parent.relationshipType
+    });
+
+    return [
+      {
+        ...parent,
+        children: getAncestors(parent.parentId, maxDepth, currentDepth + 1)
+      }
+    ];
+  };
+
+  // Build complete hierarchy for a contact including both ancestors and descendants
+  const buildCompleteHierarchy = (contact: Contact): Contact => {
+    console.log(`Building complete hierarchy for ${contact.name}`);
+
+    // Get all descendants
+    const descendants = getDescendants(contact.id);
+    console.log(`Found descendants for ${contact.name}:`, descendants);
+
+    // Get all ancestors
+    const ancestors = getAncestors(contact.parentId);
+    console.log(`Found ancestors for ${contact.name}:`, ancestors);
+
+    return {
+      ...contact,
+      children: [
+        ...descendants,
+        ...(ancestors.length > 0 ? ancestors : [])
+      ]
+    };
+  };
+
+  // Process root contacts (excluding personal contact)
   const rootContacts = contacts.filter(c => 
     !c.isMe && // Not personal contact
     !c.parentId // No parent
   );
   console.log('Root contacts:', rootContacts);
 
-  const processedContacts = rootContacts.map(contact => ({
-    ...contact,
-    children: buildHierarchy(contact.id)
-  }));
+  const processedContacts = rootContacts.map(contact => buildCompleteHierarchy(contact));
+  console.log('Processed contacts:', processedContacts);
 
   // Build personal contact hierarchy
   let personalHierarchy = null;
   if (personalContact) {
-    // Get direct relationships for personal contact
-    personalHierarchy = {
-      ...personalContact,
-      children: buildHierarchy(personalContact.id)
-    };
+    personalHierarchy = buildCompleteHierarchy(personalContact);
+    console.log('Personal hierarchy:', personalHierarchy);
   }
 
   // Categorize contacts
