@@ -379,21 +379,19 @@ export function ContactGraph() {
         linkDirectionalParticleWidth={1.5}
         linkDirectionalParticleSpeed={0.002}
         linkDirectionalParticleColor={() => "rgba(0, 0, 0, 0.15)"}
-        d3VelocityDecay={0.3}
+        d3VelocityDecay={0.4}
         d3AlphaMin={0.05}
-        cooldownTicks={50}
+        cooldownTicks={100}
         nodeRelSize={6}
-        d3Force="charge"
+        d3Force="link"
         d3ForceStrength={-2000}
+        d3ForceDistance={100}
         backgroundColor="transparent"
         onNodeClick={handleNodeClick}
         width={dimensions.width}
         height={dimensions.height}
         d3AlphaDecay={0.01}
-        d3VelocityDecay={0.4}
-        cooldownTicks={100}
-        d3Force="link"
-        d3ForceDistance={100}
+        enableNodeDrag={true}
         onEngineStop={() => {
           if (graphRef.current) {
             graphRef.current.zoomToFit(400, 50);
