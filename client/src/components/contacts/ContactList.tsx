@@ -3,6 +3,7 @@ import { ContactCard } from "./ContactCard";
 import { type Contact } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { SearchFilters } from "./SearchBar";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ContactListProps {
   searchFilters: SearchFilters;
@@ -58,19 +59,39 @@ export function ContactList({ searchFilters }: ContactListProps) {
   });
 
   if (isLoading) {
-    return <div className="p-4 text-center text-muted-foreground">Loading contacts...</div>;
+    return (
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }}
+        className="p-4 text-center text-muted-foreground"
+      >
+        Loading contacts...
+      </motion.div>
+    );
   }
 
   if (error) {
     return (
-      <div className="p-4 text-center text-destructive">
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }}
+        className="p-4 text-center text-destructive"
+      >
         Error: {error instanceof Error ? error.message : "Failed to fetch contacts"}
-      </div>
+      </motion.div>
     );
   }
 
   if (!contacts?.length) {
-    return <div className="p-4 text-center text-muted-foreground">No contacts found</div>;
+    return (
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }}
+        className="p-4 text-center text-muted-foreground"
+      >
+        No contacts found
+      </motion.div>
+    );
   }
 
   const personalContact = contacts.find(c => c.isMe);
@@ -142,62 +163,104 @@ export function ContactList({ searchFilters }: ContactListProps) {
 
   return (
     <ScrollArea className="h-[calc(100vh-12rem)] pr-4">
-      <div className="space-y-8">
-        {personalHierarchy && (
-          <div>
-            <h2 
-              className="text-sm font-semibold mb-4 uppercase tracking-wider"
-              style={{ color: "hsl(var(--primary))" }}
+      <div className="space-y-8 py-2">
+        <AnimatePresence mode="wait">
+          {personalHierarchy && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
             >
-              Personal Card
-            </h2>
-            <ContactCard 
-              contact={personalHierarchy}
-              children={personalHierarchy.children}
-            />
-          </div>
-        )}
-
-        {categorizedContacts.map(category => 
-          category.contacts.length > 0 && (
-            <div key={category.title}>
-              <h2 
-                className="text-sm font-semibold mb-4 uppercase tracking-wider"
-                style={{ color: category.color }}
-              >
-                {category.title}
-              </h2>
-              <div className="space-y-4">
-                {category.contacts.map(contact => (
-                  <ContactCard 
-                    key={contact.id} 
-                    contact={contact}
-                    children={contact.children}
-                  />
-                ))}
-              </div>
-            </div>
-          )
-        )}
-
-        {uncategorizedContacts.length > 0 && (
-          <div>
-            <h2 
-              className="text-sm font-semibold mb-4 uppercase tracking-wider text-muted-foreground"
-            >
-              Other Contacts
-            </h2>
-            <div className="space-y-4">
-              {uncategorizedContacts.map(contact => (
+              <div className="relative">
+                <div className="sticky top-0 pt-2 pb-4 bg-background/95 backdrop-blur-sm z-10">
+                  <h2 
+                    className="text-xs font-semibold uppercase tracking-wider"
+                    style={{ color: "hsl(var(--primary))" }}
+                  >
+                    Personal Card
+                  </h2>
+                </div>
                 <ContactCard 
-                  key={contact.id} 
-                  contact={contact}
-                  children={contact.children}
+                  contact={personalHierarchy}
+                  children={personalHierarchy.children}
                 />
-              ))}
-            </div>
-          </div>
-        )}
+              </div>
+            </motion.div>
+          )}
+
+          {categorizedContacts.map((category, index) => 
+            category.contacts.length > 0 && (
+              <motion.div 
+                key={category.title}
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+              >
+                <div className="relative">
+                  <div className="sticky top-0 pt-2 pb-4 bg-background/95 backdrop-blur-sm z-10">
+                    <h2 
+                      className="text-xs font-semibold uppercase tracking-wider"
+                      style={{ color: category.color }}
+                    >
+                      {category.title}
+                    </h2>
+                  </div>
+                  <div className="space-y-6">
+                    {category.contacts.map(contact => (
+                      <motion.div
+                        key={contact.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <ContactCard 
+                          contact={contact}
+                          children={contact.children}
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )
+          )}
+
+          {uncategorizedContacts.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="relative">
+                <div className="sticky top-0 pt-2 pb-4 bg-background/95 backdrop-blur-sm z-10">
+                  <h2 
+                    className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70"
+                  >
+                    Other Contacts
+                  </h2>
+                </div>
+                <div className="space-y-6">
+                  {uncategorizedContacts.map(contact => (
+                    <motion.div
+                      key={contact.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <ContactCard 
+                        contact={contact}
+                        children={contact.children}
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </ScrollArea>
   );
