@@ -306,6 +306,8 @@ export function ContactGraph() {
         ref={graphRef}
         graphData={graphData}
         nodeLabel={node => node.name}
+        enableNodeDrag={true}
+        nodeAutoColorBy="relationshipType"
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
           const label = node.name;
           const fontSize = Math.max(12/globalScale, 6); //Reduced font size
