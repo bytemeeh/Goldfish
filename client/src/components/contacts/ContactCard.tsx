@@ -58,10 +58,10 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
     },
   });
 
-  const indentClass = level > 0 ? `ml-${Math.min(level * 16, 64)}` : '';
-  const borderOpacity = Math.max(90 - level * 15, 40);
-  const borderColor = `border-primary opacity-${borderOpacity}`;
-  const bgOpacity = Math.min((level + 1) * 8, 25);
+  // Enhance visual hierarchy with level-based styling
+  const indentClass = level > 0 ? `ml-${Math.min(level * 24, 72)}` : '';
+  const bgOpacity = Math.min((level + 1) * 3, 15); // Subtle background changes
+  const borderOpacity = Math.max(85 - level * 10, 40); // Gradual border fading
 
   // Maximum depth is 4 levels (0-based index, so level 3 is the 4th layer)
   const isMaxDepth = level >= 3;
@@ -70,19 +70,40 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
     <div className={`relative ${indentClass}`}>
       {level > 0 && (
         <>
-          {/* Enhanced connection lines with gradients */}
-          <div className="absolute -left-8 top-0 bottom-0 w-[2px] bg-gradient-to-b from-primary/50 to-primary/20" />
-          <div className="absolute -left-8 top-8 w-8 h-[2px] bg-gradient-to-r from-primary/50 to-primary/20" />
-          {/* Connection node indicator */}
-          <div className="absolute -left-[35px] top-[29px] w-4 h-4 rounded-full border-2 border-primary/40 bg-background/80 backdrop-blur-sm" />
+          {/* Enhanced connection lines with refined gradients */}
+          <div 
+            className="absolute -left-12 top-0 bottom-0 w-[1px]"
+            style={{
+              background: `linear-gradient(180deg, 
+                hsl(var(--primary)/${Math.max(40 - level * 8, 20)}%) 0%,
+                hsl(var(--primary)/${Math.max(30 - level * 8, 15)}%) 100%)`
+            }}
+          />
+          <div 
+            className="absolute -left-12 top-8 w-12 h-[1px]"
+            style={{
+              background: `linear-gradient(90deg, 
+                hsl(var(--primary)/${Math.max(40 - level * 8, 20)}%) 0%,
+                hsl(var(--primary)/${Math.max(30 - level * 8, 15)}%) 100%)`
+            }}
+          />
+          {/* Connection node with subtle animation */}
+          <motion.div 
+            className="absolute -left-[50px] top-[29px] w-3 h-3 rounded-full border bg-background"
+            style={{
+              borderColor: `hsl(var(--primary)/${Math.max(40 - level * 8, 20)}%)`
+            }}
+            whileHover={{ scale: 1.2 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          />
         </>
       )}
 
       <motion.div
         initial={false}
         animate={{
-          scale: isHovered ? 1.02 : 1,
-          y: isHovered ? -4 : 0,
+          scale: isHovered ? 1.01 : 1,
+          y: isHovered ? -2 : 0,
         }}
         transition={{
           type: "spring",
@@ -95,30 +116,33 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
         <Card
           className={`
             relative
-            border-l-4 
-            ${borderColor}
-            hover:border-l-primary/90 
+            border
+            border-l-[3px]
+            border-l-primary/${borderOpacity}
+            hover:border-l-primary/${Math.min(borderOpacity + 20, 100)}
             transition-all duration-300 ease-in-out
             bg-background/[0.${bgOpacity}]
-            ${level > 0 ? 'shadow-sm hover:shadow-md' : 'shadow-md'}
             backdrop-blur-sm
-            rounded-xl
-            hover:translate-x-1.5
-            hover:bg-background/[0.${bgOpacity + 5}]
+            rounded-lg
+            ${level === 0 ? 'shadow-md' : `shadow-sm hover:shadow-md`}
             transform-gpu
+            hover:translate-x-1
           `}
+          style={{
+            borderColor: `hsl(var(--border)/${Math.max(20 - level * 5, 8)}%)`
+          }}
         >
           <CardHeader className="flex flex-row items-start space-x-4 pb-2">
             <motion.button
               className={`
                 h-6 w-6 mt-1
-                ${children.length > 0 ? 'text-primary hover:text-primary/80' : 'text-muted-foreground'}
-                transition-transform duration-200
-                ${isExpanded ? 'rotate-0' : '-rotate-90'}
+                ${children.length > 0 ? 'text-primary/70 hover:text-primary' : 'text-muted-foreground'}
+                transition-all duration-200
               `}
               onClick={() => setIsExpanded(!isExpanded)}
               whileTap={{ scale: 0.9 }}
               whileHover={{ scale: 1.1 }}
+              animate={{ rotate: isExpanded ? 0 : -90 }}
             >
               {children.length > 0 ? (
                 <ChevronDown className="h-5 w-5" />
@@ -134,13 +158,25 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                 initial={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                <h3 className={`text-lg font-medium tracking-tight leading-none ${level === 0 ? 'text-foreground' : `text-foreground/[0.${90 - level * 10}]`}`}>
+                <h3 
+                  className={`
+                    text-lg font-medium tracking-tight leading-none
+                    ${level === 0 
+                      ? 'text-foreground' 
+                      : `text-foreground/[0.${Math.max(90 - level * 10, 60)}]`}
+                  `}
+                >
                   {contact.name}
                 </h3>
                 {contact.relationshipType && (
                   <Badge
                     variant="outline"
-                    className="capitalize font-normal bg-primary/5 text-primary border-0"
+                    className={`
+                      capitalize font-normal 
+                      bg-primary/${Math.max(10 - level * 2, 5)}
+                      text-primary/${Math.max(70 - level * 10, 40)}
+                      border-0
+                    `}
                   >
                     {contact.relationshipType.replace("-", " ")}
                   </Badge>
@@ -157,33 +193,39 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                   >
                     {contact.email && (
                       <motion.div 
-                        className="flex items-center text-sm text-muted-foreground"
+                        className="flex items-center text-sm text-muted-foreground/90"
                         initial={{ x: -20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.1 }}
                       >
                         <Mail className="mr-2 h-4 w-4" />
-                        <a href={`mailto:${contact.email}`} className="hover:text-primary transition-colors">
+                        <a 
+                          href={`mailto:${contact.email}`} 
+                          className="hover:text-primary transition-colors"
+                        >
                           {contact.email}
                         </a>
                       </motion.div>
                     )}
                     {contact.phone && (
                       <motion.div 
-                        className="flex items-center text-sm text-muted-foreground"
+                        className="flex items-center text-sm text-muted-foreground/90"
                         initial={{ x: -20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.2 }}
                       >
                         <Phone className="mr-2 h-4 w-4" />
-                        <a href={`tel:${contact.phone}`} className="hover:text-primary transition-colors">
+                        <a 
+                          href={`tel:${contact.phone}`} 
+                          className="hover:text-primary transition-colors"
+                        >
                           {contact.phone}
                         </a>
                       </motion.div>
                     )}
                     {contact.birthday && (
                       <motion.div 
-                        className="flex items-center text-sm text-muted-foreground"
+                        className="flex items-center text-sm text-muted-foreground/90"
                         initial={{ x: -20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.3 }}
@@ -194,7 +236,11 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                     )}
                     {contact.notes && (
                       <motion.p 
-                        className="text-sm text-muted-foreground mt-2 pl-6 border-l-2 border-primary/20"
+                        className={`
+                          text-sm text-muted-foreground/80 
+                          mt-2 pl-4 
+                          border-l-2 border-primary/${Math.max(20 - level * 5, 10)}
+                        `}
                         initial={{ y: -10, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.4 }}
@@ -204,7 +250,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                     )}
                     {(contact.createdAt || contact.updatedAt) && (
                       <motion.div 
-                        className="flex flex-col gap-1 text-xs text-muted-foreground/60 mt-3"
+                        className="flex flex-col gap-1 text-xs text-muted-foreground/50 mt-3"
                         initial={{ y: -10, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.5 }}
@@ -254,9 +300,9 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
 
           <CardContent>
             {isMaxDepth ? (
-              <div className="flex items-center justify-center p-4 bg-muted/40 rounded-xl backdrop-blur-sm border border-primary/10">
-                <AlertCircle className="h-4 w-4 text-primary/60 mr-2" />
-                <span className="text-sm text-muted-foreground font-medium">
+              <div className="flex items-center justify-center p-4 bg-muted/20 rounded-lg backdrop-blur-sm border border-primary/10">
+                <AlertCircle className="h-4 w-4 text-primary/40 mr-2" />
+                <span className="text-sm text-muted-foreground/70 font-medium">
                   Maximum relationship depth reached
                 </span>
               </div>
@@ -264,7 +310,13 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full hover:bg-primary/5 transition-colors rounded-lg border-primary/20"
+                className={`
+                  w-full 
+                  hover:bg-primary/5 
+                  transition-colors 
+                  rounded-lg 
+                  border-primary/${Math.max(20 - level * 5, 10)}
+                `}
                 onClick={() => setIsAddingChild(true)}
               >
                 <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center mr-2">
@@ -307,7 +359,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="space-y-8 mt-8"
+            className="space-y-6 mt-6"
           >
             {children.map((child) => (
               <ContactCard
