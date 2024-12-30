@@ -85,6 +85,18 @@ export function ContactList({ searchFilters }: ContactListProps) {
   const buildHierarchy = (contactId: number | null = null, depth: number = 0): Contact[] => {
     if (depth >= 4) return []; // Limit to 4 layers deep
 
+    // For the root level (personal contact's direct relationships)
+    if (depth === 0 && contactId === personalContact?.id) {
+      const directRelations = contacts.filter(c => 
+        c.parentId === contactId || 
+        (c.relationshipType === 'sibling' && !c.parentId)
+      );
+      return directRelations.map(child => ({
+        ...child,
+        children: buildHierarchy(child.id, 1)
+      }));
+    }
+
     const children = contacts.filter(c => c.parentId === contactId);
     console.log(`Building hierarchy at depth ${depth} for contact ${contactId}, found children:`,
       children.map(c => ({
