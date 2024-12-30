@@ -181,6 +181,13 @@ export function ContactGraph() {
       console.log('Created links:', links);
 
       setGraphData({ nodes, links });
+
+      // Reset zoom when data changes
+      if (graphRef.current) {
+        setTimeout(() => {
+          graphRef.current?.zoomToFit(400, 50);
+        }, 500);
+      }
     } catch (error) {
       console.error('Error processing graph data:', error);
     }
@@ -297,12 +304,14 @@ export function ContactGraph() {
         onNodeClick={handleNodeClick}
         width={dimensions.width}
         height={dimensions.height}
-        d3AlphaDecay={0.02}
-        d3VelocityDecay={0.3}
+        d3AlphaDecay={0.01} // Slower decay for more stable layout
+        d3VelocityDecay={0.4} // Higher decay for less bouncy movement
+        d3Force="link" // Enable link force
+        linkLength={100} // Increase distance between connected nodes
         cooldownTicks={100}
         onEngineStop={() => {
           if (graphRef.current) {
-            graphRef.current.zoomToFit(400);
+            graphRef.current.zoomToFit(400, 50); // Increase padding to show all nodes
           }
         }}
       />
