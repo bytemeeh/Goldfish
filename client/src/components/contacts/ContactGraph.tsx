@@ -102,9 +102,11 @@ export function ContactGraph() {
   useEffect(() => {
     if (!contacts?.length) return;
 
-    console.log('Processing contacts for graph:', contacts.length, 'contacts');
-
     try {
+      console.log('Processing contacts for graph:', contacts.length, 'contacts');
+      const meContact = contacts.find(c => c.isMe);
+      console.log('Found personal contact:', meContact);
+
       // Get color based on relationship type
       const getNodeColor = (contact: Contact): string => {
         if (contact.isMe) return "#6366f1"; // Indigo for personal contact
@@ -131,11 +133,12 @@ export function ContactGraph() {
         color: getNodeColor(contact)
       }));
 
-      console.log('Created nodes:', nodes.length, 'nodes');
+      console.log('Created nodes:', nodes);
 
       // Then create links using the nodes
       const links: GraphLink[] = [];
 
+      // First, handle explicit parent-child relationships
       contacts.forEach(contact => {
         if (!contact.parentId) return;
 
@@ -143,7 +146,7 @@ export function ContactGraph() {
         const targetNode = nodes.find(n => n.id === contact.id);
 
         if (!sourceNode || !targetNode) {
-          console.warn('Missing nodes for link:', { contactId: contact.id, parentId: contact.parentId });
+          console.warn('Missing nodes for parent-child link:', { contactId: contact.id, parentId: contact.parentId });
           return;
         }
 
@@ -154,7 +157,28 @@ export function ContactGraph() {
         });
       });
 
-      console.log('Created links:', links.length, 'links');
+      // Then, handle root-level relationships with personal contact
+      if (meContact) {
+        contacts.forEach(contact => {
+          if (contact.id === meContact.id || contact.parentId) return; // Skip self and children
+
+          const meNode = nodes.find(n => n.id === meContact.id);
+          const contactNode = nodes.find(n => n.id === contact.id);
+
+          if (!meNode || !contactNode) {
+            console.warn('Missing nodes for personal contact link:', { contactId: contact.id });
+            return;
+          }
+
+          links.push({
+            source: meNode,
+            target: contactNode,
+            type: contact.relationshipType || "undefined"
+          });
+        });
+      }
+
+      console.log('Created links:', links);
 
       setGraphData({ nodes, links });
     } catch (error) {
@@ -163,13 +187,20 @@ export function ContactGraph() {
   }, [contacts]);
 
   // Handle node click
-  const handleNodeClick = useCallback((node: GraphNode) => {
-    if (!contacts) return;
+  const handleNodeClick = useCallback((node: GraphNode | undefined) => {
+    if (!contacts || !node) {
+      console.log('Node click: Invalid node or no contacts available');
+      return;
+    }
 
+    console.log('Node clicked:', node);
     const contact = contacts.find(c => c.id === node.id);
+
     if (contact) {
       console.log('Selected contact:', contact);
       setSelectedContact(prev => prev?.id === contact.id ? null : contact);
+    } else {
+      console.warn('Could not find contact for node:', node);
     }
   }, [contacts]);
 
