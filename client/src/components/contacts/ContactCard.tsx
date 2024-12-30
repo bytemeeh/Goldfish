@@ -77,7 +77,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
     },
   });
 
-  // Enhance visual hierarchy with level-based styling
+  // Enhanced visual hierarchy with level-based styling
   const indentClass = level > 0 ? `ml-${Math.min(level * 24, 72)}` : '';
   const bgOpacity = Math.min((level + 1) * 3, 15); // Subtle background changes
   const borderOpacity = Math.max(85 - level * 10, 40); // Gradual border fading
@@ -93,7 +93,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
       {level > 0 && (
         <>
           {/* Enhanced connection lines with refined gradients */}
-          <div 
+          <div
             className="absolute -left-12 top-0 bottom-0 w-[1px]"
             style={{
               background: `linear-gradient(180deg, 
@@ -101,7 +101,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                 hsl(var(--primary)/${Math.max(30 - level * 8, 15)}%) 100%)`
             }}
           />
-          <div 
+          <div
             className="absolute -left-12 top-10 w-12 h-[1px]"
             style={{
               background: `linear-gradient(90deg, 
@@ -110,7 +110,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
             }}
           />
           {/* Connection node with subtle animation */}
-          <motion.div 
+          <motion.div
             className="absolute -left-[50px] top-[37px] w-3 h-3 rounded-full border bg-background"
             style={{
               borderColor: `hsl(var(--primary)/${Math.max(40 - level * 8, 20)}%)`
@@ -157,13 +157,13 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
         >
           {/* Top highlight line for primary contacts */}
           {level === 0 && (
-            <div 
+            <div
               className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent"
             />
           )}
 
           {/* Level indicator */}
-          <div 
+          <div
             className="absolute top-3 right-3 flex items-center gap-1.5 px-2 py-1 rounded-full bg-background/80 backdrop-blur-sm border border-border/40"
             style={{
               opacity: Math.max(0.9 - level * 0.2, 0.4)
@@ -174,12 +174,12 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                 key={index}
                 className="w-1 h-1 rounded-full transition-all duration-300"
                 initial={{ scale: 0.8, opacity: 0.6 }}
-                animate={{ 
+                animate={{
                   scale: index === level ? 1 : 0.8,
                   opacity: index === level ? 1 : 0.6
                 }}
                 style={{
-                  backgroundColor: index === level 
+                  backgroundColor: index === level
                     ? `hsl(var(--primary)/${Math.max(70 - level * 10, 40)}%)`
                     : `hsl(var(--primary)/${Math.max(40 - level * 10, 20)}%)`
                 }}
@@ -209,21 +209,21 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
             </motion.button>
 
             <div className="flex-1 space-y-3">
-              <motion.div 
+              <motion.div
                 className="flex items-center gap-3"
                 animate={{ opacity: 1 }}
                 initial={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
               >
                 <div className="flex flex-col">
-                  <h3 
+                  <h3
                     className={`
-                      ${level === 0 
-                        ? 'text-xl font-semibold tracking-tight' 
+                      ${level === 0
+                        ? 'text-xl font-semibold tracking-tight'
                         : 'text-lg font-medium tracking-tight'}
                       leading-none
-                      ${level === 0 
-                        ? 'text-foreground' 
+                      ${level === 0
+                        ? 'text-foreground'
                         : `text-foreground/[0.${Math.max(90 - level * 10, 60)}]`}
                     `}
                   >
@@ -263,15 +263,15 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                     className="space-y-2.5 overflow-hidden"
                   >
                     {contact.email && (
-                      <motion.div 
+                      <motion.div
                         className="flex items-center text-sm text-muted-foreground/90"
                         initial={{ x: -20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.1 }}
                       >
                         <Mail className="mr-2 h-4 w-4" />
-                        <a 
-                          href={`mailto:${contact.email}`} 
+                        <a
+                          href={`mailto:${contact.email}`}
                           className="hover:text-primary transition-colors"
                         >
                           {contact.email}
@@ -279,15 +279,15 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                       </motion.div>
                     )}
                     {contact.phone && (
-                      <motion.div 
+                      <motion.div
                         className="flex items-center text-sm text-muted-foreground/90"
                         initial={{ x: -20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.2 }}
                       >
                         <Phone className="mr-2 h-4 w-4" />
-                        <a 
-                          href={`tel:${contact.phone}`} 
+                        <a
+                          href={`tel:${contact.phone}`}
                           className="hover:text-primary transition-colors"
                         >
                           {contact.phone}
@@ -295,7 +295,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                       </motion.div>
                     )}
                     {contact.birthday && (
-                      <motion.div 
+                      <motion.div
                         className="flex items-center text-sm text-muted-foreground/90"
                         initial={{ x: -20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
@@ -306,7 +306,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                       </motion.div>
                     )}
                     {contact.notes && (
-                      <motion.p 
+                      <motion.p
                         className={`
                           text-sm text-muted-foreground/80 
                           mt-2 pl-4 
@@ -320,7 +320,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                       </motion.p>
                     )}
                     {(contact.createdAt || contact.updatedAt) && (
-                      <motion.div 
+                      <motion.div
                         className="flex flex-col gap-1 text-xs text-muted-foreground/50 mt-3"
                         initial={{ y: -10, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
