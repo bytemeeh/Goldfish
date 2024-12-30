@@ -12,19 +12,19 @@ import { motion, AnimatePresence } from "framer-motion";
 // Color palette configuration for Apple-style design
 const colorPalette = {
   family: {
-    primary: "hsl(205, 100%, 50%)",  // Apple Blue
+    primary: "hsl(195, 100%, 45%)",  // Cyan Blue
     gradient: ["1, 0.5", "0.8, 0.3", "0.6, 0.15"]
   },
   friends: {
-    primary: "hsl(280, 100%, 50%)",  // Apple Purple
+    primary: "hsl(330, 100%, 50%)",  // Bright Pink
     gradient: ["1, 0.5", "0.8, 0.3", "0.6, 0.15"]
   },
   professional: {
-    primary: "hsl(30, 100%, 50%)",   // Apple Orange
+    primary: "hsl(30, 100%, 50%)",   // Orange
     gradient: ["1, 0.5", "0.8, 0.3", "0.6, 0.15"]
   },
   personal: {
-    primary: "hsl(265, 100%, 50%)",  // Apple System Blue
+    primary: "hsl(145, 100%, 35%)",  // Green
     gradient: ["1, 0.55", "0.8, 0.35", "0.6, 0.2"]
   },
   default: {
