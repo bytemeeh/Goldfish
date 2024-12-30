@@ -68,27 +68,44 @@ export function ContactGraph() {
     const meContact = contacts.find(c => c.isMe);
     if (!meContact) return { nodes: [], links: [] };
 
-    // Create a map for quick contact lookup
-    const contactMap = new Map(contacts.map(c => [c.id, c]));
-
-    // Function to check if a contact should be connected directly to 'me'
-    const isDirectConnection = (contact: Contact) => {
-      if (contact.isMe) return false;
-      // Direct connections are:
-      // 1. Root level contacts (no parent)
-      // 2. Direct children of me
-      // 3. Contacts with relationshipType 'spouse' and no parent (direct spouse)
-      return !contact.parentId || 
-             contact.parentId === meContact.id || 
-             (contact.relationshipType === 'spouse' && !contact.parentId);
-    };
-
-    // Create nodes for direct connections and their immediate relationships
     const nodes = [];
     const links = [];
     const processedIds = new Set<number>();
 
-    // Add 'me' node
+    // Helper function to calculate node positions
+    const calculateNodePosition = (
+      level: number,
+      index: number,
+      totalInLevel: number,
+      parentX?: number,
+      parentY?: number
+    ) => {
+      const levelSpacing = 300; // Vertical spacing between levels
+      const nodeSpacing = 200;  // Horizontal spacing between nodes
+
+      const y = level * levelSpacing;
+      let x;
+
+      if (level === 0) {
+        // Center the root node
+        x = 0;
+      } else if (parentX !== undefined && parentY !== undefined) {
+        // Position relative to parent
+        const spreadWidth = (totalInLevel - 1) * nodeSpacing;
+        const startX = parentX - spreadWidth / 2;
+        x = startX + (index * nodeSpacing);
+      } else {
+        // Position in level if no parent
+        const spreadWidth = (totalInLevel - 1) * nodeSpacing;
+        const startX = -spreadWidth / 2;
+        x = startX + (index * nodeSpacing);
+      }
+
+      return { x, y };
+    };
+
+    // Add root node (me)
+    const rootPos = calculateNodePosition(0, 0, 1);
     nodes.push({
       id: meContact.id.toString(),
       name: meContact.name,
@@ -96,16 +113,21 @@ export function ContactGraph() {
       color: defaultColor,
       icon: User,
       contact: meContact,
-      fx: 0,
-      fy: 0,
+      ...rootPos,
       level: 0
     });
     processedIds.add(meContact.id);
 
-    // Process direct connections first
-    contacts.forEach(contact => {
-      if (isDirectConnection(contact) && !processedIds.has(contact.id)) {
-        // Add node for direct connection
+    // Get direct connections (level 1)
+    const directConnections = contacts.filter(c => 
+      !c.isMe && 
+      (!c.parentId || c.parentId === meContact.id)
+    );
+
+    // Add direct connections (level 1)
+    directConnections.forEach((contact, index) => {
+      if (!processedIds.has(contact.id)) {
+        const pos = calculateNodePosition(1, index, directConnections.length);
         nodes.push({
           id: contact.id.toString(),
           name: contact.name,
@@ -117,25 +139,30 @@ export function ContactGraph() {
             ? relationshipIcons[contact.relationshipType]
             : User,
           contact,
+          ...pos,
           level: 1
         });
         processedIds.add(contact.id);
 
-        // Add link to 'me' if it's a direct connection with no parent
-        if (!contact.parentId) {
-          links.push({
-            source: meContact.id.toString(),
-            target: contact.id.toString(),
-            value: 1,
-            relationship: contact.relationshipType
-          });
-        }
+        // Add link to root
+        links.push({
+          source: meContact.id.toString(),
+          target: contact.id.toString(),
+          value: 1,
+          relationship: contact.relationshipType
+        });
 
-        // Process immediate children/relationships of direct connections
+        // Process children of this contact (level 2)
         const children = contacts.filter(c => c.parentId === contact.id);
-        children.forEach(child => {
+        children.forEach((child, childIndex) => {
           if (!processedIds.has(child.id)) {
-            // Add node for the child
+            const childPos = calculateNodePosition(
+              2, 
+              childIndex, 
+              children.length,
+              pos.x,
+              pos.y
+            );
             nodes.push({
               id: child.id.toString(),
               name: child.name,
@@ -147,6 +174,7 @@ export function ContactGraph() {
                 ? relationshipIcons[child.relationshipType]
                 : User,
               contact: child,
+              ...childPos,
               level: 2
             });
             processedIds.add(child.id);
@@ -164,77 +192,6 @@ export function ContactGraph() {
     });
 
     return { nodes, links };
-  }, [contacts]);
-
-  useEffect(() => {
-    if (graphRef.current) {
-      const fg = graphRef.current;
-
-      // Configure force simulation
-      fg.d3Force('charge')?.strength(-1200);
-      fg.d3Force('link')?.distance(d => {
-        // Shorter distance for spouse relationships at level 1
-        if (d.relationship === 'spouse' && d.source.level === 0) return 120;
-        return d.source.level === 0 ? 200 : 150;
-      });
-
-      // Add hierarchical force
-      const simulation = fg.d3Force();
-      if (simulation) {
-        simulation.force('radial', function(alpha: number) {
-          const nodes = fg.graphData().nodes;
-          const radius = 250;
-
-          nodes.forEach((node: any) => {
-            if (node.contact.isMe) return;
-
-            let angle = 0;
-            const parentNode = nodes.find((n: any) => 
-              n.id === node.contact.parentId?.toString()
-            );
-
-            if (parentNode) {
-              // Child nodes orbit around their parent
-              angle = parentNode.x ? Math.atan2(parentNode.y, parentNode.x) : 0;
-              const distance = radius * (node.level === 1 ? 0.6 : 0.8);
-              const targetX = parentNode.x + distance * Math.cos(angle);
-              const targetY = parentNode.y + distance * Math.sin(angle);
-              node.vx = (node.vx || 0) + (targetX - node.x) * alpha;
-              node.vy = (node.vy || 0) + (targetY - node.y) * alpha;
-            } else {
-              // Position based on relationship type
-              if (node.contact.relationshipType === 'spouse') {
-                // Position spouse closer to center-right
-                angle = Math.PI / 6; // 30 degrees
-              } else {
-                // Other relationships positioned by type
-                switch (node.contact.relationshipType) {
-                  case 'mother':
-                  case 'father':
-                  case 'brother':
-                  case 'sibling':
-                    angle = Math.PI / 2; // Family at top
-                    break;
-                  case 'friend':
-                  case 'boyfriend/girlfriend':
-                    angle = Math.PI; // Friends at right
-                    break;
-                  case 'co-worker':
-                    angle = -Math.PI / 2; // Professional at bottom
-                    break;
-                  default:
-                    angle = Math.random() * 2 * Math.PI;
-                }
-              }
-              const targetX = radius * Math.cos(angle);
-              const targetY = radius * Math.sin(angle);
-              node.vx = (node.vx || 0) + (targetX - node.x) * alpha;
-              node.vy = (node.vy || 0) + (targetY - node.y) * alpha;
-            }
-          });
-        });
-      }
-    }
   }, [contacts]);
 
   const handleNodeClick = useCallback((node: any) => {
@@ -363,8 +320,8 @@ export function ContactGraph() {
             ctx.stroke();
 
             // Draw relationship label when zoomed in
-            if (globalScale > 1.5) {
-              const label = link.relationship || '';
+            if (globalScale > 1.5 && link.relationship) {
+              const label = link.relationship;
               const fontSize = 12 / globalScale;
               ctx.font = `${fontSize}px Inter, sans-serif`;
 
@@ -392,10 +349,10 @@ export function ContactGraph() {
             }
           }}
           onNodeClick={handleNodeClick}
-          cooldownTicks={100}
+          cooldownTicks={0}
           enablePanInteraction={true}
           enableZoomInteraction={true}
-          enableNodeDrag={true}
+          enableNodeDrag={false}
           minZoom={0.5}
           maxZoom={3}
         />
