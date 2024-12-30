@@ -70,6 +70,7 @@ interface GraphData {
 export function ContactGraph() {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
   const containerRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<ForceGraphMethods<GraphNode, GraphLink>>();
 
@@ -81,9 +82,11 @@ export function ContactGraph() {
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
+        const { offsetWidth, offsetHeight } = containerRef.current;
+        console.log('Updating dimensions:', { width: offsetWidth, height: offsetHeight });
         setDimensions({
-          width: containerRef.current.offsetWidth,
-          height: containerRef.current.offsetHeight
+          width: offsetWidth,
+          height: offsetHeight
         });
       }
     };
@@ -93,6 +96,65 @@ export function ContactGraph() {
 
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
+
+  // Transform contacts data into graph format
+  useEffect(() => {
+    if (!contacts) return;
+
+    console.log('Processing contacts for graph:', contacts);
+
+    // Get color based on relationship type
+    const getNodeColor = (contact: Contact) => {
+      if (contact.isMe) return "#6366f1"; // Indigo for personal contact
+      if (!contact.relationshipType) return "#94a3b8"; // Slate for undefined
+
+      const categories = {
+        family: ["mother", "father", "brother", "sibling", "child", "spouse"],
+        friends: ["friend", "boyfriend/girlfriend"],
+        professional: ["co-worker"]
+      };
+
+      if (categories.family.includes(contact.relationshipType)) return "#22c55e";
+      if (categories.friends.includes(contact.relationshipType)) return "#f97316";
+      if (categories.professional.includes(contact.relationshipType)) return "#3b82f6";
+      return "#94a3b8";
+    };
+
+    // Create nodes first
+    const nodes: GraphNode[] = contacts.map(contact => ({
+      id: contact.id,
+      name: contact.name,
+      relationshipType: contact.relationshipType,
+      isMe: contact.isMe,
+      color: getNodeColor(contact)
+    }));
+
+    console.log('Created nodes:', nodes);
+
+    // Then create links using the nodes
+    const links: GraphLink[] = contacts
+      .filter(contact => contact.parentId)
+      .map(contact => {
+        const sourceNode = nodes.find(n => n.id === contact.parentId);
+        const targetNode = nodes.find(n => n.id === contact.id);
+
+        if (!sourceNode || !targetNode) {
+          console.log('Missing nodes for link:', { contactId: contact.id, parentId: contact.parentId });
+          return null;
+        }
+
+        return {
+          source: sourceNode,
+          target: targetNode,
+          type: contact.relationshipType || "undefined"
+        };
+      })
+      .filter((link): link is GraphLink => link !== null);
+
+    console.log('Created links:', links);
+
+    setGraphData({ nodes, links });
+  }, [contacts]);
 
   // Error state
   if (error) {
@@ -111,49 +173,6 @@ export function ContactGraph() {
       </div>
     );
   }
-
-  // Get color based on relationship type
-  const getNodeColor = (contact: Contact) => {
-    if (contact.isMe) return "#6366f1"; // Indigo for personal contact
-    if (!contact.relationshipType) return "#94a3b8"; // Slate for undefined
-
-    const categories = {
-      family: ["mother", "father", "brother", "sibling", "child", "spouse"],
-      friends: ["friend", "boyfriend/girlfriend"],
-      professional: ["co-worker"]
-    };
-
-    if (categories.family.includes(contact.relationshipType)) return "#22c55e";
-    if (categories.friends.includes(contact.relationshipType)) return "#f97316";
-    if (categories.professional.includes(contact.relationshipType)) return "#3b82f6";
-    return "#94a3b8";
-  };
-
-  // Transform contacts data into graph format
-  const graphData: GraphData = {
-    nodes: contacts.map(contact => ({
-      id: contact.id,
-      name: contact.name,
-      relationshipType: contact.relationshipType,
-      isMe: contact.isMe,
-      color: getNodeColor(contact)
-    })),
-    links: contacts
-      .filter(contact => contact.parentId)
-      .map(contact => {
-        const sourceNode = graphData.nodes.find(n => n.id === contact.parentId);
-        const targetNode = graphData.nodes.find(n => n.id === contact.id);
-
-        if (!sourceNode || !targetNode) return null;
-
-        return {
-          source: sourceNode,
-          target: targetNode,
-          type: contact.relationshipType || "undefined"
-        };
-      })
-      .filter((link): link is GraphLink => link !== null)
-  };
 
   const handleNodeClick = useCallback((node: GraphNode) => {
     const contact = contacts.find(c => c.id === node.id);
