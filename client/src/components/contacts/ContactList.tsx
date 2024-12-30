@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { ContactCard } from "./ContactCard";
 import { type Contact } from "@/lib/types";
@@ -12,6 +11,7 @@ interface ContactListProps {
 type ContactCategory = {
   title: string;
   types: string[];
+  color: string;
   contacts: Contact[];
 };
 
@@ -19,16 +19,19 @@ const categories: ContactCategory[] = [
   {
     title: "Family",
     types: ["mother", "father", "brother", "sibling", "child", "spouse"],
+    color: "hsl(var(--chart-1))",
     contacts: [],
   },
   {
     title: "Friends",
     types: ["friend", "boyfriend/girlfriend"],
+    color: "hsl(var(--chart-2))",
     contacts: [],
   },
   {
     title: "Professional",
     types: ["co-worker"],
+    color: "hsl(var(--chart-3))",
     contacts: [],
   },
 ];
@@ -142,7 +145,12 @@ export function ContactList({ searchFilters }: ContactListProps) {
       <div className="space-y-8">
         {personalHierarchy && (
           <div>
-            <h2 className="text-lg font-semibold mb-4 text-muted-foreground">Personal Card</h2>
+            <h2 
+              className="text-sm font-semibold mb-4 uppercase tracking-wider"
+              style={{ color: "hsl(var(--primary))" }}
+            >
+              Personal Card
+            </h2>
             <ContactCard 
               contact={personalHierarchy}
               children={personalHierarchy.children}
@@ -153,7 +161,12 @@ export function ContactList({ searchFilters }: ContactListProps) {
         {categorizedContacts.map(category => 
           category.contacts.length > 0 && (
             <div key={category.title}>
-              <h2 className="text-lg font-semibold mb-4 text-muted-foreground">{category.title}</h2>
+              <h2 
+                className="text-sm font-semibold mb-4 uppercase tracking-wider"
+                style={{ color: category.color }}
+              >
+                {category.title}
+              </h2>
               <div className="space-y-4">
                 {category.contacts.map(contact => (
                   <ContactCard 
@@ -169,7 +182,11 @@ export function ContactList({ searchFilters }: ContactListProps) {
 
         {uncategorizedContacts.length > 0 && (
           <div>
-            <h2 className="text-lg font-semibold mb-4 text-muted-foreground">Other Contacts</h2>
+            <h2 
+              className="text-sm font-semibold mb-4 uppercase tracking-wider text-muted-foreground"
+            >
+              Other Contacts
+            </h2>
             <div className="space-y-4">
               {uncategorizedContacts.map(contact => (
                 <ContactCard 
