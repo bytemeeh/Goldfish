@@ -79,7 +79,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
 
   // Helper function to build contact hierarchy
   const buildHierarchy = (contact: Contact): Contact => {
-    // Get children for this contact
+    // Get immediate children for this contact
     const children = contacts.filter(c => c.parentId === contact.id);
 
     // Process each child recursively
@@ -92,26 +92,42 @@ export function ContactList({ searchFilters }: ContactListProps) {
     };
   };
 
-  // Find personal contact and root contacts
+  // Find personal contact (me) and root-level contacts (no parent)
   const personalContact = contacts.find(c => c.isMe);
   const rootContacts = contacts.filter(c => !c.parentId && !c.isMe);
 
-  // Process all contacts into hierarchical structure
-  const processedContacts = rootContacts.map(buildHierarchy);
+  // Process root contacts into hierarchical structure
+  const processedRootContacts = rootContacts.map(buildHierarchy);
+
+  // For personal contact, process its hierarchy
   const personalHierarchy = personalContact ? buildHierarchy(personalContact) : null;
 
-  // Categorize contacts
+  // Function to determine if a contact should be shown at root level
+  const shouldShowAtRoot = (contact: Contact) => {
+    // If contact has no parent, it's a root contact
+    if (!contact.parentId) return true;
+
+    // If contact's parent is not in our contact list, show it at root
+    const parentExists = contacts.some(c => c.id === contact.parentId);
+    return !parentExists;
+  };
+
+  // Categorize only root-level contacts
   const categorizedContacts = categories.map(category => ({
     ...category,
-    contacts: processedContacts.filter(contact =>
-      contact.relationshipType && category.types.includes(contact.relationshipType)
+    contacts: processedRootContacts.filter(contact =>
+      shouldShowAtRoot(contact) &&
+      contact.relationshipType &&
+      category.types.includes(contact.relationshipType)
     )
   }));
 
-  // Handle uncategorized contacts
-  const uncategorizedContacts = processedContacts.filter(contact =>
-    !contact.relationshipType ||
-    !categories.some(cat => contact.relationshipType && cat.types.includes(contact.relationshipType))
+  // Handle uncategorized root contacts
+  const uncategorizedContacts = processedRootContacts.filter(contact =>
+    shouldShowAtRoot(contact) && (
+      !contact.relationshipType ||
+      !categories.some(cat => contact.relationshipType && cat.types.includes(contact.relationshipType))
+    )
   );
 
   return (
