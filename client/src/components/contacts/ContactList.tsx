@@ -834,7 +834,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="absolute right-1 top-2 h-6 w-6 p-0"
+                                className="absolute right-8 top-2 h-6 w-6 p-0 bg-background/80 hover:bg-background shadow-sm border border-border/50"
                                 onClick={() => {
                                   // Add to hidden contacts
                                   const newHidden = new Set(hiddenContactIds);
@@ -943,7 +943,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="absolute right-1 top-2 h-6 w-6 p-0"
+                              className="absolute right-8 top-2 h-6 w-6 p-0 bg-background/80 hover:bg-background shadow-sm border border-border/50"
                               onClick={() => {
                                 // Add to hidden contacts
                                 const newHidden = new Set(hiddenContactIds);

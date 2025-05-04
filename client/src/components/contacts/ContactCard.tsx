@@ -65,7 +65,7 @@ interface ContactCardProps {
   onChildrenReorder?: (children: Contact[]) => void;
 }
 
-export function ContactCard({ contact, children = [], level = 0 }: ContactCardProps) {
+export function ContactCard({ contact, children = [], level = 0, manualSortMode = false, onChildrenReorder }: ContactCardProps) {
   // Auto-expand first level contacts
   const [isExpanded, setIsExpanded] = useState(level === 0 && children.length > 0);
   const [isAddingChild, setIsAddingChild] = useState(false);
@@ -516,14 +516,54 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                 Related Contacts
               </div>
             )}
-            {children.map((child) => (
-              <ContactCard
-                key={child.id}
-                contact={child}
-                children={child.children}
-                level={level + 1}
-              />
-            ))}
+            {manualSortMode ? (
+              <Reorder.Group
+                axis="y"
+                values={children}
+                onReorder={onChildrenReorder || (() => {})}
+                className="space-y-4"
+              >
+                {children.map((child) => (
+                  <Reorder.Item
+                    key={child.id}
+                    value={child}
+                    className="relative cursor-move"
+                  >
+                    <div className="absolute -left-4 top-6 transform opacity-40 hover:opacity-100 transition-opacity">
+                      <GripVertical className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <ContactCard
+                      key={child.id}
+                      contact={child}
+                      children={child.children}
+                      level={level + 1}
+                      manualSortMode={manualSortMode}
+                      onChildrenReorder={(newChildren) => {
+                        // Update this specific child's children
+                        if (child.children) {
+                          // Find the child in the children array and update its children
+                          const updatedChildren = children.map(c => 
+                            c.id === child.id ? { ...c, children: newChildren } : c
+                          );
+                          onChildrenReorder?.(updatedChildren);
+                        }
+                      }}
+                    />
+                  </Reorder.Item>
+                ))}
+              </Reorder.Group>
+            ) : (
+              // Regular non-draggable mode
+              children.map((child) => (
+                <ContactCard
+                  key={child.id}
+                  contact={child}
+                  children={child.children}
+                  level={level + 1}
+                  manualSortMode={manualSortMode}
+                />
+              ))
+            )}
           </motion.div>
         )}
       </AnimatePresence>
