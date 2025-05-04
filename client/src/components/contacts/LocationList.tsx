@@ -11,9 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 interface LocationListProps {
   locations: Location[];
   onChange: (locations: Location[]) => void;
+  disabled?: boolean;
 }
 
-export function LocationList({ locations = [], onChange }: LocationListProps) {
+export function LocationList({ locations = [], onChange, disabled = false }: LocationListProps) {
   const [activeLocationId, setActiveLocationId] = useState<string | null>(null);
 
   const handleAddLocation = () => {
@@ -79,6 +80,7 @@ export function LocationList({ locations = [], onChange }: LocationListProps) {
           variant="outline" 
           onClick={handleAddLocation}
           className="flex items-center gap-1"
+          disabled={disabled}
         >
           <Plus className="h-3.5 w-3.5" />
           Add Location
@@ -95,6 +97,7 @@ export function LocationList({ locations = [], onChange }: LocationListProps) {
             size="sm" 
             className="mt-2" 
             onClick={handleAddLocation}
+            disabled={disabled}
           >
             <Plus className="h-3.5 w-3.5 mr-1" />
             Add First Location
@@ -116,6 +119,7 @@ export function LocationList({ locations = [], onChange }: LocationListProps) {
                   variant="ghost" 
                   size="sm" 
                   onClick={() => handleDeleteLocation(index)}
+                  disabled={disabled}
                 >
                   <Trash className="h-4 w-4 text-destructive" />
                 </Button>
@@ -129,6 +133,7 @@ export function LocationList({ locations = [], onChange }: LocationListProps) {
                       <Select 
                         value={location.type} 
                         onValueChange={(value) => handleLocationChange(index, { type: value as LocationType })}
+                        disabled={disabled}
                       >
                         <SelectTrigger id={`location-${index}-type`}>
                           <SelectValue placeholder="Select type" />
@@ -147,6 +152,7 @@ export function LocationList({ locations = [], onChange }: LocationListProps) {
                         value={location.name || ''}
                         onChange={(e) => handleLocationChange(index, { name: e.target.value })}
                         placeholder="John's Office"
+                        disabled={disabled}
                       />
                     </div>
                   </div>
@@ -158,6 +164,7 @@ export function LocationList({ locations = [], onChange }: LocationListProps) {
                       value={location.address || ''}
                       onChange={(e) => handleLocationChange(index, { address: e.target.value })}
                       placeholder="123 Main St, City, State, Country"
+                      disabled={disabled}
                     />
                   </div>
 
@@ -169,6 +176,7 @@ export function LocationList({ locations = [], onChange }: LocationListProps) {
                         value={location.latitude || ''}
                         onChange={(e) => handleLocationChange(index, { latitude: e.target.value })}
                         placeholder="40.7128"
+                        disabled={disabled}
                       />
                     </div>
                     <div>
@@ -178,6 +186,7 @@ export function LocationList({ locations = [], onChange }: LocationListProps) {
                         value={location.longitude || ''}
                         onChange={(e) => handleLocationChange(index, { longitude: e.target.value })}
                         placeholder="-74.0060"
+                        disabled={disabled}
                       />
                     </div>
                   </div>

@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Map } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { type Contact, type RelationshipType, type Location } from "@/lib/types";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { RelationshipTypeSelector } from "./RelationshipTypeSelector";
@@ -51,6 +51,45 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [locations, setLocations] = useState<Location[]>(initialData?.locations || []);
+  
+  // For personal card, automatically use current location
+  useEffect(() => {
+    // Only do this for personal card and when no locations exist
+    if (isPersonalCard && locations.length === 0) {
+      // Check if browser supports geolocation
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            // Create a new location with current coordinates
+            const currentLocation: Location = {
+              type: 'home',
+              name: 'My Location',
+              address: 'Current Location',
+              latitude: position.coords.latitude.toString(),
+              longitude: position.coords.longitude.toString(),
+              isNew: true
+            };
+            
+            // Add to locations
+            setLocations([currentLocation]);
+            
+            toast({
+              title: "Location detected",
+              description: "Your current location has been set as the default.",
+            });
+          },
+          (error) => {
+            console.error("Error getting location:", error);
+            toast({
+              title: "Location Error",
+              description: "Could not get your current location. You can add it manually.",
+              variant: "destructive"
+            });
+          }
+        );
+      }
+    }
+  }, [isPersonalCard, locations.length, toast]);
 
   // Fetch parent contact if parentId is provided
   const { data: parentContact } = useQuery<Contact & { validChildTypes: RelationshipType[] }>({
@@ -267,11 +306,20 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
           <div className="pt-2">
             <div className="pb-2 border-b mb-4">
               <h3 className="text-base font-medium">Locations</h3>
-              <p className="text-sm text-muted-foreground">Add multiple locations where you might meet this contact</p>
+              {isPersonalCard ? (
+                <p className="text-sm text-muted-foreground">
+                  Your current location will be used by default
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Add multiple locations where you might meet this contact
+                </p>
+              )}
             </div>
             <LocationList
               locations={locations}
               onChange={setLocations}
+              disabled={isPersonalCard && locations.length > 0} // Disable adding multiple locations for personal card
             />
           </div>
 
