@@ -689,19 +689,6 @@ export function ContactList({ searchFilters }: ContactListProps) {
         <div className="pt-1 pb-2">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-medium text-muted-foreground">Sort Mode:</span>
-            
-            {/* Show toggle buttons for hiding/showing contacts in manual mode */}
-            {sortType === 'manual' && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-6 px-2 py-0 text-xs" 
-                onClick={() => setHiddenContactIds(new Set())}
-              >
-                <Eye className="h-3 w-3 mr-1" />
-                Show All
-              </Button>
-            )}
           </div>
           
           <div className="flex flex-wrap gap-1 mb-2">
@@ -740,6 +727,19 @@ export function ContactList({ searchFilters }: ContactListProps) {
               <GripVertical className="h-3.5 w-3.5" />
               Manual
             </Button>
+            
+            {/* Show All button for manual mode, positioned next to sort buttons */}
+            {sortType === 'manual' && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-7 px-3 py-0 text-xs flex items-center gap-1.5 ml-auto" 
+                onClick={() => setHiddenContactIds(new Set())}
+              >
+                <Eye className="h-3.5 w-3.5" />
+                Show All
+              </Button>
+            )}
           </div>
         </div>
       </div>
