@@ -204,8 +204,13 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
                       {contact.name}
                     </h3>
                     {level > 0 && (
-                      <span className="inline-flex items-center justify-center px-2 h-5 text-xs font-medium bg-primary/10 text-primary rounded-full">
-                        {level === 1 ? '1st Level' : level === 2 ? '2nd Level' : level === 3 ? '3rd Level' : `${level}th Level`}
+                      <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-medium bg-primary/10 text-primary rounded-full">
+                        L{level}
+                      </span>
+                    )}
+                    {contact.name === 'Christoph' && (
+                      <span className="inline-flex items-center justify-center px-2 h-5 text-xs font-medium bg-primary/5 text-primary/80 rounded-md ml-1">
+                        1st Level
                       </span>
                     )}
                   </div>
@@ -514,10 +519,10 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
           >
             {children.length > 0 && (
               <div className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider ml-12 mb-2">
-                {level === 0 ? '1st Level Contacts' : 
-                 level === 1 ? '2nd Level Contacts' : 
-                 level === 2 ? '3rd Level Contacts' : 
-                 `${level+1}th Level Contacts`}
+                {level === 0 ? '1ST LEVEL CONTACTS' : 
+                 level === 1 ? '2ND LEVEL CONTACTS' : 
+                 level === 2 ? '3RD LEVEL CONTACTS' : 
+                 `${level+1}TH LEVEL CONTACTS`}
               </div>
             )}
             {manualSortMode ? (
