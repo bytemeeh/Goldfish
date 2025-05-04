@@ -24,6 +24,8 @@ import {
   MapPin,
   GripVertical,
   EyeOff,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -432,17 +434,25 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={(e) => {
-                    e.stopPropagation();
-                    setIsEditing(true);
-                  }}>
+                  <DropdownMenuItem 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsEditing(true);
+                    }}
+                    className="flex items-center justify-start"
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
                     Edit
                   </DropdownMenuItem>
                   {!isMaxDepth && (
-                    <DropdownMenuItem onClick={(e) => {
-                      e.stopPropagation();
-                      setIsAddingChild(true);
-                    }}>
+                    <DropdownMenuItem 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsAddingChild(true);
+                      }}
+                      className="flex items-center justify-start"
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
                       Add Related Contact
                     </DropdownMenuItem>
                   )}
@@ -457,18 +467,20 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
                           window.dispatchEvent(hideEvent);
                         }
                       }}
+                      className="flex items-center justify-start"
                     >
                       <EyeOff className="h-4 w-4 mr-2" />
                       Hide
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem
-                    className="text-destructive"
+                    className="text-destructive flex items-center justify-start"
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowDeleteConfirm(true);
                     }}
                   >
+                    <Trash2 className="h-4 w-4 mr-2" />
                     Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>

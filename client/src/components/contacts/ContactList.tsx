@@ -19,7 +19,8 @@ import {
   EyeOff,
   GripVertical,
   Layers,
-  Network
+  Network,
+  RefreshCw
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -746,17 +747,32 @@ export function ContactList({ searchFilters }: ContactListProps) {
               Manual
             </Button>
             
-            {/* Show All button for manual mode, positioned next to sort buttons */}
+            {/* Action buttons for manual mode, positioned next to sort buttons */}
             {sortType === 'manual' && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-7 px-3 py-0 text-xs flex items-center gap-1.5 ml-auto" 
-                onClick={() => setHiddenContactIds(new Set())}
-              >
-                <Eye className="h-3.5 w-3.5" />
-                Show All
-              </Button>
+              <div className="flex items-center gap-2 ml-auto">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-7 px-3 py-0 text-xs flex items-center gap-1.5" 
+                  onClick={() => setHiddenContactIds(new Set())}
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  Show All
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-7 px-3 py-0 text-xs flex items-center gap-1.5" 
+                  onClick={() => {
+                    setSortType('hierarchical');
+                    setManualOrderIds([]);
+                    localStorage.removeItem('manual_order_ids');
+                  }}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Reset
+                </Button>
+              </div>
             )}
           </div>
           
