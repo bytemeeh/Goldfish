@@ -295,7 +295,39 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                     )}
                     
                     {/* Location information display */}
-                    {(contact.street || contact.city || contact.state || contact.country) && (
+                    {/* Display multiple locations if available */}
+                    {contact.locations && contact.locations.length > 0 ? (
+                      <motion.div
+                        className="flex items-start text-sm text-muted-foreground/90"
+                        initial={{ x: -20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: 0.35 }}
+                      >
+                        <MapPin className="mr-2 h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <div className="space-y-2">
+                          {contact.locations.map((location, index) => (
+                            <div key={location.id || index} className="pb-1">
+                              {location.type && (
+                                <div className="text-xs font-medium text-primary/70 mb-0.5 capitalize">
+                                  {location.type} {location.name && `- ${location.name}`}
+                                </div>
+                              )}
+                              {location.address && <div>{location.address}</div>}
+                              <div className="text-xs opacity-90">
+                                {location.latitude && location.longitude && (
+                                  <div className="text-muted-foreground/70">
+                                    GPS: {parseFloat(location.latitude as string).toFixed(4)}, 
+                                    {parseFloat(location.longitude as string).toFixed(4)}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    ) : 
+                    /* Fallback to legacy location fields */
+                    (contact.street || contact.city || contact.state || contact.country) && (
                       <motion.div
                         className="flex items-start text-sm text-muted-foreground/90"
                         initial={{ x: -20, opacity: 0 }}

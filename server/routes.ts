@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
 import { contacts, locations, insertContactSchema, insertLocationSchema, getCascadedRelationshipType, getValidChildRelationshipTypes, type RelationshipType, type Location } from "@db/schema";
-import { and, or, eq, ilike, sql } from "drizzle-orm";
+import { and, or, eq, ilike, sql, inArray } from "drizzle-orm";
 
 interface SearchFilters {
   name?: string;
@@ -118,12 +118,31 @@ export function registerRoutes(app: Express): Server {
       if (contactsResult.length > 0) {
         // Get all locations for all contacts in one query
         const contactIds = contactsResult.map(c => c.id);
-        const allLocations = await db
-          .select()
-          .from(locations)
-          .where(sql`${locations.contactId} IN (${contactIds.join(',')})`);
+        
+        // Need to use parameterized queries instead of string concatenation
+        let allLocations: Location[] = [];
+        if (contactIds.length > 0) {
+          // Process in batches of 10 to avoid query parameter issues
+          for (let i = 0; i < contactIds.length; i += 10) {
+            const batchIds = contactIds.slice(i, i + 10);
+            const batchLocations = await Promise.all(
+              batchIds.map(contactId => 
+                db
+                  .select()
+                  .from(locations)
+                  .where(eq(locations.contactId, contactId))
+              )
+            );
+            
+            // Flatten the results
+            allLocations = [
+              ...allLocations,
+              ...batchLocations.flat()
+            ];
+          }
           
-        console.log(`Found ${allLocations.length} total locations for ${contactIds.length} contacts`);
+          console.log(`Found ${allLocations.length} total locations for ${contactIds.length} contacts`);
+        }
         
         // Group locations by contact ID
         const locationsByContactId: Record<number, Location[]> = {};
@@ -235,21 +254,24 @@ export function registerRoutes(app: Express): Server {
       if (locationData && Array.isArray(locationData) && locationData.length > 0) {
         console.log(`Adding ${locationData.length} locations for new contact`);
         
-        // Prepare locations data with the new contact ID
-        const locationsToInsert = locationData.map(location => ({
-          ...location,
-          contactId: newContact.id,
-          // Ensure created/updated timestamps
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }));
-        
-        // Insert all locations
-        await db
-          .insert(locations)
-          .values(locationsToInsert);
+        // Process each location individually to avoid type issues
+        for (const location of locationData) {
+          const preparedLocation = {
+            ...location,
+            contactId: newContact.id,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            // Remove client-side flags if any
+            isNew: undefined,
+            isDeleted: undefined
+          };
           
-        console.log(`Added ${locationsToInsert.length} locations for contact`);
+          await db
+            .insert(locations)
+            .values(preparedLocation);
+        }
+          
+        console.log(`Added ${locationData.length} locations for contact`);
       }
 
       if (validatedContactData.parentId && validatedContactData.relationshipType) {
@@ -321,9 +343,13 @@ export function registerRoutes(app: Express): Server {
         
         // Delete locations that are marked for deletion
         if (deletedLocationIds.length > 0) {
-          await db
-            .delete(locations)
-            .where(sql`${locations.id} IN (${deletedLocationIds.join(',')})`);
+          // Delete in batches to avoid SQL issues
+          for (let i = 0; i < deletedLocationIds.length; i++) {
+            const locationId = deletedLocationIds[i];
+            await db
+              .delete(locations)
+              .where(eq(locations.id, locationId));
+          }
           console.log(`Deleted ${deletedLocationIds.length} locations`);
         }
         
@@ -345,22 +371,25 @@ export function registerRoutes(app: Express): Server {
         
         // Insert new locations
         if (newLocations.length > 0) {
-          const locationsToInsert = newLocations.map(location => ({
-            ...location,
-            id: undefined, // Remove any temporary ID
-            contactId,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            // Remove client-side flags
-            isNew: undefined,
-            isDeleted: undefined
-          }));
-          
-          await db
-            .insert(locations)
-            .values(locationsToInsert);
+          // Process each new location individually
+          for (const location of newLocations) {
+            const preparedLocation = {
+              ...location,
+              id: undefined, // Remove any temporary ID
+              contactId,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              // Remove client-side flags
+              isNew: undefined,
+              isDeleted: undefined
+            };
             
-          console.log(`Inserted ${locationsToInsert.length} new locations`);
+            await db
+              .insert(locations)
+              .values(preparedLocation);
+          }
+            
+          console.log(`Inserted ${newLocations.length} new locations`);
         }
       }
 
