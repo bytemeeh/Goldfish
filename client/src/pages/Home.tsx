@@ -41,7 +41,7 @@ export function Home() {
                   variant={viewMode === "list" ? "default" : "ghost"}
                   onClick={() => setViewMode("list")}
                   size="sm"
-                  className="h-7 rounded-none px-1.5"
+                  className="h-7 rounded-none px-1.5 w-[80px]" // Added width for consistent size
                 >
                   <List className="h-3.5 w-3.5" />
                 </Button>
@@ -49,7 +49,7 @@ export function Home() {
                   variant={viewMode === "graph" ? "default" : "ghost"}
                   onClick={() => setViewMode("graph")}
                   size="sm"
-                  className="h-7 rounded-none px-1.5"
+                  className="h-7 rounded-none px-1.5 w-[80px]" // Added width for consistent size
                 >
                   <Network className="h-3.5 w-3.5" />
                 </Button>
@@ -57,7 +57,7 @@ export function Home() {
               <div className="flex items-center gap-1.5"> {/* Grouped buttons for better spacing */}
                 <Dialog open={isEditingPersonal} onOpenChange={setIsEditingPersonal}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-7 px-2 py-0">
+                    <Button variant="outline" size="sm" className="h-7 px-2 py-0 w-[120px]"> {/* Added width for consistent size */}
                       <User className="h-3.5 w-3.5 mr-1" />
                       <span className="whitespace-nowrap text-xs">Personal Info</span>
                     </Button>
@@ -77,7 +77,7 @@ export function Home() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 px-2 py-0"
+                  className="h-7 px-2 py-0 w-[80px]" {/* Added width for consistent size */}
                   onClick={() => setIsSharing(true)}
                 >
                   <Share2 className="h-3.5 w-3.5 mr-1" />
@@ -85,7 +85,7 @@ export function Home() {
                 </Button>
                 <Dialog open={isAddingContact} onOpenChange={setIsAddingContact}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="h-7 px-2 py-0">
+                    <Button size="sm" className="h-7 px-2 py-0 w-[80px]"> {/* Added width for consistent size */}
                       <Plus className="h-3.5 w-3.5 mr-1" />
                       <span className="whitespace-nowrap text-xs">New</span>
                     </Button>
