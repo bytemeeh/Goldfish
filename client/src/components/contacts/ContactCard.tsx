@@ -61,6 +61,7 @@ interface ContactCardProps {
   contact: Contact;
   children?: Contact[];
   level?: number;
+  relationshipLevel?: number;
   manualSortMode?: boolean;
   onChildrenReorder?: (children: Contact[]) => void;
 }
