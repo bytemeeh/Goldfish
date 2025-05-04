@@ -49,7 +49,7 @@ export function Home() {
       <div className="container mx-auto px-2 sm:px-4 py-6 sm:py-8">
         <div className="space-y-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Contacts</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Goldfish</h1>
             <div className="grid grid-cols-4 gap-1.5 w-full md:w-auto max-w-full">
               <div className="flex items-center border rounded-md overflow-hidden h-8 col-span-1">
                 <Button
