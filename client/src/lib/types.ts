@@ -11,6 +11,14 @@ export interface Contact {
   shareToken?: string;
   shareDepth?: number;
   shareableUntil?: string;
+  // Location fields
+  street?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
+  latitude?: string;
+  longitude?: string;
   createdAt: string;
   updatedAt: string;
   children?: Contact[];

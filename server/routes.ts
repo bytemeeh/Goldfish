@@ -90,6 +90,14 @@ export function registerRoutes(app: Express): Server {
           shareToken: contacts.shareToken,
           shareDepth: contacts.shareDepth,
           shareableUntil: contacts.shareableUntil,
+          // Location fields
+          street: contacts.street,
+          city: contacts.city,
+          state: contacts.state,
+          country: contacts.country,
+          postalCode: contacts.postalCode,
+          latitude: contacts.latitude,
+          longitude: contacts.longitude,
           createdAt: contacts.createdAt,
           updatedAt: contacts.updatedAt,
         })

@@ -11,12 +11,14 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Map } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { type Contact, type RelationshipType } from "@/lib/types";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { RelationshipTypeSelector } from "./RelationshipTypeSelector";
+import { LocationPicker } from "./LocationPicker";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const contactSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -27,6 +29,14 @@ const contactSchema = z.object({
   parentId: z.number().optional().nullable(),
   relationshipType: z.enum(['sibling', 'mother', 'father', 'brother', 'friend', 'child', 'co-worker', 'spouse', 'boyfriend/girlfriend'] as const).optional().nullable(),
   isMe: z.boolean().optional(),
+  // Location fields
+  street: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
+  state: z.string().optional().nullable(),
+  country: z.string().optional().nullable(),
+  postalCode: z.string().optional().nullable(),
+  latitude: z.string().optional().nullable(),
+  longitude: z.string().optional().nullable(),
 });
 
 interface ContactFormProps {
@@ -57,6 +67,14 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
       parentId: parentId || initialData?.parentId || null,
       relationshipType: initialData?.relationshipType || null,
       isMe: isPersonalCard || initialData?.isMe || false,
+      // Location fields
+      street: initialData?.street || "",
+      city: initialData?.city || "",
+      state: initialData?.state || "",
+      country: initialData?.country || "",
+      postalCode: initialData?.postalCode || "",
+      latitude: initialData?.latitude || null,
+      longitude: initialData?.longitude || null,
     },
   });
 
@@ -208,6 +226,170 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
             </FormItem>
           )}
         />
+
+        <div className="pt-2">
+          <Tabs defaultValue="map" className="w-full">
+            <TabsList className="mb-4 w-full justify-start">
+              <TabsTrigger value="map" className="flex items-center gap-2">
+                <Map className="h-4 w-4" />
+                Map
+              </TabsTrigger>
+              <TabsTrigger value="address" className="flex items-center gap-2">
+                Address Details
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="map" className="p-1">
+              <div className="mb-2 text-sm text-muted-foreground">
+                Select a location by clicking on the map or searching for an address.
+              </div>
+              <div className="flex gap-4 items-start flex-wrap space-y-0">
+                <LocationPicker
+                  value={{
+                    address: `${form.watch('street') || ''} ${form.watch('city') || ''} ${form.watch('state') || ''} ${form.watch('country') || ''}`.trim(),
+                    latitude: form.watch('latitude'),
+                    longitude: form.watch('longitude'),
+                  }}
+                  onChange={(location) => {
+                    if (location.address) {
+                      // Parse address components from formatted address
+                      const addressParts = location.address.split(',').map(part => part.trim());
+                      
+                      if (addressParts.length >= 3) {
+                        form.setValue('street', addressParts[0]);
+                        form.setValue('city', addressParts[1]);
+                        
+                        // Last part might be country or state + postal + country
+                        const lastPart = addressParts[addressParts.length-1];
+                        form.setValue('country', lastPart);
+                        
+                        // If we have a state/postal part
+                        if (addressParts.length > 3) {
+                          const statePostal = addressParts[addressParts.length-2];
+                          const statePostalParts = statePostal.split(' ');
+                          
+                          if (statePostalParts.length > 1) {
+                            form.setValue('state', statePostalParts[0]);
+                            form.setValue('postalCode', statePostalParts[1]);
+                          } else {
+                            form.setValue('state', statePostal);
+                          }
+                        }
+                      }
+                    }
+                    
+                    if (location.latitude) form.setValue('latitude', location.latitude);
+                    if (location.longitude) form.setValue('longitude', location.longitude);
+                  }}
+                />
+              </div>
+            </TabsContent>
+            <TabsContent value="address" className="p-1 space-y-4">
+              <FormField
+                control={form.control}
+                name="street"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Street Address</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="123 Main St" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid gap-4 grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="city"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>City</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="state"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>State/Province</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <div className="grid gap-4 grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="postalCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Postal Code</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Country</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <div className="grid gap-4 grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="latitude"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Latitude</FormLabel>
+                      <FormControl>
+                        <Input {...field} readOnly className="bg-muted/40" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="longitude"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Longitude</FormLabel>
+                      <FormControl>
+                        <Input {...field} readOnly className="bg-muted/40" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
 
         <div className="flex justify-end gap-3">
           <Button 
