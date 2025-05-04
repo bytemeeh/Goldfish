@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, List, Network, User, Share2 } from "lucide-react";
 import {
@@ -18,16 +18,31 @@ import type { Contact } from "@/lib/types";
 
 type ViewMode = "list" | "graph";
 
+// Local storage keys
+const STORAGE_KEY_VIEW_MODE = 'contacts-app-view-mode';
+
 export function Home() {
   const [filters, setFilters] = useState<SearchFilters>({});
   const [isAddingContact, setIsAddingContact] = useState(false);
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    // Try to get the saved view mode from local storage
+    const savedViewMode = localStorage.getItem(STORAGE_KEY_VIEW_MODE);
+    // Return the saved mode if valid, otherwise default to "list"
+    return (savedViewMode === 'list' || savedViewMode === 'graph') 
+      ? savedViewMode as ViewMode 
+      : "list";
+  });
 
   const { data: contacts } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
   });
+  
+  // Save the view mode to local storage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_VIEW_MODE, viewMode);
+  }, [viewMode]);
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
