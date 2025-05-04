@@ -90,6 +90,7 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
   const indentClass = level > 0 ? `ml-${Math.min(level * 24, 72)}` : '';
 
   // Maximum depth is 4 levels (0-based index, so level 3 is the 4th layer)
+  // Level 0 is the master contact (you), level 1 is direct contacts, level 2+ are subsequent levels
   const isMaxDepth = level >= 3;
 
   // Get relationship icon if available
@@ -107,16 +108,16 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
       
       {level > 0 && (
         <>
-          {/* Connection line with refined styling */}
+          {/* Connection line with level-based styling */}
           <div
-            className="absolute -left-12 top-0 bottom-0 w-[1px] bg-border/20"
+            className={`absolute -left-12 top-0 bottom-0 w-[1px] ${level === 1 ? 'bg-primary/30' : level === 2 ? 'bg-primary/20' : 'bg-border/20'}`}
           />
           <div
-            className="absolute -left-12 top-10 w-12 h-[1px] bg-border/20"
+            className={`absolute -left-12 top-10 w-12 h-[1px] ${level === 1 ? 'bg-primary/30' : level === 2 ? 'bg-primary/20' : 'bg-border/20'}`}
           />
-          {/* Connection node with subtle styling */}
+          {/* Connection node with level-based styling */}
           <motion.div
-            className="absolute -left-[50px] top-[37px] w-2 h-2 rounded-full bg-border/40"
+            className={`absolute -left-[50px] top-[37px] w-2 h-2 rounded-full ${level === 1 ? 'bg-primary/60' : level === 2 ? 'bg-primary/40' : 'bg-border/40'}`}
             whileHover={{ scale: 1.2 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
           />
@@ -157,7 +158,7 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
                 {Array.from({ length: level }).map((_, index) => (
                   <div
                     key={index}
-                    className="w-1 h-3 rounded-full bg-primary/20"
+                    className={`w-1 h-3 rounded-full ${index === 0 ? 'bg-primary/70' : index === 1 ? 'bg-primary/40' : 'bg-primary/20'}`}
                   />
                 ))}
               </div>
@@ -203,8 +204,8 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
                       {contact.name}
                     </h3>
                     {level > 0 && (
-                      <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-medium bg-primary/10 text-primary rounded-full">
-                        L{level}
+                      <span className="inline-flex items-center justify-center px-2 h-5 text-xs font-medium bg-primary/10 text-primary rounded-full">
+                        {level === 1 ? '1st Level' : level === 2 ? '2nd Level' : level === 3 ? '3rd Level' : `${level}th Level`}
                       </span>
                     )}
                   </div>
@@ -511,9 +512,12 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
             exit={{ opacity: 0, height: 0 }}
             className="space-y-4 mt-4"
           >
-            {children.length > 0 && level === 0 && (
+            {children.length > 0 && (
               <div className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider ml-12 mb-2">
-                Related Contacts
+                {level === 0 ? '1st Level Contacts' : 
+                 level === 1 ? '2nd Level Contacts' : 
+                 level === 2 ? '3rd Level Contacts' : 
+                 `${level+1}th Level Contacts`}
               </div>
             )}
             {manualSortMode ? (
