@@ -20,26 +20,32 @@
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   margin-top: 2px;
   overflow: hidden;
-  z-index: 9999;
+  z-index: 9999 !important;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
 }
 
 .pac-item {
-  padding: 0.5rem 0.75rem;
-  cursor: pointer;
+  padding: 0.75rem;
+  cursor: pointer !important;
   display: flex;
   align-items: center;
-  font-size: 0.875rem;
-  color: hsl(var(--foreground));
-  border-top: 1px solid hsl(var(--border));
+  transition: background-color 0.2s, color 0.2s;
+  border-bottom: 1px solid hsl(var(--border)/0.5);
 }
 
 .pac-item:first-child {
   border-top: none;
 }
 
-.pac-item:hover, 
+.pac-item:hover,
 .pac-item-selected {
-  background-color: hsl(var(--muted) / 0.3);
+  background-color: hsl(var(--primary)/0.1);
+  color: hsl(var(--primary));
+}
+
+.pac-item:active {
+  background-color: hsl(var(--primary)/0.2);
 }
 
 .pac-icon {
@@ -65,6 +71,7 @@
 .address-selected {
   background-color: hsl(var(--primary) / 0.1) !important;
   border-color: hsl(var(--primary)) !important;
+  box-shadow: 0 0 0 1px hsl(var(--primary)/0.5) !important;
   transition: all 0.3s ease;
 }
 

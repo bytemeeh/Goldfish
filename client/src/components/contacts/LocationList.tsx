@@ -215,7 +215,7 @@ export function LocationList({ locations = [], onChange, disabled = false }: Loc
                               types: ['address']
                             });
                             
-                            // Handle the standard place_changed event
+                            // Enhanced place_changed handler with better feedback
                             autocomplete.addListener('place_changed', () => {
                               const place = autocomplete.getPlace();
                               if (place.geometry && place.geometry.location) {
@@ -223,171 +223,165 @@ export function LocationList({ locations = [], onChange, disabled = false }: Loc
                                   lat: place.geometry.location.lat(),
                                   lng: place.geometry.location.lng()
                                 };
-                                handleLocationChange(index, {
-                                  address: place.formatted_address || '',
-                                  latitude: pos.lat.toString(),
-                                  longitude: pos.lng.toString()
+                                
+                                // Use our helper function for consistent feedback
+                                createSuccessIndicator(
+                                  input,
+                                  place.formatted_address || '',
+                                  pos.lat.toString(),
+                                  pos.lng.toString()
+                                );
+                              }
+                            });
+                            
+                            // Enable enter key behavior for search
+                            input.addEventListener('keydown', (e) => {
+                              if (e.key === 'Enter' && input.value) {
+                                e.preventDefault();
+                                
+                                // Use geocoding to get the address
+                                const geocoder = new window.google.maps.Geocoder();
+                                geocoder.geocode({ address: input.value }, (results, status) => {
+                                  if (status === window.google.maps.GeocoderStatus.OK && results && results[0]) {
+                                    const pos = {
+                                      lat: results[0].geometry.location.lat(),
+                                      lng: results[0].geometry.location.lng()
+                                    };
+                                    
+                                    // Update the location in state
+                                    handleLocationChange(index, {
+                                      address: results[0].formatted_address,
+                                      latitude: pos.lat.toString(),
+                                      longitude: pos.lng.toString()
+                                    });
+                                    
+                                    // Update input with formatted address
+                                    input.value = results[0].formatted_address;
+                                    
+                                    // Add visual feedback
+                                    input.classList.add('address-selected');
+                                    
+                                    // Success indicator
+                                    const successIndicator = document.createElement('div');
+                                    successIndicator.className = 'address-success-indicator';
+                                    successIndicator.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Address selected</span>';
+                                    
+                                    // Add indicator to DOM
+                                    const inputContainer = input.parentElement;
+                                    if (inputContainer && inputContainer.parentElement) {
+                                      inputContainer.parentElement.appendChild(successIndicator);
+                                      
+                                      // Cleanup after animation
+                                      setTimeout(() => {
+                                        input.classList.remove('address-selected');
+                                        successIndicator.classList.add('fade-out');
+                                        setTimeout(() => {
+                                          if (successIndicator.parentElement) {
+                                            successIndicator.parentElement.removeChild(successIndicator);
+                                          }
+                                        }, 500);
+                                      }, 2000);
+                                    }
+                                  }
                                 });
                               }
                             });
                             
-                            // Create a cache for geocode results to avoid duplicate lookups
-                            const geocodeCache = new Map();
-                            type GeocodeResult = {
-                              formattedAddress: string;
-                              lat: string;
-                              lng: string;
-                            };
-
-                            // Function to geocode an address with caching
-                            const geocodeAddress = (address: string, callback: (result: GeocodeResult | null) => void) => {
-                              // Check if we have this address in cache
-                              if (geocodeCache.has(address)) {
-                                callback(geocodeCache.get(address) || null);
-                                return;
-                              }
+                            // Create a function to create the success indicator
+                            const createSuccessIndicator = (targetInput: HTMLInputElement, formattedAddress: string, lat: string, lng: string) => {
+                              // Update input with formatted address
+                              targetInput.value = formattedAddress;
                               
-                              // Otherwise, perform the geocode request
-                              const geocoder = new window.google.maps.Geocoder();
-                              geocoder.geocode({ address }, (results, status) => {
-                                if (status === window.google.maps.GeocoderStatus.OK && results && results[0]) {
-                                  const pos = {
-                                    formattedAddress: results[0].formatted_address,
-                                    lat: results[0].geometry.location.lat().toString(),
-                                    lng: results[0].geometry.location.lng().toString()
-                                  };
-                                  
-                                  // Cache the result
-                                  geocodeCache.set(address, pos);
-                                  callback(pos);
-                                } else {
-                                  callback(null);
-                                }
-                              });
-                            };
-
-                            // Function to update fields and show feedback
-                            const updateAddressWithFeedback = (inputEl: HTMLInputElement, formattedAddress: string, lat: string, lng: string) => {
-                              // Update the input value
-                              inputEl.value = formattedAddress;
-                              inputEl.classList.add('address-selected');
-                              
-                              // Update the model with location data
+                              // Update the model data
                               handleLocationChange(index, {
                                 address: formattedAddress,
                                 latitude: lat,
                                 longitude: lng
                               });
                               
-                              // Add a success indicator next to the input
+                              // Add visual feedback
+                              targetInput.classList.add('address-selected');
+                              
+                              // Create success indicator
                               const successIndicator = document.createElement('div');
                               successIndicator.className = 'address-success-indicator';
                               successIndicator.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Address selected</span>';
                               
-                              // Insert the indicator after the input container
-                              const inputContainer = inputEl.parentElement;
+                              // Add to DOM
+                              const inputContainer = targetInput.parentElement;
                               if (inputContainer && inputContainer.parentElement) {
                                 inputContainer.parentElement.appendChild(successIndicator);
                                 
-                                // Remove the success indicator after a delay
+                                // Clean up after animation
                                 setTimeout(() => {
-                                  inputEl.classList.remove('address-selected');
+                                  targetInput.classList.remove('address-selected');
                                   successIndicator.classList.add('fade-out');
                                   setTimeout(() => {
                                     if (successIndicator.parentElement) {
                                       successIndicator.parentElement.removeChild(successIndicator);
                                     }
-                                  }, 500); // Wait for fade out animation
+                                  }, 500);
                                 }, 2000);
                               }
                             };
                             
-                            // Better approach: Override the default autocomplete behavior
-                            // by listening to DOM events on the input element
-                            input.addEventListener('keydown', (e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault(); // Prevent form submission
-                                
-                                // Simulate clicking the search button
-                                if (input.value) {
-                                  geocodeAddress(input.value, (result) => {
-                                    if (result) {
-                                      updateAddressWithFeedback(input, result.formattedAddress, result.lat, result.lng);
-                                    }
-                                  });
-                                }
-                              }
-                            });
-                            
-                            // Custom click handler for predictions
-                            const monitorPredictions = () => {
-                              // Find all pac containers added by Google
-                              const containers = Array.from(document.querySelectorAll('.pac-container'));
-                              
-                              // We need to add handlers as soon as items appear
-                              containers.forEach(container => {
-                                const items = container.querySelectorAll('.pac-item');
-                                items.forEach(item => {
-                                  if (!item.hasAttribute('data-click-handler')) {
-                                    item.setAttribute('data-click-handler', 'true');
-                                    (item as HTMLElement).style.cursor = 'pointer';
-                                    
-                                    // Add active state styles
-                                    item.addEventListener('mouseover', () => {
-                                      item.classList.add('pac-item-selected');
-                                    });
-                                    
-                                    item.addEventListener('mouseout', () => {
-                                      item.classList.remove('pac-item-selected');
-                                    });
-                                    
-                                    item.addEventListener('mousedown', (e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      
-                                      // Extract the address text
-                                      const mainText = item.querySelector('.pac-item-query')?.textContent || '';
-                                      const secondaryText = item.querySelector('.pac-item-query')?.nextSibling?.textContent || '';
-                                      const fullAddress = `${mainText} ${secondaryText}`.trim();
-                                      
-                                      // Set the value in the input field first for immediate feedback
-                                      input.value = fullAddress;
-                                      
-                                      // Use our cached geocoding function
-                                      geocodeAddress(fullAddress, (result) => {
-                                        if (result) {
-                                          updateAddressWithFeedback(input, result.formattedAddress, result.lat, result.lng);
+                            // Special handling for clicks in the container
+                            document.addEventListener('click', (e) => {
+                              const target = e.target as Element;
+                              // Check if this is a click on a prediction item
+                              if (target.closest('.pac-item') && target.closest('.pac-container')) {
+                                setTimeout(() => {
+                                  // The Google Places Autocomplete populates the input on click
+                                  // but doesn't trigger the place_changed event by itself
+                                  // We need to manually trigger a geocode to get coordinates
+                                  if (input.value) {
+                                    const geocoder = new window.google.maps.Geocoder();
+                                    geocoder.geocode({ address: input.value }, (results, status) => {
+                                      if (status === window.google.maps.GeocoderStatus.OK && results && results[0]) {
+                                        const pos = {
+                                          lat: results[0].geometry.location.lat(),
+                                          lng: results[0].geometry.location.lng()
+                                        };
+                                        
+                                        // Update the location in state
+                                        handleLocationChange(index, {
+                                          address: results[0].formatted_address,
+                                          latitude: pos.lat.toString(),
+                                          longitude: pos.lng.toString()
+                                        });
+                                        
+                                        // Update input with formatted address
+                                        input.value = results[0].formatted_address;
+                                        
+                                        // Add visual feedback
+                                        input.classList.add('address-selected');
+                                        
+                                        // Success indicator
+                                        const successIndicator = document.createElement('div');
+                                        successIndicator.className = 'address-success-indicator';
+                                        successIndicator.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Address selected</span>';
+                                        
+                                        // Add indicator to DOM
+                                        const inputContainer = input.parentElement;
+                                        if (inputContainer && inputContainer.parentElement) {
+                                          inputContainer.parentElement.appendChild(successIndicator);
                                           
-                                          // Hide all prediction containers
-                                          containers.forEach(cont => {
-                                            (cont as HTMLElement).style.display = 'none';
-                                          });
+                                          // Cleanup after animation
+                                          setTimeout(() => {
+                                            input.classList.remove('address-selected');
+                                            successIndicator.classList.add('fade-out');
+                                            setTimeout(() => {
+                                              if (successIndicator.parentElement) {
+                                                successIndicator.parentElement.removeChild(successIndicator);
+                                              }
+                                            }, 500);
+                                          }, 2000);
                                         }
-                                      });
+                                      }
                                     });
                                   }
-                                });
-                              });
-                            };
-                            
-                            // Set up monitoring for prediction container changes
-                            const observer = new MutationObserver(() => {
-                              monitorPredictions();
-                            });
-                            
-                            // Start observing document for prediction containers
-                            observer.observe(document.body, {
-                              childList: true,
-                              subtree: true
-                            });
-                            
-                            // Also monitor for user focus and input
-                            input.addEventListener('focus', () => {
-                              setTimeout(monitorPredictions, 100);
-                            });
-                            
-                            input.addEventListener('input', () => {
-                              setTimeout(monitorPredictions, 100);
+                                }, 300); // Small delay to let input update
+                              }
                             });
                             
                             el.setAttribute('data-autocomplete-setup', 'true');
