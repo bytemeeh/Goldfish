@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Location, LocationType } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Home, Briefcase, Map, Plus, Trash, Save } from "lucide-react";
+import { MapPin, Home, Briefcase, Map, Plus, Trash, Save, Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useJsApiLoader } from "@react-google-maps/api";
 
 interface LocationListProps {
   locations: Location[];
@@ -16,6 +17,13 @@ interface LocationListProps {
 
 export function LocationList({ locations = [], onChange, disabled = false }: LocationListProps) {
   const [activeLocationId, setActiveLocationId] = useState<string | null>(null);
+  
+  // Load Google Maps API
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+    libraries: ['places'],
+  });
 
   const handleAddLocation = () => {
     const newLocation: Location = {
@@ -159,37 +167,52 @@ export function LocationList({ locations = [], onChange, disabled = false }: Loc
 
                   <div>
                     <Label htmlFor={`location-${index}-address`}>Full Address</Label>
-                    <Input 
-                      id={`location-${index}-address`}
-                      value={location.address || ''}
-                      onChange={(e) => handleLocationChange(index, { address: e.target.value })}
-                      placeholder="123 Main St, City, State, Country"
-                      disabled={disabled}
-                    />
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <Input 
+                          id={`location-${index}-address`}
+                          value={location.address || ''}
+                          onChange={(e) => handleLocationChange(index, { address: e.target.value })}
+                          placeholder="123 Main St, City, State, Country"
+                          disabled={disabled}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          // Open the address search dialog
+                          if (typeof window !== 'undefined') {
+                            const geocoder = new google.maps.Geocoder();
+                            if (location.address) {
+                              geocoder.geocode({ address: location.address }, (results, status) => {
+                                if (status === 'OK' && results && results[0]) {
+                                  const pos = {
+                                    lat: results[0].geometry.location.lat(),
+                                    lng: results[0].geometry.location.lng()
+                                  };
+                                  handleLocationChange(index, {
+                                    address: results[0].formatted_address,
+                                    latitude: pos.lat.toString(),
+                                    longitude: pos.lng.toString()
+                                  });
+                                }
+                              });
+                            }
+                          }
+                        }}
+                        disabled={!location.address || disabled}
+                        title="Search for this address"
+                      >
+                        <Search className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
 
-                  <div className="grid gap-2 grid-cols-2">
-                    <div>
-                      <Label htmlFor={`location-${index}-lat`}>Latitude</Label>
-                      <Input 
-                        id={`location-${index}-lat`}
-                        value={location.latitude || ''}
-                        onChange={(e) => handleLocationChange(index, { latitude: e.target.value })}
-                        placeholder="40.7128"
-                        disabled={disabled}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`location-${index}-lng`}>Longitude</Label>
-                      <Input 
-                        id={`location-${index}-lng`}
-                        value={location.longitude || ''}
-                        onChange={(e) => handleLocationChange(index, { longitude: e.target.value })}
-                        placeholder="-74.0060"
-                        disabled={disabled}
-                      />
-                    </div>
-                  </div>
+                  {/* Latitude and longitude fields are now hidden and autofilled by the address search */}
+                  <input type="hidden" id={`location-${index}-lat`} value={location.latitude || ''} />
+                  <input type="hidden" id={`location-${index}-lng`} value={location.longitude || ''} />
                 </div>
               </CardContent>
             </Card>
