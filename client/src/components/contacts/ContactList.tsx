@@ -656,11 +656,11 @@ export function ContactList({ searchFilters }: ContactListProps) {
                 setRelationLevelFilter(value);
               }
             }} className="w-full">
-            <TabsList className="w-full flex gap-0.5 bg-transparent p-0">
-              <TabsTrigger value="1" className="flex-1 h-7 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">1st Level</TabsTrigger>
-              <TabsTrigger value="2" className="flex-1 h-7 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">2nd Level</TabsTrigger>
-              <TabsTrigger value="3" className="flex-1 h-7 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">3rd Level</TabsTrigger>
-              <TabsTrigger value="4" className="flex-1 h-7 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">4th Level</TabsTrigger>
+            <TabsList className="w-full h-auto flex flex-wrap gap-0.5 bg-transparent p-0 mb-1">
+              <TabsTrigger value="1" className="flex-1 h-7 px-3 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">L1</TabsTrigger>
+              <TabsTrigger value="2" className="flex-1 h-7 px-3 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">L2</TabsTrigger>
+              <TabsTrigger value="3" className="flex-1 h-7 px-3 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">L3</TabsTrigger>
+              <TabsTrigger value="4" className="flex-1 h-7 px-3 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">L4</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
