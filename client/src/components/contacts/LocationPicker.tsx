@@ -47,10 +47,20 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
       : null
   );
   
-  const { isLoaded } = useJsApiLoader({
+  // Log environment variables for debugging (will be redacted in production)
+  console.log('VITE_GOOGLE_MAPS_API_KEY available:', !!import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
+
+  const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
   });
+  
+  // Handle load errors
+  useEffect(() => {
+    if (loadError) {
+      console.error('Google Maps API failed to load:', loadError);
+    }
+  }, [loadError]);
 
   useEffect(() => {
     // Update marker when value changes externally

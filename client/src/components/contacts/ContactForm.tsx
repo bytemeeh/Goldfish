@@ -86,6 +86,14 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
         phone: data.phone || null,
         birthday: data.birthday || null,
         notes: data.notes || null,
+        // Location fields
+        street: data.street || null,
+        city: data.city || null,
+        state: data.state || null,
+        postalCode: data.postalCode || null,
+        country: data.country || null,
+        latitude: data.latitude || null,
+        longitude: data.longitude || null,
       };
 
       const url = initialData?.id 

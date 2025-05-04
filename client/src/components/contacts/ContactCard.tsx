@@ -20,6 +20,7 @@ import {
   UserCircle2,
   UserPlus,
   HeartHandshake,
+  MapPin,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -290,6 +291,27 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                       >
                         <Cake className="mr-2 h-4 w-4" />
                         {format(new Date(contact.birthday), "PPP")}
+                      </motion.div>
+                    )}
+                    
+                    {/* Location information display */}
+                    {(contact.street || contact.city || contact.state || contact.country) && (
+                      <motion.div
+                        className="flex items-start text-sm text-muted-foreground/90"
+                        initial={{ x: -20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: 0.35 }}
+                      >
+                        <MapPin className="mr-2 h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <div>
+                          {contact.street && <div>{contact.street}</div>}
+                          <div>
+                            {[contact.city, contact.state, contact.postalCode]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </div>
+                          {contact.country && <div>{contact.country}</div>}
+                        </div>
                       </motion.div>
                     )}
                     {contact.notes && (
