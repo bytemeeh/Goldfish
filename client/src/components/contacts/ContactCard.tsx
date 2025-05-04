@@ -203,19 +203,17 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
                     `}>
                       {contact.name}
                     </h3>
-                    {level > 0 && (
-                      <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-medium bg-primary/10 text-primary rounded-full">
-                        L{level}
+                    {(level === 0 && contact.parentId === null) && (
+                      <span></span>
+                    )}
+                    {level === 1 && (
+                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium text-primary ml-2">
+                        L1
                       </span>
                     )}
-                    {(level === 1 && contact.name === 'Michel') && (
-                      <span className="inline-flex items-center justify-center px-2 h-5 text-xs font-medium bg-primary/5 text-primary/80 rounded-md ml-1">
-                        1st Level
-                      </span>
-                    )}
-                    {(level === 2 && contact.name === 'Christoph') && (
-                      <span className="inline-flex items-center justify-center px-2 h-5 text-xs font-medium bg-primary/5 text-primary/80 rounded-md ml-1">
-                        1st Level
+                    {level === 2 && (
+                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium text-primary ml-2">
+                        L1
                       </span>
                     )}
                   </div>
@@ -523,7 +521,7 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
             className="space-y-4 mt-4"
           >
             {children.length > 0 && (
-              <div className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider ml-12 mb-2">
+              <div className="text-sm font-medium text-muted-foreground/80 tracking-wide ml-2 mb-4 mt-8 border-b border-muted-foreground/10 pb-2">
                 {level === 0 ? '1ST LEVEL CONTACTS' : 
                  level === 1 ? '2ND LEVEL CONTACTS' : 
                  level === 2 ? '3RD LEVEL CONTACTS' : 
