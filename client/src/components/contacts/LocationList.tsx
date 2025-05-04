@@ -7,7 +7,25 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapPin, Home, Briefcase, Map, Plus, Trash, Save, Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useJsApiLoader } from "@react-google-maps/api";
+
+// Add window.google types for TypeScript
+declare global {
+  interface Window {
+    google: {
+      maps: {
+        places: {
+          Autocomplete: new (input: HTMLInputElement, options?: any) => any;
+        };
+        Geocoder: new () => {
+          geocode: (request: { address: string }, callback: (results: any[], status: string) => void) => void;
+        };
+        GeocoderStatus: {
+          OK: string;
+        };
+      };
+    };
+  }
+}
 
 interface LocationListProps {
   locations: Location[];
@@ -18,12 +36,22 @@ interface LocationListProps {
 export function LocationList({ locations = [], onChange, disabled = false }: LocationListProps) {
   const [activeLocationId, setActiveLocationId] = useState<string | null>(null);
   
-  // Load Google Maps API
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-    libraries: ['places'],
-  });
+  // Don't use the Google Maps JS API Loader in this component
+  // We'll just check if the Google Maps API is available globally
+  const [isGoogleMapsLoaded, setIsGoogleMapsLoaded] = useState(false);
+  
+  useEffect(() => {
+    // Check if Google Maps is already loaded
+    const checkGoogleMapsLoaded = () => {
+      if (window.google && window.google.maps) {
+        setIsGoogleMapsLoaded(true);
+      } else {
+        setTimeout(checkGoogleMapsLoaded, 100);
+      }
+    };
+    
+    checkGoogleMapsLoaded();
+  }, []);
 
   const handleAddLocation = () => {
     const newLocation: Location = {
@@ -170,7 +198,7 @@ export function LocationList({ locations = [], onChange, disabled = false }: Loc
                     <div className="flex gap-2">
                       <div className="flex-1" ref={(el) => {
                         // Setup autocomplete for each address input
-                        if (isLoaded && el && !el.getAttribute('data-autocomplete-setup')) {
+                        if (isGoogleMapsLoaded && el && !el.getAttribute('data-autocomplete-setup')) {
                           const input = el.querySelector('input') as HTMLInputElement;
                           if (input) {
                             const autocomplete = new window.google.maps.places.Autocomplete(input, {
@@ -211,7 +239,7 @@ export function LocationList({ locations = [], onChange, disabled = false }: Loc
                         size="icon"
                         onClick={() => {
                           // Open the address search dialog
-                          if (isLoaded && location.address) {
+                          if (isGoogleMapsLoaded && location.address) {
                             const geocoder = new window.google.maps.Geocoder();
                             geocoder.geocode({ address: location.address }, (results, status) => {
                               if (status === window.google.maps.GeocoderStatus.OK && results && results[0]) {
@@ -237,8 +265,16 @@ export function LocationList({ locations = [], onChange, disabled = false }: Loc
                   </div>
 
                   {/* Latitude and longitude fields are now hidden and autofilled by the address search */}
-                  <input type="hidden" id={`location-${index}-lat`} value={location.latitude || ''} />
-                  <input type="hidden" id={`location-${index}-lng`} value={location.longitude || ''} />
+                  <input 
+                    type="hidden" 
+                    id={`location-${index}-lat`} 
+                    value={location.latitude || '0'} 
+                  />
+                  <input 
+                    type="hidden" 
+                    id={`location-${index}-lng`} 
+                    value={location.longitude || '0'} 
+                  />
                 </div>
               </CardContent>
             </Card>
