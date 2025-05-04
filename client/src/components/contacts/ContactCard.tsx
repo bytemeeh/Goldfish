@@ -208,7 +208,12 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
                         L{level}
                       </span>
                     )}
-                    {contact.name === 'Christoph' && (
+                    {(level === 1 && contact.name === 'Michel') && (
+                      <span className="inline-flex items-center justify-center px-2 h-5 text-xs font-medium bg-primary/5 text-primary/80 rounded-md ml-1">
+                        1st Level
+                      </span>
+                    )}
+                    {(level === 2 && contact.name === 'Christoph') && (
                       <span className="inline-flex items-center justify-center px-2 h-5 text-xs font-medium bg-primary/5 text-primary/80 rounded-md ml-1">
                         1st Level
                       </span>
