@@ -248,40 +248,13 @@ export function LocationList({ locations = [], onChange, disabled = false }: Loc
                                       lng: results[0].geometry.location.lng()
                                     };
                                     
-                                    // Update the location in state
-                                    handleLocationChange(index, {
-                                      address: results[0].formatted_address,
-                                      latitude: pos.lat.toString(),
-                                      longitude: pos.lng.toString()
-                                    });
-                                    
-                                    // Update input with formatted address
-                                    input.value = results[0].formatted_address;
-                                    
-                                    // Add visual feedback
-                                    input.classList.add('address-selected');
-                                    
-                                    // Success indicator
-                                    const successIndicator = document.createElement('div');
-                                    successIndicator.className = 'address-success-indicator';
-                                    successIndicator.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Address selected</span>';
-                                    
-                                    // Add indicator to DOM
-                                    const inputContainer = input.parentElement;
-                                    if (inputContainer && inputContainer.parentElement) {
-                                      inputContainer.parentElement.appendChild(successIndicator);
-                                      
-                                      // Cleanup after animation
-                                      setTimeout(() => {
-                                        input.classList.remove('address-selected');
-                                        successIndicator.classList.add('fade-out');
-                                        setTimeout(() => {
-                                          if (successIndicator.parentElement) {
-                                            successIndicator.parentElement.removeChild(successIndicator);
-                                          }
-                                        }, 500);
-                                      }, 2000);
-                                    }
+                                    // Use our helper function for consistent feedback
+                                    createSuccessIndicator(
+                                      input,
+                                      results[0].formatted_address,
+                                      pos.lat.toString(),
+                                      pos.lng.toString()
+                                    );
                                   }
                                 });
                               }
@@ -343,40 +316,13 @@ export function LocationList({ locations = [], onChange, disabled = false }: Loc
                                           lng: results[0].geometry.location.lng()
                                         };
                                         
-                                        // Update the location in state
-                                        handleLocationChange(index, {
-                                          address: results[0].formatted_address,
-                                          latitude: pos.lat.toString(),
-                                          longitude: pos.lng.toString()
-                                        });
-                                        
-                                        // Update input with formatted address
-                                        input.value = results[0].formatted_address;
-                                        
-                                        // Add visual feedback
-                                        input.classList.add('address-selected');
-                                        
-                                        // Success indicator
-                                        const successIndicator = document.createElement('div');
-                                        successIndicator.className = 'address-success-indicator';
-                                        successIndicator.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Address selected</span>';
-                                        
-                                        // Add indicator to DOM
-                                        const inputContainer = input.parentElement;
-                                        if (inputContainer && inputContainer.parentElement) {
-                                          inputContainer.parentElement.appendChild(successIndicator);
-                                          
-                                          // Cleanup after animation
-                                          setTimeout(() => {
-                                            input.classList.remove('address-selected');
-                                            successIndicator.classList.add('fade-out');
-                                            setTimeout(() => {
-                                              if (successIndicator.parentElement) {
-                                                successIndicator.parentElement.removeChild(successIndicator);
-                                              }
-                                            }, 500);
-                                          }, 2000);
-                                        }
+                                        // Use our helper function for consistent feedback
+                                        createSuccessIndicator(
+                                          input,
+                                          results[0].formatted_address,
+                                          pos.lat.toString(),
+                                          pos.lng.toString()
+                                        );
                                       }
                                     });
                                   }
@@ -420,40 +366,14 @@ export function LocationList({ locations = [], onChange, disabled = false }: Loc
                                   lng: results[0].geometry.location.lng()
                                 };
                                 
-                                // Update input field with formatted address and give visual feedback
+                                // Use our helper function for consistent feedback
                                 if (inputField) {
-                                  // Update the model with the selected address and coordinates
-                                  handleLocationChange(index, {
-                                    address: results[0].formatted_address,
-                                    latitude: pos.lat.toString(),
-                                    longitude: pos.lng.toString()
-                                  });
-                                  
-                                  // Create visual feedback
-                                  inputField.value = results[0].formatted_address;
-                                  inputField.classList.add('address-selected');
-                                  
-                                  // Add a success indicator
-                                  const successIndicator = document.createElement('div');
-                                  successIndicator.className = 'address-success-indicator';
-                                  successIndicator.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Address selected</span>';
-                                  
-                                  // Insert the indicator after the input
-                                  const inputContainer = inputField.parentElement;
-                                  if (inputContainer && inputContainer.parentElement) {
-                                    inputContainer.parentElement.appendChild(successIndicator);
-                                    
-                                    // Remove the success indicator after a delay
-                                    setTimeout(() => {
-                                      inputField.classList.remove('address-selected');
-                                      successIndicator.classList.add('fade-out');
-                                      setTimeout(() => {
-                                        if (successIndicator.parentElement) {
-                                          successIndicator.parentElement.removeChild(successIndicator);
-                                        }
-                                      }, 500); // Wait for fade out animation
-                                    }, 2000);
-                                  }
+                                  createSuccessIndicator(
+                                    inputField,
+                                    results[0].formatted_address,
+                                    pos.lat.toString(),
+                                    pos.lng.toString()
+                                  );
                                 }
                               }
                             });
