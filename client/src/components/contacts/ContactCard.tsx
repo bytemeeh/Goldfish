@@ -162,10 +162,10 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
             </div>
           )}
 
-          <CardHeader className="flex flex-row items-start space-x-4 pb-2">
+          <CardHeader className="flex flex-row items-start space-x-3 pb-1 pt-2 px-3">
             <motion.button
               className={`
-                h-8 w-8 mt-1 flex items-center justify-center
+                h-7 w-7 mt-0.5 flex items-center justify-center
                 ${children.length > 0 ? 'text-primary/70 hover:text-primary' : 'text-muted-foreground'}
                 transition-all duration-200
                 rounded-full
@@ -183,7 +183,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
               )}
             </motion.button>
 
-            <div className="flex-1 space-y-3">
+            <div className="flex-1 space-y-2">
               <motion.div
                 className="flex items-center gap-3"
                 animate={{ opacity: 1 }}
@@ -349,9 +349,9 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                     {contact.notes && (
                       <motion.p
                         className={`
-                          text-sm text-muted-foreground/80 
-                          mt-2 pl-4 
-                          border-l-2 border-primary/${Math.max(20 - level * 5, 10)}
+                          text-xs text-muted-foreground/80 
+                          mt-1.5 pl-3 
+                          border-l border-primary/${Math.max(20 - level * 5, 10)}
                         `}
                         initial={{ y: -10, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
@@ -410,7 +410,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
             </DropdownMenu>
           </CardHeader>
 
-          <CardContent>
+          <CardContent className="p-3 pt-0">
             {isMaxDepth ? (
               <div className="flex items-center justify-center p-4 bg-muted/20 rounded-lg border border-primary/10">
                 <AlertCircle className="h-4 w-4 text-primary/40 mr-2" />
@@ -499,7 +499,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="space-y-6 mt-6"
+            className="space-y-4 mt-4"
           >
             {children.length > 0 && level === 0 && (
               <div className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider ml-12 mb-2">
