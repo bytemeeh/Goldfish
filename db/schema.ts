@@ -167,8 +167,8 @@ export const locations = pgTable("locations", {
   type: text("type", { enum: locationTypes }).notNull().default("other"),
   name: text("name"),
   address: text("address"),
-  latitude: decimal("latitude", { precision: 10, scale: 7 }).notNull(),
-  longitude: decimal("longitude", { precision: 10, scale: 7 }).notNull(),
+  latitude: decimal("latitude", { precision: 10, scale: 7 }),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }),
   createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }).notNull().defaultNow(),
 });
@@ -196,8 +196,8 @@ export const insertLocationSchema = createInsertSchema(locations, {
   type: z.enum(locationTypes).default("other"),
   name: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
-  latitude: z.number().min(-90).max(90),
-  longitude: z.number().min(-180).max(180),
+  latitude: z.number().min(-90).max(90).optional().nullable(),
+  longitude: z.number().min(-180).max(180).optional().nullable(),
 });
 
 export const selectLocationSchema = createSelectSchema(locations);

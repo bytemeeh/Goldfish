@@ -168,7 +168,35 @@ export function LocationList({ locations = [], onChange, disabled = false }: Loc
                   <div>
                     <Label htmlFor={`location-${index}-address`}>Full Address</Label>
                     <div className="flex gap-2">
-                      <div className="flex-1">
+                      <div className="flex-1" ref={(el) => {
+                        // Setup autocomplete for each address input
+                        if (isLoaded && el && !el.getAttribute('data-autocomplete-setup')) {
+                          const input = el.querySelector('input') as HTMLInputElement;
+                          if (input) {
+                            const autocomplete = new window.google.maps.places.Autocomplete(input, {
+                              fields: ['address_components', 'formatted_address', 'geometry'],
+                              types: ['address']
+                            });
+                            
+                            autocomplete.addListener('place_changed', () => {
+                              const place = autocomplete.getPlace();
+                              if (place.geometry && place.geometry.location) {
+                                const pos = {
+                                  lat: place.geometry.location.lat(),
+                                  lng: place.geometry.location.lng()
+                                };
+                                handleLocationChange(index, {
+                                  address: place.formatted_address || '',
+                                  latitude: pos.lat.toString(),
+                                  longitude: pos.lng.toString()
+                                });
+                              }
+                            });
+                            
+                            el.setAttribute('data-autocomplete-setup', 'true');
+                          }
+                        }
+                      }}>
                         <Input 
                           id={`location-${index}-address`}
                           value={location.address || ''}
@@ -183,23 +211,21 @@ export function LocationList({ locations = [], onChange, disabled = false }: Loc
                         size="icon"
                         onClick={() => {
                           // Open the address search dialog
-                          if (typeof window !== 'undefined') {
-                            const geocoder = new google.maps.Geocoder();
-                            if (location.address) {
-                              geocoder.geocode({ address: location.address }, (results, status) => {
-                                if (status === 'OK' && results && results[0]) {
-                                  const pos = {
-                                    lat: results[0].geometry.location.lat(),
-                                    lng: results[0].geometry.location.lng()
-                                  };
-                                  handleLocationChange(index, {
-                                    address: results[0].formatted_address,
-                                    latitude: pos.lat.toString(),
-                                    longitude: pos.lng.toString()
-                                  });
-                                }
-                              });
-                            }
+                          if (isLoaded && location.address) {
+                            const geocoder = new window.google.maps.Geocoder();
+                            geocoder.geocode({ address: location.address }, (results, status) => {
+                              if (status === window.google.maps.GeocoderStatus.OK && results && results[0]) {
+                                const pos = {
+                                  lat: results[0].geometry.location.lat(),
+                                  lng: results[0].geometry.location.lng()
+                                };
+                                handleLocationChange(index, {
+                                  address: results[0].formatted_address,
+                                  latitude: pos.lat.toString(),
+                                  longitude: pos.lng.toString()
+                                });
+                              }
+                            });
                           }
                         }}
                         disabled={!location.address || disabled}
