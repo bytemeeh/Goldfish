@@ -35,7 +35,7 @@ export function Home() {
         <div className="space-y-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Contacts</h1>
-            <div className="flex items-center gap-1.5 max-w-full">
+            <div className="flex items-center justify-between w-full gap-1.5"> {/* Added justify-between */}
               <div className="flex items-center border rounded-md overflow-hidden h-7">
                 <Button
                   variant={viewMode === "list" ? "default" : "ghost"}
@@ -54,50 +54,52 @@ export function Home() {
                   <Network className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              <Dialog open={isEditingPersonal} onOpenChange={setIsEditingPersonal}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-7 px-2 py-0">
-                    <User className="h-3.5 w-3.5 mr-1" />
-                    <span className="whitespace-nowrap text-xs">Personal Info</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="h-[80vh] max-w-3xl flex flex-col overflow-hidden">
-                  <DialogHeader>
-                    <DialogTitle>Edit Personal Card</DialogTitle>
-                  </DialogHeader>
-                  <div className="flex flex-1 overflow-hidden">
-                    <ContactForm 
-                      onSuccess={() => setIsEditingPersonal(false)} 
-                      isPersonalCard={true}
-                    />
-                  </div>
-                </DialogContent>
-              </Dialog>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 px-2 py-0"
-                onClick={() => setIsSharing(true)}
-              >
-                <Share2 className="h-3.5 w-3.5 mr-1" />
-                <span className="whitespace-nowrap text-xs">Share</span>
-              </Button>
-              <Dialog open={isAddingContact} onOpenChange={setIsAddingContact}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="h-7 px-2 py-0">
-                    <Plus className="h-3.5 w-3.5 mr-1" />
-                    <span className="whitespace-nowrap text-xs">New</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="h-[80vh] max-w-3xl flex flex-col overflow-hidden">
-                  <DialogHeader>
-                    <DialogTitle>Add New Contact</DialogTitle>
-                  </DialogHeader>
-                  <div className="flex flex-1 overflow-hidden">
-                    <ContactForm onSuccess={() => setIsAddingContact(false)} />
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <div className="flex items-center gap-1.5"> {/* Grouped buttons for better spacing */}
+                <Dialog open={isEditingPersonal} onOpenChange={setIsEditingPersonal}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-7 px-2 py-0">
+                      <User className="h-3.5 w-3.5 mr-1" />
+                      <span className="whitespace-nowrap text-xs">Personal Info</span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="h-[80vh] max-w-3xl flex flex-col overflow-hidden">
+                    <DialogHeader>
+                      <DialogTitle>Edit Personal Card</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-1 overflow-hidden">
+                      <ContactForm 
+                        onSuccess={() => setIsEditingPersonal(false)} 
+                        isPersonalCard={true}
+                      />
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 py-0"
+                  onClick={() => setIsSharing(true)}
+                >
+                  <Share2 className="h-3.5 w-3.5 mr-1" />
+                  <span className="whitespace-nowrap text-xs">Share</span>
+                </Button>
+                <Dialog open={isAddingContact} onOpenChange={setIsAddingContact}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="h-7 px-2 py-0">
+                      <Plus className="h-3.5 w-3.5 mr-1" />
+                      <span className="whitespace-nowrap text-xs">New</span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="h-[80vh] max-w-3xl flex flex-col overflow-hidden">
+                    <DialogHeader>
+                      <DialogTitle>Add New Contact</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-1 overflow-hidden">
+                      <ContactForm onSuccess={() => setIsAddingContact(false)} />
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
           </div>
 
