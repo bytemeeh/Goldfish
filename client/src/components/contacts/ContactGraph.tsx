@@ -181,8 +181,9 @@ export function ContactGraph() {
           y: Math.random() * 100,
           vx: 0,
           vy: 0,
-          fx: null,
-          fy: null
+          // Use undefined instead of null for TypeScript compatibility
+          fx: undefined,
+          fy: undefined
         };
       });
 
@@ -308,15 +309,14 @@ export function ContactGraph() {
         ref={graphRef}
         graphData={graphData}
         nodeLabel={node => node.name}
-        nodeFixedDragOnly={false}
-        nodeCanDrag={true}
-        enableNodeDrag={true}
+        /* Keep only supported properties */
         nodeAutoColorBy="relationshipType"
         warmupTicks={100}
         cooldownTime={3000}
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
-          node.fx = undefined; // Remove any fixed positions
-          node.fy = undefined;
+          // Remove any fixed positions without changing type
+          if (node.fx !== undefined) node.fx = undefined;
+          if (node.fy !== undefined) node.fy = undefined;
           const label = node.name;
           const fontSize = Math.max(12/globalScale, 6); //Reduced font size
           const nodeSize = node.isMe ? 8 : 6;
@@ -418,7 +418,7 @@ export function ContactGraph() {
         d3AlphaMin={0.05}
         cooldownTicks={100}
         nodeRelSize={6}
-        d3Force={(d3) => {
+        d3Force={(d3: any) => {
           const simulation = d3;
           
           simulation.forceCenter(dimensions.width / 2, dimensions.height / 2)

@@ -32,6 +32,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ContactForm } from "./ContactForm";
@@ -60,10 +62,12 @@ interface ContactCardProps {
 }
 
 export function ContactCard({ contact, children = [], level = 0 }: ContactCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false); // Changed to false by default
+  // Auto-expand first level contacts
+  const [isExpanded, setIsExpanded] = useState(level === 0 && children.length > 0);
   const [isAddingChild, setIsAddingChild] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const queryClient = useQueryClient();
 
   const deleteContact = useMutation({
@@ -344,7 +348,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-destructive"
-                  onClick={() => deleteContact.mutate()}
+                  onClick={() => setShowDeleteConfirm(true)}
                 >
                   Delete
                 </DropdownMenuItem>
@@ -395,6 +399,40 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                   parentId={contact.id}
                   onSuccess={() => setIsAddingChild(false)}
                 />
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete Contact</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to delete <strong>{contact.name}</strong>?
+                    {children.length > 0 && (
+                      <div className="mt-2 text-destructive">
+                        Warning: This will also delete {children.length} related contact{children.length !== 1 ? 's' : ''}.
+                      </div>
+                    )}
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="gap-2 sm:gap-0">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowDeleteConfirm(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    onClick={() => {
+                      deleteContact.mutate();
+                      setShowDeleteConfirm(false);
+                    }}
+                    disabled={deleteContact.isPending}
+                  >
+                    {deleteContact.isPending ? 'Deleting...' : 'Delete'}
+                  </Button>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
           </CardContent>
