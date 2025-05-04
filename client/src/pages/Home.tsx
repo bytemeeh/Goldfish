@@ -34,30 +34,30 @@ export function Home() {
       <div className="container mx-auto px-2 sm:px-4 py-6 sm:py-8">
         <div className="space-y-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Contacts</h1>
-            <div className="flex items-center gap-1.5 max-w-full">
-              <div className="flex items-center border rounded-md overflow-hidden h-7">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Contacts</h1>
+            <div className="grid grid-cols-4 gap-1.5 w-full md:w-auto max-w-full">
+              <div className="flex items-center border rounded-md overflow-hidden h-8 col-span-1">
                 <Button
                   variant={viewMode === "list" ? "default" : "ghost"}
                   onClick={() => setViewMode("list")}
                   size="sm"
-                  className="h-7 rounded-none px-1.5"
+                  className="h-8 w-full rounded-none px-1"
                 >
-                  <List className="h-3.5 w-3.5" />
+                  <List className="h-4 w-4" />
                 </Button>
                 <Button
                   variant={viewMode === "graph" ? "default" : "ghost"}
                   onClick={() => setViewMode("graph")}
                   size="sm"
-                  className="h-7 rounded-none px-1.5"
+                  className="h-8 w-full rounded-none px-1"
                 >
-                  <Network className="h-3.5 w-3.5" />
+                  <Network className="h-4 w-4" />
                 </Button>
               </div>
               <Dialog open={isEditingPersonal} onOpenChange={setIsEditingPersonal}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-7 px-2 py-0">
-                    <User className="h-3.5 w-3.5 mr-1" />
+                  <Button variant="outline" size="sm" className="h-8 col-span-1 px-1 py-0">
+                    <User className="h-4 w-4 mr-1" />
                     <span className="whitespace-nowrap text-xs">Personal Info</span>
                   </Button>
                 </DialogTrigger>
@@ -76,16 +76,16 @@ export function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 px-2 py-0"
+                className="h-8 col-span-1 px-1 py-0"
                 onClick={() => setIsSharing(true)}
               >
-                <Share2 className="h-3.5 w-3.5 mr-1" />
+                <Share2 className="h-4 w-4 mr-1" />
                 <span className="whitespace-nowrap text-xs">Share</span>
               </Button>
               <Dialog open={isAddingContact} onOpenChange={setIsAddingContact}>
                 <DialogTrigger asChild>
-                  <Button size="sm" className="h-7 px-2 py-0">
-                    <Plus className="h-3.5 w-3.5 mr-1" />
+                  <Button size="sm" className="h-8 col-span-1 px-1 py-0">
+                    <Plus className="h-4 w-4 mr-1" />
                     <span className="whitespace-nowrap text-xs">New</span>
                   </Button>
                 </DialogTrigger>

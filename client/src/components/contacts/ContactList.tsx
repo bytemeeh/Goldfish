@@ -392,12 +392,15 @@ export function ContactList({ searchFilters }: ContactListProps) {
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-medium text-muted-foreground">Quick Filter:</span>
-            {relationshipFilter !== 'all' && (
+            {(relationshipFilter !== 'all' || relationLevelFilter !== 'all') && (
               <Button 
                 variant="ghost" 
                 size="sm" 
                 className="h-6 px-2 py-0 text-xs" 
-                onClick={() => setRelationshipFilter('all')}
+                onClick={() => {
+                  setRelationshipFilter('all');
+                  setRelationLevelFilter('all');
+                }}
               >
                 <X className="h-3 w-3 mr-1" />
                 Clear
@@ -405,7 +408,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
             )}
           </div>
           <Tabs value={relationshipFilter} onValueChange={setRelationshipFilter} className="w-full">
-            <TabsList className="w-full h-auto flex flex-wrap gap-0.5 bg-transparent p-0">
+            <TabsList className="w-full h-auto flex flex-wrap gap-0.5 bg-transparent p-0 mb-1">
               <TabsTrigger 
                 value="all" 
                 className="flex items-center h-7 px-3 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
@@ -413,39 +416,11 @@ export function ContactList({ searchFilters }: ContactListProps) {
                 All
               </TabsTrigger>
               <TabsTrigger 
-                value="mother" 
+                value="family" 
                 className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
                 <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
-                Mother
-              </TabsTrigger>
-              <TabsTrigger 
-                value="father" 
-                className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
-              >
-                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
-                Father
-              </TabsTrigger>
-              <TabsTrigger 
-                value="sibling" 
-                className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
-              >
-                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
-                Sibling
-              </TabsTrigger>
-              <TabsTrigger 
-                value="child" 
-                className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
-              >
-                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
-                Child
-              </TabsTrigger>
-              <TabsTrigger 
-                value="spouse" 
-                className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
-              >
-                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
-                Spouse
+                Family
               </TabsTrigger>
               <TabsTrigger 
                 value="friend" 
@@ -455,42 +430,17 @@ export function ContactList({ searchFilters }: ContactListProps) {
                 Friend
               </TabsTrigger>
               <TabsTrigger 
-                value="boyfriend/girlfriend" 
-                className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
-              >
-                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-2))/10]">F</Badge>
-                Partner
-              </TabsTrigger>
-              <TabsTrigger 
-                value="co-worker" 
+                value="professional" 
                 className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
                 <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-3))/10]">P</Badge>
-                Co-worker
+                Professional
               </TabsTrigger>
             </TabsList>
           </Tabs>
-        </div>
 
-        {/* Relation Level Tabs */}
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-medium text-muted-foreground">Relation Level:</span>
-            {relationLevelFilter !== 'all' && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-6 px-2 py-0 text-xs" 
-                onClick={() => setRelationLevelFilter('all')}
-              >
-                <X className="h-3 w-3 mr-1" />
-                Clear
-              </Button>
-            )}
-          </div>
           <Tabs value={relationLevelFilter} onValueChange={setRelationLevelFilter} className="w-full">
             <TabsList className="w-full flex gap-0.5 bg-transparent p-0">
-              <TabsTrigger value="all" className="flex-1 h-7 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">All</TabsTrigger>
               <TabsTrigger value="1" className="flex-1 h-7 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">1st Level</TabsTrigger>
               <TabsTrigger value="2" className="flex-1 h-7 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">2nd Level</TabsTrigger>
               <TabsTrigger value="3" className="flex-1 h-7 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">3rd Level</TabsTrigger>
@@ -500,26 +450,14 @@ export function ContactList({ searchFilters }: ContactListProps) {
         </div>
 
         {/* Location Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center space-x-1">
-            <Switch
-              id="proximity-sort"
-              checked={proximitySort}
-              onCheckedChange={setProximitySort}
-              disabled={!userLocation || isGettingLocation}
-            />
-            <Label htmlFor="proximity-sort" className="text-sm font-medium cursor-pointer">
-              Sort by proximity
-            </Label>
-          </div>
-          
+        <div className="flex flex-wrap items-center justify-end gap-2">          
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="ml-auto flex items-center gap-1 h-7 py-0 px-2 text-xs flex-shrink-0 rounded-md border bg-background/60"
+                  className="flex items-center gap-1 h-7 py-0 px-2 text-xs flex-shrink-0 rounded-md border bg-background/60"
                   onClick={getCurrentLocation}
                   disabled={isGettingLocation}
                 >
@@ -528,7 +466,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
                   ) : (
                     <>
                       <Navigation className="h-3.5 w-3.5 mr-1" />
-                      <span className="text-xs hidden sm:inline">
+                      <span className="text-xs">
                         {userLocation ? 'Update location' : 'Get location'}
                       </span>
                       {userLocation && <Check className="h-3.5 w-3.5 ml-1 text-green-500" />}
