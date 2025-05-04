@@ -76,7 +76,9 @@ export function registerRoutes(app: Express): Server {
 
     try {
       console.log('Fetching contacts with filters:', filters);
-      const result = await db
+      
+      // First get all contacts matching the filters
+      const contactsResult = await db
         .select({
           id: contacts.id,
           name: contacts.name,
@@ -90,7 +92,7 @@ export function registerRoutes(app: Express): Server {
           shareToken: contacts.shareToken,
           shareDepth: contacts.shareDepth,
           shareableUntil: contacts.shareableUntil,
-          // Location fields
+          // Legacy location fields
           street: contacts.street,
           city: contacts.city,
           state: contacts.state,
@@ -104,15 +106,44 @@ export function registerRoutes(app: Express): Server {
         .from(contacts)
         .orderBy(contacts.name);
 
-      console.log('Found contacts:', result.length);
-      console.log('Contact hierarchy:', result.map(c => ({
+      console.log('Found contacts:', contactsResult.length);
+      console.log('Contact hierarchy:', contactsResult.map(c => ({
         id: c.id,
         name: c.name,
         parentId: c.parentId,
         relationshipType: c.relationshipType
       })));
-
-      res.json(result);
+      
+      // If we have contacts, get their locations
+      if (contactsResult.length > 0) {
+        // Get all locations for all contacts in one query
+        const contactIds = contactsResult.map(c => c.id);
+        const allLocations = await db
+          .select()
+          .from(locations)
+          .where(sql`${locations.contactId} IN (${contactIds.join(',')})`);
+          
+        console.log(`Found ${allLocations.length} total locations for ${contactIds.length} contacts`);
+        
+        // Group locations by contact ID
+        const locationsByContactId: Record<number, Location[]> = {};
+        allLocations.forEach(loc => {
+          if (!locationsByContactId[loc.contactId]) {
+            locationsByContactId[loc.contactId] = [];
+          }
+          locationsByContactId[loc.contactId].push(loc);
+        });
+        
+        // Add locations to each contact
+        const contactsWithLocations = contactsResult.map(contact => ({
+          ...contact,
+          locations: locationsByContactId[contact.id] || [],
+        }));
+        
+        res.json(contactsWithLocations);
+      } else {
+        res.json(contactsResult); // Return empty array if no contacts found
+      }
     } catch (error) {
       console.error('Error fetching contacts:', error);
       res.status(500).json({ message: "Failed to fetch contacts" });
@@ -183,30 +214,64 @@ export function registerRoutes(app: Express): Server {
     try {
       console.log('Creating new contact with data:', req.body);
 
-      // Validate the input data
-      const validatedData = insertContactSchema.parse(req.body);
-      console.log('Validated data:', validatedData);
+      // Extract locations from request body
+      const { locations: locationData, ...contactData } = req.body;
+      
+      // Validate the contact data
+      const validatedContactData = insertContactSchema.parse(contactData);
+      console.log('Validated contact data:', validatedContactData);
 
+      // Insert the contact first
       const [newContact] = await db
         .insert(contacts)
         .values({
-          ...validatedData,
+          ...validatedContactData,
         })
         .returning();
 
       console.log('Created new contact:', newContact);
 
-      if (validatedData.parentId && validatedData.relationshipType) {
+      // Now handle the locations if any
+      if (locationData && Array.isArray(locationData) && locationData.length > 0) {
+        console.log(`Adding ${locationData.length} locations for new contact`);
+        
+        // Prepare locations data with the new contact ID
+        const locationsToInsert = locationData.map(location => ({
+          ...location,
+          contactId: newContact.id,
+          // Ensure created/updated timestamps
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }));
+        
+        // Insert all locations
+        await db
+          .insert(locations)
+          .values(locationsToInsert);
+          
+        console.log(`Added ${locationsToInsert.length} locations for contact`);
+      }
+
+      if (validatedContactData.parentId && validatedContactData.relationshipType) {
         console.log('Initiating cascade update for new contact');
         // Trigger cascading updates if this is a child contact
         await updateRelationshipsCascading(
           newContact.id,
-          validatedData.parentId,
-          validatedData.relationshipType as RelationshipType
+          validatedContactData.parentId,
+          validatedContactData.relationshipType as RelationshipType
         );
       }
 
-      res.json(newContact);
+      // Return the contact with locations
+      const contactLocations = await db
+        .select()
+        .from(locations)
+        .where(eq(locations.contactId, newContact.id));
+        
+      res.json({
+        ...newContact,
+        locations: contactLocations
+      });
     } catch (error) {
       console.error('Error creating contact:', error);
       res.status(400).json({ 
@@ -217,35 +282,108 @@ export function registerRoutes(app: Express): Server {
 
   app.put("/api/contacts/:id", async (req, res) => {
     const { id } = req.params;
+    const contactId = parseInt(id);
 
     try {
       console.log(`Updating contact with ID ${id}, Data: `, req.body);
-      // Validate the input data
-      const validatedData = insertContactSchema.parse(req.body);
-      console.log('Validated data:', validatedData);
+      
+      // Extract locations from request body
+      const { locations: locationData, ...contactData } = req.body;
+      
+      // Validate the contact data
+      const validatedContactData = insertContactSchema.parse(contactData);
+      console.log('Validated contact data:', validatedContactData);
 
+      // Update the contact
       const [updatedContact] = await db
         .update(contacts)
         .set({ 
-          ...validatedData,
+          ...validatedContactData,
           updatedAt: new Date().toISOString()
         })
-        .where(eq(contacts.id, parseInt(id)))
+        .where(eq(contacts.id, contactId))
         .returning();
 
       console.log('Updated contact:', updatedContact);
+      
+      // Handle locations if they're provided
+      if (locationData && Array.isArray(locationData) && locationData.length > 0) {
+        console.log(`Processing ${locationData.length} locations for contact ${id}`);
+        
+        // Group locations into new, updated, and deleted
+        const newLocations = locationData.filter(loc => !loc.id || (loc.id && loc.id < 0));
+        const existingLocations = locationData.filter(loc => loc.id && loc.id > 0 && !loc.isDeleted);
+        const deletedLocationIds = locationData
+          .filter(loc => loc.id && loc.id > 0 && loc.isDeleted)
+          .map(loc => loc.id);
+          
+        console.log(`Locations breakdown - New: ${newLocations.length}, Updated: ${existingLocations.length}, Deleted: ${deletedLocationIds.length}`);
+        
+        // Delete locations that are marked for deletion
+        if (deletedLocationIds.length > 0) {
+          await db
+            .delete(locations)
+            .where(sql`${locations.id} IN (${deletedLocationIds.join(',')})`);
+          console.log(`Deleted ${deletedLocationIds.length} locations`);
+        }
+        
+        // Update existing locations
+        for (const location of existingLocations) {
+          await db
+            .update(locations)
+            .set({
+              ...location,
+              contactId, // Ensure correct contact ID
+              updatedAt: new Date().toISOString(),
+              // Remove client-side flags
+              isNew: undefined,
+              isDeleted: undefined
+            })
+            .where(eq(locations.id, location.id));
+        }
+        console.log(`Updated ${existingLocations.length} existing locations`);
+        
+        // Insert new locations
+        if (newLocations.length > 0) {
+          const locationsToInsert = newLocations.map(location => ({
+            ...location,
+            id: undefined, // Remove any temporary ID
+            contactId,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            // Remove client-side flags
+            isNew: undefined,
+            isDeleted: undefined
+          }));
+          
+          await db
+            .insert(locations)
+            .values(locationsToInsert);
+            
+          console.log(`Inserted ${locationsToInsert.length} new locations`);
+        }
+      }
 
       // Trigger cascading updates if relationship type changed
-      if (validatedData.relationshipType) {
+      if (validatedContactData.relationshipType) {
         console.log('Initiating cascade update for updated contact');
         await updateRelationshipsCascading(
-          parseInt(id),
-          validatedData.parentId,
-          validatedData.relationshipType as RelationshipType
+          contactId,
+          validatedContactData.parentId,
+          validatedContactData.relationshipType as RelationshipType
         );
       }
 
-      res.json(updatedContact);
+      // Return the updated contact with locations
+      const contactLocations = await db
+        .select()
+        .from(locations)
+        .where(eq(locations.contactId, contactId));
+        
+      res.json({
+        ...updatedContact,
+        locations: contactLocations
+      });
     } catch (error) {
       console.error('Error updating contact:', error);
       res.status(400).json({ 
