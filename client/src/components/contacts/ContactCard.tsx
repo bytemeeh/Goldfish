@@ -70,7 +70,7 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
   const [isExpanded, setIsExpanded] = useState(level === 0 && children.length > 0);
   const [isAddingChild, setIsAddingChild] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
+  // Removed hover state to implement click-to-expand instead
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const queryClient = useQueryClient();
 
@@ -126,32 +126,24 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
 
       <motion.div
         initial={false}
-        animate={{
-          scale: isHovered ? 1.01 : 1,
-          y: isHovered ? -2 : 0,
-        }}
         transition={{
           type: "spring",
           stiffness: 400,
           damping: 25,
         }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        onClick={() => children.length > 0 && setIsExpanded(!isExpanded)}
+        onClick={() => setIsExpanded(!isExpanded)}
       >
         <Card
           className={`
             relative
             border
             rounded-lg
-            ${level === 0 ? 'shadow-md' : 'shadow-sm hover:shadow-md'}
+            ${level === 0 ? 'shadow-md' : 'shadow-sm'}
             transition-all
             duration-300
             ease-in-out
-            hover:bg-accent/5
             transform-gpu
-            hover:translate-x-1
-            ${children.length > 0 ? 'cursor-pointer' : ''}
+            cursor-pointer
           `}
         >
           {/* Level indicator */}
@@ -258,12 +250,12 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
               </motion.div>
 
               <AnimatePresence>
-                {isHovered && (
+                {isExpanded && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="space-y-2.5 overflow-hidden"
+                    className="space-y-2.5 overflow-hidden mt-2"
                   >
                     {contact.email && (
                       <motion.div
