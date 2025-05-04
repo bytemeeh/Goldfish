@@ -455,6 +455,7 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Edit Contact</DialogTitle>
+                  <DialogDescription>Update the contact information</DialogDescription>
                 </DialogHeader>
                 <ContactForm
                   initialData={contact}
@@ -467,6 +468,7 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Add Related Contact</DialogTitle>
+                  <DialogDescription>Create a new contact connected to {contact.name}</DialogDescription>
                 </DialogHeader>
                 <ContactForm
                   parentId={contact.id}
