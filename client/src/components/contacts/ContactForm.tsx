@@ -20,7 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 import { RelationshipTypeSelector } from "./RelationshipTypeSelector";
 import { LocationList } from "./LocationList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 const contactSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -158,20 +157,19 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
       latitude: data.latitude || null,
       longitude: data.longitude || null,
     };
-
+    
     // Process locations separately (avoiding type errors with Zod schema)
     const submissionData = {
       ...formData,
       locations: locations.filter(loc => !loc.isDeleted), // Only submit non-deleted locations
     };
-
+    
     mutate(submissionData as any); // Type cast to avoid TypeScript errors
   });
 
   return (
     <Form {...form}>
-      <ScrollArea className="h-[calc(100vh-120px)] pr-4">
-        <form onSubmit={onSubmit} className="container space-y-4 mx-auto">
+      <form onSubmit={onSubmit} className="space-y-4">
         <FormField
           control={form.control}
           name="name"
@@ -291,7 +289,6 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
           </Button>
         </div>
       </form>
-      </ScrollArea>
     </Form>
   );
 }

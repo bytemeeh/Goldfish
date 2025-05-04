@@ -130,7 +130,7 @@ export function ContactGraph() {
       if (containerRef.current) {
         const { offsetWidth, offsetHeight } = containerRef.current;
         setDimensions({
-          width: Math.min(390, offsetWidth - 32), // Account for padding
+          width: offsetWidth,
           height: offsetHeight
         });
       }
@@ -416,14 +416,14 @@ export function ContactGraph() {
             // Simplified mini-label for non-highlighted nodes (just initials)
             const initials = label.split(' ').map(word => word[0]).join('').substring(0, 2).toUpperCase();
             const miniLabelY = node.y! + nodeSize * 2;
-
+            
             ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
             ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
             ctx.shadowBlur = 4;
             ctx.beginPath();
             ctx.arc(node.x!, miniLabelY, fontSize/2 + 2, 0, 2 * Math.PI);
             ctx.fill();
-
+            
             ctx.shadowColor = 'transparent';
             ctx.fillStyle = "hsl(240, 10%, 25%)";
             ctx.font = `500 ${fontSize * 0.8}px -apple-system, sans-serif`;
@@ -442,48 +442,48 @@ export function ContactGraph() {
         nodeRelSize={6}
         d3Force={(d3: any) => {
           const simulation = d3;
-
+          
           simulation.forceCenter(dimensions.width / 2, dimensions.height / 2)
             .strength(0.05);
 
           simulation.forceManyBody()
-            .strength(-200); // Reduced strength for better spacing on smaller screens
+            .strength(-1000);
 
           simulation.forceLink()
             .id((d: any) => d.id)
-            .distance(80); // Reduced distance for better spacing
+            .distance(100);
 
           const forceX = simulation.forceX((d: any) => {
             if (!d.relationshipType) return dimensions.width / 2;
             const types = {
-              'spouse': -150,
+              'spouse': -200,
               'child': 0,
-              'friend': 150,
-              'co-worker': 300,
-              'mother': -225,
-              'father': -225,
-              'brother': -75,
-              'sibling': -75,
-              'boyfriend/girlfriend': 225
+              'friend': 200,
+              'co-worker': 400,
+              'mother': -300,
+              'father': -300,
+              'brother': -100,
+              'sibling': -100,
+              'boyfriend/girlfriend': 300
             };
             return (dimensions.width / 2) + (types[d.relationshipType as keyof typeof types] || 0);
-          }).strength(0.15); // Increased strength for better X-axis alignment
+          }).strength(0.5);
 
           const forceY = simulation.forceY((d: any) => {
             if (!d.relationshipType) return dimensions.height / 2;
             const types = {
-              'spouse': -75,
-              'child': 150,
-              'friend': -75,
-              'co-worker': 75,
-              'mother': -150,
-              'father': -150,
+              'spouse': -100,
+              'child': 200,
+              'friend': -100,
+              'co-worker': 100,
+              'mother': -200,
+              'father': -200,
               'brother': 0,
               'sibling': 0,
               'boyfriend/girlfriend': 0
             };
             return (dimensions.height / 2) + (types[d.relationshipType as keyof typeof types] || 0);
-          }).strength(0.15); // Increased strength for better Y-axis alignment
+          }).strength(0.3);
 
           return simulation;
         }}
