@@ -419,24 +419,7 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
             </div>
 
             <div className="flex items-center">
-              {/* Hide button for manual mode */}
-              {manualSortMode && !contact.isMe && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 hover:bg-primary/5 transition-colors mr-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Emit hide event through custom event
-                    if (window.dispatchEvent) {
-                      const hideEvent = new CustomEvent('contact:hide', { detail: { contactId: contact.id } });
-                      window.dispatchEvent(hideEvent);
-                    }
-                  }}
-                >
-                  <EyeOff className="h-4 w-4" />
-                </Button>
-              )}
+              {/* Hide button moved to dropdown menu */}
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -461,6 +444,22 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
                       setIsAddingChild(true);
                     }}>
                       Add Related Contact
+                    </DropdownMenuItem>
+                  )}
+                  {/* Hide option */}
+                  {!contact.isMe && (
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Emit hide event through custom event
+                        if (window.dispatchEvent) {
+                          const hideEvent = new CustomEvent('contact:hide', { detail: { contactId: contact.id } });
+                          window.dispatchEvent(hideEvent);
+                        }
+                      }}
+                    >
+                      <EyeOff className="h-4 w-4 mr-2" />
+                      Hide
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem
