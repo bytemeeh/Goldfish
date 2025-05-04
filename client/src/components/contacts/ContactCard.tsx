@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Reorder } from "framer-motion";
 import {
   MoreVertical,
   Mail,
@@ -21,6 +21,7 @@ import {
   UserPlus,
   HeartHandshake,
   MapPin,
+  GripVertical,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -60,6 +61,8 @@ interface ContactCardProps {
   contact: Contact;
   children?: Contact[];
   level?: number;
+  manualSortMode?: boolean;
+  onChildrenReorder?: (children: Contact[]) => void;
 }
 
 export function ContactCard({ contact, children = [], level = 0 }: ContactCardProps) {
@@ -304,24 +307,32 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                       >
                         <MapPin className="mr-1.5 h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
                         <div className="space-y-1.5">
-                          {contact.locations.map((location, index) => (
-                            <div key={location.id || index} className="pb-1">
-                              {location.type && (
-                                <div className="text-xs font-medium text-primary/70 mb-0.5 capitalize">
-                                  {location.type} {location.name && `- ${location.name}`}
-                                </div>
-                              )}
-                              {location.address && <div>{location.address}</div>}
-                              <div className="text-xs opacity-90">
-                                {location.latitude && location.longitude && (
-                                  <div className="text-muted-foreground/70">
-                                    GPS: {parseFloat(location.latitude as string).toFixed(4)}, 
-                                    {parseFloat(location.longitude as string).toFixed(4)}
+                          {contact.isMe ? (
+                            // For personal card, only show address with no additional details
+                            <div className="pb-1">
+                              {contact.locations[0]?.address && <div>{contact.locations[0].address}</div>}
+                            </div>
+                          ) : (
+                            // For regular contacts, show full location information
+                            contact.locations.map((location, index) => (
+                              <div key={location.id || index} className="pb-1">
+                                {location.type && (
+                                  <div className="text-xs font-medium text-primary/70 mb-0.5 capitalize">
+                                    {location.type} {location.name && `- ${location.name}`}
                                   </div>
                                 )}
+                                {location.address && <div>{location.address}</div>}
+                                <div className="text-xs opacity-90">
+                                  {location.latitude && location.longitude && (
+                                    <div className="text-muted-foreground/70">
+                                      GPS: {parseFloat(location.latitude as string).toFixed(4)}, 
+                                      {parseFloat(location.longitude as string).toFixed(4)}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ))
+                          )}
                         </div>
                       </motion.div>
                     ) : 
