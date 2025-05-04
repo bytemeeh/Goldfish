@@ -758,6 +758,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
                   <ContactCard 
                     contact={personalHierarchy}
                     children={personalHierarchy.children}
+                    relationshipLevel={0}
                   />
                 </div>
               </motion.div>
@@ -831,6 +832,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
                                 contact={contact}
                                 children={contact.children}
                                 manualSortMode={sortType === 'manual'}
+                                relationshipLevel={getRelationshipLevel(contact)}
                               />
                               <Button
                                 variant="ghost"
@@ -885,6 +887,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
                                 contact={contact}
                                 children={contact.children}
                                 manualSortMode={sortType === 'manual'}
+                                relationshipLevel={getRelationshipLevel(contact)}
                               />
                             </motion.div>
                           ))}
@@ -941,6 +944,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
                             contact={contact}
                             children={contact.children}
                             manualSortMode={sortType === 'manual'}
+                            relationshipLevel={getRelationshipLevel(contact)}
                             onChildrenReorder={(newChildren) => {
                               // Update child contacts recursively
                               const updatedContact = {...contact, children: newChildren};

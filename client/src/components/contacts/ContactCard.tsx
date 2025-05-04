@@ -66,7 +66,7 @@ interface ContactCardProps {
   onChildrenReorder?: (children: Contact[]) => void;
 }
 
-export function ContactCard({ contact, children = [], level = 0, manualSortMode = false, onChildrenReorder }: ContactCardProps) {
+export function ContactCard({ contact, children = [], level = 0, relationshipLevel, manualSortMode = false, onChildrenReorder }: ContactCardProps) {
   // Auto-expand first level contacts
   const [isExpanded, setIsExpanded] = useState(level === 0 && children.length > 0);
   const [isAddingChild, setIsAddingChild] = useState(false);
@@ -195,22 +195,25 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
                     `}>
                       {contact.name}
                     </h3>
-                    {(level === 0 && contact.parentId === null) && (
-                      <span></span>
-                    )}
-                    {level === 1 && (
+                    {/* Level badges based on actual relationship level, not UI nesting */}
+                    {relationshipLevel === 1 && (
                       <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium text-primary ml-2">
                         L1
                       </span>
                     )}
-                    {level === 2 && (
+                    {relationshipLevel === 2 && (
                       <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium text-primary ml-2">
                         L2
                       </span>
                     )}
-                    {level === 3 && (
+                    {relationshipLevel === 3 && (
                       <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium text-primary ml-2">
                         L3
+                      </span>
+                    )}
+                    {relationshipLevel === 4 && (
+                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium text-primary ml-2">
+                        L4
                       </span>
                     )}
                   </div>
