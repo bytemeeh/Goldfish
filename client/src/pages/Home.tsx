@@ -58,7 +58,7 @@ export function Home() {
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="h-8 col-span-1 px-1 py-0">
                     <User className="h-4 w-4 mr-1" />
-                    <span className="whitespace-nowrap text-xs">Personal Info</span>
+                    <span className="whitespace-nowrap text-xs">My Info</span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="h-[80vh] max-w-3xl flex flex-col overflow-hidden">

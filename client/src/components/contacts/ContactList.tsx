@@ -419,21 +419,21 @@ export function ContactList({ searchFilters }: ContactListProps) {
                 value="family" 
                 className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
-                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
+                <Heart className="mr-1.5 h-3.5 w-3.5 text-[hsl(var(--chart-1))]" />
                 Family
               </TabsTrigger>
               <TabsTrigger 
                 value="friend" 
                 className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
-                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-2))/10]">F</Badge>
+                <Users className="mr-1.5 h-3.5 w-3.5 text-[hsl(var(--chart-2))]" />
                 Friend
               </TabsTrigger>
               <TabsTrigger 
                 value="professional" 
                 className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
-                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-3))/10]">P</Badge>
+                <Briefcase className="mr-1.5 h-3.5 w-3.5 text-[hsl(var(--chart-3))]" />
                 Professional
               </TabsTrigger>
             </TabsList>

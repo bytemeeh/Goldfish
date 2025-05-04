@@ -131,8 +131,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
           stiffness: 400,
           damping: 25,
         }}
-        onHoverStart={() => setIsHovered(true)}
-        onHoverEnd={() => setIsHovered(false)}
+        onClick={() => setIsHovered(!isHovered)}
       >
         <Card
           className={`
