@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type Contact } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Phone, Cake } from "lucide-react";
+import { Mail, Phone, Cake, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import ForceGraph2D from "react-force-graph-2d";
 import type { NodeObject, LinkObject } from "react-force-graph-2d";
@@ -71,6 +71,20 @@ function ContactDetails({ contact }: { contact: Contact }) {
         <div className="flex items-center text-sm text-muted-foreground">
           <Cake className="mr-2 h-4 w-4" />
           {format(new Date(contact.birthday), "PPP")}
+        </div>
+      )}
+      {(contact.street || contact.city || contact.state || contact.country) && (
+        <div className="flex items-start text-sm text-muted-foreground">
+          <MapPin className="mr-2 h-4 w-4 mt-0.5 flex-shrink-0" />
+          <div>
+            {contact.street && <div>{contact.street}</div>}
+            <div>
+              {[contact.city, contact.state, contact.postalCode]
+                .filter(Boolean)
+                .join(", ")}
+            </div>
+            {contact.country && <div>{contact.country}</div>}
+          </div>
         </div>
       )}
       {contact.notes && (
