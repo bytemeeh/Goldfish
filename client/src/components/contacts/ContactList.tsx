@@ -686,12 +686,12 @@ export function ContactList({ searchFilters }: ContactListProps) {
         </div>
 
         {/* Sorting Controls */}
-        <div className="pt-1 pb-2">
-          <div className="flex items-center justify-between mb-1.5">
+        <div className="pt-1 pb-1">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-xs font-medium text-muted-foreground">Sort Mode:</span>
           </div>
           
-          <div className="flex flex-wrap gap-1 mb-2">
+          <div className="flex flex-wrap gap-1 mb-1">
             <Button
               variant={sortType === 'hierarchical' ? "default" : "outline"}
               size="sm"
@@ -741,20 +741,21 @@ export function ContactList({ searchFilters }: ContactListProps) {
               </Button>
             )}
           </div>
-        </div>
-      </div>
-      
-      <ScrollArea className="h-[calc(100vh-14rem)] pr-4">
-        <div className="space-y-8 py-2">
+          
           {/* Show reorder instructions for category sorting in manual mode */}
           {sortType === 'manual' && (
-            <div className="bg-muted/30 p-3 rounded-md border border-dashed flex items-center">
-              <GripVertical className="h-4 w-4 mr-2 text-muted-foreground" />
+            <div className="bg-muted/30 py-1.5 px-2 mt-1 rounded-md border border-dashed flex items-center">
+              <GripVertical className="h-3.5 w-3.5 mr-1.5 text-muted-foreground flex-shrink-0" />
               <p className="text-xs text-muted-foreground">
                 <span className="font-medium">Manual sorting mode:</span> Drag categories and contacts to reorder them
               </p>
             </div>
           )}
+        </div>
+      </div>
+      
+      <ScrollArea className="h-[calc(100vh-14rem)] pr-4">
+        <div className="space-y-8 py-2">
           {/* Add Birthday Reminder Component */}
           <BirthdayReminder contacts={contacts} />
           
