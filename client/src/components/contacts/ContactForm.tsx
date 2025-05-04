@@ -246,8 +246,8 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
                 <LocationPicker
                   value={{
                     address: `${form.watch('street') || ''} ${form.watch('city') || ''} ${form.watch('state') || ''} ${form.watch('country') || ''}`.trim(),
-                    latitude: form.watch('latitude'),
-                    longitude: form.watch('longitude'),
+                    latitude: form.watch('latitude') || null,
+                    longitude: form.watch('longitude') || null,
                   }}
                   onChange={(location) => {
                     if (location.address) {
@@ -291,7 +291,7 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
                   <FormItem>
                     <FormLabel>Street Address</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="123 Main St" />
+                      <Input {...field} value={field.value || ''} placeholder="123 Main St" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -306,7 +306,7 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
                     <FormItem>
                       <FormLabel>City</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} value={field.value || ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -320,7 +320,7 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
                     <FormItem>
                       <FormLabel>State/Province</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} value={field.value || ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -336,7 +336,7 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
                     <FormItem>
                       <FormLabel>Postal Code</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} value={field.value || ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -350,7 +350,7 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
                     <FormItem>
                       <FormLabel>Country</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} value={field.value || ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -366,7 +366,7 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
                     <FormItem>
                       <FormLabel>Latitude</FormLabel>
                       <FormControl>
-                        <Input {...field} readOnly className="bg-muted/40" />
+                        <Input {...field} value={field.value || ''} readOnly className="bg-muted/40" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -380,7 +380,7 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
                     <FormItem>
                       <FormLabel>Longitude</FormLabel>
                       <FormControl>
-                        <Input {...field} readOnly className="bg-muted/40" />
+                        <Input {...field} value={field.value || ''} readOnly className="bg-muted/40" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
