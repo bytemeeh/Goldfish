@@ -988,6 +988,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
                             contact={contact}
                             children={contact.children}
                             manualSortMode={sortType === 'manual'}
+                            relationshipLevel={getRelationshipLevel(contact)}
                           />
                         </motion.div>
                       ))}

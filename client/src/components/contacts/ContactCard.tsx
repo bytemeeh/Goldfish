@@ -544,6 +544,7 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
                       contact={child}
                       children={child.children}
                       level={level + 1}
+                      relationshipLevel={relationshipLevel ? relationshipLevel + 1 : undefined}
                       manualSortMode={manualSortMode}
                       onChildrenReorder={(newChildren) => {
                         // Update this specific child's children
@@ -567,6 +568,7 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
                   contact={child}
                   children={child.children}
                   level={level + 1}
+                  relationshipLevel={relationshipLevel ? relationshipLevel + 1 : undefined}
                   manualSortMode={manualSortMode}
                 />
               ))
