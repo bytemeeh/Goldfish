@@ -212,7 +212,12 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
                     )}
                     {level === 2 && (
                       <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium text-primary ml-2">
-                        L1
+                        L2
+                      </span>
+                    )}
+                    {level === 3 && (
+                      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium text-primary ml-2">
+                        L3
                       </span>
                     )}
                   </div>
