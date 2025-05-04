@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
@@ -11,8 +11,25 @@ interface SearchBarProps {
   onSearch: (filters: SearchFilters) => void;
 }
 
+// Local storage key for search text
+const STORAGE_KEY_SEARCH_TEXT = 'contact-search-text';
+
 export function SearchBar({ onSearch }: SearchBarProps) {
-  const [searchText, setSearchText] = useState<string>("");
+  const [searchText, setSearchText] = useState<string>(() => {
+    return localStorage.getItem(STORAGE_KEY_SEARCH_TEXT) || "";
+  });
+
+  // On mount, apply any saved search filters
+  useEffect(() => {
+    if (searchText) {
+      onSearch({ name: searchText });
+    }
+  }, []);
+  
+  // Save search text to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_SEARCH_TEXT, searchText);
+  }, [searchText]);
 
   const handleSearchChange = (value: string) => {
     setSearchText(value);

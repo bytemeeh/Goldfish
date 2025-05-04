@@ -138,11 +138,17 @@ type SortType = 'hierarchical' | 'proximity' | 'manual';
 export function ContactList({ searchFilters }: ContactListProps) {
   const { toast } = useToast();
   const [sortType, setSortType] = useState<SortType>('hierarchical');
-  const [proximitySort, setProximitySort] = useState(false);
+  const [proximitySort, setProximitySort] = useState(() => {
+    return localStorage.getItem('proximity_sort') === 'true';
+  });
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [relationshipFilter, setRelationshipFilter] = useState<string>("all");
-  const [relationLevelFilter, setRelationLevelFilter] = useState<string>("all");
+  const [relationshipFilter, setRelationshipFilter] = useState<string>(() => {
+    return localStorage.getItem('relationship_filter') || "all";
+  });
+  const [relationLevelFilter, setRelationLevelFilter] = useState<string>(() => {
+    return localStorage.getItem('relation_level_filter') || "all";
+  });
   
   // Manual sort state
   const [manualOrderIds, setManualOrderIds] = useState<number[]>([]);
@@ -189,6 +195,15 @@ export function ContactList({ searchFilters }: ContactListProps) {
     }
   }, [sortType, userLocation, isGettingLocation]);
   
+  // Save relationship filters when they change
+  useEffect(() => {
+    localStorage.setItem('relationship_filter', relationshipFilter);
+  }, [relationshipFilter]);
+
+  useEffect(() => {
+    localStorage.setItem('relation_level_filter', relationLevelFilter);
+  }, [relationLevelFilter]);
+  
   // Get user's current location
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -227,6 +242,11 @@ export function ContactList({ searchFilters }: ContactListProps) {
     );
     return true; // Return true if the geolocation request was initiated
   };
+  
+  // Save proximity sort setting when it changes
+  useEffect(() => {
+    localStorage.setItem('proximity_sort', proximitySort.toString());
+  }, [proximitySort]);
   
   // Toggle proximity sorting
   const toggleProximitySort = () => {
