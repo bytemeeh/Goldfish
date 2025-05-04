@@ -127,8 +127,8 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
         </>
       )}
       
-      {/* Grip handle for manual sort mode */}
-      {manualSortMode && (
+      {/* Grip handle for manual sort mode - ONLY shown in the main card, not in the header */}
+      {manualSortMode && level === 0 && (
         <div className="absolute -left-6 top-10 transform opacity-40 hover:opacity-100 transition-opacity cursor-move">
           <GripVertical className="w-4 h-4 text-muted-foreground" />
         </div>
