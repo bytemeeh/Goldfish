@@ -232,53 +232,129 @@ export function LocationList({ locations = [], onChange, disabled = false }: Loc
                             });
                             
                             // Custom event listener to handle clicking on predictions
-                            // This is a workaround since Google's Autocomplete doesn't provide direct access to predictions
-                            const container = document.querySelector('.pac-container') as HTMLElement;
-                            if (container) {
-                              // When predictions are shown, observe them for clicks
-                              const observer = new MutationObserver((mutations) => {
-                                const predictions = container.querySelectorAll('.pac-item');
-                                predictions.forEach((prediction, i) => {
-                                  // Remove existing click listeners to avoid duplicates
-                                  prediction.removeEventListener('click', () => {});
-                                  
-                                  // Add click listener to each prediction
-                                  prediction.addEventListener('click', (e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    
-                                    // Get the text from the prediction item
-                                    const mainText = prediction.querySelector('.pac-item-query')?.textContent || '';
-                                    const secondaryText = prediction.querySelector('.pac-secondary-text')?.textContent || '';
-                                    const fullAddress = `${mainText} ${secondaryText}`.trim();
-                                    
-                                    // Geocode the selected address to get coordinates
-                                    const geocoder = new window.google.maps.Geocoder();
-                                    geocoder.geocode({ address: fullAddress }, (results, status) => {
-                                      if (status === window.google.maps.GeocoderStatus.OK && results && results[0]) {
-                                        const pos = {
-                                          lat: results[0].geometry.location.lat(),
-                                          lng: results[0].geometry.location.lng()
-                                        };
-                                        
-                                        // Update the location with the selected address and coordinates
-                                        handleLocationChange(index, {
-                                          address: results[0].formatted_address,
-                                          latitude: pos.lat.toString(),
-                                          longitude: pos.lng.toString()
-                                        });
-                                        
-                                        // Close the predictions dropdown
-                                        container.style.display = 'none';
-                                      }
-                                    });
-                                  });
+                            // We need to monitor for when the predictions box becomes visible
+                            // and then attach click handlers to each prediction
+                            
+                            // Helper function to add click handlers to predictions
+                            const addClickHandlersToPredictions = () => {
+                              // Find the prediction container - it's added to the body by Google
+                              const containers = document.querySelectorAll('.pac-container');
+                              if (containers.length > 0) {
+                                // Get the container that's currently visible and positioned near our input
+                                let container: HTMLElement | null = null;
+                                containers.forEach((cont) => {
+                                  if ((cont as HTMLElement).style.display !== 'none') {
+                                    container = cont as HTMLElement;
+                                  }
                                 });
+                                
+                                if (container) {
+                                  // When predictions are shown, make each clickable
+                                  const predictions = container.querySelectorAll('.pac-item');
+                                  predictions.forEach((prediction) => {
+                                    // Mark predictions that have already been processed to avoid duplicate listeners
+                                    if (!prediction.getAttribute('data-handler-added')) {
+                                      prediction.setAttribute('data-handler-added', 'true');
+                                      
+                                      // Add click listener to each prediction
+                                      prediction.addEventListener('click', (e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        
+                                        // Get the text from the prediction item
+                                        const mainText = prediction.querySelector('.pac-item-query')?.textContent || '';
+                                        const secondaryText = prediction.querySelector('.pac-secondary-text')?.textContent || '';
+                                        const fullAddress = `${mainText} ${secondaryText}`.trim();
+                                        
+                                        // Visual feedback first
+                                        const inputField = el.querySelector('input') as HTMLInputElement;
+                                        if (inputField) {
+                                          inputField.value = fullAddress;
+                                          inputField.focus();
+                                        }
+                                        
+                                        // Geocode the selected address to get coordinates
+                                        const geocoder = new window.google.maps.Geocoder();
+                                        geocoder.geocode({ address: fullAddress }, (results, status) => {
+                                          if (status === window.google.maps.GeocoderStatus.OK && results && results[0]) {
+                                            const pos = {
+                                              lat: results[0].geometry.location.lat(),
+                                              lng: results[0].geometry.location.lng()
+                                            };
+                                            
+                                            // Update the location with the selected address and coordinates
+                                            handleLocationChange(index, {
+                                              address: results[0].formatted_address,
+                                              latitude: pos.lat.toString(),
+                                              longitude: pos.lng.toString()
+                                            });
+                                            
+                                            // Update input field with formatted address and give visual feedback
+                                            if (inputField) {
+                                              inputField.value = results[0].formatted_address;
+                                              // Add highlight effect
+                                              inputField.classList.add('address-selected');
+                                              
+                                              // Add a success indicator next to the input
+                                              const successIndicator = document.createElement('div');
+                                              successIndicator.className = 'address-success-indicator';
+                                              successIndicator.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Address selected</span>';
+                                              
+                                              // Insert the indicator after the input container
+                                              const inputContainer = inputField.parentElement;
+                                              if (inputContainer && inputContainer.parentElement) {
+                                                inputContainer.parentElement.appendChild(successIndicator);
+                                                
+                                                // Remove the success indicator after a delay
+                                                setTimeout(() => {
+                                                  inputField.classList.remove('address-selected');
+                                                  successIndicator.classList.add('fade-out');
+                                                  setTimeout(() => {
+                                                    if (successIndicator.parentElement) {
+                                                      successIndicator.parentElement.removeChild(successIndicator);
+                                                    }
+                                                  }, 500); // Wait for fade out animation
+                                                }, 2000);
+                                              }
+                                            }
+                                            
+                                            // Hide all prediction containers
+                                            containers.forEach((cont) => {
+                                              (cont as HTMLElement).style.display = 'none';
+                                            });
+                                          }
+                                        });
+                                      });
+                                    }
+                                  });
+                                }
+                              }
+                            };
+                            
+                            // Set up a mutation observer to watch for new .pac-container elements
+                            const bodyObserver = new MutationObserver((mutations) => {
+                              // Check if there are visible .pac-container elements
+                              const containers = document.querySelectorAll('.pac-container');
+                              containers.forEach(container => {
+                                if ((container as HTMLElement).style.display !== 'none') {
+                                  addClickHandlersToPredictions();
+                                }
                               });
-                              
-                              // Start observing the container for changes (like new predictions)
-                              observer.observe(container, { childList: true, subtree: true });
-                            }
+                            });
+                            
+                            // Start observing the body for changes
+                            bodyObserver.observe(document.body, { childList: true, subtree: true });
+                            
+                            // Also listen for focus events on the input to handle cases where the user clicks on the input
+                            input.addEventListener('focus', () => {
+                              // Small delay to allow predictions to appear
+                              setTimeout(addClickHandlersToPredictions, 300);
+                            });
+                            
+                            // Make sure predictions become clickable after user types
+                            input.addEventListener('input', () => {
+                              setTimeout(addClickHandlersToPredictions, 300);
+                            });
                             
                             el.setAttribute('data-autocomplete-setup', 'true');
                           }
