@@ -408,62 +408,62 @@ export function ContactList({ searchFilters }: ContactListProps) {
             <TabsList className="w-full h-auto flex flex-wrap gap-0.5 bg-transparent p-0">
               <TabsTrigger 
                 value="all" 
-                className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
+                className="flex items-center h-7 px-3 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
                 All
               </TabsTrigger>
               <TabsTrigger 
                 value="mother" 
-                className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
+                className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
                 <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
                 Mother
               </TabsTrigger>
               <TabsTrigger 
                 value="father" 
-                className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
+                className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
                 <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
                 Father
               </TabsTrigger>
               <TabsTrigger 
                 value="sibling" 
-                className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
+                className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
                 <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
                 Sibling
               </TabsTrigger>
               <TabsTrigger 
                 value="child" 
-                className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
+                className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
                 <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
                 Child
               </TabsTrigger>
               <TabsTrigger 
                 value="spouse" 
-                className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
+                className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
                 <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
                 Spouse
               </TabsTrigger>
               <TabsTrigger 
                 value="friend" 
-                className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
+                className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
                 <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-2))/10]">F</Badge>
                 Friend
               </TabsTrigger>
               <TabsTrigger 
                 value="boyfriend/girlfriend" 
-                className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
+                className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
                 <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-2))/10]">F</Badge>
                 Partner
               </TabsTrigger>
               <TabsTrigger 
                 value="co-worker" 
-                className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
+                className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
                 <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-3))/10]">P</Badge>
                 Co-worker
@@ -472,15 +472,15 @@ export function ContactList({ searchFilters }: ContactListProps) {
           </Tabs>
         </div>
 
-        {/* Relationship Level Tabs */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
+        {/* Relation Level Tabs */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-medium text-muted-foreground">Relation Level:</span>
             {relationLevelFilter !== 'all' && (
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="h-6 px-2 text-xs" 
+                className="h-6 px-2 py-0 text-xs" 
                 onClick={() => setRelationLevelFilter('all')}
               >
                 <X className="h-3 w-3 mr-1" />
@@ -489,12 +489,12 @@ export function ContactList({ searchFilters }: ContactListProps) {
             )}
           </div>
           <Tabs value={relationLevelFilter} onValueChange={setRelationLevelFilter} className="w-full">
-            <TabsList className="w-full bg-muted/50 p-1">
-              <TabsTrigger value="all" className="text-xs h-7 data-[state=active]:bg-background">All</TabsTrigger>
-              <TabsTrigger value="1" className="text-xs h-7 data-[state=active]:bg-background">1st Level</TabsTrigger>
-              <TabsTrigger value="2" className="text-xs h-7 data-[state=active]:bg-background">2nd Level</TabsTrigger>
-              <TabsTrigger value="3" className="text-xs h-7 data-[state=active]:bg-background">3rd Level</TabsTrigger>
-              <TabsTrigger value="4" className="text-xs h-7 data-[state=active]:bg-background">4th Level</TabsTrigger>
+            <TabsList className="w-full flex gap-0.5 bg-transparent p-0">
+              <TabsTrigger value="all" className="flex-1 h-7 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">All</TabsTrigger>
+              <TabsTrigger value="1" className="flex-1 h-7 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">1st Level</TabsTrigger>
+              <TabsTrigger value="2" className="flex-1 h-7 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">2nd Level</TabsTrigger>
+              <TabsTrigger value="3" className="flex-1 h-7 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">3rd Level</TabsTrigger>
+              <TabsTrigger value="4" className="flex-1 h-7 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">4th Level</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -519,7 +519,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="ml-auto flex items-center gap-1 h-8 flex-shrink-0"
+                  className="ml-auto flex items-center gap-1 h-7 py-0 px-2 text-xs flex-shrink-0 rounded-md border bg-background/60"
                   onClick={getCurrentLocation}
                   disabled={isGettingLocation}
                 >
@@ -527,9 +527,9 @@ export function ContactList({ searchFilters }: ContactListProps) {
                     <span className="animate-pulse text-xs">Getting location...</span>
                   ) : (
                     <>
-                      <Navigation className="h-3.5 w-3.5" />
+                      <Navigation className="h-3.5 w-3.5 mr-1" />
                       <span className="text-xs hidden sm:inline">
-                        {userLocation ? 'Update location' : 'Get current location'}
+                        {userLocation ? 'Update location' : 'Get location'}
                       </span>
                       {userLocation && <Check className="h-3.5 w-3.5 ml-1 text-green-500" />}
                     </>
