@@ -830,6 +830,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
                               <ContactCard 
                                 contact={contact}
                                 children={contact.children}
+                                manualSortMode={sortType === 'manual'}
                               />
                               <Button
                                 variant="ghost"
@@ -883,6 +884,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
                               <ContactCard 
                                 contact={contact}
                                 children={contact.children}
+                                manualSortMode={sortType === 'manual'}
                               />
                             </motion.div>
                           ))}
@@ -938,6 +940,18 @@ export function ContactList({ searchFilters }: ContactListProps) {
                           <ContactCard 
                             contact={contact}
                             children={contact.children}
+                            manualSortMode={sortType === 'manual'}
+                            onChildrenReorder={(newChildren) => {
+                              // Update child contacts recursively
+                              const updatedContact = {...contact, children: newChildren};
+                              const updatedContacts = [...uncategorizedContacts];
+                              const index = updatedContacts.findIndex(c => c.id === contact.id);
+                              if (index >= 0) {
+                                updatedContacts[index] = updatedContact;
+                                // Update uncategorized contacts
+                                uncategorizedContacts.splice(0, uncategorizedContacts.length, ...updatedContacts);
+                              }
+                            }}
                           />
                           {sortType === 'manual' && (
                             <Button
@@ -969,6 +983,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
                           <ContactCard 
                             contact={contact}
                             children={contact.children}
+                            manualSortMode={sortType === 'manual'}
                           />
                         </motion.div>
                       ))}
