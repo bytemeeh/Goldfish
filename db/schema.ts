@@ -1,4 +1,4 @@
-import { pgTable, text, serial, date, timestamp, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, date, timestamp, integer, boolean, jsonb, decimal, primaryKey } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -91,6 +91,17 @@ export const contacts = pgTable("contacts", {
   shareToken: text("share_token").unique(),
   shareDepth: integer("share_depth"),
   shareableUntil: timestamp("shareable_until", { mode: "string" }),
+  // Address and location fields
+  street: text("street"),
+  city: text("city"),
+  state: text("state"),
+  country: text("country"),
+  postalCode: text("postal_code"),
+  latitude: text("latitude"),
+  longitude: text("longitude"),
+  // Import fields
+  importSource: text("import_source"),
+  externalId: text("external_id"),
   createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }).notNull().defaultNow(),
 });
@@ -140,6 +151,59 @@ export const insertContactSchema = createInsertSchema(contacts, {
 
 export const selectContactSchema = createSelectSchema(contacts);
 
+// Define the location types
+export const locationTypes = [
+  "home",
+  "work",
+  "other"
+] as const;
+
+export type LocationType = typeof locationTypes[number];
+
+// Define the locations table
+export const locations = pgTable("locations", {
+  id: serial("id").primaryKey(),
+  contactId: integer("contact_id").notNull().references(() => contacts.id, { onDelete: "cascade" }),
+  type: text("type", { enum: locationTypes }).notNull().default("other"),
+  name: text("name"),
+  address: text("address"),
+  latitude: decimal("latitude", { precision: 10, scale: 7 }).notNull(),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }).notNull(),
+  createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }).notNull().defaultNow(),
+});
+
+// Define relations for locations
+export const locationsRelations = relations(locations, ({ one }) => ({
+  contact: one(contacts, {
+    fields: [locations.contactId],
+    references: [contacts.id],
+  }),
+}));
+
+// Add locations relation to contacts
+export const contactsRelationsWithLocations = relations(contacts, ({ one, many }) => ({
+  parent: one(contacts, {
+    fields: [contacts.parentId],
+    references: [contacts.id],
+  }),
+  children: many(contacts),
+  locations: many(locations),
+}));
+
+// Create Zod schemas for locations
+export const insertLocationSchema = createInsertSchema(locations, {
+  type: z.enum(locationTypes).default("other"),
+  name: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+});
+
+export const selectLocationSchema = createSelectSchema(locations);
+
 // Export types
 export type Contact = typeof contacts.$inferSelect;
 export type NewContact = typeof contacts.$inferInsert;
+export type Location = typeof locations.$inferSelect;
+export type NewLocation = typeof locations.$inferInsert;
