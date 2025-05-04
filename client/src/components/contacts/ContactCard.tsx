@@ -520,14 +520,7 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
             exit={{ opacity: 0, height: 0 }}
             className="space-y-4 mt-4"
           >
-            {children.length > 0 && (
-              <div className="text-sm font-medium text-muted-foreground/80 tracking-wide ml-2 mb-4 mt-8 border-b border-muted-foreground/10 pb-2">
-                {level === 0 ? '1ST LEVEL CONTACTS' : 
-                 level === 1 ? '2ND LEVEL CONTACTS' : 
-                 level === 2 ? '3RD LEVEL CONTACTS' : 
-                 `${level+1}TH LEVEL CONTACTS`}
-              </div>
-            )}
+            {/* Level headings have been removed as requested */}
             {manualSortMode ? (
               <Reorder.Group
                 axis="y"
