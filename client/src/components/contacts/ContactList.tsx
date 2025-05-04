@@ -387,16 +387,16 @@ export function ContactList({ searchFilters }: ContactListProps) {
   return (
     <div className="space-y-4">
       {/* Filters and Controls Section */}
-      <div className="space-y-4 bg-background sticky top-0 z-20 pt-2 pb-2 max-w-full">
-        {/* Relationship Type Tabs */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Relationship Type:</span>
+      <div className="space-y-3 bg-background sticky top-0 z-20 pt-2 pb-2 max-w-full">
+        {/* Quick Filter Tabs */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Quick Filter:</span>
             {relationshipFilter !== 'all' && (
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="h-6 px-2 text-xs" 
+                className="h-6 px-2 py-0 text-xs" 
                 onClick={() => setRelationshipFilter('all')}
               >
                 <X className="h-3 w-3 mr-1" />
@@ -405,7 +405,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
             )}
           </div>
           <Tabs value={relationshipFilter} onValueChange={setRelationshipFilter} className="w-full">
-            <TabsList className="w-full h-auto flex flex-wrap bg-muted/50 p-1 mb-1">
+            <TabsList className="w-full h-auto flex flex-wrap gap-0.5 bg-transparent p-0">
               <TabsTrigger 
                 value="all" 
                 className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
