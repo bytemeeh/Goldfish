@@ -3,16 +3,31 @@ import { ContactCard } from "./ContactCard";
 import { type Contact, type Location, type RelationshipType } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { SearchFilters } from "./SearchBar";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Reorder } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
-import { Check, Navigation, X, Users, Briefcase, Heart } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import {
+  Check,
+  Navigation,
+  X,
+  Users,
+  Briefcase,
+  Heart,
+  ListFilter,
+  Eye,
+  EyeOff,
+  GripVertical,
+  Layers,
+  Network
+} from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { BirthdayReminder } from "./BirthdayReminder";
 
 interface ContactListProps {
   searchFilters: SearchFilters;
@@ -117,13 +132,62 @@ function getClosestLocation(contact: Contact, userLat?: number, userLon?: number
   return { distance: minDistance, location: closestLocation };
 }
 
+// Define sort types
+type SortType = 'hierarchical' | 'proximity' | 'manual';
+
 export function ContactList({ searchFilters }: ContactListProps) {
   const { toast } = useToast();
+  const [sortType, setSortType] = useState<SortType>('hierarchical');
   const [proximitySort, setProximitySort] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [relationshipFilter, setRelationshipFilter] = useState<string>("all");
   const [relationLevelFilter, setRelationLevelFilter] = useState<string>("all");
+  
+  // Manual sort state
+  const [manualOrderIds, setManualOrderIds] = useState<number[]>([]);
+  const [hiddenContactIds, setHiddenContactIds] = useState<Set<number>>(new Set());
+  
+  // Load saved sort preferences on mount
+  useEffect(() => {
+    const savedSortType = localStorage.getItem('contact_sort_type');
+    if (savedSortType) {
+      setSortType(savedSortType as SortType);
+    }
+    
+    const savedManualOrderIds = localStorage.getItem('manual_order_ids');
+    if (savedManualOrderIds) {
+      setManualOrderIds(JSON.parse(savedManualOrderIds));
+    }
+    
+    const savedHiddenContactIds = localStorage.getItem('hidden_contact_ids');
+    if (savedHiddenContactIds) {
+      setHiddenContactIds(new Set(JSON.parse(savedHiddenContactIds)));
+    }
+  }, []);
+  
+  // Save manual sort order and hidden contacts when they change
+  useEffect(() => {
+    if (manualOrderIds.length > 0) {
+      localStorage.setItem('manual_order_ids', JSON.stringify(manualOrderIds));
+    }
+  }, [manualOrderIds]);
+  
+  useEffect(() => {
+    if (hiddenContactIds.size > 0) {
+      localStorage.setItem('hidden_contact_ids', JSON.stringify([...hiddenContactIds]));
+    }
+  }, [hiddenContactIds]);
+  
+  // Update localStorage when sort type changes
+  useEffect(() => {
+    localStorage.setItem('contact_sort_type', sortType);
+    
+    // If changing to proximity sort, get location if not already available
+    if (sortType === 'proximity' && !userLocation && !isGettingLocation) {
+      getCurrentLocation();
+    }
+  }, [sortType, userLocation, isGettingLocation]);
   
   // Get user's current location
   const getCurrentLocation = () => {
@@ -383,24 +447,104 @@ export function ContactList({ searchFilters }: ContactListProps) {
     children: buildHierarchy(contact.id)
   }));
 
-  // Apply proximity-based sorting if enabled
-  if (proximitySort && userLocation) {
-    categorizedContacts.forEach(category => {
-      category.contacts = sortContactsByProximity(category.contacts);
-    });
+  // Apply sorting based on selected sort type
+  const applySelectedSorting = () => {
+    // Filter hidden contacts when in manual mode
+    if (sortType === 'manual') {
+      categorizedContacts.forEach(category => {
+        category.contacts = category.contacts.filter(contact => 
+          !hiddenContactIds.has(contact.id)
+        );
+      });
+
+      const visibleUncategorized = uncategorizedContacts.filter(
+        contact => !hiddenContactIds.has(contact.id)
+      );
+      
+      // Apply manual order if available
+      if (manualOrderIds.length > 0) {
+        // Create a map for quick lookup by ID
+        const contactMap = new Map();
+        contacts.forEach(c => contactMap.set(c.id, c));
+        
+        // Order contacts based on manual order
+        const orderedContacts = manualOrderIds
+          .map(id => contactMap.get(id))
+          .filter(Boolean); // Remove any undefined entries
+        
+        // For any contacts not in manualOrderIds, maintain their position at the end
+        const unorderedIds = new Set(manualOrderIds);
+        const remainingContacts = contacts.filter(c => !unorderedIds.has(c.id));
+        
+        // Update each category with the manually ordered contacts
+        categorizedContacts.forEach(category => {
+          const categoryIds = new Set(category.contacts.map(c => c.id));
+          category.contacts = orderedContacts
+            .filter(c => categoryIds.has(c.id))
+            .map(contact => ({
+              ...contact,
+              children: buildHierarchy(contact.id)
+            }));
+        });
+        
+        // Update uncategorized contacts
+        const uncategorizedIds = new Set(uncategorizedContacts.map(c => c.id));
+        uncategorizedContacts.splice(0, uncategorizedContacts.length, ...orderedContacts
+          .filter(c => uncategorizedIds.has(c.id))
+          .map(contact => ({
+            ...contact,
+            children: buildHierarchy(contact.id)
+          })));
+        
+        // Add any remaining contacts that weren't in the manual order
+        remainingContacts.forEach(contact => {
+          if (categorizedContacts.some(cat => 
+            cat.types.includes(contact.relationshipType || '') && 
+            !hiddenContactIds.has(contact.id)
+          )) {
+            const category = categorizedContacts.find(cat => 
+              cat.types.includes(contact.relationshipType || '')
+            );
+            if (category) {
+              category.contacts.push({
+                ...contact,
+                children: buildHierarchy(contact.id)
+              });
+            }
+          } else if (!hiddenContactIds.has(contact.id) && !contact.isMe) {
+            uncategorizedContacts.push({
+              ...contact,
+              children: buildHierarchy(contact.id)
+            });
+          }
+        });
+      }
+      return;
+    }
     
-    uncategorizedContacts.sort((a, b) => {
-      const locationA = getClosestLocation(a, userLocation.latitude, userLocation.longitude);
-      const locationB = getClosestLocation(b, userLocation.latitude, userLocation.longitude);
-      return locationA.distance - locationB.distance;
-    });
-  } else {
-    // Default sorting by name
+    // Proximity-based sorting
+    if (sortType === 'proximity' && userLocation) {
+      categorizedContacts.forEach(category => {
+        category.contacts = sortContactsByProximity(category.contacts);
+      });
+      
+      uncategorizedContacts.sort((a, b) => {
+        const locationA = getClosestLocation(a, userLocation.latitude, userLocation.longitude);
+        const locationB = getClosestLocation(b, userLocation.latitude, userLocation.longitude);
+        return locationA.distance - locationB.distance;
+      });
+      return;
+    }
+    
+    // Default hierarchical sorting (by name)
     categorizedContacts.forEach(category => {
       category.contacts.sort((a, b) => a.name.localeCompare(b.name));
     });
     uncategorizedContacts.sort((a, b) => a.name.localeCompare(b.name));
-  }
+  };
+  
+  // Apply the selected sorting method
+  applySelectedSorting();
   
   return (
     <div className="space-y-4">
@@ -481,28 +625,70 @@ export function ContactList({ searchFilters }: ContactListProps) {
           </Tabs>
         </div>
 
-        {/* Location Toggle Switch */}
-        <div className="flex justify-end items-center gap-2 pt-1 pb-2">
-          <div className="flex items-center space-x-2">
-            <Label htmlFor="proximity-sort" className="text-xs font-medium cursor-pointer">
-              <div className="flex items-center">
-                <Navigation className="h-3.5 w-3.5 mr-1.5" />
-                Sort by proximity
-                {isGettingLocation && <span className="ml-2 text-xs animate-pulse">Getting location...</span>}
-              </div>
-            </Label>
-            <Switch 
-              id="proximity-sort" 
-              checked={proximitySort}
-              onCheckedChange={toggleProximitySort}
-              disabled={isGettingLocation}
-            />
+        {/* Sorting Controls */}
+        <div className="pt-1 pb-2">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Sort Mode:</span>
+            
+            {/* Show toggle buttons for hiding/showing contacts in manual mode */}
+            {sortType === 'manual' && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-6 px-2 py-0 text-xs" 
+                onClick={() => setHiddenContactIds(new Set())}
+              >
+                <Eye className="h-3 w-3 mr-1" />
+                Show All
+              </Button>
+            )}
+          </div>
+          
+          <div className="flex flex-wrap gap-1 mb-2">
+            <Button
+              variant={sortType === 'hierarchical' ? "default" : "outline"}
+              size="sm"
+              className="h-7 px-3 py-0 text-xs flex items-center gap-1.5"
+              onClick={() => setSortType('hierarchical')}
+            >
+              <Layers className="h-3.5 w-3.5" /> 
+              Hierarchical
+            </Button>
+            
+            <Button
+              variant={sortType === 'proximity' ? "default" : "outline"}
+              size="sm"
+              className="h-7 px-3 py-0 text-xs flex items-center gap-1.5"
+              onClick={() => {
+                setSortType('proximity');
+                if (!userLocation) {
+                  getCurrentLocation();
+                }
+              }}
+            >
+              <Navigation className="h-3.5 w-3.5" />
+              Proximity
+              {isGettingLocation && <span className="ml-1 text-xs animate-pulse">Getting location...</span>}
+            </Button>
+            
+            <Button
+              variant={sortType === 'manual' ? "default" : "outline"}
+              size="sm"
+              className="h-7 px-3 py-0 text-xs flex items-center gap-1.5"
+              onClick={() => setSortType('manual')}
+            >
+              <GripVertical className="h-3.5 w-3.5" />
+              Manual
+            </Button>
           </div>
         </div>
       </div>
       
       <ScrollArea className="h-[calc(100vh-14rem)] pr-4">
         <div className="space-y-8 py-2">
+          {/* Add Birthday Reminder Component */}
+          <BirthdayReminder contacts={contacts} />
+          
           <AnimatePresence mode="sync">
             {personalHierarchy && (
               <motion.div
@@ -546,21 +732,80 @@ export function ContactList({ searchFilters }: ContactListProps) {
                         {category.title}
                       </h2>
                     </div>
-                    <div className="space-y-6">
-                      {category.contacts.map(contact => (
-                        <motion.div
-                          key={contact.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <ContactCard 
-                            contact={contact}
-                            children={contact.children}
-                          />
-                        </motion.div>
-                      ))}
-                    </div>
+                    {sortType === 'manual' ? (
+                      <Reorder.Group
+                        axis="y"
+                        values={category.contacts} 
+                        onReorder={(items) => {
+                          // Update category contacts
+                          const newCategory = {
+                            ...category,
+                            contacts: items
+                          };
+                          
+                          // Find category index
+                          const catIndex = categorizedContacts.findIndex(c => c.title === category.title);
+                          if (catIndex !== -1) {
+                            categorizedContacts[catIndex] = newCategory;
+                          }
+                          
+                          // Update manual order
+                          const allContactIds = [
+                            ...categorizedContacts.flatMap(cat => cat.contacts.map(c => c.id)),
+                            ...uncategorizedContacts.map(c => c.id)
+                          ];
+                          setManualOrderIds(allContactIds);
+                        }}
+                        className="space-y-6"
+                      >
+                        {category.contacts.map(contact => (
+                          <Reorder.Item 
+                            key={contact.id} 
+                            value={contact}
+                            className="relative pb-2 cursor-move"
+                          >
+                            <div className="absolute -left-4 top-1/2 transform -translate-y-1/2 opacity-40 hover:opacity-100 transition-opacity">
+                              <GripVertical className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                            <ContactCard 
+                              contact={contact}
+                              children={contact.children}
+                            />
+                            {sortType === 'manual' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-1 top-2 h-6 w-6 p-0"
+                                onClick={() => {
+                                  // Add to hidden contacts
+                                  const newHidden = new Set(hiddenContactIds);
+                                  newHidden.add(contact.id);
+                                  setHiddenContactIds(newHidden);
+                                }}
+                              >
+                                <EyeOff className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </Reorder.Item>
+                        ))}
+                      </Reorder.Group>
+                    ) : (
+                      <div className="space-y-6">
+                        {category.contacts.map(contact => (
+                          <motion.div
+                            key={contact.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <ContactCard 
+                              contact={contact}
+                              children={contact.children}
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )
@@ -581,21 +826,71 @@ export function ContactList({ searchFilters }: ContactListProps) {
                       Other Contacts
                     </h2>
                   </div>
-                  <div className="space-y-6">
-                    {uncategorizedContacts.map(contact => (
-                      <motion.div
-                        key={contact.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <ContactCard 
-                          contact={contact}
-                          children={contact.children}
-                        />
-                      </motion.div>
-                    ))}
-                  </div>
+                  {sortType === 'manual' ? (
+                    <Reorder.Group
+                      axis="y"
+                      values={uncategorizedContacts} 
+                      onReorder={(items) => {
+                        // Update uncategorized contacts
+                        uncategorizedContacts.splice(0, uncategorizedContacts.length, ...items);
+                        
+                        // Update manual order
+                        const allContactIds = [
+                          ...categorizedContacts.flatMap(cat => cat.contacts.map(c => c.id)),
+                          ...uncategorizedContacts.map(c => c.id)
+                        ];
+                        setManualOrderIds(allContactIds);
+                      }}
+                      className="space-y-6"
+                    >
+                      {uncategorizedContacts.map(contact => (
+                        <Reorder.Item 
+                          key={contact.id} 
+                          value={contact}
+                          className="relative pb-2 cursor-move"
+                        >
+                          <div className="absolute -left-4 top-1/2 transform -translate-y-1/2 opacity-40 hover:opacity-100 transition-opacity">
+                            <GripVertical className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                          <ContactCard 
+                            contact={contact}
+                            children={contact.children}
+                          />
+                          {sortType === 'manual' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-1 top-2 h-6 w-6 p-0"
+                              onClick={() => {
+                                // Add to hidden contacts
+                                const newHidden = new Set(hiddenContactIds);
+                                newHidden.add(contact.id);
+                                setHiddenContactIds(newHidden);
+                              }}
+                            >
+                              <EyeOff className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </Reorder.Item>
+                      ))}
+                    </Reorder.Group>
+                  ) : (
+                    <div className="space-y-6">
+                      {uncategorizedContacts.map(contact => (
+                        <motion.div
+                          key={contact.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <ContactCard 
+                            contact={contact}
+                            children={contact.children}
+                          />
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}
