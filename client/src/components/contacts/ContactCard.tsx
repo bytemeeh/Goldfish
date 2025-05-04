@@ -135,7 +135,9 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
           stiffness: 400,
           damping: 25,
         }}
-        onClick={() => setIsHovered(!isHovered)}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onClick={() => children.length > 0 && setIsExpanded(!isExpanded)}
       >
         <Card
           className={`
@@ -149,6 +151,7 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
             hover:bg-accent/5
             transform-gpu
             hover:translate-x-1
+            ${children.length > 0 ? 'cursor-pointer' : ''}
           `}
         >
           {/* Level indicator */}
@@ -166,25 +169,21 @@ export function ContactCard({ contact, children = [], level = 0, manualSortMode 
           )}
 
           <CardHeader className="flex flex-row items-start space-x-3 pb-1 pt-2 px-3">
-            <motion.button
+            <motion.div
               className={`
                 h-7 w-7 mt-0.5 flex items-center justify-center
-                ${children.length > 0 ? 'text-primary/70 hover:text-primary' : 'text-muted-foreground'}
+                ${children.length > 0 ? 'text-primary/70' : 'text-muted-foreground/40'}
                 transition-all duration-200
                 rounded-full
-                hover:bg-primary/5
               `}
-              onClick={() => setIsExpanded(!isExpanded)}
-              whileTap={{ scale: 0.9 }}
-              whileHover={{ scale: 1.1 }}
-              animate={children.length > 0 ? { rotate: isExpanded ? 0 : -90 } : {}}
+              animate={{ rotate: (children.length > 0 && isExpanded) ? 90 : 0 }}
             >
               {children.length > 0 ? (
                 <ChevronDown className="h-5 w-5" />
               ) : (
                 <User className="h-4 w-4" />
               )}
-            </motion.button>
+            </motion.div>
 
             <div className="flex-1 space-y-2">
               <motion.div
