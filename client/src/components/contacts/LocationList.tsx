@@ -106,6 +106,15 @@ export function LocationList({ locations = [], onChange, disabled = false }: Loc
   // Filter out deleted locations for display
   const visibleLocations = locations.filter(loc => !loc.isDeleted);
 
+  // Function to handle clicking on an address prediction in the dropdown
+  const handleAddressPredictionClick = (address: string, lat: string, lng: string, index: number) => {
+    handleLocationChange(index, {
+      address: address,
+      latitude: lat,
+      longitude: lng
+    });
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -206,6 +215,7 @@ export function LocationList({ locations = [], onChange, disabled = false }: Loc
                               types: ['address']
                             });
                             
+                            // Handle the standard place_changed event
                             autocomplete.addListener('place_changed', () => {
                               const place = autocomplete.getPlace();
                               if (place.geometry && place.geometry.location) {
@@ -221,17 +231,71 @@ export function LocationList({ locations = [], onChange, disabled = false }: Loc
                               }
                             });
                             
+                            // Custom event listener to handle clicking on predictions
+                            // This is a workaround since Google's Autocomplete doesn't provide direct access to predictions
+                            const container = document.querySelector('.pac-container') as HTMLElement;
+                            if (container) {
+                              // When predictions are shown, observe them for clicks
+                              const observer = new MutationObserver((mutations) => {
+                                const predictions = container.querySelectorAll('.pac-item');
+                                predictions.forEach((prediction, i) => {
+                                  // Remove existing click listeners to avoid duplicates
+                                  prediction.removeEventListener('click', () => {});
+                                  
+                                  // Add click listener to each prediction
+                                  prediction.addEventListener('click', (e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    
+                                    // Get the text from the prediction item
+                                    const mainText = prediction.querySelector('.pac-item-query')?.textContent || '';
+                                    const secondaryText = prediction.querySelector('.pac-secondary-text')?.textContent || '';
+                                    const fullAddress = `${mainText} ${secondaryText}`.trim();
+                                    
+                                    // Geocode the selected address to get coordinates
+                                    const geocoder = new window.google.maps.Geocoder();
+                                    geocoder.geocode({ address: fullAddress }, (results, status) => {
+                                      if (status === window.google.maps.GeocoderStatus.OK && results && results[0]) {
+                                        const pos = {
+                                          lat: results[0].geometry.location.lat(),
+                                          lng: results[0].geometry.location.lng()
+                                        };
+                                        
+                                        // Update the location with the selected address and coordinates
+                                        handleLocationChange(index, {
+                                          address: results[0].formatted_address,
+                                          latitude: pos.lat.toString(),
+                                          longitude: pos.lng.toString()
+                                        });
+                                        
+                                        // Close the predictions dropdown
+                                        container.style.display = 'none';
+                                      }
+                                    });
+                                  });
+                                });
+                              });
+                              
+                              // Start observing the container for changes (like new predictions)
+                              observer.observe(container, { childList: true, subtree: true });
+                            }
+                            
                             el.setAttribute('data-autocomplete-setup', 'true');
                           }
                         }
                       }}>
-                        <Input 
-                          id={`location-${index}-address`}
-                          value={location.address || ''}
-                          onChange={(e) => handleLocationChange(index, { address: e.target.value })}
-                          placeholder="123 Main St, City, State, Country"
-                          disabled={disabled}
-                        />
+                        <div className="relative">
+                          <Input 
+                            id={`location-${index}-address`}
+                            value={location.address || ''}
+                            onChange={(e) => handleLocationChange(index, { address: e.target.value })}
+                            placeholder="123 Main St, City, State, Country"
+                            disabled={disabled}
+                            className="w-full"
+                          />
+                          {/* Custom address predictions dropdown */}
+                          <div id={`pac-container-${index}`} className="pac-container" style={{ display: 'none', position: 'absolute', width: '100%', zIndex: 50 }}></div>
+                        </div>
                       </div>
                       <Button
                         type="button"
