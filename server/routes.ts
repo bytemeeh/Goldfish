@@ -355,11 +355,27 @@ export function registerRoutes(app: Express): Server {
         
         // Update existing locations
         for (const location of existingLocations) {
+          // Process latitude and longitude appropriately
+          let latitude = null;
+          let longitude = null;
+          
+          if (location.latitude && location.latitude.toString().trim() !== '') {
+            latitude = Number(location.latitude);
+            if (isNaN(latitude)) latitude = null;
+          }
+          
+          if (location.longitude && location.longitude.toString().trim() !== '') {
+            longitude = Number(location.longitude);
+            if (isNaN(longitude)) longitude = null;
+          }
+          
           await db
             .update(locations)
             .set({
               ...location,
               contactId, // Ensure correct contact ID
+              latitude,
+              longitude,
               updatedAt: new Date().toISOString(),
               // Remove client-side flags
               isNew: undefined,
@@ -373,10 +389,26 @@ export function registerRoutes(app: Express): Server {
         if (newLocations.length > 0) {
           // Process each new location individually
           for (const location of newLocations) {
+            // Process latitude and longitude appropriately
+            let latitude = null;
+            let longitude = null;
+            
+            if (location.latitude && location.latitude.toString().trim() !== '') {
+              latitude = Number(location.latitude);
+              if (isNaN(latitude)) latitude = null;
+            }
+            
+            if (location.longitude && location.longitude.toString().trim() !== '') {
+              longitude = Number(location.longitude);
+              if (isNaN(longitude)) longitude = null;
+            }
+
             const preparedLocation = {
               ...location,
               id: undefined, // Remove any temporary ID
               contactId,
+              latitude,
+              longitude,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
               // Remove client-side flags
