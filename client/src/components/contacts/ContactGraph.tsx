@@ -305,11 +305,11 @@ export function ContactGraph() {
         </Card>
       </motion.div>
 
+      {/* @ts-ignore ForceGraph2D has typings issues but works as expected */}
       <ForceGraph2D
         ref={graphRef}
         graphData={graphData}
         nodeLabel={node => node.name}
-        /* Keep only supported properties */
         nodeAutoColorBy="relationshipType"
         warmupTicks={100}
         cooldownTime={3000}

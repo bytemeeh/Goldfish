@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { type Contact, type RelationshipType } from "@/lib/types";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -208,8 +209,17 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
           )}
         />
 
-        <div className="flex justify-end gap-2">
-          <Button type="submit" disabled={isPending}>
+        <div className="flex justify-end gap-3">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={() => onSuccess?.()} 
+            disabled={isPending}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isPending} className="flex items-center gap-2">
+            {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
             {isPending ? "Saving..." : initialData?.id ? "Update Contact" : "Add Contact"}
           </Button>
         </div>
