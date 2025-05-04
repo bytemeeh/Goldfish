@@ -168,127 +168,135 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
   });
 
   return (
-    <Form {...form}>
-      <form onSubmit={onSubmit} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Name {isPersonalCard ? "(You)" : "*"}</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {!isPersonalCard && (
+    <div className="relative">
+      <Form {...form}>
+        <form id="contact-form" onSubmit={onSubmit} className="space-y-4 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
           <FormField
             control={form.control}
-            name="relationshipType"
+            name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>
-                  Relationship Type {parentId ? `(to ${parentContact?.name || 'parent contact'})` : "(to you)"}
-                </FormLabel>
+                <FormLabel>Name {isPersonalCard ? "(You)" : "*"}</FormLabel>
                 <FormControl>
-                  <RelationshipTypeSelector 
-                    value={field.value as RelationshipType} 
-                    onChange={field.onChange}
-                    parentContact={parentContact}
-                    validChildTypes={parentContact?.validChildTypes}
-                  />
+                  <Input {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-        )}
 
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input type="email" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+          {!isPersonalCard && (
+            <FormField
+              control={form.control}
+              name="relationshipType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Relationship Type {parentId ? `(to ${parentContact?.name || 'parent contact'})` : "(to you)"}
+                  </FormLabel>
+                  <FormControl>
+                    <RelationshipTypeSelector 
+                      value={field.value as RelationshipType} 
+                      onChange={field.onChange}
+                      parentContact={parentContact}
+                      validChildTypes={parentContact?.validChildTypes}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           )}
-        />
 
-        <FormField
-          control={form.control}
-          name="phone"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Phone</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="birthday"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Birthday</FormLabel>
-              <FormControl>
-                <Input type="date" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="notes"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Notes</FormLabel>
-              <FormControl>
-                <Textarea {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="pt-2">
-          <div className="pb-2 border-b mb-4">
-            <h3 className="text-base font-medium">Locations</h3>
-            <p className="text-sm text-muted-foreground">Add multiple locations where you might meet this contact</p>
-          </div>
-          <LocationList
-            locations={locations}
-            onChange={setLocations}
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input type="email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-        </div>
 
-        <div className="flex justify-end gap-3">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={() => onSuccess?.()} 
-            disabled={isPending}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isPending} className="flex items-center gap-2">
-            {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            {isPending ? "Saving..." : initialData?.id ? "Update Contact" : "Add Contact"}
-          </Button>
-        </div>
-      </form>
-    </Form>
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Phone</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="birthday"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Birthday</FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Notes</FormLabel>
+                <FormControl>
+                  <Textarea {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="pt-2">
+            <div className="pb-2 border-b mb-4">
+              <h3 className="text-base font-medium">Locations</h3>
+              <p className="text-sm text-muted-foreground">Add multiple locations where you might meet this contact</p>
+            </div>
+            <LocationList
+              locations={locations}
+              onChange={setLocations}
+            />
+          </div>
+
+          <div className="h-14"></div> {/* Spacer to ensure content isn't hidden behind the fixed button row */}
+        </form>
+      </Form>
+      
+      <div className="flex justify-end gap-3 py-3 px-4 border-t bg-background/80 backdrop-blur-sm sticky bottom-0 left-0 right-0">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={() => onSuccess?.()} 
+          disabled={isPending}
+        >
+          Cancel
+        </Button>
+        <Button 
+          onClick={onSubmit}
+          disabled={isPending} 
+          className="flex items-center gap-2"
+        >
+          {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+          {isPending ? "Saving..." : initialData?.id ? "Update Contact" : "Add Contact"}
+        </Button>
+      </div>
+    </div>
   );
 }

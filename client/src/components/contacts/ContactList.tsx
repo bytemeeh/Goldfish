@@ -429,14 +429,14 @@ export function ContactList({ searchFilters }: ContactListProps) {
           </div>
 
           {/* Clear Filters Button */}
-          {(relationshipFilter || relationLevelFilter !== null) && (
+          {(relationshipFilter !== 'all' || relationLevelFilter !== 'all') && (
             <Button 
               variant="ghost" 
               size="sm" 
               className="h-8 px-2 text-xs" 
               onClick={() => {
-                setRelationshipFilter(null);
-                setRelationLevelFilter(null);
+                setRelationshipFilter('all');
+                setRelationLevelFilter('all');
               }}
             >
               <X className="h-3.5 w-3.5 mr-1" />
