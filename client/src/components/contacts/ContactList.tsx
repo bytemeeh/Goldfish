@@ -133,7 +133,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
         description: "Geolocation is not supported by your browser",
         variant: "destructive",
       });
-      return;
+      return false;
     }
     
     setIsGettingLocation(true);
@@ -149,6 +149,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
           title: "Success",
           description: "Your location has been detected",
         });
+        return true;
       },
       (error) => {
         setIsGettingLocation(false);
@@ -157,8 +158,25 @@ export function ContactList({ searchFilters }: ContactListProps) {
           description: `Failed to get your location: ${error.message}`,
           variant: "destructive",
         });
+        return false;
       }
     );
+    return true; // Return true if the geolocation request was initiated
+  };
+  
+  // Toggle proximity sorting
+  const toggleProximitySort = () => {
+    if (proximitySort) {
+      // Turn off proximity sorting
+      setProximitySort(false);
+    } else {
+      // Turn on proximity sorting & get location if needed
+      if (!userLocation) {
+        getCurrentLocation();
+      } else {
+        setProximitySort(true);
+      }
+    }
   };
   
   const { data: contacts, isLoading, error } = useQuery<Contact[]>({
@@ -407,7 +425,14 @@ export function ContactList({ searchFilters }: ContactListProps) {
               </Button>
             )}
           </div>
-          <Tabs value={relationshipFilter} onValueChange={setRelationshipFilter} className="w-full">
+          <Tabs value={relationshipFilter} onValueChange={(value) => {
+              // Toggle off if same value clicked again
+              if (value === relationshipFilter) {
+                setRelationshipFilter('all');
+              } else {
+                setRelationshipFilter(value);
+              }
+            }} className="w-full">
             <TabsList className="w-full h-auto flex flex-wrap gap-0.5 bg-transparent p-0 mb-1">
               <TabsTrigger 
                 value="all" 
@@ -439,7 +464,14 @@ export function ContactList({ searchFilters }: ContactListProps) {
             </TabsList>
           </Tabs>
 
-          <Tabs value={relationLevelFilter} onValueChange={setRelationLevelFilter} className="w-full">
+          <Tabs value={relationLevelFilter} onValueChange={(value) => {
+              // Toggle off if same value clicked again
+              if (value === relationLevelFilter) {
+                setRelationLevelFilter('all');
+              } else {
+                setRelationLevelFilter(value);
+              }
+            }} className="w-full">
             <TabsList className="w-full flex gap-0.5 bg-transparent p-0">
               <TabsTrigger value="1" className="flex-1 h-7 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">1st Level</TabsTrigger>
               <TabsTrigger value="2" className="flex-1 h-7 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">2nd Level</TabsTrigger>
@@ -449,36 +481,23 @@ export function ContactList({ searchFilters }: ContactListProps) {
           </Tabs>
         </div>
 
-        {/* Location Controls */}
-        <div className="flex flex-wrap items-center justify-end gap-2">          
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-1 h-7 py-0 px-2 text-xs flex-shrink-0 rounded-md border bg-background/60"
-                  onClick={getCurrentLocation}
-                  disabled={isGettingLocation}
-                >
-                  {isGettingLocation ? (
-                    <span className="animate-pulse text-xs">Getting location...</span>
-                  ) : (
-                    <>
-                      <Navigation className="h-3.5 w-3.5 mr-1" />
-                      <span className="text-xs">
-                        {userLocation ? 'Update location' : 'Get location'}
-                      </span>
-                      {userLocation && <Check className="h-3.5 w-3.5 ml-1 text-green-500" />}
-                    </>
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p>Use your current location for proximity-based sorting</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        {/* Location Toggle Switch */}
+        <div className="flex justify-end items-center gap-2 pt-1 pb-2">
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="proximity-sort" className="text-xs font-medium cursor-pointer">
+              <div className="flex items-center">
+                <Navigation className="h-3.5 w-3.5 mr-1.5" />
+                Sort by proximity
+                {isGettingLocation && <span className="ml-2 text-xs animate-pulse">Getting location...</span>}
+              </div>
+            </Label>
+            <Switch 
+              id="proximity-sort" 
+              checked={proximitySort}
+              onCheckedChange={toggleProximitySort}
+              disabled={isGettingLocation}
+            />
+          </div>
         </div>
       </div>
       
