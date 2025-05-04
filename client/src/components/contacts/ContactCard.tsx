@@ -173,7 +173,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
               onClick={() => setIsExpanded(!isExpanded)}
               whileTap={{ scale: 0.9 }}
               whileHover={{ scale: 1.1 }}
-              animate={{ rotate: isExpanded ? 0 : -90 }}
+              animate={children.length > 0 ? { rotate: isExpanded ? 0 : -90 } : {}}
             >
               {children.length > 0 ? (
                 <ChevronDown className="h-5 w-5" />

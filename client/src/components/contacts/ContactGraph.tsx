@@ -367,7 +367,15 @@ export function ContactGraph() {
 
           // Determine if this node should show its label
           const isSelectedNode = selectedContact && selectedContact.id === node.id;
-          const isGraphNodeHovered = graphRef.current?.state.hoverNode?.id === node.id;
+          // Safely check for hover state
+          let isGraphNodeHovered = false;
+          try {
+            isGraphNodeHovered = !!(graphRef.current?.state && 
+                               graphRef.current.state.hoverNode && 
+                               graphRef.current.state.hoverNode.id === node.id);
+          } catch (e) {
+            // Ignore any errors from accessing hoverNode
+          }
           const shouldShowFullLabel = isSelectedNode || isGraphNodeHovered || globalScale > 1.5;
 
           if (shouldShowFullLabel) {
