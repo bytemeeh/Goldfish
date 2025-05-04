@@ -1,17 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { ContactCard } from "./ContactCard";
-import { type Contact, type Location } from "@/lib/types";
+import { type Contact, type Location, type RelationshipType } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { SearchFilters } from "./SearchBar";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Check, Navigation, X, Filter } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Check, Navigation, X, Users, Briefcase, Heart } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 
 interface ContactListProps {
   searchFilters: SearchFilters;
@@ -386,63 +387,116 @@ export function ContactList({ searchFilters }: ContactListProps) {
   return (
     <div className="space-y-4">
       {/* Filters and Controls Section */}
-      <div className="space-y-2 bg-background sticky top-0 z-20 pt-2 pb-2 max-w-full">
-        {/* Quick Filters */}
-        <div className="flex flex-wrap items-center gap-2 mb-2 pb-2 max-w-full">
-          <span className="text-xs font-medium text-muted-foreground mr-1">Filters:</span>
-          
-          {/* Relationship Type Filter */}
-          <div className="flex-shrink-0">
-            <Select 
-              value={relationshipFilter} 
-              onValueChange={(value) => setRelationshipFilter(value)}
-            >
-              <SelectTrigger className="h-8 text-xs w-[130px] md:w-[180px]">
-                <SelectValue placeholder="Relationship Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {['sibling', 'mother', 'father', 'brother', 'child', 'spouse', 'friend', 'co-worker', 'boyfriend/girlfriend'].map(type => (
-                  <SelectItem key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      <div className="space-y-4 bg-background sticky top-0 z-20 pt-2 pb-2 max-w-full">
+        {/* Relationship Type Tabs */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">Relationship Type:</span>
+            {relationshipFilter !== 'all' && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 px-2 text-xs" 
+                onClick={() => setRelationshipFilter('all')}
+              >
+                <X className="h-3 w-3 mr-1" />
+                Clear
+              </Button>
+            )}
           </div>
-          
-          {/* Relationship Level Filter */}
-          <div className="flex-shrink-0">
-            <Select 
-              value={relationLevelFilter} 
-              onValueChange={(value) => setRelationLevelFilter(value)}
-            >
-              <SelectTrigger className="h-8 text-xs w-[130px] md:w-[180px]">
-                <SelectValue placeholder="Relation Level" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Levels</SelectItem>
-                <SelectItem value="1">Direct (1st Level)</SelectItem>
-                <SelectItem value="2">2nd Level</SelectItem>
-                <SelectItem value="3">3rd Level</SelectItem>
-                <SelectItem value="4">4th Level</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <Tabs value={relationshipFilter} onValueChange={setRelationshipFilter} className="w-full">
+            <TabsList className="w-full h-auto flex flex-wrap bg-muted/50 p-1 mb-1">
+              <TabsTrigger 
+                value="all" 
+                className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
+              >
+                All
+              </TabsTrigger>
+              <TabsTrigger 
+                value="mother" 
+                className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
+              >
+                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
+                Mother
+              </TabsTrigger>
+              <TabsTrigger 
+                value="father" 
+                className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
+              >
+                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
+                Father
+              </TabsTrigger>
+              <TabsTrigger 
+                value="sibling" 
+                className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
+              >
+                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
+                Sibling
+              </TabsTrigger>
+              <TabsTrigger 
+                value="child" 
+                className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
+              >
+                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
+                Child
+              </TabsTrigger>
+              <TabsTrigger 
+                value="spouse" 
+                className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
+              >
+                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
+                Spouse
+              </TabsTrigger>
+              <TabsTrigger 
+                value="friend" 
+                className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
+              >
+                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-2))/10]">F</Badge>
+                Friend
+              </TabsTrigger>
+              <TabsTrigger 
+                value="boyfriend/girlfriend" 
+                className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
+              >
+                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-2))/10]">F</Badge>
+                Partner
+              </TabsTrigger>
+              <TabsTrigger 
+                value="co-worker" 
+                className="flex items-center h-7 px-2 py-0 text-xs data-[state=active]:bg-background"
+              >
+                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-3))/10]">P</Badge>
+                Co-worker
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
 
-          {/* Clear Filters Button */}
-          {(relationshipFilter !== 'all' || relationLevelFilter !== 'all') && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-8 px-2 text-xs" 
-              onClick={() => {
-                setRelationshipFilter('all');
-                setRelationLevelFilter('all');
-              }}
-            >
-              <X className="h-3.5 w-3.5 mr-1" />
-              Clear
-            </Button>
-          )}
+        {/* Relationship Level Tabs */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">Relation Level:</span>
+            {relationLevelFilter !== 'all' && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 px-2 text-xs" 
+                onClick={() => setRelationLevelFilter('all')}
+              >
+                <X className="h-3 w-3 mr-1" />
+                Clear
+              </Button>
+            )}
+          </div>
+          <Tabs value={relationLevelFilter} onValueChange={setRelationLevelFilter} className="w-full">
+            <TabsList className="w-full bg-muted/50 p-1">
+              <TabsTrigger value="all" className="text-xs h-7 data-[state=active]:bg-background">All</TabsTrigger>
+              <TabsTrigger value="1" className="text-xs h-7 data-[state=active]:bg-background">1st Level</TabsTrigger>
+              <TabsTrigger value="2" className="text-xs h-7 data-[state=active]:bg-background">2nd Level</TabsTrigger>
+              <TabsTrigger value="3" className="text-xs h-7 data-[state=active]:bg-background">3rd Level</TabsTrigger>
+              <TabsTrigger value="4" className="text-xs h-7 data-[state=active]:bg-background">4th Level</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         {/* Location Controls */}
