@@ -125,6 +125,13 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
           />
         </>
       )}
+      
+      {/* Grip handle for manual sort mode */}
+      {manualSortMode && (
+        <div className="absolute -left-6 top-10 transform opacity-40 hover:opacity-100 transition-opacity cursor-move">
+          <GripVertical className="w-4 h-4 text-muted-foreground" />
+        </div>
+      )}
 
       <motion.div
         initial={false}
@@ -410,28 +417,63 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
               </AnimatePresence>
             </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <div className="flex items-center">
+              {/* Hide button for manual mode */}
+              {manualSortMode && !contact.isMe && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 hover:bg-primary/5 transition-colors"
+                  className="h-8 w-8 hover:bg-primary/5 transition-colors mr-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Emit hide event through custom event
+                    if (window.dispatchEvent) {
+                      const hideEvent = new CustomEvent('contact:hide', { detail: { contactId: contact.id } });
+                      window.dispatchEvent(hideEvent);
+                    }
+                  }}
                 >
-                  <MoreVertical className="h-4 w-4" />
+                  <EyeOff className="h-4 w-4" />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setIsEditing(true)}>
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={() => setShowDeleteConfirm(true)}
-                >
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              )}
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 hover:bg-primary/5 transition-colors"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditing(true);
+                  }}>
+                    Edit
+                  </DropdownMenuItem>
+                  {!isMaxDepth && (
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
+                      setIsAddingChild(true);
+                    }}>
+                      Add Related Contact
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDeleteConfirm(true);
+                    }}
+                  >
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </CardHeader>
 
           <CardContent className="p-3 pt-0">
