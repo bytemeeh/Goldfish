@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Check, Navigation } from "lucide-react";
+import { Check, Navigation, X, Filter } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -120,6 +121,8 @@ export function ContactList({ searchFilters }: ContactListProps) {
   const [proximitySort, setProximitySort] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [relationshipFilter, setRelationshipFilter] = useState<string>("all");
+  const [relationLevelFilter, setRelationLevelFilter] = useState<string>("all");
   
   // Get user's current location
   const getCurrentLocation = () => {
@@ -263,33 +266,103 @@ export function ContactList({ searchFilters }: ContactListProps) {
     });
   };
 
+  // Function to get the relationship level of a contact relative to personal contact
+  const getRelationshipLevel = (contact: Contact): number => {
+    if (contact.isMe) return 0;
+    
+    // Direct children of personal contact or siblings are level 1
+    if ((personalContact && contact.parentId === personalContact.id) || 
+        (contact.relationshipType === 'sibling' && !contact.parentId)) {
+      return 1;
+    }
+    
+    // Find the shortest path to the personal contact
+    let level = 1;
+    let currentId = contact.parentId;
+    const visited = new Set<number>([contact.id]);
+    
+    while (currentId && level < 5) {
+      if (visited.has(currentId)) {
+        // Avoid cycles
+        break;
+      }
+      visited.add(currentId);
+      
+      // If we reach the personal contact or a sibling, we've found the path
+      if (personalContact && currentId === personalContact.id) {
+        return level;
+      }
+      
+      // Find the parent contact
+      const parentContact = contacts.find(c => c.id === currentId);
+      if (!parentContact) break;
+      
+      // If parent is sibling with no parent, it's one level from personal
+      if (parentContact.relationshipType === 'sibling' && !parentContact.parentId) {
+        return level + 1;
+      }
+      
+      // Move up to the next parent
+      currentId = parentContact.parentId;
+      level++;
+    }
+    
+    return level;
+  };
+  
+  // Apply filters to the input contacts
+  const applyFilters = (inputContacts: Contact[]): Contact[] => {
+    let filtered = [...inputContacts];
+    
+    // Apply relationship type filter
+    if (relationshipFilter !== 'all') {
+      filtered = filtered.filter(contact => contact.relationshipType === relationshipFilter);
+    }
+    
+    // Apply relationship level filter
+    if (relationLevelFilter !== 'all') {
+      const level = parseInt(relationLevelFilter);
+      filtered = filtered.filter(contact => getRelationshipLevel(contact) === level);
+    }
+    
+    return filtered;
+  };
+
   // Create categorized groups
-  const categorizedContacts = categories.map(category => ({
-    ...category,
-    contacts: categorizableContacts
+  const categorizedContacts = categories.map(category => {
+    // Filter contacts by category
+    const categoryContacts = categorizableContacts
       .filter(contact => 
         contact.relationshipType && 
         category.types.includes(contact.relationshipType)
-      )
-      .map(contact => ({
+      );
+      
+    // Apply additional filters  
+    const filteredCategoryContacts = applyFilters(categoryContacts);
+    
+    return {
+      ...category,
+      contacts: filteredCategoryContacts.map(contact => ({
         ...contact,
         children: buildHierarchy(contact.id)
       }))
-  }));
+    };
+  });
 
   // Handle uncategorized contacts
-  const uncategorizedContacts = categorizableContacts
-    .filter(contact =>
-      !contact.relationshipType ||
-      !categories.some(cat => 
-        contact.relationshipType && 
-        cat.types.includes(contact.relationshipType)
+  const uncategorizedContacts = applyFilters(
+    categorizableContacts
+      .filter(contact =>
+        !contact.relationshipType ||
+        !categories.some(cat => 
+          contact.relationshipType && 
+          cat.types.includes(contact.relationshipType)
+        )
       )
-    )
-    .map(contact => ({
-      ...contact,
-      children: buildHierarchy(contact.id)
-    }));
+  ).map(contact => ({
+    ...contact,
+    children: buildHierarchy(contact.id)
+  }));
 
   // Apply proximity-based sorting if enabled
   if (proximitySort && userLocation) {
@@ -312,46 +385,109 @@ export function ContactList({ searchFilters }: ContactListProps) {
   
   return (
     <div className="space-y-4">
-      <div className="pb-2 flex items-center justify-between bg-background sticky top-0 z-20 pt-2">
-        {/* Location-based sorting controls */}
-        <div className="flex items-center space-x-1">
-          <Switch
-            id="proximity-sort"
-            checked={proximitySort}
-            onCheckedChange={setProximitySort}
-            disabled={!userLocation || isGettingLocation}
-          />
-          <Label htmlFor="proximity-sort" className="text-sm font-medium cursor-pointer">
-            Sort by proximity
-          </Label>
+      {/* Filters and Controls Section */}
+      <div className="space-y-2 bg-background sticky top-0 z-20 pt-2 pb-2">
+        {/* Quick Filters */}
+        <div className="flex flex-wrap items-center gap-2 mb-2 overflow-x-auto pb-2">
+          <span className="text-xs font-medium text-muted-foreground mr-1">Filters:</span>
+          
+          {/* Relationship Type Filter */}
+          <div className="flex-shrink-0">
+            <Select 
+              value={relationshipFilter} 
+              onValueChange={(value) => setRelationshipFilter(value)}
+            >
+              <SelectTrigger className="h-8 text-xs w-[130px] md:w-[180px]">
+                <SelectValue placeholder="Relationship Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {['sibling', 'mother', 'father', 'brother', 'child', 'spouse', 'friend', 'co-worker', 'boyfriend/girlfriend'].map(type => (
+                  <SelectItem key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {/* Relationship Level Filter */}
+          <div className="flex-shrink-0">
+            <Select 
+              value={relationLevelFilter} 
+              onValueChange={(value) => setRelationLevelFilter(value)}
+            >
+              <SelectTrigger className="h-8 text-xs w-[130px] md:w-[180px]">
+                <SelectValue placeholder="Relation Level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Levels</SelectItem>
+                <SelectItem value="1">Direct (1st Level)</SelectItem>
+                <SelectItem value="2">2nd Level</SelectItem>
+                <SelectItem value="3">3rd Level</SelectItem>
+                <SelectItem value="4">4th Level</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Clear Filters Button */}
+          {(relationshipFilter || relationLevelFilter !== null) && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 px-2 text-xs" 
+              onClick={() => {
+                setRelationshipFilter(null);
+                setRelationLevelFilter(null);
+              }}
+            >
+              <X className="h-3.5 w-3.5 mr-1" />
+              Clear
+            </Button>
+          )}
         </div>
-        
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="ml-auto flex items-center gap-1"
-                onClick={getCurrentLocation}
-                disabled={isGettingLocation}
-              >
-                {isGettingLocation ? (
-                  <span className="animate-pulse">Getting location...</span>
-                ) : (
-                  <>
-                    <Navigation className="h-3.5 w-3.5" />
-                    {userLocation ? 'Update location' : 'Get current location'}
-                    {userLocation && <Check className="h-3.5 w-3.5 ml-1 text-green-500" />}
-                  </>
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <p>Use your current location for proximity-based sorting</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+
+        {/* Location Controls */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center space-x-1">
+            <Switch
+              id="proximity-sort"
+              checked={proximitySort}
+              onCheckedChange={setProximitySort}
+              disabled={!userLocation || isGettingLocation}
+            />
+            <Label htmlFor="proximity-sort" className="text-sm font-medium cursor-pointer">
+              Sort by proximity
+            </Label>
+          </div>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto flex items-center gap-1 h-8 flex-shrink-0"
+                  onClick={getCurrentLocation}
+                  disabled={isGettingLocation}
+                >
+                  {isGettingLocation ? (
+                    <span className="animate-pulse text-xs">Getting location...</span>
+                  ) : (
+                    <>
+                      <Navigation className="h-3.5 w-3.5" />
+                      <span className="text-xs hidden sm:inline">
+                        {userLocation ? 'Update location' : 'Get current location'}
+                      </span>
+                      {userLocation && <Check className="h-3.5 w-3.5 ml-1 text-green-500" />}
+                    </>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Use your current location for proximity-based sorting</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
       
       <ScrollArea className="h-[calc(100vh-14rem)] pr-4">
