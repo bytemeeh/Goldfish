@@ -168,9 +168,9 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
   });
 
   return (
-    <div className="relative">
+    <div className="relative flex flex-col h-full">
       <Form {...form}>
-        <form id="contact-form" onSubmit={onSubmit} className="space-y-4 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
+        <form id="contact-form" onSubmit={onSubmit} className="space-y-4 flex-1 overflow-y-auto pr-2 pb-2">
           <FormField
             control={form.control}
             name="name"

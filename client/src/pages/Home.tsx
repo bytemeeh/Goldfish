@@ -59,14 +59,16 @@ export function Home() {
                     Edit Personal Card
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="h-[80vh] max-w-3xl flex flex-col overflow-hidden">
                   <DialogHeader>
                     <DialogTitle>Edit Personal Card</DialogTitle>
                   </DialogHeader>
-                  <ContactForm 
-                    onSuccess={() => setIsEditingPersonal(false)} 
-                    isPersonalCard={true}
-                  />
+                  <div className="flex flex-1 overflow-hidden">
+                    <ContactForm 
+                      onSuccess={() => setIsEditingPersonal(false)} 
+                      isPersonalCard={true}
+                    />
+                  </div>
                 </DialogContent>
               </Dialog>
               <Button
@@ -85,11 +87,13 @@ export function Home() {
                     New Contact
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="h-[80vh] max-w-3xl flex flex-col overflow-hidden">
                   <DialogHeader>
                     <DialogTitle>Add New Contact</DialogTitle>
                   </DialogHeader>
-                  <ContactForm onSuccess={() => setIsAddingContact(false)} />
+                  <div className="flex flex-1 overflow-hidden">
+                    <ContactForm onSuccess={() => setIsAddingContact(false)} />
+                  </div>
                 </DialogContent>
               </Dialog>
             </div>

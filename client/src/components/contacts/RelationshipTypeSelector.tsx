@@ -45,11 +45,11 @@ const relationshipLabels: Record<RelationshipType, string> = {
 };
 
 // Group types by category for better organization
-const relationshipCategories = {
+const relationshipCategories: Record<string, Array<RelationshipType>> = {
   family: ["mother", "father", "brother", "sibling", "child", "spouse"],
   friends: ["friend", "boyfriend/girlfriend"],
   professional: ["co-worker"]
-} as const;
+};
 
 export function RelationshipTypeSelector({ 
   value, 
@@ -81,12 +81,12 @@ export function RelationshipTypeSelector({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 max-w-full">
       {/* Family relationships */}
       {availableTypes.some(type => relationshipCategories.family.includes(type)) && (
         <div className="space-y-2">
-          <h3 className="font-semibold mb-3" style={{ color: 'hsl(var(--chart-1))' }}>Family</h3>
-          <div className="flex flex-wrap gap-2">
+          <h3 className="font-semibold" style={{ color: 'hsl(var(--chart-1))' }}>Family</h3>
+          <div className="flex flex-wrap gap-2 max-w-full">
             {availableTypes
               .filter(type => relationshipCategories.family.includes(type))
               .map((type) => {
@@ -99,7 +99,7 @@ export function RelationshipTypeSelector({
                     variant="outline"
                     size="sm"
                     className={cn(
-                      "flex items-center gap-2 transition-all",
+                      "flex items-center gap-1 transition-all flex-shrink-0 overflow-hidden text-ellipsis",
                       getRelationshipColorClass(type, isSelected)
                     )}
                     onClick={(e) => {
@@ -107,8 +107,8 @@ export function RelationshipTypeSelector({
                       onChange(type);
                     }}
                   >
-                    <Icon className="h-4 w-4" />
-                    <span>{relationshipLabels[type]}</span>
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{relationshipLabels[type]}</span>
                   </Button>
                 );
               })}
@@ -119,8 +119,8 @@ export function RelationshipTypeSelector({
       {/* Friends relationships */}
       {availableTypes.some(type => relationshipCategories.friends.includes(type)) && (
         <div className="space-y-2">
-          <h3 className="font-semibold mb-3" style={{ color: 'hsl(var(--chart-2))' }}>Friends</h3>
-          <div className="flex flex-wrap gap-2">
+          <h3 className="font-semibold" style={{ color: 'hsl(var(--chart-2))' }}>Friends</h3>
+          <div className="flex flex-wrap gap-2 max-w-full">
             {availableTypes
               .filter(type => relationshipCategories.friends.includes(type))
               .map((type) => {
@@ -133,7 +133,7 @@ export function RelationshipTypeSelector({
                     variant="outline"
                     size="sm"
                     className={cn(
-                      "flex items-center gap-2 transition-all",
+                      "flex items-center gap-1 transition-all flex-shrink-0 overflow-hidden text-ellipsis",
                       getRelationshipColorClass(type, isSelected)
                     )}
                     onClick={(e) => {
@@ -141,8 +141,8 @@ export function RelationshipTypeSelector({
                       onChange(type);
                     }}
                   >
-                    <Icon className="h-4 w-4" />
-                    <span>{relationshipLabels[type]}</span>
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{relationshipLabels[type]}</span>
                   </Button>
                 );
               })}
@@ -153,8 +153,8 @@ export function RelationshipTypeSelector({
       {/* Professional relationships */}
       {availableTypes.some(type => relationshipCategories.professional.includes(type)) && (
         <div className="space-y-2">
-          <h3 className="font-semibold mb-3" style={{ color: 'hsl(var(--chart-3))' }}>Professional</h3>
-          <div className="flex flex-wrap gap-2">
+          <h3 className="font-semibold" style={{ color: 'hsl(var(--chart-3))' }}>Professional</h3>
+          <div className="flex flex-wrap gap-2 max-w-full">
             {availableTypes
               .filter(type => relationshipCategories.professional.includes(type))
               .map((type) => {
@@ -167,7 +167,7 @@ export function RelationshipTypeSelector({
                     variant="outline"
                     size="sm"
                     className={cn(
-                      "flex items-center gap-2 transition-all",
+                      "flex items-center gap-1 transition-all flex-shrink-0 overflow-hidden text-ellipsis",
                       getRelationshipColorClass(type, isSelected)
                     )}
                     onClick={(e) => {
@@ -175,8 +175,8 @@ export function RelationshipTypeSelector({
                       onChange(type);
                     }}
                   >
-                    <Icon className="h-4 w-4" />
-                    <span>{relationshipLabels[type]}</span>
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{relationshipLabels[type]}</span>
                   </Button>
                 );
               })}
