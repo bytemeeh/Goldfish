@@ -41,7 +41,7 @@ const relationshipLabels: Record<RelationshipType, string> = {
   child: "Child",
   "co-worker": "Co-worker",
   spouse: "Spouse",
-  "boyfriend/girlfriend": "Boyfriend/Girlfriend",
+  "boyfriend/girlfriend": "BF/GF",
 };
 
 // Group types by category for better organization
@@ -80,106 +80,65 @@ export function RelationshipTypeSelector({
     return "border-muted text-muted-foreground hover:bg-muted/10";
   };
 
+  // Render a relationship button with consistent style
+  const renderRelationshipButton = (type: RelationshipType) => {
+    const Icon = relationshipIcons[type];
+    const isSelected = value === type;
+    return (
+      <Button
+        key={type}
+        type="button"
+        variant="outline"
+        size="sm"
+        className={cn(
+          "flex items-center gap-1 transition-all flex-shrink-0 overflow-hidden h-7 px-2 py-0 text-xs rounded-md",
+          getRelationshipColorClass(type, isSelected)
+        )}
+        onClick={(e) => {
+          e.preventDefault();
+          onChange(type);
+        }}
+      >
+        <Icon className="h-3.5 w-3.5 flex-shrink-0" />
+        <span className="truncate">{relationshipLabels[type]}</span>
+      </Button>
+    );
+  };
+
   return (
-    <div className="space-y-4 max-w-full">
+    <div className="space-y-3 max-w-full">
       {/* Family relationships */}
       {availableTypes.some(type => relationshipCategories.family.includes(type)) && (
-        <div className="space-y-2">
-          <h3 className="font-semibold" style={{ color: 'hsl(var(--chart-1))' }}>Family</h3>
-          <div className="flex flex-wrap gap-2 max-w-full">
+        <div className="space-y-1.5">
+          <h3 className="text-sm font-medium" style={{ color: 'hsl(var(--chart-1))' }}>Family</h3>
+          <div className="flex flex-wrap gap-1.5 max-w-full">
             {availableTypes
               .filter(type => relationshipCategories.family.includes(type))
-              .map((type) => {
-                const Icon = relationshipIcons[type];
-                const isSelected = value === type;
-                return (
-                  <Button
-                    key={type}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      "flex items-center gap-1 transition-all flex-shrink-0 overflow-hidden text-ellipsis",
-                      getRelationshipColorClass(type, isSelected)
-                    )}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      onChange(type);
-                    }}
-                  >
-                    <Icon className="h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">{relationshipLabels[type]}</span>
-                  </Button>
-                );
-              })}
+              .map(renderRelationshipButton)}
           </div>
         </div>
       )}
 
       {/* Friends relationships */}
       {availableTypes.some(type => relationshipCategories.friends.includes(type)) && (
-        <div className="space-y-2">
-          <h3 className="font-semibold" style={{ color: 'hsl(var(--chart-2))' }}>Friends</h3>
-          <div className="flex flex-wrap gap-2 max-w-full">
+        <div className="space-y-1.5">
+          <h3 className="text-sm font-medium" style={{ color: 'hsl(var(--chart-2))' }}>Friends</h3>
+          <div className="flex flex-wrap gap-1.5 max-w-full">
             {availableTypes
               .filter(type => relationshipCategories.friends.includes(type))
-              .map((type) => {
-                const Icon = relationshipIcons[type];
-                const isSelected = value === type;
-                return (
-                  <Button
-                    key={type}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      "flex items-center gap-1 transition-all flex-shrink-0 overflow-hidden text-ellipsis",
-                      getRelationshipColorClass(type, isSelected)
-                    )}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      onChange(type);
-                    }}
-                  >
-                    <Icon className="h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">{relationshipLabels[type]}</span>
-                  </Button>
-                );
-              })}
+              .map(renderRelationshipButton)}
           </div>
         </div>
       )}
 
       {/* Professional relationships */}
       {availableTypes.some(type => relationshipCategories.professional.includes(type)) && (
-        <div className="space-y-2">
-          <h3 className="font-semibold" style={{ color: 'hsl(var(--chart-3))' }}>Professional</h3>
-          <div className="flex flex-wrap gap-2 max-w-full">
+        <div className="space-y-1.5">
+          <h3 className="text-sm font-medium" style={{ color: 'hsl(var(--chart-3))' }}>Professional</h3>
+          <div className="flex flex-wrap gap-1.5 max-w-full">
             {availableTypes
               .filter(type => relationshipCategories.professional.includes(type))
-              .map((type) => {
-                const Icon = relationshipIcons[type];
-                const isSelected = value === type;
-                return (
-                  <Button
-                    key={type}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      "flex items-center gap-1 transition-all flex-shrink-0 overflow-hidden text-ellipsis",
-                      getRelationshipColorClass(type, isSelected)
-                    )}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      onChange(type);
-                    }}
-                  >
-                    <Icon className="h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">{relationshipLabels[type]}</span>
-                  </Button>
-                );
-              })}
+              .map(renderRelationshipButton)}
           </div>
         </div>
       )}
