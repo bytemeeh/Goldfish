@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { contacts, insertContactSchema, getCascadedRelationshipType, getValidChildRelationshipTypes, type RelationshipType } from "@db/schema";
+import { contacts, locations, insertContactSchema, insertLocationSchema, getCascadedRelationshipType, getValidChildRelationshipTypes, type RelationshipType, type Location } from "@db/schema";
 import { and, or, eq, ilike, sql } from "drizzle-orm";
 
 interface SearchFilters {
@@ -133,6 +133,14 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ message: "Contact not found" });
       }
 
+      // Get locations for this contact
+      const contactLocations = await db
+        .select()
+        .from(locations)
+        .where(eq(locations.contactId, parseInt(id)));
+
+      console.log(`Found ${contactLocations.length} locations for contact ${contact.name}`);
+
       // Get valid relationship types for children of this contact
       const validChildTypes = contact.relationshipType
         ? getValidChildRelationshipTypes(contact.relationshipType as RelationshipType)
@@ -160,6 +168,7 @@ export function registerRoutes(app: Express): Server {
 
       res.json({ 
         ...contact, 
+        locations: contactLocations,
         children: relatedContacts.filter(c => c.parentId === contact.id),
         parent: relatedContacts.find(c => c.id === contact.parentId),
         validChildTypes 

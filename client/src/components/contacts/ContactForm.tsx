@@ -30,7 +30,7 @@ const contactSchema = z.object({
   parentId: z.number().optional().nullable(),
   relationshipType: z.enum(['sibling', 'mother', 'father', 'brother', 'friend', 'child', 'co-worker', 'spouse', 'boyfriend/girlfriend'] as const).optional().nullable(),
   isMe: z.boolean().optional(),
-  // Location fields
+  // Legacy location fields
   street: z.string().optional().nullable(),
   city: z.string().optional().nullable(),
   state: z.string().optional().nullable(),
@@ -81,14 +81,15 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
   });
 
   const { mutate, isPending } = useMutation({
-    mutationFn: async (data: z.infer<typeof contactSchema>) => {
+    mutationFn: async (data: any) => {
+      // Clean the form data - type is 'any' to accommodate for locations array
       const cleanedData = {
         ...data,
         email: data.email || null,
         phone: data.phone || null,
         birthday: data.birthday || null,
         notes: data.notes || null,
-        // Location fields
+        // Legacy location fields
         street: data.street || null,
         city: data.city || null,
         state: data.state || null,
@@ -96,6 +97,14 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
         country: data.country || null,
         latitude: data.latitude || null,
         longitude: data.longitude || null,
+        // Ensure locations data is properly formatted
+        locations: data.locations?.map((loc: Location) => ({
+          ...loc,
+          contactId: initialData?.id || undefined,
+          // Convert latitude/longitude to strings if they're numbers
+          latitude: loc.latitude?.toString() || "",
+          longitude: loc.longitude?.toString() || "",
+        })),
       };
 
       const url = initialData?.id 
@@ -135,11 +144,27 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
   });
 
   const onSubmit = form.handleSubmit((data) => {
-    mutate({
+    // Prepare form data for submission
+    const formData = {
       ...data,
       relationshipType: data.relationshipType || null,
-      locations: locations,
-    });
+      // Include legacy location fields for backward compatibility
+      street: data.street || null,
+      city: data.city || null,
+      state: data.state || null,
+      postalCode: data.postalCode || null,
+      country: data.country || null,
+      latitude: data.latitude || null,
+      longitude: data.longitude || null,
+    };
+    
+    // Process locations separately (avoiding type errors with Zod schema)
+    const submissionData = {
+      ...formData,
+      locations: locations.filter(loc => !loc.isDeleted), // Only submit non-deleted locations
+    };
+    
+    mutate(submissionData as any); // Type cast to avoid TypeScript errors
   });
 
   return (
@@ -239,167 +264,14 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
         />
 
         <div className="pt-2">
-          <Tabs defaultValue="map" className="w-full">
-            <TabsList className="mb-4 w-full justify-start">
-              <TabsTrigger value="map" className="flex items-center gap-2">
-                <Map className="h-4 w-4" />
-                Map
-              </TabsTrigger>
-              <TabsTrigger value="address" className="flex items-center gap-2">
-                Address Details
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="map" className="p-1">
-              <div className="mb-2 text-sm text-muted-foreground">
-                Select a location by clicking on the map or searching for an address.
-              </div>
-              <div className="flex gap-4 items-start flex-wrap space-y-0">
-                <LocationPicker
-                  value={{
-                    address: `${form.watch('street') || ''} ${form.watch('city') || ''} ${form.watch('state') || ''} ${form.watch('country') || ''}`.trim(),
-                    latitude: form.watch('latitude') || null,
-                    longitude: form.watch('longitude') || null,
-                  }}
-                  onChange={(location) => {
-                    if (location.address) {
-                      // Parse address components from formatted address
-                      const addressParts = location.address.split(',').map(part => part.trim());
-                      
-                      if (addressParts.length >= 3) {
-                        form.setValue('street', addressParts[0]);
-                        form.setValue('city', addressParts[1]);
-                        
-                        // Last part might be country or state + postal + country
-                        const lastPart = addressParts[addressParts.length-1];
-                        form.setValue('country', lastPart);
-                        
-                        // If we have a state/postal part
-                        if (addressParts.length > 3) {
-                          const statePostal = addressParts[addressParts.length-2];
-                          const statePostalParts = statePostal.split(' ');
-                          
-                          if (statePostalParts.length > 1) {
-                            form.setValue('state', statePostalParts[0]);
-                            form.setValue('postalCode', statePostalParts[1]);
-                          } else {
-                            form.setValue('state', statePostal);
-                          }
-                        }
-                      }
-                    }
-                    
-                    if (location.latitude) form.setValue('latitude', location.latitude);
-                    if (location.longitude) form.setValue('longitude', location.longitude);
-                  }}
-                />
-              </div>
-            </TabsContent>
-            <TabsContent value="address" className="p-1 space-y-4">
-              <FormField
-                control={form.control}
-                name="street"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Street Address</FormLabel>
-                    <FormControl>
-                      <Input {...field} value={field.value || ''} placeholder="123 Main St" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="grid gap-4 grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="city"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>City</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ''} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="state"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>State/Province</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ''} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              <div className="grid gap-4 grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="postalCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Postal Code</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ''} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="country"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Country</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ''} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              <div className="grid gap-4 grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="latitude"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Latitude</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ''} readOnly className="bg-muted/40" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="longitude"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Longitude</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ''} readOnly className="bg-muted/40" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </TabsContent>
-          </Tabs>
+          <div className="pb-2 border-b mb-4">
+            <h3 className="text-base font-medium">Locations</h3>
+            <p className="text-sm text-muted-foreground">Add multiple locations where you might meet this contact</p>
+          </div>
+          <LocationList
+            locations={locations}
+            onChange={setLocations}
+          />
         </div>
 
         <div className="flex justify-end gap-3">
