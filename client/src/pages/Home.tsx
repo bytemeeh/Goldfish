@@ -30,33 +30,37 @@ export function Home() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-background overflow-x-hidden">
+      <div className="container mx-auto px-2 sm:px-4 py-6 sm:py-8">
         <div className="space-y-6">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <h1 className="text-4xl font-bold tracking-tight">Contacts</h1>
-            <div className="flex items-center gap-2">
-              <Button
-                variant={viewMode === "list" ? "default" : "outline"}
-                onClick={() => setViewMode("list")}
-                size="icon"
-                className="h-9 w-9"
-              >
-                <List className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "graph" ? "default" : "outline"}
-                onClick={() => setViewMode("graph")}
-                size="icon"
-                className="h-9 w-9"
-              >
-                <Network className="h-4 w-4" />
-              </Button>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Contacts</h1>
+            <div className="flex flex-wrap items-center gap-2 max-w-full">
+              <div className="flex items-center border rounded-md overflow-hidden">
+                <Button
+                  variant={viewMode === "list" ? "default" : "ghost"}
+                  onClick={() => setViewMode("list")}
+                  size="sm"
+                  className="h-8 rounded-none px-2"
+                >
+                  <List className="h-4 w-4 mr-1.5" />
+                  <span className="hidden sm:inline text-xs">List</span>
+                </Button>
+                <Button
+                  variant={viewMode === "graph" ? "default" : "ghost"}
+                  onClick={() => setViewMode("graph")}
+                  size="sm"
+                  className="h-8 rounded-none px-2"
+                >
+                  <Network className="h-4 w-4 mr-1.5" />
+                  <span className="hidden sm:inline text-xs">Graph</span>
+                </Button>
+              </div>
               <Dialog open={isEditingPersonal} onOpenChange={setIsEditingPersonal}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9">
-                    <User className="mr-2 h-4 w-4" />
-                    Edit Personal Card
+                  <Button variant="outline" size="sm" className="h-8">
+                    <User className="h-4 w-4 mr-1.5" />
+                    <span className="whitespace-nowrap text-xs">Personal Info</span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="h-[80vh] max-w-3xl flex flex-col overflow-hidden">
@@ -74,17 +78,17 @@ export function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9"
+                className="h-8"
                 onClick={() => setIsSharing(true)}
               >
-                <Share2 className="mr-2 h-4 w-4" />
-                Share Contacts
+                <Share2 className="h-4 w-4 mr-1.5" />
+                <span className="whitespace-nowrap text-xs">Share</span>
               </Button>
               <Dialog open={isAddingContact} onOpenChange={setIsAddingContact}>
                 <DialogTrigger asChild>
-                  <Button size="sm" className="h-9">
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Contact
+                  <Button size="sm" className="h-8">
+                    <Plus className="h-4 w-4 mr-1.5" />
+                    <span className="whitespace-nowrap text-xs">New Contact</span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="h-[80vh] max-w-3xl flex flex-col overflow-hidden">

@@ -386,9 +386,9 @@ export function ContactList({ searchFilters }: ContactListProps) {
   return (
     <div className="space-y-4">
       {/* Filters and Controls Section */}
-      <div className="space-y-2 bg-background sticky top-0 z-20 pt-2 pb-2">
+      <div className="space-y-2 bg-background sticky top-0 z-20 pt-2 pb-2 max-w-full">
         {/* Quick Filters */}
-        <div className="flex flex-wrap items-center gap-2 mb-2 overflow-x-auto pb-2">
+        <div className="flex flex-wrap items-center gap-2 mb-2 pb-2 max-w-full">
           <span className="text-xs font-medium text-muted-foreground mr-1">Filters:</span>
           
           {/* Relationship Type Filter */}
