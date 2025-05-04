@@ -13,11 +13,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Map } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import { type Contact, type RelationshipType } from "@/lib/types";
+import { type Contact, type RelationshipType, type Location } from "@/lib/types";
+import { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { RelationshipTypeSelector } from "./RelationshipTypeSelector";
-import { LocationPicker } from "./LocationPicker";
+import { LocationList } from "./LocationList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const contactSchema = z.object({
@@ -49,6 +50,7 @@ interface ContactFormProps {
 export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }: ContactFormProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [locations, setLocations] = useState<Location[]>(initialData?.locations || []);
 
   // Fetch parent contact if parentId is provided
   const { data: parentContact } = useQuery<Contact & { validChildTypes: RelationshipType[] }>({
@@ -136,6 +138,7 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
     mutate({
       ...data,
       relationshipType: data.relationshipType || null,
+      locations: locations,
     });
   });
 

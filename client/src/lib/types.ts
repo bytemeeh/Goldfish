@@ -1,3 +1,22 @@
+export type LocationType = 'home' | 'work' | 'other';
+
+export interface Location {
+  id?: number;
+  contactId?: number;
+  type: LocationType;
+  name?: string;
+  address?: string;
+  latitude: string | number;
+  longitude: string | number;
+  street?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
+  isNew?: boolean;
+  isDeleted?: boolean;
+}
+
 export interface Contact {
   id: number;
   name: string;
@@ -11,7 +30,7 @@ export interface Contact {
   shareToken?: string;
   shareDepth?: number;
   shareableUntil?: string;
-  // Location fields
+  // Single location fields (legacy support)
   street?: string;
   city?: string;
   state?: string;
@@ -19,6 +38,8 @@ export interface Contact {
   postalCode?: string;
   latitude?: string;
   longitude?: string;
+  // Multiple locations
+  locations?: Location[];
   createdAt: string;
   updatedAt: string;
   children?: Contact[];
