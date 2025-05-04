@@ -8,6 +8,7 @@ import {
   Phone,
   Cake,
   ChevronDown,
+  ChevronRight,
   Plus,
   User,
   AlertCircle,
@@ -169,10 +170,14 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
                 transition-all duration-200
                 rounded-full
               `}
-              animate={{ rotate: (children.length > 0 && isExpanded) ? 90 : 0 }}
+              animate={{ opacity: 1 }}
             >
               {children.length > 0 ? (
-                <ChevronDown className="h-5 w-5" />
+                isExpanded ? (
+                  <ChevronDown className="h-5 w-5" />
+                ) : (
+                  <ChevronRight className="h-5 w-5" />
+                )
               ) : (
                 <User className="h-4 w-4" />
               )}
