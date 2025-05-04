@@ -164,7 +164,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
   return (
     <ScrollArea className="h-[calc(100vh-12rem)] pr-4">
       <div className="space-y-8 py-2">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="sync">
           {personalHierarchy && (
             <motion.div
               initial={{ opacity: 0, y: -20 }}

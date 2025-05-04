@@ -332,7 +332,10 @@ export function ContactGraph() {
               node.x!, node.y!, radius * 0.3,
               node.x!, node.y!, radius
             );
-            gradient.addColorStop(0, color.replace(/[\d.]+\)$/, '0.02)')); // Reduce opacity by 90%
+            // Better opacity management - brighter when hovered or selected
+            const isSelectedNode = selectedContact && selectedContact.id === node.id;
+            const baseOpacity = isSelectedNode ? 0.08 : 0.02;
+            gradient.addColorStop(0, color.replace(/[\d.]+\)$/, `${baseOpacity})`));
             gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
             ctx.fillStyle = gradient;
             ctx.beginPath();
@@ -362,24 +365,48 @@ export function ContactGraph() {
           ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI);
           ctx.fill();
 
-          const textWidth = ctx.measureText(label).width;
-          const bgHeight = fontSize * 1.8;
-          const bgWidth = textWidth + 24;
-          const bgY = node.y! + nodeSize * 3;
+          // Determine if this node should show its label
+          const isSelectedNode = selectedContact && selectedContact.id === node.id;
+          const isGraphNodeHovered = graphRef.current?.state.hoverNode?.id === node.id;
+          const shouldShowFullLabel = isSelectedNode || isGraphNodeHovered || globalScale > 1.5;
 
-          // Enhanced background
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
-          ctx.shadowBlur = 8;
-          ctx.beginPath();
-          ctx.roundRect(node.x! - bgWidth/2, bgY - bgHeight/2, bgWidth, bgHeight, 6);
-          ctx.fill();
+          if (shouldShowFullLabel) {
+            // Full label display with background for highlighted nodes
+            const textWidth = ctx.measureText(label).width;
+            const bgHeight = fontSize * 1.8;
+            const bgWidth = textWidth + 24;
+            const bgY = node.y! + nodeSize * 3;
 
-          // Text with better contrast
-          ctx.shadowColor = 'transparent';
-          ctx.fillStyle = "hsl(240, 10%, 15%)";
-          ctx.font = `500 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-          ctx.fillText(label, node.x!, bgY);
+            // Enhanced background with animation effect
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.roundRect(node.x! - bgWidth/2, bgY - bgHeight/2, bgWidth, bgHeight, 6);
+            ctx.fill();
+
+            // Text with better contrast
+            ctx.shadowColor = 'transparent';
+            ctx.fillStyle = "hsl(240, 10%, 15%)";
+            ctx.font = `500 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.fillText(label, node.x!, bgY);
+          } else if (label.length > 0) {
+            // Simplified mini-label for non-highlighted nodes (just initials)
+            const initials = label.split(' ').map(word => word[0]).join('').substring(0, 2).toUpperCase();
+            const miniLabelY = node.y! + nodeSize * 2;
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+            ctx.shadowBlur = 4;
+            ctx.beginPath();
+            ctx.arc(node.x!, miniLabelY, fontSize/2 + 2, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.shadowColor = 'transparent';
+            ctx.fillStyle = "hsl(240, 10%, 25%)";
+            ctx.font = `500 ${fontSize * 0.8}px -apple-system, sans-serif`;
+            ctx.fillText(initials, node.x!, miniLabelY + fontSize * 0.25);
+          }
         }}
         linkColor={() => "rgba(0, 0, 0, 0.08)"}
         linkWidth={1.5}
