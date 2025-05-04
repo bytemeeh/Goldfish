@@ -193,7 +193,7 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
                     <h3 className={`
-                      ${level === 0 ? 'text-xl font-semibold' : 'text-lg font-medium'}
+                      ${level === 0 ? 'text-base font-semibold' : 'text-sm font-medium'}
                       tracking-tight
                       text-foreground
                       leading-none
@@ -252,12 +252,12 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                   >
                     {contact.email && (
                       <motion.div
-                        className="flex items-center text-sm text-muted-foreground/90"
+                        className="flex items-center text-xs text-muted-foreground/90"
                         initial={{ x: -20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.1 }}
                       >
-                        <Mail className="mr-2 h-4 w-4" />
+                        <Mail className="mr-1.5 h-3.5 w-3.5" />
                         <a
                           href={`mailto:${contact.email}`}
                           className="hover:text-primary transition-colors"
@@ -268,12 +268,12 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                     )}
                     {contact.phone && (
                       <motion.div
-                        className="flex items-center text-sm text-muted-foreground/90"
+                        className="flex items-center text-xs text-muted-foreground/90"
                         initial={{ x: -20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.2 }}
                       >
-                        <Phone className="mr-2 h-4 w-4" />
+                        <Phone className="mr-1.5 h-3.5 w-3.5" />
                         <a
                           href={`tel:${contact.phone}`}
                           className="hover:text-primary transition-colors"
@@ -284,12 +284,12 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                     )}
                     {contact.birthday && (
                       <motion.div
-                        className="flex items-center text-sm text-muted-foreground/90"
+                        className="flex items-center text-xs text-muted-foreground/90"
                         initial={{ x: -20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.3 }}
                       >
-                        <Cake className="mr-2 h-4 w-4" />
+                        <Cake className="mr-1.5 h-3.5 w-3.5" />
                         {format(new Date(contact.birthday), "PPP")}
                       </motion.div>
                     )}
@@ -298,13 +298,13 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                     {/* Display multiple locations if available */}
                     {contact.locations && contact.locations.length > 0 ? (
                       <motion.div
-                        className="flex items-start text-sm text-muted-foreground/90"
+                        className="flex items-start text-xs text-muted-foreground/90"
                         initial={{ x: -20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.35 }}
                       >
-                        <MapPin className="mr-2 h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div className="space-y-2">
+                        <MapPin className="mr-1.5 h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                        <div className="space-y-1.5">
                           {contact.locations.map((location, index) => (
                             <div key={location.id || index} className="pb-1">
                               {location.type && (
@@ -329,12 +329,12 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
                     /* Fallback to legacy location fields */
                     (contact.street || contact.city || contact.state || contact.country) && (
                       <motion.div
-                        className="flex items-start text-sm text-muted-foreground/90"
+                        className="flex items-start text-xs text-muted-foreground/90"
                         initial={{ x: -20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.35 }}
                       >
-                        <MapPin className="mr-2 h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <MapPin className="mr-1.5 h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
                         <div>
                           {contact.street && <div>{contact.street}</div>}
                           <div>
@@ -422,13 +422,13 @@ export function ContactCard({ contact, children = [], level = 0 }: ContactCardPr
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full hover:bg-primary/5 transition-colors rounded-lg group"
+                className="w-full h-7 py-0 text-xs hover:bg-primary/5 transition-colors rounded-md group"
                 onClick={() => setIsAddingChild(true)}
               >
-                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center mr-2 group-hover:bg-primary/20 transition-colors">
-                  <Plus className="h-4 w-4 text-primary" />
+                <div className="w-4 h-4 rounded-full bg-primary/10 flex items-center justify-center mr-1 group-hover:bg-primary/20 transition-colors">
+                  <Plus className="h-3 w-3 text-primary" />
                 </div>
-                Add Related Contact
+                Add Related
               </Button>
             )}
 
