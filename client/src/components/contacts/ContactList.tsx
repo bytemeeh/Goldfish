@@ -54,28 +54,28 @@ function calculateDistance(
   lon2: number | string | null | undefined
 ): number {
   if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
-  
+
   // Convert to numbers if they're strings
   const latitude1 = typeof lat1 === 'string' ? parseFloat(lat1) : lat1;
   const longitude1 = typeof lon1 === 'string' ? parseFloat(lon1) : lon1;
   const latitude2 = typeof lat2 === 'string' ? parseFloat(lat2) : lat2;
   const longitude2 = typeof lon2 === 'string' ? parseFloat(lon2) : lon2;
-  
+
   // Convert degrees to radians
   const toRadians = (degrees: number) => degrees * Math.PI / 180;
-  
+
   const dLat = toRadians(latitude2 - latitude1);
   const dLon = toRadians(longitude2 - longitude1);
-  
+
   const a = 
     Math.sin(dLat/2) * Math.sin(dLat/2) +
     Math.cos(toRadians(latitude1)) * Math.cos(toRadians(latitude2)) * 
     Math.sin(dLon/2) * Math.sin(dLon/2);
-  
+
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   // Earth's radius in kilometers
   const R = 6371;
-  
+
   return R * c;
 }
 
@@ -122,9 +122,13 @@ export function ContactList({ searchFilters }: ContactListProps) {
   const [proximitySort, setProximitySort] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [relationshipFilter, setRelationshipFilter] = useState<string>("all");
-  const [relationLevelFilter, setRelationLevelFilter] = useState<string>("all");
-  
+  const [filterType, setFilterType] = useState<"all" | "category" | "level">("all");
+  const [filterValue, setFilterValue] = useState<string>("all");
+
+  const familyTypes = ["mother", "father", "brother", "sibling", "child", "spouse"];
+  const friendTypes = ["friend", "boyfriend/girlfriend"];
+  const professionalTypes = ["co-worker"];
+
   // Get user's current location
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -135,7 +139,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
       });
       return;
     }
-    
+
     setIsGettingLocation(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -160,7 +164,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
       }
     );
   };
-  
+
   const { data: contacts, isLoading, error } = useQuery<Contact[]>({
     queryKey: ["/api/contacts", searchFilters],
     queryFn: async () => {
@@ -257,11 +261,11 @@ export function ContactList({ searchFilters }: ContactListProps) {
   // Apply proximity-based sorting if enabled
   const sortContactsByProximity = (contactsToSort: Contact[]) => {
     if (!proximitySort || !userLocation) return contactsToSort.sort((a, b) => a.name.localeCompare(b.name));
-    
+
     return [...contactsToSort].sort((a, b) => {
       const locationA = getClosestLocation(a, userLocation.latitude, userLocation.longitude);
       const locationB = getClosestLocation(b, userLocation.latitude, userLocation.longitude);
-      
+
       // Sort by distance, with contacts without locations at the end
       return locationA.distance - locationB.distance;
     });
@@ -270,62 +274,65 @@ export function ContactList({ searchFilters }: ContactListProps) {
   // Function to get the relationship level of a contact relative to personal contact
   const getRelationshipLevel = (contact: Contact): number => {
     if (contact.isMe) return 0;
-    
+
     // Direct children of personal contact or siblings are level 1
     if ((personalContact && contact.parentId === personalContact.id) || 
         (contact.relationshipType === 'sibling' && !contact.parentId)) {
       return 1;
     }
-    
+
     // Find the shortest path to the personal contact
     let level = 1;
     let currentId = contact.parentId;
     const visited = new Set<number>([contact.id]);
-    
+
     while (currentId && level < 5) {
       if (visited.has(currentId)) {
         // Avoid cycles
         break;
       }
       visited.add(currentId);
-      
+
       // If we reach the personal contact or a sibling, we've found the path
       if (personalContact && currentId === personalContact.id) {
         return level;
       }
-      
+
       // Find the parent contact
       const parentContact = contacts.find(c => c.id === currentId);
       if (!parentContact) break;
-      
+
       // If parent is sibling with no parent, it's one level from personal
       if (parentContact.relationshipType === 'sibling' && !parentContact.parentId) {
         return level + 1;
       }
-      
+
       // Move up to the next parent
       currentId = parentContact.parentId;
       level++;
     }
-    
+
     return level;
   };
-  
+
   // Apply filters to the input contacts
   const applyFilters = (inputContacts: Contact[]): Contact[] => {
     let filtered = [...inputContacts];
-    
+
     // Apply relationship type filter
-    if (relationshipFilter !== 'all') {
-      filtered = filtered.filter(contact => contact.relationshipType === relationshipFilter);
+    if (filterType === 'category' && filterValue !== 'all') {
+      const types = filterValue === "Family" ? familyTypes : 
+                   filterValue === "Friends" ? friendTypes :
+                   filterValue === "Professional" ? professionalTypes : [];
+      filtered = filtered.filter(contact => types.includes(contact.relationshipType || ""));
     }
-    
+
     // Apply relationship level filter
-    if (relationLevelFilter !== 'all') {
-      const level = parseInt(relationLevelFilter);
+    if (filterType === 'level' && filterValue !== 'all') {
+      const level = parseInt(filterValue);
       filtered = filtered.filter(contact => getRelationshipLevel(contact) === level);
     }
-    
+
     return filtered;
   };
 
@@ -337,10 +344,10 @@ export function ContactList({ searchFilters }: ContactListProps) {
         contact.relationshipType && 
         category.types.includes(contact.relationshipType)
       );
-      
+
     // Apply additional filters  
     const filteredCategoryContacts = applyFilters(categoryContacts);
-    
+
     return {
       ...category,
       contacts: filteredCategoryContacts.map(contact => ({
@@ -370,7 +377,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
     categorizedContacts.forEach(category => {
       category.contacts = sortContactsByProximity(category.contacts);
     });
-    
+
     uncategorizedContacts.sort((a, b) => {
       const locationA = getClosestLocation(a, userLocation.latitude, userLocation.longitude);
       const locationB = getClosestLocation(b, userLocation.latitude, userLocation.longitude);
@@ -383,7 +390,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
     });
     uncategorizedContacts.sort((a, b) => a.name.localeCompare(b.name));
   }
-  
+
   return (
     <div className="space-y-4">
       {/* Filters and Controls Section */}
@@ -392,19 +399,19 @@ export function ContactList({ searchFilters }: ContactListProps) {
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-medium text-muted-foreground">Quick Filter:</span>
-            {relationshipFilter !== 'all' && (
+            {filterValue !== 'all' && (
               <Button 
                 variant="ghost" 
                 size="sm" 
                 className="h-6 px-2 py-0 text-xs" 
-                onClick={() => setRelationshipFilter('all')}
+                onClick={() => setFilterValue('all')}
               >
                 <X className="h-3 w-3 mr-1" />
                 Clear
               </Button>
             )}
           </div>
-          <Tabs value={relationshipFilter} onValueChange={setRelationshipFilter} className="w-full">
+          <Tabs value={filterValue} onValueChange={setFilterValue} className="w-full">
             <TabsList className="w-full h-auto flex flex-wrap gap-0.5 bg-transparent p-0">
               <TabsTrigger 
                 value="all" 
@@ -413,60 +420,22 @@ export function ContactList({ searchFilters }: ContactListProps) {
                 All
               </TabsTrigger>
               <TabsTrigger 
-                value="mother" 
+                value="Family" 
                 className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
-                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
-                Mother
+                Family
               </TabsTrigger>
               <TabsTrigger 
-                value="father" 
+                value="Friends" 
                 className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
-                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
-                Father
+                Friends
               </TabsTrigger>
               <TabsTrigger 
-                value="sibling" 
+                value="Professional" 
                 className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
-                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
-                Sibling
-              </TabsTrigger>
-              <TabsTrigger 
-                value="child" 
-                className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
-              >
-                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
-                Child
-              </TabsTrigger>
-              <TabsTrigger 
-                value="spouse" 
-                className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
-              >
-                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-1))/10]">F</Badge>
-                Spouse
-              </TabsTrigger>
-              <TabsTrigger 
-                value="friend" 
-                className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
-              >
-                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-2))/10]">F</Badge>
-                Friend
-              </TabsTrigger>
-              <TabsTrigger 
-                value="boyfriend/girlfriend" 
-                className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
-              >
-                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-2))/10]">F</Badge>
-                Partner
-              </TabsTrigger>
-              <TabsTrigger 
-                value="co-worker" 
-                className="flex items-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
-              >
-                <Badge variant="outline" className="mr-1.5 h-4 px-1 text-[10px] font-normal bg-[hsl(var(--chart-3))/10]">P</Badge>
-                Co-worker
+                Professional
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -476,19 +445,19 @@ export function ContactList({ searchFilters }: ContactListProps) {
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-medium text-muted-foreground">Relation Level:</span>
-            {relationLevelFilter !== 'all' && (
+            {filterValue !== 'all' && (
               <Button 
                 variant="ghost" 
                 size="sm" 
                 className="h-6 px-2 py-0 text-xs" 
-                onClick={() => setRelationLevelFilter('all')}
+                onClick={() => setFilterValue('all')}
               >
                 <X className="h-3 w-3 mr-1" />
                 Clear
               </Button>
             )}
           </div>
-          <Tabs value={relationLevelFilter} onValueChange={setRelationLevelFilter} className="w-full">
+          <Tabs value={filterValue} onValueChange={setFilterValue} className="w-full">
             <TabsList className="w-full flex gap-0.5 bg-transparent p-0">
               <TabsTrigger value="all" className="flex-1 h-7 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">All</TabsTrigger>
               <TabsTrigger value="1" className="flex-1 h-7 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30">1st Level</TabsTrigger>
@@ -512,7 +481,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
               Sort by proximity
             </Label>
           </div>
-          
+
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -543,7 +512,7 @@ export function ContactList({ searchFilters }: ContactListProps) {
           </TooltipProvider>
         </div>
       </div>
-      
+
       <ScrollArea className="h-[calc(100vh-14rem)] pr-4">
         <div className="space-y-8 py-2">
           <AnimatePresence mode="sync">
