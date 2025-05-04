@@ -84,6 +84,7 @@ export function Home() {
                     <ContactForm 
                       onSuccess={() => setIsEditingPersonal(false)} 
                       isPersonalCard={true}
+                      initialData={contacts?.find(c => c.isMe)}
                     />
                   </div>
                 </DialogContent>
