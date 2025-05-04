@@ -23,6 +23,7 @@ import {
   HeartHandshake,
   MapPin,
   GripVertical,
+  EyeOff,
 } from "lucide-react";
 import {
   DropdownMenu,

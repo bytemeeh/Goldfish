@@ -196,6 +196,24 @@ export function ContactList({ searchFilters }: ContactListProps) {
     if (hiddenContactIds.size > 0) {
       localStorage.setItem('hidden_contact_ids', JSON.stringify([...hiddenContactIds]));
     }
+    
+    // Set up event listener for hiding contacts from ContactCard components
+    const handleHideContact = (event: CustomEvent) => {
+      const contactId = event.detail?.contactId;
+      if (contactId) {
+        setHiddenContactIds(prev => {
+          const newSet = new Set(prev);
+          newSet.add(contactId);
+          return newSet;
+        });
+      }
+    };
+    
+    window.addEventListener('contact:hide', handleHideContact as EventListener);
+    
+    return () => {
+      window.removeEventListener('contact:hide', handleHideContact as EventListener);
+    };
   }, [hiddenContactIds]);
   
   // Update localStorage when sort type changes
