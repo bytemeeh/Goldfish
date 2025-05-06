@@ -839,6 +839,7 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                     ref={element => {
                       contactRefs.current[personalHierarchy.id] = element;
                     }}
+                    className={selectedContactId === personalHierarchy.id ? 'highlight-card' : ''}
                   >
                     <ContactCard 
                       contact={personalHierarchy}
@@ -1038,23 +1039,29 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                           <div className="absolute -left-4 top-1/2 transform -translate-y-1/2 opacity-40 hover:opacity-100 transition-opacity">
                             <GripVertical className="w-4 h-4 text-muted-foreground" />
                           </div>
-                          <ContactCard 
-                            contact={contact}
-                            children={contact.children}
-                            manualSortMode={sortType === 'manual'}
-                            relationshipLevel={getRelationshipLevel(contact)}
-                            onChildrenReorder={(newChildren) => {
-                              // Update child contacts recursively
-                              const updatedContact = {...contact, children: newChildren};
-                              const updatedContacts = [...uncategorizedContacts];
-                              const index = updatedContacts.findIndex(c => c.id === contact.id);
-                              if (index >= 0) {
-                                updatedContacts[index] = updatedContact;
-                                // Update uncategorized contacts
-                                uncategorizedContacts.splice(0, uncategorizedContacts.length, ...updatedContacts);
-                              }
+                          <div
+                            ref={element => {
+                              contactRefs.current[contact.id] = element;
                             }}
-                          />
+                          >
+                            <ContactCard 
+                              contact={contact}
+                              children={contact.children}
+                              manualSortMode={sortType === 'manual'}
+                              relationshipLevel={getRelationshipLevel(contact)}
+                              onChildrenReorder={(newChildren) => {
+                                // Update child contacts recursively
+                                const updatedContact = {...contact, children: newChildren};
+                                const updatedContacts = [...uncategorizedContacts];
+                                const index = updatedContacts.findIndex(c => c.id === contact.id);
+                                if (index >= 0) {
+                                  updatedContacts[index] = updatedContact;
+                                  // Update uncategorized contacts
+                                  uncategorizedContacts.splice(0, uncategorizedContacts.length, ...updatedContacts);
+                                }
+                              }}
+                            />
+                          </div>
                           {sortType === 'manual' && (
                             <Button
                               variant="ghost"
@@ -1082,12 +1089,18 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.3 }}
                         >
-                          <ContactCard 
-                            contact={contact}
-                            children={contact.children}
-                            manualSortMode={sortType === 'manual'}
-                            relationshipLevel={getRelationshipLevel(contact)}
-                          />
+                          <div
+                            ref={element => {
+                              contactRefs.current[contact.id] = element;
+                            }}
+                          >
+                            <ContactCard 
+                              contact={contact}
+                              children={contact.children}
+                              manualSortMode={sortType === 'manual'}
+                              relationshipLevel={getRelationshipLevel(contact)}
+                            />
+                          </div>
                         </motion.div>
                       ))}
                     </div>
