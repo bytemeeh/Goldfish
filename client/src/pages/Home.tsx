@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, List, Network, User, Share2 } from "lucide-react";
 import {
@@ -36,13 +36,27 @@ export function Home() {
       : "list";
   });
   
-  // We will use this to handle node clicks in the graph
-  const handleContactSelect = (contactId: number) => {
+  // Enhanced contact selection handler with sequence control
+  const handleContactSelect = useCallback((contactId: number) => {
     console.log('🚨 Home.tsx - handleContactSelect called with ID:', contactId);
-    setSelectedContactId(contactId);
-    console.log('🚨 Home.tsx - Changing view mode to list');
-    setViewMode("list"); // Switch to list view to see the selected contact
-  };
+    
+    // First change the view mode to list to ensure the contact list is rendered
+    // before we try to set the selected contact and scroll to it
+    if (viewMode !== "list") {
+      console.log('🚨 Home.tsx - Changing view mode to list first');
+      setViewMode("list");
+      
+      // After the view mode change is applied, set the selected contact with a delay
+      setTimeout(() => {
+        console.log('🚨 Home.tsx - Now setting selectedContactId:', contactId);
+        setSelectedContactId(contactId);
+      }, 100);
+    } else {
+      // If already in list view, just set the selected contact directly
+      console.log('🚨 Home.tsx - Already in list view, setting selectedContactId:', contactId);
+      setSelectedContactId(contactId);
+    }
+  }, [viewMode]);
   
   // Debug effects for contact selection
   useEffect(() => {

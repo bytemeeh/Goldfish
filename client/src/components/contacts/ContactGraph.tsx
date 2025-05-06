@@ -251,49 +251,72 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
     }
   }, [contacts]);
 
-  // Direct node click handler to debug issues
+  // Enhanced node click handler with better node ID extraction
   const handleNodeClick = useCallback((node: any) => {
     console.log('🚨 Node clicked:', node);
     
     try {
-      if (!contacts || !node) {
-        console.log('❌ No contacts or node is null');
+      if (!contacts) {
+        console.log('❌ No contacts available');
         return;
       }
       
-      // For direct debugging, use a more straightforward approach
-      // with more detailed logs
-      const nodeId = node.id;
-      console.log('📌 Node direct ID:', nodeId);
+      if (!node) {
+        console.log('❌ Node is null');
+        return;
+      }
       
-      // Try alternate node structure if direct ID is not available
-      if (nodeId === undefined) {
-        console.log('🔍 Looking for ID in __data__...');
-        const dataId = node.__data__?.id;
-        console.log('📌 Node __data__ ID:', dataId);
-        
-        if (dataId === undefined) {
-          console.log('❌ Could not find node ID in any format');
+      // Extract node ID from various possible structures
+      // based on react-force-graph implementation details
+      let nodeId: number | undefined;
+      
+      if (typeof node.id === 'number') {
+        // Direct ID from the node
+        nodeId = node.id;
+        console.log('📌 Using direct node.id:', nodeId);
+      } else if (node.__data__ && typeof node.__data__.id === 'number') {
+        // ID from internal data structure
+        nodeId = node.__data__.id;
+        console.log('📌 Using node.__data__.id:', nodeId);
+      } else if (node.id && typeof node.id._value === 'number') {
+        // ID might be wrapped in an observable
+        nodeId = node.id._value;
+        console.log('📌 Using observable node.id._value:', nodeId);
+      } else {
+        // Try to extract ID as string and convert to number
+        const strId = String(node.id || node.__data__?.id || '');
+        if (strId && !isNaN(parseInt(strId, 10))) {
+          nodeId = parseInt(strId, 10);
+          console.log('📌 Converted string ID to number:', nodeId);
+        } else {
+          console.log('❌ Could not find valid node ID in any format', node);
           return;
         }
       }
       
-      const directContact = contacts.find(c => c.id === nodeId);
-      console.log('💾 Found direct contact:', directContact);
+      // Find the contact based on the extracted ID
+      const contactMatch = contacts.find(c => c.id === nodeId);
+      console.log('💾 Contact match result:', contactMatch ? contactMatch.name : 'Not found');
       
-      if (directContact) {
-        console.log('✅ Setting selected contact:', directContact.name);
-        setSelectedContact(directContact);
+      if (contactMatch) {
+        console.log('✅ Setting selected contact:', contactMatch.name, 'ID:', contactMatch.id);
         
-        if (onContactSelect) {
-          console.log('🔄 Calling onContactSelect with ID:', directContact.id);
-          // Force the navigation to list view with this contact ID
-          onContactSelect(directContact.id);
+        // Update local state
+        setSelectedContact(contactMatch);
+        
+        // Navigate to list view if handler exists
+        if (typeof onContactSelect === 'function') {
+          console.log('🔄 Calling onContactSelect with ID:', contactMatch.id);
+          // Use setTimeout to ensure this happens outside of this render cycle
+          setTimeout(() => {
+            onContactSelect(contactMatch.id);
+          }, 0);
         } else {
           console.log('❌ onContactSelect prop is not provided');
         }
       } else {
         console.log('❌ Could not find contact with ID:', nodeId);
+        console.log('❌ Available contact IDs:', contacts.map(c => c.id));
       }
     } catch (error) {
       console.error('❌ Error in handleNodeClick:', error);
