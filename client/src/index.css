@@ -22,6 +22,30 @@ input, textarea, select {
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+  
+  :root {
+    /* CSS Variables for the highlight effect */
+    --primary-rgb: 147, 51, 234; /* Matches theme Purple 600 */
+  }
+}
+
+/* Highlight effect for selected contacts */
+.highlight-card {
+  animation: highlight-pulse 2s ease-in-out;
+  position: relative;
+  z-index: 10;
+}
+
+@keyframes highlight-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(var(--primary-rgb), 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0);
+  }
 }
 
 /* Google Maps Places Autocomplete Styling */

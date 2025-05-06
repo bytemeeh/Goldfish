@@ -6,7 +6,7 @@ import type { SearchFilters } from "./SearchBar";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Check,
   Navigation,
@@ -137,8 +137,10 @@ function getClosestLocation(contact: Contact, userLat?: number, userLon?: number
 // Define sort types
 type SortType = 'hierarchical' | 'proximity' | 'manual';
 
-export function ContactList({ searchFilters }: ContactListProps) {
+export function ContactList({ searchFilters, selectedContactId }: ContactListProps) {
   const { toast } = useToast();
+  // Create refs for selected contact scrolling
+  const contactRefs = useRef<Record<number, HTMLDivElement | null>>({});
   // State hooks - must be called in the same order every render
   const [sortType, setSortType] = useState<SortType>('hierarchical');
   const [proximitySort, setProximitySort] = useState(() => {
@@ -236,6 +238,28 @@ export function ContactList({ searchFilters }: ContactListProps) {
   useEffect(() => {
     localStorage.setItem('relation_level_filter', relationLevelFilter);
   }, [relationLevelFilter]);
+  
+  // Effect to scroll to selected contact when it changes
+  useEffect(() => {
+    if (selectedContactId && contactRefs.current[selectedContactId]) {
+      const contactElement = contactRefs.current[selectedContactId];
+      if (contactElement) {
+        // Smooth scroll to the selected contact with a small delay to ensure the UI is ready
+        setTimeout(() => {
+          contactElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          });
+          
+          // Highlight the card briefly
+          contactElement.classList.add('highlight-card');
+          setTimeout(() => {
+            contactElement.classList.remove('highlight-card');
+          }, 2000);
+        }, 100);
+      }
+    }
+  }, [selectedContactId]);
   
   // Get user's current location
   const getCurrentLocation = () => {
