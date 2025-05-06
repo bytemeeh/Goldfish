@@ -38,9 +38,20 @@ export function Home() {
   
   // We will use this to handle node clicks in the graph
   const handleContactSelect = (contactId: number) => {
+    console.log('🚨 Home.tsx - handleContactSelect called with ID:', contactId);
     setSelectedContactId(contactId);
+    console.log('🚨 Home.tsx - Changing view mode to list');
     setViewMode("list"); // Switch to list view to see the selected contact
   };
+  
+  // Debug effects for contact selection
+  useEffect(() => {
+    console.log('🚨 Home.tsx - selectedContactId changed to:', selectedContactId);
+  }, [selectedContactId]);
+  
+  useEffect(() => {
+    console.log('🚨 Home.tsx - viewMode changed to:', viewMode);
+  }, [viewMode]);
 
   const { data: contacts } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],

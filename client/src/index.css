@@ -38,6 +38,13 @@ input, textarea, select {
 
 /* Automatic highlight for selected contact */
 [data-selected="true"] {
+  position: relative;
+  z-index: 10;
+  box-shadow: 0 0 0 2px hsl(var(--primary)) !important;
+}
+
+/* Pulsing highlight effect for contact selection */
+.highlight-pulse {
   animation: highlight-pulse 2s ease-in-out;
   position: relative;
   z-index: 10;

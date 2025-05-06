@@ -251,34 +251,52 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
     }
   }, [contacts]);
 
+  // Direct node click handler to debug issues
   const handleNodeClick = useCallback((node: any) => {
-    console.log('Node clicked:', node);
-    if (!contacts || !node) {
-      console.log('No contacts or node is null');
-      return;
-    }
-
-    // The node object from ForceGraph might have a different structure than expected
-    // Try to access id either directly or from __data__
-    const nodeId = node.id || (node.__data__ ? node.__data__.id : null);
-    console.log('Node ID:', nodeId);
+    console.log('🚨 Node clicked:', node);
     
-    if (!nodeId) {
-      console.log('Could not find node ID');
-      return;
-    }
-
-    const contact = contacts.find(c => c.id === nodeId);
-    console.log('Found contact:', contact);
-    
-    if (contact) {
-      setSelectedContact(prev => prev?.id === contact.id ? null : contact);
-      
-      // If onContactSelect prop is provided, call it to navigate to the contact card in list view
-      if (onContactSelect) {
-        console.log('Calling onContactSelect with ID:', contact.id);
-        onContactSelect(contact.id);
+    try {
+      if (!contacts || !node) {
+        console.log('❌ No contacts or node is null');
+        return;
       }
+      
+      // For direct debugging, use a more straightforward approach
+      // with more detailed logs
+      const nodeId = node.id;
+      console.log('📌 Node direct ID:', nodeId);
+      
+      // Try alternate node structure if direct ID is not available
+      if (nodeId === undefined) {
+        console.log('🔍 Looking for ID in __data__...');
+        const dataId = node.__data__?.id;
+        console.log('📌 Node __data__ ID:', dataId);
+        
+        if (dataId === undefined) {
+          console.log('❌ Could not find node ID in any format');
+          return;
+        }
+      }
+      
+      const directContact = contacts.find(c => c.id === nodeId);
+      console.log('💾 Found direct contact:', directContact);
+      
+      if (directContact) {
+        console.log('✅ Setting selected contact:', directContact.name);
+        setSelectedContact(directContact);
+        
+        if (onContactSelect) {
+          console.log('🔄 Calling onContactSelect with ID:', directContact.id);
+          // Force the navigation to list view with this contact ID
+          onContactSelect(directContact.id);
+        } else {
+          console.log('❌ onContactSelect prop is not provided');
+        }
+      } else {
+        console.log('❌ Could not find contact with ID:', nodeId);
+      }
+    } catch (error) {
+      console.error('❌ Error in handleNodeClick:', error);
     }
   }, [contacts, onContactSelect]);
 

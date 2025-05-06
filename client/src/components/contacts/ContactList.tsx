@@ -242,29 +242,49 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
   // Effect to scroll to selected contact when it changes
   useEffect(() => {
     // First, clear any previously selected contacts
+    console.log('🚨 ContactList useEffect - selectedContactId:', selectedContactId);
+    console.log('🚨 ContactList useEffect - Available refs:', Object.keys(contactRefs.current));
+    
+    // Reset all selections
     Object.values(contactRefs.current).forEach(el => {
-      if (el) el.setAttribute('data-selected', 'false');
+      if (el) {
+        el.setAttribute('data-selected', 'false');
+        el.classList.remove('highlight-pulse');
+      }
     });
     
     if (selectedContactId && contactRefs.current[selectedContactId]) {
+      console.log('🚨 ContactList useEffect - Found matching ref for ID:', selectedContactId);
       const contactElement = contactRefs.current[selectedContactId];
+      
       if (contactElement) {
+        console.log('🚨 ContactList useEffect - Setting data-selected attribute');
+        contactElement.setAttribute('data-selected', 'true');
+        contactElement.classList.add('highlight-pulse');
+        
         // Smooth scroll to the selected contact with a small delay to ensure the UI is ready
         setTimeout(() => {
-          contactElement.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center' 
-          });
-          
-          // Set the selected attribute for highlighting
-          contactElement.setAttribute('data-selected', 'true');
-          
-          // Remove the highlight after a delay
-          setTimeout(() => {
-            contactElement.setAttribute('data-selected', 'false');
-          }, 2000);
+          try {
+            console.log('🚨 ContactList useEffect - Scrolling to element');
+            contactElement.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center' 
+            });
+            
+            // Ensure the highlight stays long enough to be visible
+            setTimeout(() => {
+              contactElement.classList.remove('highlight-pulse');
+              // Keep the selected state for longer
+            }, 3000);
+          } catch(error) {
+            console.error('🚨 Error scrolling to contact:', error);
+          }
         }, 100);
+      } else {
+        console.log('🚨 ContactList useEffect - Contact element is null despite having a ref');
       }
+    } else {
+      console.log('🚨 ContactList useEffect - No matching ref found for ID:', selectedContactId);
     }
   }, [selectedContactId]);
   
