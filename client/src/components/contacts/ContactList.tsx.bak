@@ -933,7 +933,6 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                                   children={contact.children}
                                   manualSortMode={sortType === 'manual'}
                                   relationshipLevel={getRelationshipLevel(contact)}
-                                  isSelected={selectedContactId === contact.id}
                                 />
                               </div>
                               <Button
@@ -995,7 +994,6 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                                   children={contact.children}
                                   manualSortMode={sortType === 'manual'}
                                   relationshipLevel={getRelationshipLevel(contact)}
-                                  isSelected={selectedContactId === contact.id}
                                 />
                               </div>
                             </motion.div>
@@ -1059,7 +1057,6 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                               children={contact.children}
                               manualSortMode={sortType === 'manual'}
                               relationshipLevel={getRelationshipLevel(contact)}
-                                  isSelected={selectedContactId === contact.id}
                               onChildrenReorder={(newChildren) => {
                                 // Update child contacts recursively
                                 const updatedContact = {...contact, children: newChildren};
@@ -1110,7 +1107,6 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                               children={contact.children}
                               manualSortMode={sortType === 'manual'}
                               relationshipLevel={getRelationshipLevel(contact)}
-                                  isSelected={selectedContactId === contact.id}
                             />
                           </div>
                         </motion.div>
