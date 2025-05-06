@@ -1,90 +1,94 @@
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useRef, useState, useEffect, useCallback } from "react";
-import ForceGraph2D from "react-force-graph-2d";
-import { NodeObject, LinkObject } from "react-force-graph-2d";
-import { Contact } from "@/lib/types";
+import { type Contact } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Mail, Phone, Cake, MapPin } from "lucide-react";
+import { format } from "date-fns";
+import ForceGraph2D from "react-force-graph-2d";
+import type { NodeObject, LinkObject } from "react-force-graph-2d";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Convert HSL string to RGB for gradients
-function hslToRgb(hslString: string, opacity: number = 1): string {
-  // Parse the HSL values from the string
-  const match = hslString.match(/hsl\(var\(--(.+)\)\)/);
-  if (!match) return `rgba(100, 100, 100, ${opacity})`;
-  
-  // For simplicity, we'll map specific color variables to RGB values
-  const colorMap: Record<string, string> = {
-    "chart-1": "rgba(83, 100, 233, $opacity)",
-    "chart-2": "rgba(233, 100, 133, $opacity)",
-    "chart-3": "rgba(100, 183, 233, $opacity)",
-    "chart-4": "rgba(233, 193, 100, $opacity)",
-    "chart-5": "rgba(143, 233, 100, $opacity)",
-    "primary": "rgba(100, 120, 233, $opacity)",
-    // Add more mappings as needed
-  };
-  
-  const color = match[1];
-  return (colorMap[color] || `rgba(100, 100, 100, ${opacity})`).replace("$opacity", opacity.toString());
-}
-
+// Color palette configuration for Apple-style design
 const colorPalette = {
   family: {
-    primary: "hsl(var(--chart-1))",
-    secondary: "hsl(var(--chart-1) / 0.8)",
+    primary: "hsl(195, 100%, 45%)",  // Cyan Blue
+    gradient: ["1, 0.5", "0.8, 0.3", "0.6, 0.15"]
   },
   friends: {
-    primary: "hsl(var(--chart-2))",
-    secondary: "hsl(var(--chart-2) / 0.8)",
+    primary: "hsl(330, 100%, 50%)",  // Bright Pink
+    gradient: ["1, 0.5", "0.8, 0.3", "0.6, 0.15"]
   },
   professional: {
-    primary: "hsl(var(--chart-3))",
-    secondary: "hsl(var(--chart-3) / 0.8)",
+    primary: "hsl(30, 100%, 50%)",   // Orange
+    gradient: ["1, 0.5", "0.8, 0.3", "0.6, 0.15"]
   },
   personal: {
-    primary: "hsl(var(--chart-4))",
-    secondary: "hsl(var(--chart-4) / 0.8)",
+    primary: "hsl(145, 100%, 35%)",  // Green
+    gradient: ["1, 0.55", "0.8, 0.35", "0.6, 0.2"]
   },
   default: {
-    primary: "hsl(var(--chart-5))",
-    secondary: "hsl(var(--chart-5) / 0.8)",
+    primary: "hsl(215, 16%, 47%)",
+    gradient: ["1, 0.4", "0.8, 0.25", "0.6, 0.1"]
   }
 };
 
+// Helper function to convert HSL to RGB
+function hslToRgb(hslString: string, opacity: number = 1): string {
+  // Create temporary element to convert HSL to RGB
+  const temp = document.createElement('div');
+  temp.style.color = hslString;
+  document.body.appendChild(temp);
+  const rgb = getComputedStyle(temp).color;
+  document.body.removeChild(temp);
+
+  // Extract RGB values
+  const [r, g, b] = rgb.match(/\d+/g)?.map(Number) || [0, 0, 0];
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
+
+// Contact details component
 function ContactDetails({ contact }: { contact: Contact }) {
   return (
-    <div className="space-y-2 text-sm text-muted-foreground">
+    <div className="space-y-2">
       {contact.email && (
-        <div>
-          <span className="font-medium">Email:</span> {contact.email}
+        <div className="flex items-center text-sm text-muted-foreground">
+          <Mail className="mr-2 h-4 w-4" />
+          <a href={`mailto:${contact.email}`} className="hover:text-primary transition-colors">
+            {contact.email}
+          </a>
         </div>
       )}
       {contact.phone && (
-        <div>
-          <span className="font-medium">Phone:</span> {contact.phone}
+        <div className="flex items-center text-sm text-muted-foreground">
+          <Phone className="mr-2 h-4 w-4" />
+          <a href={`tel:${contact.phone}`} className="hover:text-primary transition-colors">
+            {contact.phone}
+          </a>
         </div>
       )}
       {contact.birthday && (
-        <div>
-          <span className="font-medium">Birthday:</span> {new Date(contact.birthday).toLocaleDateString()}
+        <div className="flex items-center text-sm text-muted-foreground">
+          <Cake className="mr-2 h-4 w-4" />
+          {format(new Date(contact.birthday), "PPP")}
+        </div>
+      )}
+      {(contact.street || contact.city || contact.state || contact.country) && (
+        <div className="flex items-start text-sm text-muted-foreground">
+          <MapPin className="mr-2 h-4 w-4 mt-0.5 flex-shrink-0" />
+          <div>
+            {contact.street && <div>{contact.street}</div>}
+            <div>
+              {[contact.city, contact.state, contact.postalCode]
+                .filter(Boolean)
+                .join(", ")}
+            </div>
+            {contact.country && <div>{contact.country}</div>}
+          </div>
         </div>
       )}
       {contact.notes && (
-        <div>
-          <span className="font-medium">Notes:</span> {contact.notes}
-        </div>
-      )}
-      {contact.locations && contact.locations.length > 0 && (
-        <div>
-          <span className="font-medium">Locations:</span>
-          <ul className="mt-1 space-y-1">
-            {contact.locations.map((location, index) => (
-              <li key={index} className="pl-2 text-xs">
-                {location.name || location.address || "Unnamed location"}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <p className="text-sm text-muted-foreground mt-2">{contact.notes}</p>
       )}
     </div>
   );
@@ -175,10 +179,10 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
 
         return {
           color: palette.primary,
-          gradientColors: [
-            hslToRgb(palette.primary, 0.2),
-            hslToRgb(palette.secondary, 0.1)
-          ]
+          gradientColors: palette.gradient.map(g => {
+            const [_, opacity] = g.split(', ');
+            return hslToRgb(palette.primary, parseFloat(opacity));
+          })
         };
       };
 
@@ -236,39 +240,86 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
       }
 
       setGraphData({ nodes, links });
+
+      if (graphRef.current) {
+        setTimeout(() => {
+          graphRef.current?.zoomToFit(400, 50);
+        }, 500);
+      }
     } catch (error) {
-      console.error('Error building graph data:', error);
+      console.error('Error processing graph data:', error);
     }
   }, [contacts]);
 
-  // Simple handleNodeClick that works with the specific contacts that were clickable before
+  // Enhanced node click handler with better node ID extraction
   const handleNodeClick = useCallback((node: any) => {
     console.log('🚨 Node clicked:', node);
     
-    if (!contacts) return;
-    
-    // Get original contact with specific name matching which worked before
-    const specialContacts = ['Christoph', 'Angelina', 'test'];
-    const nodeName = node?.name || '';
-    
-    // Find the contact by name (case sensitive)
-    let contactMatch = contacts.find(c => specialContacts.includes(c.name) && c.name === nodeName);
-    
-    // If not found by exact special name, try ID match
-    if (!contactMatch) {
-      if (typeof node.id === 'number') {
-        contactMatch = contacts.find(c => c.id === node.id);
+    try {
+      if (!contacts) {
+        console.log('❌ No contacts available');
+        return;
       }
-    }
-    
-    // If we found a match, update UI and navigate
-    if (contactMatch) {
-      setSelectedContact(contactMatch);
       
-      if (onContactSelect) {
-        // Using a minimal approach that worked before
-        onContactSelect(contactMatch.id);
+      if (!node) {
+        console.log('❌ Node is null');
+        return;
       }
+      
+      // Extract node ID from various possible structures
+      // based on react-force-graph implementation details
+      let nodeId: number | undefined;
+      
+      if (typeof node.id === 'number') {
+        // Direct ID from the node
+        nodeId = node.id;
+        console.log('📌 Using direct node.id:', nodeId);
+      } else if (node.__data__ && typeof node.__data__.id === 'number') {
+        // ID from internal data structure
+        nodeId = node.__data__.id;
+        console.log('📌 Using node.__data__.id:', nodeId);
+      } else if (node.id && typeof node.id._value === 'number') {
+        // ID might be wrapped in an observable
+        nodeId = node.id._value;
+        console.log('📌 Using observable node.id._value:', nodeId);
+      } else {
+        // Try to extract ID as string and convert to number
+        const strId = String(node.id || node.__data__?.id || '');
+        if (strId && !isNaN(parseInt(strId, 10))) {
+          nodeId = parseInt(strId, 10);
+          console.log('📌 Converted string ID to number:', nodeId);
+        } else {
+          console.log('❌ Could not find valid node ID in any format', node);
+          return;
+        }
+      }
+      
+      // Find the contact based on the extracted ID
+      const contactMatch = contacts.find(c => c.id === nodeId);
+      console.log('💾 Contact match result:', contactMatch ? contactMatch.name : 'Not found');
+      
+      if (contactMatch) {
+        console.log('✅ Setting selected contact:', contactMatch.name, 'ID:', contactMatch.id);
+        
+        // Update local state
+        setSelectedContact(contactMatch);
+        
+        // Navigate to list view if handler exists
+        if (typeof onContactSelect === 'function') {
+          console.log('🔄 Calling onContactSelect with ID:', contactMatch.id);
+          // Use setTimeout to ensure this happens outside of this render cycle
+          setTimeout(() => {
+            onContactSelect(contactMatch.id);
+          }, 0);
+        } else {
+          console.log('❌ onContactSelect prop is not provided');
+        }
+      } else {
+        console.log('❌ Could not find contact with ID:', nodeId);
+        console.log('❌ Available contact IDs:', contacts.map(c => c.id));
+      }
+    } catch (error) {
+      console.error('❌ Error in handleNodeClick:', error);
     }
   }, [contacts, onContactSelect]);
 
@@ -458,7 +509,7 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
         cooldownTicks={100}
         nodeRelSize={6}
         //@ts-ignore - d3Force property exists but has type issues
-        d3Force={(d3: any) => {
+      d3Force={(d3: any) => {
           const simulation = d3;
           
           simulation.forceCenter(dimensions.width / 2, dimensions.height / 2)

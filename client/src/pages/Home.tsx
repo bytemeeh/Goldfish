@@ -36,20 +36,24 @@ export function Home() {
       : "list";
   });
   
-  // Simple and robust contact selection handler that works reliably
+  // Enhanced contact selection handler with sequence control
   const handleContactSelect = useCallback((contactId: number) => {
     console.log('🚨 Home.tsx - handleContactSelect called with ID:', contactId);
     
-    // First change the view mode to list
+    // First change the view mode to list to ensure the contact list is rendered
+    // before we try to set the selected contact and scroll to it
     if (viewMode !== "list") {
+      console.log('🚨 Home.tsx - Changing view mode to list first');
       setViewMode("list");
       
-      // Use a timeout to ensure the view change has been applied
+      // After the view mode change is applied, set the selected contact with a delay
       setTimeout(() => {
+        console.log('🚨 Home.tsx - Now setting selectedContactId:', contactId);
         setSelectedContactId(contactId);
       }, 100);
     } else {
-      // If already in list view, directly set the selected contact ID
+      // If already in list view, just set the selected contact directly
+      console.log('🚨 Home.tsx - Already in list view, setting selectedContactId:', contactId);
       setSelectedContactId(contactId);
     }
   }, [viewMode]);
