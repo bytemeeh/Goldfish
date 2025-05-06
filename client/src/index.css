@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global styles for form elements */
+input, textarea, select {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease !important;
+}
+
+/* Override shadcn focus styles to prevent cut-off borders */
+.focus-visible\:ring-2:focus-visible {
+  box-shadow: 0 0 0 2px hsl(var(--ring)) !important;
+  outline: none !important;
+  border-color: hsl(var(--ring)) !important;
+}
+
 @layer base {
   * {
     @apply border-border;
@@ -71,7 +83,8 @@
 .address-selected {
   background-color: hsl(var(--primary) / 0.1) !important;
   border-color: hsl(var(--primary)) !important;
-  box-shadow: 0 0 0 1px hsl(var(--primary)/0.5) !important;
+  box-shadow: 0 0 0 1px hsl(var(--primary)/0.5) inset !important;
+  outline: none !important;
   transition: all 0.3s ease;
 }
 
