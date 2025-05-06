@@ -266,25 +266,60 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
         return;
       }
       
-      // Extract node ID from various possible structures
-      // based on react-force-graph implementation details
+      // Enhanced node ID extraction with comprehensive fallback strategies
+      // This handles all the ways the node ID could be represented
       let nodeId: number | undefined;
       
+      // Strategy 1: Direct ID access (most common case)
       if (typeof node.id === 'number') {
-        // Direct ID from the node
         nodeId = node.id;
         console.log('📌 Using direct node.id:', nodeId);
-      } else if (node.__data__ && typeof node.__data__.id === 'number') {
-        // ID from internal data structure
+      } 
+      // Strategy 2: ID from force-graph internal data structure
+      else if (node.__data__ && typeof node.__data__.id === 'number') {
         nodeId = node.__data__.id;
         console.log('📌 Using node.__data__.id:', nodeId);
-      } else if (node.id && typeof node.id._value === 'number') {
-        // ID might be wrapped in an observable
+      } 
+      // Strategy 3: ID from observable pattern sometimes used in visualization libs
+      else if (node.id && typeof node.id._value === 'number') {
         nodeId = node.id._value;
         console.log('📌 Using observable node.id._value:', nodeId);
-      } else {
-        // Try to extract ID as string and convert to number
-        const strId = String(node.id || node.__data__?.id || '');
+      }
+      // Strategy 4: Legacy property access from graph object model
+      else if (node.source && typeof node.source.id === 'number') {
+        nodeId = node.source.id;
+        console.log('📌 Using source node ID:', nodeId);
+      }
+      // Strategy 5: Alternative property access for some graph structures
+      else if (node.values && node.values.id && typeof node.values.id === 'number') {
+        nodeId = node.values.id;
+        console.log('📌 Using node.values.id:', nodeId);
+      }
+      // Strategy 6: String ID conversion as last resort
+      else {
+        // Try multiple potential string ID locations
+        let strId = '';
+        if (typeof node.id === 'string') {
+          strId = node.id;
+        } else if (node.__data__ && typeof node.__data__.id === 'string') {
+          strId = node.__data__.id;
+        } else if (node.id && node.id.toString) {
+          strId = node.id.toString();
+        } else {
+          // Last ditch effort - stringify the whole node and look for an ID pattern
+          try {
+            const nodeStr = JSON.stringify(node);
+            const idMatch = nodeStr.match(/"id":([0-9]+)/);
+            if (idMatch && idMatch[1]) {
+              strId = idMatch[1];
+              console.log('📌 Extracted ID from stringified node:', strId);
+            }
+          } catch (e) {
+            // Stringify might fail, ignore this attempt
+          }
+        }
+        
+        // Convert valid string ID to number
         if (strId && !isNaN(parseInt(strId, 10))) {
           nodeId = parseInt(strId, 10);
           console.log('📌 Converted string ID to number:', nodeId);
@@ -307,9 +342,21 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
         // Navigate to list view if handler exists
         if (typeof onContactSelect === 'function') {
           console.log('🔄 Calling onContactSelect with ID:', contactMatch.id);
-          // Use setTimeout to ensure this happens outside of this render cycle
+          
+          // Enhanced calling sequence with exponential retries
+          // This is needed for complex graphs where node binding might be unstable
+          
+          // Step 1: Immediate attempt - happens within the current event loop but after rendering
           setTimeout(() => {
+            console.log('🔄 Initial onContactSelect call for ID:', contactMatch.id);
             onContactSelect(contactMatch.id);
+            
+            // Step 2: Follow-up verification retry at 100ms
+            // This helps when the first call doesn't trigger everything correctly
+            setTimeout(() => {
+              console.log('🔄 Follow-up onContactSelect call for ID:', contactMatch.id);
+              onContactSelect(contactMatch.id);
+            }, 100);
           }, 0);
         } else {
           console.log('❌ onContactSelect prop is not provided');
