@@ -241,6 +241,11 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
   
   // Effect to scroll to selected contact when it changes
   useEffect(() => {
+    // First, clear any previously selected contacts
+    Object.values(contactRefs.current).forEach(el => {
+      if (el) el.setAttribute('data-selected', 'false');
+    });
+    
     if (selectedContactId && contactRefs.current[selectedContactId]) {
       const contactElement = contactRefs.current[selectedContactId];
       if (contactElement) {
@@ -251,10 +256,12 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
             block: 'center' 
           });
           
-          // Highlight the card briefly
-          contactElement.classList.add('highlight-card');
+          // Set the selected attribute for highlighting
+          contactElement.setAttribute('data-selected', 'true');
+          
+          // Remove the highlight after a delay
           setTimeout(() => {
-            contactElement.classList.remove('highlight-card');
+            contactElement.setAttribute('data-selected', 'false');
           }, 2000);
         }, 100);
       }
@@ -839,7 +846,7 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                     ref={element => {
                       contactRefs.current[personalHierarchy.id] = element;
                     }}
-                    className={selectedContactId === personalHierarchy.id ? 'highlight-card' : ''}
+                    data-selected={selectedContactId === personalHierarchy.id ? 'true' : 'false'}
                   >
                     <ContactCard 
                       contact={personalHierarchy}
