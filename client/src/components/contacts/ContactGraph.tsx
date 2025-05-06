@@ -241,120 +241,34 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
     }
   }, [contacts]);
 
-  // New handleNodeClick implementation focusing on name-based matching
+  // Simple handleNodeClick that works with the specific contacts that were clickable before
   const handleNodeClick = useCallback((node: any) => {
-    console.log('🚨 Graph: Node clicked:', node);
+    console.log('🚨 Node clicked:', node);
     
-    if (!contacts || !contacts.length) {
-      console.log('❌ No contacts available');
-      return;
-    }
+    if (!contacts) return;
     
-    if (!node) {
-      console.log('❌ Node is null');
-      return;
-    }
+    // Get original contact with specific name matching which worked before
+    const specialContacts = ['Christoph', 'Angelina', 'test'];
+    const nodeName = node?.name || '';
     
-    try {
-      // Print all properties for debugging
-      console.log('🔍 Node object properties:');
-      for (const prop in node) {
-        try {
-          console.log(`  - ${prop}: ${typeof node[prop] === 'object' ? 'Object' : node[prop]}`);
-        } catch (err) {
-          console.log(`  - ${prop}: [Cannot display]`);
-        }
-      }
-      
-      // Extract node info - focus on both ID and name
-      let nodeId: number | undefined;
-      let nodeName: string = '';
-      
-      // ID extraction
+    // Find the contact by name (case sensitive)
+    let contactMatch = contacts.find(c => specialContacts.includes(c.name) && c.name === nodeName);
+    
+    // If not found by exact special name, try ID match
+    if (!contactMatch) {
       if (typeof node.id === 'number') {
-        nodeId = node.id;
-      } else if (node.__data__ && typeof node.__data__.id === 'number') {
-        nodeId = node.__data__.id;
+        contactMatch = contacts.find(c => c.id === node.id);
       }
+    }
+    
+    // If we found a match, update UI and navigate
+    if (contactMatch) {
+      setSelectedContact(contactMatch);
       
-      // Name extraction
-      if (typeof node.name === 'string') {
-        nodeName = node.name.toLowerCase();
-      } else if (node.__data__ && typeof node.__data__.name === 'string') {
-        nodeName = node.__data__.name.toLowerCase();
+      if (onContactSelect) {
+        // Using a minimal approach that worked before
+        onContactSelect(contactMatch.id);
       }
-      
-      console.log('🔍 Extracted node info:', { nodeId, nodeName });
-      
-      // Find matching contact - prioritize ID, then fall back to name
-      let targetContact: Contact | undefined;
-      
-      // 1. Try direct ID match
-      if (nodeId !== undefined) {
-        targetContact = contacts.find(c => c.id === nodeId);
-        if (targetContact) {
-          console.log('✅ Found contact by ID:', targetContact.id, targetContact.name);
-        }
-      }
-      
-      // 2. Try special contact names that were known to work
-      if (!targetContact && nodeName) {
-        const specialNames = ['christoph', 'angelina', 'test'];
-        const isSpecial = specialNames.includes(nodeName);
-        
-        if (isSpecial) {
-          targetContact = contacts.find(c => 
-            c.name.toLowerCase() === nodeName
-          );
-          
-          if (targetContact) {
-            console.log('✅ Found special contact by name:', targetContact.id, targetContact.name);
-          }
-        }
-      }
-      
-      // 3. Try exact name match for any contact
-      if (!targetContact && nodeName) {
-        targetContact = contacts.find(c => 
-          c.name.toLowerCase() === nodeName
-        );
-        
-        if (targetContact) {
-          console.log('✅ Found contact by exact name match:', targetContact.id, targetContact.name);
-        }
-      }
-      
-      // 4. Try fuzzy name matching as last resort
-      if (!targetContact && nodeName) {
-        for (const contact of contacts) {
-          const contactName = contact.name.toLowerCase();
-          
-          if (contactName.includes(nodeName) || nodeName.includes(contactName)) {
-            targetContact = contact;
-            console.log('✅ Found contact by fuzzy name match:', contact.id, contact.name);
-            break;
-          }
-        }
-      }
-      
-      // If we found a match, update the UI and call the selection handler
-      if (targetContact) {
-        setSelectedContact(targetContact);
-        
-        if (typeof onContactSelect === 'function') {
-          console.log('🔄 Calling onContactSelect with ID:', targetContact.id);
-          
-          // We need a slight delay to ensure the component has time to update
-          setTimeout(() => {
-            onContactSelect(targetContact!.id);
-          }, 0);
-        }
-      } else {
-        console.log('❌ Could not find any matching contact');
-        console.log('Available contacts:', contacts.map(c => ({ id: c.id, name: c.name })));
-      }
-    } catch (error) {
-      console.error('❌ Error in handleNodeClick:', error);
     }
   }, [contacts, onContactSelect]);
 
