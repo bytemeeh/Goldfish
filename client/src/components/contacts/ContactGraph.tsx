@@ -251,15 +251,33 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
     }
   }, [contacts]);
 
-  const handleNodeClick = useCallback((node: GraphNode | null) => {
-    if (!contacts || !node) return;
-    const contact = contacts.find(c => c.id === node.id);
+  const handleNodeClick = useCallback((node: any) => {
+    console.log('Node clicked:', node);
+    if (!contacts || !node) {
+      console.log('No contacts or node is null');
+      return;
+    }
+
+    // The node object from ForceGraph might have a different structure than expected
+    // Try to access id either directly or from __data__
+    const nodeId = node.id || (node.__data__ ? node.__data__.id : null);
+    console.log('Node ID:', nodeId);
+    
+    if (!nodeId) {
+      console.log('Could not find node ID');
+      return;
+    }
+
+    const contact = contacts.find(c => c.id === nodeId);
+    console.log('Found contact:', contact);
+    
     if (contact) {
       setSelectedContact(prev => prev?.id === contact.id ? null : contact);
       
       // If onContactSelect prop is provided, call it to navigate to the contact card in list view
-      if (onContactSelect && node) {
-        onContactSelect(node.id);
+      if (onContactSelect) {
+        console.log('Calling onContactSelect with ID:', contact.id);
+        onContactSelect(contact.id);
       }
     }
   }, [contacts, onContactSelect]);

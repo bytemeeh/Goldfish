@@ -68,9 +68,10 @@ interface ContactCardProps {
   relationshipLevel?: number;
   manualSortMode?: boolean;
   onChildrenReorder?: (children: Contact[]) => void;
+  isSelected?: boolean;
 }
 
-export function ContactCard({ contact, children = [], level = 0, relationshipLevel, manualSortMode = false, onChildrenReorder }: ContactCardProps) {
+export function ContactCard({ contact, children = [], level = 0, relationshipLevel, manualSortMode = false, onChildrenReorder, isSelected = false }: ContactCardProps) {
   // Auto-expand first level contacts
   const [isExpanded, setIsExpanded] = useState(level === 0 && children.length > 0);
   const [isAddingChild, setIsAddingChild] = useState(false);
@@ -151,6 +152,7 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
             border
             rounded-lg
             ${level === 0 ? 'shadow-md' : 'shadow-sm'}
+            ${isSelected ? 'ring-2 ring-primary ring-opacity-70' : ''}
             transition-all
             duration-300
             ease-in-out
