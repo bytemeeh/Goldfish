@@ -152,7 +152,7 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
             border
             rounded-lg
             ${level === 0 ? 'shadow-md' : 'shadow-sm'}
-            ${isSelected ? 'ring-2 ring-primary ring-opacity-70' : ''}
+            ${isSelected ? 'ring-2 ring-primary ring-opacity-70 bg-primary/5 shadow-lg' : ''}
             transition-all
             duration-300
             ease-in-out
