@@ -141,6 +141,44 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
   const { toast } = useToast();
   // Create refs for selected contact scrolling
   const contactRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  
+  // Query to fetch contacts data
+  const { data: contacts, isLoading, error } = useQuery<Contact[]>({
+    queryKey: ["/api/contacts", searchFilters],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      Object.entries(searchFilters).forEach(([key, value]) => {
+        if (value) params.append(key, value.trim());
+      });
+
+      const url = `/api/contacts${params.toString() ? `?${params}` : ''}`;
+      const res = await fetch(url);
+
+      if (!res.ok) {
+        const error = await res.text();
+        throw new Error(error);
+      }
+
+      return res.json();
+    }
+  });
+
+  // Pre-register all contacts for ref tracking
+  useEffect(() => {
+    if (contacts) {
+      console.log('🚨 ContactList - Pre-registering all contacts for refs tracking');
+      console.log('🚨 ContactList - Total contacts to register:', contacts.length);
+      
+      // Add all contact IDs to the refs object first, even with null values
+      // This ensures the lookup works even before the elements are actually rendered
+      contacts.forEach(contact => {
+        if (contact && contact.id) {
+          contactRefs.current[contact.id] = contactRefs.current[contact.id] || null;
+        }
+      });
+    }
+  }, [contacts]);
+  
   // State hooks - must be called in the same order every render
   const [sortType, setSortType] = useState<SortType>('hierarchical');
   const [proximitySort, setProximitySort] = useState(() => {
@@ -346,26 +384,6 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
       }
     }
   };
-  
-  const { data: contacts, isLoading, error } = useQuery<Contact[]>({
-    queryKey: ["/api/contacts", searchFilters],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      Object.entries(searchFilters).forEach(([key, value]) => {
-        if (value) params.append(key, value.trim());
-      });
-
-      const url = `/api/contacts${params.toString() ? `?${params}` : ''}`;
-      const res = await fetch(url);
-
-      if (!res.ok) {
-        const error = await res.text();
-        throw new Error(error);
-      }
-
-      return res.json();
-    }
-  });
 
   if (isLoading) {
     return (
@@ -699,26 +717,27 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                 value="family" 
                 className="flex-1 flex items-center justify-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
-                <Heart className="mr-1.5 h-3.5 w-3.5 text-[hsl(var(--chart-1))]" />
+                <Users className="h-3 w-3 mr-1" />
                 Family
               </TabsTrigger>
               <TabsTrigger 
                 value="friend" 
                 className="flex-1 flex items-center justify-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
-                <Users className="mr-1.5 h-3.5 w-3.5 text-[hsl(var(--chart-2))]" />
-                Friend
+                <Heart className="h-3 w-3 mr-1" />
+                Friends
               </TabsTrigger>
               <TabsTrigger 
-                value="professional" 
+                value="co-worker" 
                 className="flex-1 flex items-center justify-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
               >
-                <Briefcase className="mr-1.5 h-3.5 w-3.5 text-[hsl(var(--chart-3))]" />
-                Professional
+                <Briefcase className="h-3 w-3 mr-1" />
+                Work
               </TabsTrigger>
             </TabsList>
           </Tabs>
-
+          
+          {/* Relationship Level Tabs */}
           <Tabs value={relationLevelFilter} onValueChange={(value) => {
               // Toggle off if same value clicked again
               if (value === relationLevelFilter) {
@@ -727,7 +746,13 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                 setRelationLevelFilter(value);
               }
             }} className="w-full">
-            <TabsList className="grid grid-cols-4 gap-0.5 bg-transparent p-0 mb-1" style={{ maxWidth: 'calc(100% - 1px)' }}>
+            <TabsList className="grid grid-cols-5 gap-0.5 bg-transparent p-0" style={{ maxWidth: 'calc(100% - 1px)' }}>
+              <TabsTrigger 
+                value="all" 
+                className="flex-1 flex items-center justify-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
+              >
+                Any L
+              </TabsTrigger>
               <TabsTrigger 
                 value="1" 
                 className="flex-1 flex items-center justify-center h-7 px-2 py-0 text-xs rounded-md border bg-background/60 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/30"
@@ -755,320 +780,239 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
             </TabsList>
           </Tabs>
         </div>
-
-        {/* Sorting Controls */}
-        <div className="pt-1 pb-1">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-medium text-muted-foreground">Sort Mode:</span>
+        
+        {/* Sort Controls */}
+        <div className="flex flex-col md:flex-row gap-2 px-1">
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="flex items-center space-x-2">
+              <Button 
+                size="sm" 
+                variant={sortType === 'hierarchical' ? 'default' : 'outline'} 
+                className="h-7 px-2 py-0 text-xs"
+                onClick={() => setSortType('hierarchical')}
+              >
+                <Layers size="14" className="mr-1" />
+                Hierarchy
+              </Button>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Button 
+                size="sm" 
+                variant={sortType === 'proximity' ? 'default' : 'outline'} 
+                className="h-7 px-2 py-0 text-xs"
+                onClick={() => setSortType('proximity')}
+              >
+                <Navigation size="14" className="mr-1" />
+                Distance
+              </Button>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Button 
+                size="sm" 
+                variant={sortType === 'manual' ? 'default' : 'outline'} 
+                className="h-7 px-2 py-0 text-xs"
+                onClick={() => setSortType('manual')}
+              >
+                <ListFilter size="14" className="mr-1" />
+                Manual
+              </Button>
+              
+              {sortType === 'manual' ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0"
+                        onClick={() => {
+                          // Reset manual sort order
+                          setManualOrderIds([]);
+                        }}
+                      >
+                        <RefreshCw size="14" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Reset manual order</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <Switch
+                          checked={proximitySort}
+                          onCheckedChange={toggleProximitySort}
+                          disabled={sortType !== 'proximity'}
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Toggle proximity sorting</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
           </div>
           
-          <div className="flex flex-wrap gap-1 mb-1">
-            <Button
-              variant={sortType === 'hierarchical' ? "default" : "outline"}
-              size="sm"
-              className="h-7 px-3 py-0 text-xs flex items-center gap-1.5"
-              onClick={() => setSortType('hierarchical')}
-            >
-              <Layers className="h-3.5 w-3.5" /> 
-              Hierarchical
-            </Button>
-            
-            <Button
-              variant={sortType === 'proximity' ? "default" : "outline"}
-              size="sm"
-              className="h-7 px-3 py-0 text-xs flex items-center gap-1.5"
-              onClick={() => {
-                setSortType('proximity');
-                if (!userLocation) {
-                  getCurrentLocation();
-                }
-              }}
-            >
-              <Navigation className="h-3.5 w-3.5" />
-              Proximity
-              {isGettingLocation && <span className="ml-1 text-xs animate-pulse">Getting location...</span>}
-            </Button>
-            
-            <Button
-              variant={sortType === 'manual' ? "default" : "outline"}
-              size="sm"
-              className="h-7 px-3 py-0 text-xs flex items-center gap-1.5"
-              onClick={() => setSortType('manual')}
-            >
-              <GripVertical className="h-3.5 w-3.5" />
-              Manual
-            </Button>
-            
-            {/* Action buttons for manual mode, positioned next to sort buttons */}
-            {sortType === 'manual' && (
-              <div className="flex items-center gap-2 ml-auto">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="h-7 px-3 py-0 text-xs flex items-center gap-1.5" 
-                  onClick={() => setHiddenContactIds(new Set())}
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                  Show All
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="h-7 px-3 py-0 text-xs flex items-center gap-1.5" 
-                  onClick={() => {
-                    setSortType('hierarchical');
-                    setManualOrderIds([]);
-                    localStorage.removeItem('manual_order_ids');
-                  }}
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Reset
-                </Button>
-              </div>
-            )}
-          </div>
+          <div className="flex-1"></div>
           
-          {/* Show reorder instructions for category sorting in manual mode */}
+          {/* Additional controls based on sort type */}
           {sortType === 'manual' && (
-            <div className="bg-muted/30 py-1.5 px-2 mt-1 rounded-md border border-dashed flex items-center">
-              <GripVertical className="h-3.5 w-3.5 mr-1.5 text-muted-foreground flex-shrink-0" />
-              <p className="text-xs text-muted-foreground">
-                <span className="font-medium">Manual sorting mode:</span> Drag categories and contacts to reorder them
-              </p>
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="show-hidden" className="text-xs font-normal text-muted-foreground">
+                Show hidden:
+              </Label>
+              <Switch
+                id="show-hidden"
+                checked={false}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setHiddenContactIds(new Set());
+                  }
+                }}
+              />
             </div>
           )}
         </div>
       </div>
       
-      <ScrollArea className="h-[calc(100vh-14rem)] pr-4">
-        <div className="space-y-8 py-2">
-          {/* Add Birthday Reminder Component */}
-          <BirthdayReminder contacts={contacts} />
-          
-          <AnimatePresence mode="sync">
-            {personalHierarchy && (
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
+      {/* Optional Birthday Reminder Section */}
+      {contacts && contacts.length > 0 && (
+        <BirthdayReminder contacts={contacts} />
+      )}
+      
+      {/* Contact List */}
+      <div className="space-y-4">
+        {/* Personal Contact Card */}
+        {personalHierarchy && (
+          <div className="mb-4 max-w-full">
+            <div className="mb-2 px-1">
+              <Badge 
+                className="bg-primary/15 hover:bg-primary/20 text-primary px-2.5 py-1" 
+                variant="outline"
               >
-                <div className="relative">
-                  <div className="sticky top-0 pt-2 pb-4 bg-background/95 backdrop-blur-sm z-10">
-                    <h2 
-                      className="text-xs font-semibold uppercase tracking-wider"
-                      style={{ color: "hsl(var(--primary))" }}
-                    >
-                      Personal Card
-                    </h2>
-                  </div>
-                  <div
-                    ref={element => {
-                      contactRefs.current[personalHierarchy.id] = element;
-                    }}
-                    data-selected={selectedContactId === personalHierarchy.id ? 'true' : 'false'}
-                  >
-                    <ContactCard 
-                      contact={personalHierarchy}
-                      children={personalHierarchy.children}
-                      relationshipLevel={0}
-                      isSelected={selectedContactId === personalHierarchy.id}
-                    />
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {sortType === 'manual' ? (
-              <Reorder.Group 
-                axis="y" 
-                values={sortedCategories}
-                onReorder={(items) => {
-                  // Update category order
-                  const newOrder = items.map(cat => cat.title);
-                  setCategoryOrder(newOrder);
-                }}
-                className="space-y-8"
-              >
-                {categorizedContacts.map((category, index) => 
-                  category.contacts.length > 0 && (
-                    <Reorder.Item
-                      key={category.title}
-                      value={categories.find(c => c.title === category.title) || category}
-                      className="relative cursor-move"
-                    >
-                      <div className="relative">
-                        <div className="sticky top-0 pt-2 pb-4 bg-background/95 backdrop-blur-sm z-10 flex items-center">
-                          <div className="mr-2 opacity-40 hover:opacity-100 transition-opacity">
-                            <GripVertical className="w-4 h-4 text-muted-foreground" />
-                          </div>
-                          <h2 
-                            className="text-xs font-semibold uppercase tracking-wider"
-                            style={{ color: category.color }}
-                          >
-                            {category.title}
-                          </h2>
-                        </div>
-                        <Reorder.Group
-                          axis="y"
-                          values={category.contacts} 
-                          onReorder={(items) => {
-                            // Update category contacts
-                            const newCategory = {
-                              ...category,
-                              contacts: items
-                            };
-                            
-                            // Find category index
-                            const catIndex = categorizedContacts.findIndex(c => c.title === category.title);
-                            if (catIndex !== -1) {
-                              categorizedContacts[catIndex] = newCategory;
-                            }
-                            
-                            // Update manual order
-                            const allContactIds = [
-                              ...categorizedContacts.flatMap(cat => cat.contacts.map(c => c.id)),
-                              ...uncategorizedContacts.map(c => c.id)
-                            ];
-                            setManualOrderIds(allContactIds);
-                          }}
-                          className="space-y-6"
-                        >
-                          {category.contacts.map(contact => (
-                            <Reorder.Item 
-                              key={contact.id} 
-                              value={contact}
-                              className="relative pb-2 cursor-move"
-                            >
-                              <div className="absolute -left-4 top-1/2 transform -translate-y-1/2 opacity-40 hover:opacity-100 transition-opacity">
-                                <GripVertical className="w-4 h-4 text-muted-foreground" />
-                              </div>
-                              <div
-                                ref={element => {
-                                  contactRefs.current[contact.id] = element;
-                                }}
-                              >
-                                <ContactCard 
-                                  contact={contact}
-                                  children={contact.children}
-                                  manualSortMode={sortType === 'manual'}
-                                  relationshipLevel={getRelationshipLevel(contact)}
-                                  isSelected={selectedContactId === contact.id}
-                                />
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="absolute right-8 top-2 h-6 w-6 p-0 bg-background/80 hover:bg-background shadow-sm border border-border/50"
-                                onClick={() => {
-                                  // Add to hidden contacts
-                                  const newHidden = new Set(hiddenContactIds);
-                                  newHidden.add(contact.id);
-                                  setHiddenContactIds(newHidden);
-                                }}
-                              >
-                                <EyeOff className="h-3.5 w-3.5" />
-                              </Button>
-                            </Reorder.Item>
-                          ))}
-                        </Reorder.Group>
-                      </div>
-                    </Reorder.Item>
-                  )
-                )}
-              </Reorder.Group>
-            ) : (
-              <>
-                {categorizedContacts.map((category, index) => 
-                  category.contacts.length > 0 && (
-                    <motion.div 
-                      key={category.title}
-                      initial={{ opacity: 0, y: -20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
-                    >
-                      <div className="relative">
-                        <div className="sticky top-0 pt-2 pb-4 bg-background/95 backdrop-blur-sm z-10">
-                          <h2 
-                            className="text-xs font-semibold uppercase tracking-wider"
-                            style={{ color: category.color }}
-                          >
-                            {category.title}
-                          </h2>
-                        </div>
-                        <div className="space-y-6">
-                          {category.contacts.map(contact => (
-                            <motion.div
-                              key={contact.id}
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ duration: 0.3 }}
-                            >
-                              <div
-                                ref={element => {
-                                  contactRefs.current[contact.id] = element;
-                                }}
-                              >
-                                <ContactCard 
-                                  contact={contact}
-                                  children={contact.children}
-                                  manualSortMode={sortType === 'manual'}
-                                  relationshipLevel={getRelationshipLevel(contact)}
-                                  isSelected={selectedContactId === contact.id}
-                                />
-                              </div>
-                            </motion.div>
-                          ))}
-                        </div>
-                      </div>
-                    </motion.div>
-                  )
-                )}
-              </>
-            )}
-
-            {uncategorizedContacts.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-              >
-                <div className="relative">
-                  <div className="sticky top-0 pt-2 pb-4 bg-background/95 backdrop-blur-sm z-10">
-                    <h2 
-                      className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70"
-                    >
-                      Other Contacts
-                    </h2>
-                  </div>
-                  {sortType === 'manual' ? (
-                    <Reorder.Group
-                      axis="y"
-                      values={uncategorizedContacts} 
-                      onReorder={(items) => {
-                        // Update uncategorized contacts
-                        uncategorizedContacts.splice(0, uncategorizedContacts.length, ...items);
-                        
-                        // Update manual order
-                        const allContactIds = [
-                          ...categorizedContacts.flatMap(cat => cat.contacts.map(c => c.id)),
-                          ...uncategorizedContacts.map(c => c.id)
-                        ];
-                        setManualOrderIds(allContactIds);
+                <Network className="h-3 w-3 mr-1.5 text-primary" />
+                <span className="font-medium">My Card</span>
+              </Badge>
+            </div>
+            <div
+              ref={element => {
+                contactRefs.current[personalHierarchy.id] = element;
+              }}
+            >
+              <ContactCard 
+                contact={personalHierarchy} 
+                children={personalHierarchy.children}
+                level={0}
+                isSelected={selectedContactId === personalHierarchy.id}
+              />
+            </div>
+          </div>
+        )}
+        
+        {/* Categorized Contacts */}
+        {sortType === 'manual' ? (
+          // Manual sort mode (draggable categories)
+          <AnimatePresence>
+            {categoryOrder.map(categoryTitle => {
+              const category = categorizedContacts.find(c => c.title === categoryTitle);
+              if (!category) return null;
+              
+              // Skip empty categories unless in manual sort mode
+              if (category.contacts.length === 0) return null;
+              
+              return (
+                <motion.div
+                  key={category.title}
+                  className="mb-4"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ type: "spring", bounce: 0.2 }}
+                >
+                  <div className="flex items-center justify-between px-1 mb-2">
+                    <Badge 
+                      className={`px-2.5 py-1`}
+                      variant="outline"
+                      style={{ 
+                        backgroundColor: `${category.color}15`, 
+                        color: category.color, 
+                        borderColor: `${category.color}30`
                       }}
-                      className="space-y-6"
                     >
-                      {uncategorizedContacts.map(contact => (
-                        <Reorder.Item 
-                          key={contact.id} 
+                      <GripVertical className="h-3 w-3 mr-1.5 cursor-move" />
+                      <span className="font-medium">{category.title}</span>
+                      <span className="ml-1 opacity-60">({category.contacts.length})</span>
+                    </Badge>
+                    
+                    {/* Hide all in category button */}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-6 w-6 p-0" 
+                            onClick={() => {
+                              // Hide all contacts in this category
+                              const newHidden = new Set(hiddenContactIds);
+                              category.contacts.forEach(contact => {
+                                newHidden.add(contact.id);
+                              });
+                              setHiddenContactIds(newHidden);
+                            }}
+                          >
+                            <EyeOff className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Hide all in category</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  
+                  <div className="space-y-2 mb-2">
+                    <Reorder.Group 
+                      axis="y" 
+                      values={category.contacts} 
+                      onReorder={(newOrder) => {
+                        // Update the manual order IDs
+                        const newManualOrderIds = [...manualOrderIds];
+                        
+                        // First, remove any IDs from this category
+                        const categoryIds = new Set(category.contacts.map(c => c.id));
+                        const filteredOrderIds = newManualOrderIds.filter(id => !categoryIds.has(id));
+                        
+                        // Then, add the new order
+                        const newOrderIds = newOrder.map(c => c.id);
+                        
+                        // Find the position to insert - either after the last ID from a previous category
+                        // or at the beginning
+                        setManualOrderIds([...filteredOrderIds, ...newOrderIds]);
+                        
+                        // Update the category in the categorizedContacts array
+                        const updatedCategories = categorizedContacts.map(c => 
+                          c.title === category.title 
+                            ? { ...c, contacts: newOrder } 
+                            : c
+                        );
+                      }}
+                      className="space-y-2"
+                    >
+                      {category.contacts.map(contact => (
+                        <Reorder.Item
+                          key={contact.id}
                           value={contact}
-                          className="relative pb-2 cursor-move"
+                          className="cursor-grab active:cursor-grabbing"
                         >
-                          <div className="absolute -left-4 top-1/2 transform -translate-y-1/2 opacity-40 hover:opacity-100 transition-opacity">
-                            <GripVertical className="w-4 h-4 text-muted-foreground" />
-                          </div>
                           <div
                             ref={element => {
                               contactRefs.current[contact.id] = element;
@@ -1077,72 +1021,228 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                             <ContactCard 
                               contact={contact}
                               children={contact.children}
-                              manualSortMode={sortType === 'manual'}
-                              relationshipLevel={getRelationshipLevel(contact)}
-                                  isSelected={selectedContactId === contact.id}
+                              level={getRelationshipLevel(contact)}
+                              manualSortMode={true}
                               onChildrenReorder={(newChildren) => {
-                                // Update child contacts recursively
-                                const updatedContact = {...contact, children: newChildren};
-                                const updatedContacts = [...uncategorizedContacts];
-                                const index = updatedContacts.findIndex(c => c.id === contact.id);
-                                if (index >= 0) {
-                                  updatedContacts[index] = updatedContact;
-                                  // Update uncategorized contacts
-                                  uncategorizedContacts.splice(0, uncategorizedContacts.length, ...updatedContacts);
-                                }
+                                // Implement children reordering logic
+                                const newOrderIds = [...manualOrderIds];
+                                const childIds = new Set(contact.children?.map(c => c.id) || []);
+                                const filteredOrderIds = newOrderIds.filter(id => !childIds.has(id));
+                                const newChildOrderIds = newChildren.map(c => c.id);
+                                setManualOrderIds([...filteredOrderIds, ...newChildOrderIds]);
                               }}
+                              isSelected={selectedContactId === contact.id}
                             />
                           </div>
-                          {sortType === 'manual' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="absolute right-8 top-2 h-6 w-6 p-0 bg-background/80 hover:bg-background shadow-sm border border-border/50"
-                              onClick={() => {
-                                // Add to hidden contacts
-                                const newHidden = new Set(hiddenContactIds);
-                                newHidden.add(contact.id);
-                                setHiddenContactIds(newHidden);
-                              }}
-                            >
-                              <EyeOff className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
                         </Reorder.Item>
                       ))}
                     </Reorder.Group>
-                  ) : (
-                    <div className="space-y-6">
-                      {uncategorizedContacts.map(contact => (
-                        <motion.div
-                          key={contact.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.3 }}
+                  </div>
+                </motion.div>
+              );
+            })}
+            
+            {/* Uncategorized Contacts in Manual Mode */}
+            {uncategorizedContacts.length > 0 && (
+              <motion.div
+                className="mb-4"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ type: "spring", bounce: 0.2 }}
+              >
+                <div className="flex items-center justify-between px-1 mb-2">
+                  <Badge 
+                    className="px-2.5 py-1 bg-muted hover:bg-muted/80 border-border"
+                    variant="outline"
+                  >
+                    <GripVertical className="h-3 w-3 mr-1.5 cursor-move" />
+                    <span className="font-medium">Other</span>
+                    <span className="ml-1 opacity-60">({uncategorizedContacts.length})</span>
+                  </Badge>
+                  
+                  {/* Hide all in uncategorized button */}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 w-6 p-0" 
+                          onClick={() => {
+                            // Hide all uncategorized contacts
+                            const newHidden = new Set(hiddenContactIds);
+                            uncategorizedContacts.forEach(contact => {
+                              newHidden.add(contact.id);
+                            });
+                            setHiddenContactIds(newHidden);
+                          }}
                         >
-                          <div
-                            ref={element => {
-                              contactRefs.current[contact.id] = element;
+                          <EyeOff className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Hide all uncategorized</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                
+                <div className="space-y-2">
+                  <Reorder.Group 
+                    axis="y" 
+                    values={uncategorizedContacts} 
+                    onReorder={(newOrder) => {
+                      // Update the manual order IDs
+                      const newManualOrderIds = [...manualOrderIds];
+                      
+                      // First, remove any IDs from uncategorized
+                      const uncatIds = new Set(uncategorizedContacts.map(c => c.id));
+                      const filteredOrderIds = newManualOrderIds.filter(id => !uncatIds.has(id));
+                      
+                      // Then, add the new order
+                      const newOrderIds = newOrder.map(c => c.id);
+                      
+                      setManualOrderIds([...filteredOrderIds, ...newOrderIds]);
+                      
+                      // Update the uncategorized contacts
+                      uncategorizedContacts.splice(0, uncategorizedContacts.length, ...newOrder);
+                    }}
+                    className="space-y-2"
+                  >
+                    {uncategorizedContacts.map(contact => (
+                      <Reorder.Item
+                        key={contact.id}
+                        value={contact}
+                        className="cursor-grab active:cursor-grabbing"
+                      >
+                        <div
+                          ref={element => {
+                            contactRefs.current[contact.id] = element;
+                          }}
+                        >
+                          <ContactCard 
+                            contact={contact}
+                            children={contact.children}
+                            level={getRelationshipLevel(contact)}
+                            manualSortMode={true}
+                            onChildrenReorder={(newChildren) => {
+                              // Implement children reordering logic
+                              const newOrderIds = [...manualOrderIds];
+                              const childIds = new Set(contact.children?.map(c => c.id) || []);
+                              const filteredOrderIds = newOrderIds.filter(id => !childIds.has(id));
+                              const newChildOrderIds = newChildren.map(c => c.id);
+                              setManualOrderIds([...filteredOrderIds, ...newChildOrderIds]);
                             }}
-                          >
-                            <ContactCard 
-                              contact={contact}
-                              children={contact.children}
-                              manualSortMode={sortType === 'manual'}
-                              relationshipLevel={getRelationshipLevel(contact)}
-                                  isSelected={selectedContactId === contact.id}
-                            />
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
+                            isSelected={selectedContactId === contact.id}
+                          />
+                        </div>
+                      </Reorder.Item>
+                    ))}
+                  </Reorder.Group>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
-      </ScrollArea>
+        ) : (
+          // Non-draggable categories (hierarchical or proximity sort)
+          <AnimatePresence>
+            {categoryOrder.map(categoryTitle => {
+              const category = categorizedContacts.find(c => c.title === categoryTitle);
+              if (!category) return null;
+              
+              // Skip empty categories
+              if (category.contacts.length === 0) return null;
+              
+              return (
+                <motion.div
+                  key={category.title}
+                  className="mb-4"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ type: "spring", bounce: 0.2 }}
+                >
+                  <div className="flex items-center justify-between px-1 mb-2">
+                    <Badge 
+                      className={`px-2.5 py-1`}
+                      variant="outline"
+                      style={{ 
+                        backgroundColor: `${category.color}15`, 
+                        color: category.color, 
+                        borderColor: `${category.color}30`
+                      }}
+                    >
+                      <span className="font-medium">{category.title}</span>
+                      <span className="ml-1 opacity-60">({category.contacts.length})</span>
+                    </Badge>
+                  </div>
+                  
+                  <div className="space-y-2 mb-2">
+                    {category.contacts.map(contact => (
+                      <div 
+                        key={contact.id} 
+                        className="transition-all duration-200"
+                        ref={element => {
+                          contactRefs.current[contact.id] = element;
+                        }}
+                      >
+                        <ContactCard 
+                          contact={contact}
+                          children={contact.children}
+                          level={getRelationshipLevel(contact)}
+                          relationshipLevel={getRelationshipLevel(contact)}
+                          isSelected={selectedContactId === contact.id}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              );
+            })}
+            
+            {/* Uncategorized Contacts */}
+            {uncategorizedContacts.length > 0 && (
+              <motion.div
+                className="mb-4"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ type: "spring", bounce: 0.2 }}
+              >
+                <div className="flex items-center justify-between px-1 mb-2">
+                  <Badge 
+                    className="px-2.5 py-1 bg-muted hover:bg-muted/80 border-border"
+                    variant="outline"
+                  >
+                    <span className="font-medium">Other</span>
+                    <span className="ml-1 opacity-60">({uncategorizedContacts.length})</span>
+                  </Badge>
+                </div>
+                
+                <div className="space-y-2">
+                  {uncategorizedContacts.map(contact => (
+                    <div
+                      key={contact.id}
+                      ref={element => {
+                        contactRefs.current[contact.id] = element;
+                      }}
+                    >
+                      <ContactCard 
+                        contact={contact}
+                        children={contact.children}
+                        level={getRelationshipLevel(contact)}
+                        relationshipLevel={getRelationshipLevel(contact)}
+                        isSelected={selectedContactId === contact.id}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
+      </div>
     </div>
   );
 }
