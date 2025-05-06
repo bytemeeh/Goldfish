@@ -449,7 +449,8 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
         d3AlphaMin={0.05}
         cooldownTicks={100}
         nodeRelSize={6}
-        d3Force={(d3: any) => {
+        //@ts-ignore - d3Force property exists but has type issues
+      d3Force={(d3: any) => {
           const simulation = d3;
           
           simulation.forceCenter(dimensions.width / 2, dimensions.height / 2)
