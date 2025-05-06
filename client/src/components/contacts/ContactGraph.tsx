@@ -114,7 +114,11 @@ interface GraphData {
   links: GraphLink[];
 }
 
-export function ContactGraph() {
+interface ContactGraphProps {
+  onContactSelect?: (contactId: number) => void;
+}
+
+export function ContactGraph({ onContactSelect }: ContactGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<any>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -252,8 +256,13 @@ export function ContactGraph() {
     const contact = contacts.find(c => c.id === node.id);
     if (contact) {
       setSelectedContact(prev => prev?.id === contact.id ? null : contact);
+      
+      // If onContactSelect prop is provided, call it to navigate to the contact card in list view
+      if (onContactSelect && node) {
+        onContactSelect(node.id);
+      }
     }
-  }, [contacts]);
+  }, [contacts, onContactSelect]);
 
   if (!contacts) {
     return (

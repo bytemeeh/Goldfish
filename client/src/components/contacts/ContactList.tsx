@@ -32,6 +32,7 @@ import { BirthdayReminder } from "./BirthdayReminder";
 
 interface ContactListProps {
   searchFilters: SearchFilters;
+  selectedContactId?: number | null;
 }
 
 type ContactCategory = {

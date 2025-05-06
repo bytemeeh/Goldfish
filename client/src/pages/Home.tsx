@@ -26,6 +26,7 @@ export function Home() {
   const [isAddingContact, setIsAddingContact] = useState(false);
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     // Try to get the saved view mode from local storage
     const savedViewMode = localStorage.getItem(STORAGE_KEY_VIEW_MODE);
@@ -34,6 +35,12 @@ export function Home() {
       ? savedViewMode as ViewMode 
       : "list";
   });
+  
+  // We will use this to handle node clicks in the graph
+  const handleContactSelect = (contactId: number) => {
+    setSelectedContactId(contactId);
+    setViewMode("list"); // Switch to list view to see the selected contact
+  };
 
   const { data: contacts } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
@@ -123,9 +130,9 @@ export function Home() {
 
           <div className="mt-6">
             {viewMode === "list" ? (
-              <ContactList searchFilters={filters} />
+              <ContactList searchFilters={filters} selectedContactId={selectedContactId} />
             ) : (
-              <ContactGraph />
+              <ContactGraph onContactSelect={handleContactSelect} />
             )}
           </div>
 
