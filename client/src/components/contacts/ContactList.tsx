@@ -835,11 +835,17 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                       Personal Card
                     </h2>
                   </div>
-                  <ContactCard 
-                    contact={personalHierarchy}
-                    children={personalHierarchy.children}
-                    relationshipLevel={0}
-                  />
+                  <div
+                    ref={element => {
+                      contactRefs.current[personalHierarchy.id] = element;
+                    }}
+                  >
+                    <ContactCard 
+                      contact={personalHierarchy}
+                      children={personalHierarchy.children}
+                      relationshipLevel={0}
+                    />
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -908,12 +914,18 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                               <div className="absolute -left-4 top-1/2 transform -translate-y-1/2 opacity-40 hover:opacity-100 transition-opacity">
                                 <GripVertical className="w-4 h-4 text-muted-foreground" />
                               </div>
-                              <ContactCard 
-                                contact={contact}
-                                children={contact.children}
-                                manualSortMode={sortType === 'manual'}
-                                relationshipLevel={getRelationshipLevel(contact)}
-                              />
+                              <div
+                                ref={element => {
+                                  contactRefs.current[contact.id] = element;
+                                }}
+                              >
+                                <ContactCard 
+                                  contact={contact}
+                                  children={contact.children}
+                                  manualSortMode={sortType === 'manual'}
+                                  relationshipLevel={getRelationshipLevel(contact)}
+                                />
+                              </div>
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -963,12 +975,18 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ duration: 0.3 }}
                             >
-                              <ContactCard 
-                                contact={contact}
-                                children={contact.children}
-                                manualSortMode={sortType === 'manual'}
-                                relationshipLevel={getRelationshipLevel(contact)}
-                              />
+                              <div
+                                ref={element => {
+                                  contactRefs.current[contact.id] = element;
+                                }}
+                              >
+                                <ContactCard 
+                                  contact={contact}
+                                  children={contact.children}
+                                  manualSortMode={sortType === 'manual'}
+                                  relationshipLevel={getRelationshipLevel(contact)}
+                                />
+                              </div>
                             </motion.div>
                           ))}
                         </div>
