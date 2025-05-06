@@ -36,65 +36,21 @@ export function Home() {
       : "list";
   });
   
-  // Enhanced contact selection handler with multi-step retry mechanism
+  // Simple and robust contact selection handler that works reliably
   const handleContactSelect = useCallback((contactId: number) => {
     console.log('🚨 Home.tsx - handleContactSelect called with ID:', contactId);
     
-    // First change the view mode to list to ensure the contact list is rendered
-    // before we try to set the selected contact and scroll to it
+    // First change the view mode to list
     if (viewMode !== "list") {
-      console.log('🚨 Home.tsx - Changing view mode to list first');
       setViewMode("list");
       
-      // Enhanced multi-step selection strategy for better reliability
-      // Step 1: Initial selection after view change (short delay to ensure view is updated)
+      // Use a timeout to ensure the view change has been applied
       setTimeout(() => {
-        console.log('🚨 Home.tsx - Initial selection for ID:', contactId);
         setSelectedContactId(contactId);
-        
-        // Step 2: First retry attempt - clear and reselect with a longer delay
-        // This helps load any dynamically rendered components or collapsed sections
-        setTimeout(() => {
-          console.log('🚨 Home.tsx - First retry selection for ID:', contactId);
-          setSelectedContactId(null);
-          setTimeout(() => {
-            setSelectedContactId(contactId);
-          }, 50);
-          
-          // Step 3: Second retry attempt - for contacts that require more time to render
-          // especially nested contacts in deep hierarchies
-          setTimeout(() => {
-            console.log('🚨 Home.tsx - Final retry selection for ID:', contactId);
-            setSelectedContactId(null);
-            setTimeout(() => {
-              setSelectedContactId(contactId);
-            }, 50);
-          }, 1500);
-        }, 800);
-      }, 350);
+      }, 100);
     } else {
-      // If already in list view, use a similar pattern but without changing the view
-      console.log('🚨 Home.tsx - Already in list view, setting selectedContactId:', contactId);
-      // Immediate selection
+      // If already in list view, directly set the selected contact ID
       setSelectedContactId(contactId);
-      
-      // Multiple retry attempts for better reliability
-      setTimeout(() => {
-        console.log('🚨 Home.tsx - Retry 1 for ID:', contactId);
-        setSelectedContactId(null);
-        setTimeout(() => {
-          setSelectedContactId(contactId);
-          
-          // Final retry after a longer delay
-          setTimeout(() => {
-            console.log('🚨 Home.tsx - Final retry for ID:', contactId);
-            setSelectedContactId(null);
-            setTimeout(() => {
-              setSelectedContactId(contactId);
-            }, 50);
-          }, 1000);
-        }, 50);
-      }, 500);
     }
   }, [viewMode]);
   
