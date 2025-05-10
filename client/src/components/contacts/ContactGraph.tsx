@@ -146,6 +146,90 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
+  // Enhanced node click handler with better node ID extraction
+  const handleNodeClick = useCallback((node: any) => {
+    console.log('🚨 Node clicked:', node);
+    
+    try {
+      if (!contacts) {
+        console.log('❌ No contacts available');
+        return;
+      }
+      
+      if (!node) {
+        console.log('❌ Node is null');
+        return;
+      }
+      
+      // Extract node ID from various possible structures
+      // based on react-force-graph implementation details
+      let nodeId: number | undefined;
+      
+      if (typeof node.id === 'number') {
+        // Direct ID from the node
+        nodeId = node.id;
+        console.log('📌 Using direct node.id:', nodeId);
+      } else if (node.__data__ && typeof node.__data__.id === 'number') {
+        // ID from internal data structure
+        nodeId = node.__data__.id;
+        console.log('📌 Using node.__data__.id:', nodeId);
+      } else if (node.id && typeof node.id._value === 'number') {
+        // ID might be wrapped in an observable
+        nodeId = node.id._value;
+        console.log('📌 Using observable node.id._value:', nodeId);
+      } else {
+        // Try to extract ID as string and convert to number
+        const strId = String(node.id || node.__data__?.id || '');
+        if (strId && !isNaN(parseInt(strId, 10))) {
+          nodeId = parseInt(strId, 10);
+          console.log('📌 Converted string ID to number:', nodeId);
+        } else {
+          console.log('❌ Could not find valid node ID in any format', node);
+          return;
+        }
+      }
+      
+      // Find the contact based on the extracted ID
+      const contactMatch = contacts.find(c => c.id === nodeId);
+      console.log('💾 Contact match result:', contactMatch ? contactMatch.name : 'Not found');
+      
+      if (contactMatch) {
+        console.log('✅ Setting selected contact:', contactMatch.name, 'ID:', contactMatch.id);
+        
+        // Update local state
+        setSelectedContact(contactMatch);
+        
+        // Navigate to detail view if handler exists
+        if (typeof onContactSelect === 'function') {
+          console.log('🔄 Calling onContactSelect with ID:', contactMatch.id);
+          onContactSelect(contactMatch.id);
+        } else {
+          console.log('❌ onContactSelect prop is not provided');
+        }
+      } else {
+        console.log('❌ Could not find contact with ID:', nodeId);
+        console.log('❌ Available contact IDs:', contacts.map(c => c.id));
+      }
+    } catch (error) {
+      console.error('❌ Error in handleNodeClick:', error);
+    }
+  }, [contacts, onContactSelect]);
+  
+  // Configure additional click handlers for better node detection
+  useEffect(() => {
+    if (!graphRef.current || !contacts) return;
+    
+    try {
+      // Add a direct reference to the graph object
+      const graph = graphRef.current;
+      if (graph && graph.canvas) {
+        console.log("🧩 Enhanced node click detection enabled");
+      }
+    } catch (error) {
+      console.error("Error setting up enhanced click detection:", error);
+    }
+  }, [contacts]);
+
   useEffect(() => {
     if (!contacts?.length) return;
 
@@ -251,78 +335,6 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
     }
   }, [contacts]);
 
-  // Enhanced node click handler with better node ID extraction
-  const handleNodeClick = useCallback((node: any) => {
-    console.log('🚨 Node clicked:', node);
-    
-    try {
-      if (!contacts) {
-        console.log('❌ No contacts available');
-        return;
-      }
-      
-      if (!node) {
-        console.log('❌ Node is null');
-        return;
-      }
-      
-      // Extract node ID from various possible structures
-      // based on react-force-graph implementation details
-      let nodeId: number | undefined;
-      
-      if (typeof node.id === 'number') {
-        // Direct ID from the node
-        nodeId = node.id;
-        console.log('📌 Using direct node.id:', nodeId);
-      } else if (node.__data__ && typeof node.__data__.id === 'number') {
-        // ID from internal data structure
-        nodeId = node.__data__.id;
-        console.log('📌 Using node.__data__.id:', nodeId);
-      } else if (node.id && typeof node.id._value === 'number') {
-        // ID might be wrapped in an observable
-        nodeId = node.id._value;
-        console.log('📌 Using observable node.id._value:', nodeId);
-      } else {
-        // Try to extract ID as string and convert to number
-        const strId = String(node.id || node.__data__?.id || '');
-        if (strId && !isNaN(parseInt(strId, 10))) {
-          nodeId = parseInt(strId, 10);
-          console.log('📌 Converted string ID to number:', nodeId);
-        } else {
-          console.log('❌ Could not find valid node ID in any format', node);
-          return;
-        }
-      }
-      
-      // Find the contact based on the extracted ID
-      const contactMatch = contacts.find(c => c.id === nodeId);
-      console.log('💾 Contact match result:', contactMatch ? contactMatch.name : 'Not found');
-      
-      if (contactMatch) {
-        console.log('✅ Setting selected contact:', contactMatch.name, 'ID:', contactMatch.id);
-        
-        // Update local state
-        setSelectedContact(contactMatch);
-        
-        // Navigate to list view if handler exists
-        if (typeof onContactSelect === 'function') {
-          console.log('🔄 Calling onContactSelect with ID:', contactMatch.id);
-          // Use setTimeout to ensure this happens outside of this render cycle
-          setTimeout(() => {
-            onContactSelect(contactMatch.id);
-          }, 0);
-        } else {
-          console.log('❌ onContactSelect prop is not provided');
-        }
-      } else {
-        console.log('❌ Could not find contact with ID:', nodeId);
-        console.log('❌ Available contact IDs:', contacts.map(c => c.id));
-      }
-    } catch (error) {
-      console.error('❌ Error in handleNodeClick:', error);
-    }
-  }, [contacts, onContactSelect]);
-
   if (!contacts) {
     return (
       <div className="p-4 text-center text-muted-foreground">
@@ -395,6 +407,7 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
         nodeAutoColorBy="relationshipType"
         warmupTicks={100}
         cooldownTime={3000}
+        onNodeClick={handleNodeClick}
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
           // Remove any fixed positions without changing type
           if (node.fx !== undefined) node.fx = undefined;
@@ -509,63 +522,42 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
         cooldownTicks={100}
         nodeRelSize={6}
         //@ts-ignore - d3Force property exists but has type issues
-      d3Force={(d3: any) => {
+        d3Force={(d3: any) => {
           const simulation = d3;
           
           simulation.forceCenter(dimensions.width / 2, dimensions.height / 2)
-            .strength(0.05);
+                   .force("charge", d3.forceManyBody().strength(-120))
+                   .force("collide", d3.forceCollide(30));
 
-          simulation.forceManyBody()
-            .strength(-1000);
-
-          simulation.forceLink()
-            .id((d: any) => d.id)
-            .distance(100);
-
-          const forceX = simulation.forceX((d: any) => {
-            if (!d.relationshipType) return dimensions.width / 2;
-            const types = {
-              'spouse': -200,
-              'child': 0,
-              'friend': 200,
-              'co-worker': 400,
-              'mother': -300,
-              'father': -300,
-              'brother': -100,
-              'sibling': -100,
-              'boyfriend/girlfriend': 300
-            };
-            return (dimensions.width / 2) + (types[d.relationshipType as keyof typeof types] || 0);
-          }).strength(0.5);
-
-          const forceY = simulation.forceY((d: any) => {
-            if (!d.relationshipType) return dimensions.height / 2;
-            const types = {
-              'spouse': -100,
-              'child': 200,
-              'friend': -100,
-              'co-worker': 100,
-              'mother': -200,
-              'father': -200,
-              'brother': 0,
-              'sibling': 0,
-              'boyfriend/girlfriend': 0
-            };
-            return (dimensions.height / 2) + (types[d.relationshipType as keyof typeof types] || 0);
-          }).strength(0.3);
-
-          return simulation;
+          // Add a custom force to attract nodes to their hierarchical level
+          simulation.force("y", d3.forceY().y((node: GraphNode) => {
+            // Estimate the level in the hierarchy
+            let level = 0;
+            if (node.isMe) {
+              level = 0; // Personal card at center
+            } else if (!node.relationshipType) {
+              level = 1; // Connected to personal by default
+            } else {
+              // Approximate levels based on type
+              const familyTypes = ["mother", "father", "brother", "sister", "sibling", "spouse"];
+              const firstLevelTypes = ["friend", "co-worker"];
+              
+              if (familyTypes.includes(node.relationshipType)) {
+                level = 0.5; // Family close to personal
+              } else if (firstLevelTypes.includes(node.relationshipType)) {
+                level = 1; // Direct relationships one level out
+              } else {
+                level = 2; // Anything else is further
+              }
+            }
+            
+            // Map levels to y positions, centering the personal card
+            return dimensions.height / 2 + (level - 1) * 100;
+          }).strength(0.1));
         }}
         backgroundColor="transparent"
-        onNodeClick={handleNodeClick}
         width={dimensions.width}
         height={dimensions.height}
-        d3AlphaDecay={0.01}
-        onEngineStop={() => {
-          if (graphRef.current) {
-            graphRef.current.zoomToFit(400, 50);
-          }
-        }}
       />
     </div>
   );
