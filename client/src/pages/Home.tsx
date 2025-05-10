@@ -11,7 +11,6 @@ import {
 import { ContactForm } from "@/components/contacts/ContactForm";
 import { ContactList } from "@/components/contacts/ContactList";
 import { ContactGraph } from "@/components/contacts/ContactGraph";
-import { SimpleContactGraph } from "@/components/contacts/SimpleContactGraph";
 import { DetailedContactView } from "@/components/contacts/DetailedContactView";
 import { SearchBar, type SearchFilters } from "@/components/contacts/SearchBar";
 import { ShareDialog } from "@/components/contacts/ShareDialog";
@@ -109,13 +108,7 @@ export function Home() {
       case "graph":
       default:
         return (
-          <>
-            {/* Use SimpleContactGraph when working with SimpleContactGraph */}
-            <SimpleContactGraph onContactSelect={handleContactSelect} />
-            
-            {/* Original graph is commented out until we fix it */}
-            {/* <ContactGraph onContactSelect={handleContactSelect} /> */}
-          </>
+          <ContactGraph onContactSelect={handleContactSelect} />
         );
     }
   };

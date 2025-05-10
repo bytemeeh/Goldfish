@@ -8,7 +8,6 @@ import { format } from "date-fns";
 import ForceGraph2D from "react-force-graph-2d";
 import type { NodeObject, LinkObject } from "react-force-graph-2d";
 import { motion, AnimatePresence } from "framer-motion";
-import * as d3 from "d3";
 
 // Color palette configuration for Apple-style design
 const colorPalette = {
@@ -147,7 +146,7 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Simple node click handler
+  // Enhanced node click handler with better node ID extraction
   const handleNodeClick = useCallback((node: any) => {
     console.log('🚨 Node clicked:', node);
     
@@ -162,30 +161,81 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
         return;
       }
       
-      // Get node ID
-      const nodeId = node.id;
+      // Extract node ID from various possible structures
+      // based on react-force-graph implementation details
+      let nodeId: number | undefined;
       
-      if (typeof nodeId !== 'number') {
-        console.log('❌ Invalid node ID:', nodeId);
-        return;
+      if (typeof node.id === 'number') {
+        // Direct ID from the node
+        nodeId = node.id;
+        console.log('📌 Using direct node.id:', nodeId);
+      } else if (node.__data__ && typeof node.__data__.id === 'number') {
+        // ID from internal data structure
+        nodeId = node.__data__.id;
+        console.log('📌 Using node.__data__.id:', nodeId);
+      } else if (node.id && typeof node.id._value === 'number') {
+        // ID might be wrapped in an observable
+        nodeId = node.id._value;
+        console.log('📌 Using observable node.id._value:', nodeId);
+      } else {
+        // Try to extract ID as string and convert to number
+        const strId = String(node.id || node.__data__?.id || '');
+        if (strId && !isNaN(parseInt(strId, 10))) {
+          nodeId = parseInt(strId, 10);
+          console.log('📌 Converted string ID to number:', nodeId);
+        } else {
+          console.log('❌ Could not find valid node ID in any format', node);
+          return;
+        }
       }
       
-      // Find the contact based on the node ID
+      // Find the contact based on the extracted ID
       const contactMatch = contacts.find(c => c.id === nodeId);
+      console.log('💾 Contact match result:', contactMatch ? contactMatch.name : 'Not found');
       
       if (contactMatch) {
+        console.log('✅ Setting selected contact:', contactMatch.name, 'ID:', contactMatch.id);
+        
         // Update local state
         setSelectedContact(contactMatch);
         
         // Navigate to detail view if handler exists
         if (typeof onContactSelect === 'function') {
+          console.log('🔄 Calling onContactSelect with ID:', contactMatch.id);
           onContactSelect(contactMatch.id);
+        } else {
+          console.log('❌ onContactSelect prop is not provided');
         }
+      } else {
+        console.log('❌ Could not find contact with ID:', nodeId);
+        console.log('❌ Available contact IDs:', contacts.map(c => c.id));
       }
     } catch (error) {
       console.error('❌ Error in handleNodeClick:', error);
     }
   }, [contacts, onContactSelect]);
+  
+  // Configure additional click handlers for better node detection
+  useEffect(() => {
+    if (!graphRef.current || !contacts) return;
+    
+    try {
+      // Add a direct reference to the graph object
+      const graph = graphRef.current;
+      if (graph) {
+        console.log("📍 Working node IDs: 7 (Angelina), 9 (Christoph), 12 (test)");
+        console.log("📊 All node IDs:", contacts.map(c => `${c.id} (${c.name})`).join(", "));
+        
+        // Basic logging of nodes for debugging
+        if (graph.graphData && graph.graphData().nodes) {
+          const forceNodes = graph.graphData().nodes;
+          console.log("🧩 Graph contains", forceNodes.length, "nodes");
+        }
+      }
+    } catch (error) {
+      console.error("Error setting up graph diagnostics:", error);
+    }
+  }, [contacts]);
 
   useEffect(() => {
     if (!contacts?.length) return;
@@ -236,14 +286,18 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
           isMe: contact.isMe,
           color: style.color,
           gradientColors: style.gradientColors,
-          // Random initial positions
           x: Math.random() * 100,
           y: Math.random() * 100,
+          vx: 0,
+          vy: 0,
+          // Use undefined instead of null for TypeScript compatibility
+          fx: undefined,
+          fy: undefined
         };
       });
 
-      // Create links based on parent/child relationships
       const links: GraphLink[] = [];
+
       contacts.forEach(contact => {
         if (!contact.parentId) return;
 
@@ -259,7 +313,6 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
         }
       });
 
-      // Connect "me" node to top-level contacts
       if (meContact) {
         contacts.forEach(contact => {
           if (contact.id === meContact.id || contact.parentId) return;
@@ -279,7 +332,6 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
 
       setGraphData({ nodes, links });
 
-      // Auto-adjust zoom to fit all nodes
       if (graphRef.current) {
         setTimeout(() => {
           graphRef.current?.zoomToFit(400, 50);
@@ -328,6 +380,32 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
         )}
       </AnimatePresence>
 
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <Card className="absolute top-4 right-4 p-4 bg-card/95 backdrop-blur-sm z-10 border-primary/10">
+          <h3 className="font-semibold mb-3 text-sm">Relationship Types</h3>
+          <div className="space-y-2.5">
+            {[
+              { label: "Family", color: colorPalette.family.primary },
+              { label: "Friends", color: colorPalette.friends.primary },
+              { label: "Professional", color: colorPalette.professional.primary },
+              { label: "Personal Card", color: colorPalette.personal.primary }
+            ].map(({ label, color }) => (
+              <div key={label} className="flex items-center gap-2">
+                <div 
+                  className="w-3 h-3 rounded-full" 
+                  style={{ backgroundColor: hslToRgb(color) }}
+                />
+                <span className="text-sm text-muted-foreground">{label}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </motion.div>
+
       {/* @ts-ignore ForceGraph2D has typings issues but works as expected */}
       <ForceGraph2D
         ref={graphRef}
@@ -337,20 +415,20 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
         warmupTicks={100}
         cooldownTime={3000}
         onNodeClick={handleNodeClick}
-        nodeRelSize={6}
-        linkColor={() => "rgba(0, 0, 0, 0.08)"}
-        linkWidth={1.5}
-        linkDirectionalParticles={3}
-        linkDirectionalParticleWidth={1.5}
-        linkDirectionalParticleSpeed={0.002}
-        linkDirectionalParticleColor={() => "rgba(0, 0, 0, 0.15)"}
-        d3VelocityDecay={0.4}
-        d3AlphaMin={0.05}
-        cooldownTicks={100}
+        nodePointerAreaPaint={(node: GraphNode, color, ctx) => {
+          // Make clickable area larger than visible node
+          const nodeSize = node.isMe ? 20 : 15; // Significantly larger than the visual size
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.001)'; // Almost invisible
+          ctx.beginPath();
+          ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI);
+          ctx.fill();
+        }}
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
-          // Draw node
+          // Remove any fixed positions without changing type
+          if (node.fx !== undefined) node.fx = undefined;
+          if (node.fy !== undefined) node.fy = undefined;
           const label = node.name;
-          const fontSize = Math.max(12/globalScale, 6); // Reduced font size
+          const fontSize = Math.max(12/globalScale, 6); //Reduced font size
           const nodeSize = node.isMe ? 8 : 6;
 
           ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
@@ -361,64 +439,115 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
           node.gradientColors.forEach((color, index) => {
             const radius = nodeSize * (2 - index * 0.5);
             const gradient = ctx.createRadialGradient(
-              node.x!, node.y!, 0,
+              node.x!, node.y!, radius * 0.3,
               node.x!, node.y!, radius
             );
-            gradient.addColorStop(0, color);
-            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-            
+            // Better opacity management - brighter when hovered or selected
+            const isSelectedNode = selectedContact && selectedContact.id === node.id;
+            const baseOpacity = isSelectedNode ? 0.08 : 0.02;
+            gradient.addColorStop(0, color.replace(/[\d.]+\)$/, `${baseOpacity})`));
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
             ctx.fillStyle = gradient;
             ctx.beginPath();
             ctx.arc(node.x!, node.y!, radius, 0, 2 * Math.PI);
             ctx.fill();
           });
-          
-          // Draw node center
+
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.02)';
+          ctx.shadowBlur = 2;
+          ctx.shadowOffsetY = 1;
+
+          // Node base
           ctx.fillStyle = node.color;
           ctx.beginPath();
-          ctx.arc(node.x!, node.y!, nodeSize * 0.5, 0, 2 * Math.PI);
+          ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI);
           ctx.fill();
-          
-          // Calculate label position below node
-          const labelY = node.y! + nodeSize * 1.5;
-          
-          // Draw a subtle background for the text to improve readability
-          const textWidth = ctx.measureText(label).width;
-          const bgHeight = fontSize * 1.2;
-          const bgWidth = textWidth + 8;
-          const bgX = node.x! - bgWidth/2;
-          const bgY = labelY - fontSize/2;
-          
-          // Semi-transparent background for text
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-          ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
-          
-          // Draw text
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-          ctx.fillText(label, node.x!, labelY);
-          
-          // Draw first initials in the center for larger nodes (especially "me" node)
-          if (node.isMe || globalScale < 1.2) {
-            const initials = label
-              .split(' ')
-              .map(part => part[0])
-              .slice(0, 2)
-              .join('');
+
+          ctx.shadowColor = 'transparent';
+          const highlightGradient = ctx.createLinearGradient(
+            node.x!, node.y! - nodeSize,
+            node.x!, node.y! + nodeSize
+          );
+          highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+          highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+          ctx.fillStyle = highlightGradient;
+          ctx.beginPath();
+          ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI);
+          ctx.fill();
+
+          // Determine if this node should show its label
+          const isSelectedNode = selectedContact && selectedContact.id === node.id;
+          // Safely check for hover state
+          let isGraphNodeHovered = false;
+          try {
+            isGraphNodeHovered = !!(graphRef.current?.state && 
+                               graphRef.current.state.hoverNode && 
+                               graphRef.current.state.hoverNode.id === node.id);
+          } catch (e) {
+            // Ignore any errors from accessing hoverNode
+          }
+          const shouldShowFullLabel = isSelectedNode || isGraphNodeHovered || globalScale > 1.5;
+
+          if (shouldShowFullLabel) {
+            // Full label display with background for highlighted nodes
+            const textWidth = ctx.measureText(label).width;
+            const bgHeight = fontSize * 1.8;
+            const bgWidth = textWidth + 24;
+            const bgY = node.y! + nodeSize * 3;
+
+            // Enhanced background with animation effect
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.roundRect(node.x! - bgWidth/2, bgY - bgHeight/2, bgWidth, bgHeight, 6);
+            ctx.fill();
+
+            // Text with better contrast
+            ctx.shadowColor = 'transparent';
+            ctx.fillStyle = "hsl(240, 10%, 15%)";
+            ctx.font = `500 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.fillText(label, node.x!, bgY);
+          } else if (label.length > 0) {
+            // Simplified mini-label for non-highlighted nodes (just initials)
+            const initials = label.split(' ').map(word => word[0]).join('').substring(0, 2).toUpperCase();
+            const miniLabelY = node.y! + nodeSize * 2;
             
-            const miniLabelY = node.y!;
-            ctx.fillStyle = 'white';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+            ctx.shadowBlur = 4;
+            ctx.beginPath();
+            ctx.arc(node.x!, miniLabelY, fontSize/2 + 2, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.shadowColor = 'transparent';
+            ctx.fillStyle = "hsl(240, 10%, 25%)";
             ctx.font = `500 ${fontSize * 0.8}px -apple-system, sans-serif`;
             ctx.fillText(initials, node.x!, miniLabelY + fontSize * 0.25);
           }
         }}
+        linkColor={() => "rgba(0, 0, 0, 0.08)"}
+        linkWidth={1.5}
+        linkDirectionalParticles={3}
+        linkDirectionalParticleWidth={1.5}
+        linkDirectionalParticleSpeed={0.002}
+        linkDirectionalParticleColor={() => "rgba(0, 0, 0, 0.15)"}
+        enableNodeDrag={false} // Disable node dragging to avoid conflicts with clicks
+        d3VelocityDecay={0.4}
+        d3AlphaMin={0.05}
+        cooldownTicks={100}
+        nodeRelSize={6}
         //@ts-ignore - d3Force property exists but has type issues
         d3Force={(d3: any) => {
           const simulation = d3;
           
           simulation.forceCenter(dimensions.width / 2, dimensions.height / 2)
-                   .force("charge", d3.forceManyBody().strength(-120))
-                   .force("collide", d3.forceCollide(30));
+                   .force("charge", d3.forceManyBody().strength(-150)) // Stronger repulsion
+                   .force("collide", d3.forceCollide(50)); // Larger collision distance
 
+          // Add a custom force to spread out nodes more evenly
+          simulation.force("x", d3.forceX(dimensions.width / 2).strength(0.05)); // Gentle force toward center-x
+          
           // Add a custom force to attract nodes to their hierarchical level
           simulation.force("y", d3.forceY().y((node: GraphNode) => {
             // Estimate the level in the hierarchy
@@ -428,22 +557,23 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
             } else if (!node.relationshipType) {
               level = 1; // Connected to personal by default
             } else {
-              // Approximate levels based on type
+              // Approximate levels based on type with more spreading
               const familyTypes = ["mother", "father", "brother", "sister", "sibling", "spouse"];
               const firstLevelTypes = ["friend", "co-worker"];
               
               if (familyTypes.includes(node.relationshipType)) {
-                level = 0.5; // Family close to personal
+                // Add slight random offset for better spreading
+                level = 0.5 + (Math.random() * 0.3 - 0.15); // Family close to personal with jitter
               } else if (firstLevelTypes.includes(node.relationshipType)) {
-                level = 1; // Direct relationships one level out
+                level = 1 + (Math.random() * 0.4 - 0.2); // Direct with jitter
               } else {
-                level = 2; // Anything else is further
+                level = 2 + (Math.random() * 0.5 - 0.25); // Anything else with jitter
               }
             }
             
-            // Map levels to y positions, centering the personal card
-            return dimensions.height / 2 + (level - 1) * 100;
-          }).strength(0.1));
+            // Map levels to y positions with more space between levels
+            return dimensions.height / 2 + (level - 1) * 120;
+          }).strength(0.15)); // Slightly stronger y-force
         }}
         backgroundColor="transparent"
         width={dimensions.width}
