@@ -223,12 +223,73 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
       // Add a direct reference to the graph object
       const graph = graphRef.current;
       if (graph && graph.canvas) {
+        // Create a function that finds the closest node to a click
+        const getNodeAtPosition = (x: number, y: number) => {
+          if (!graph || !graph.graphData().nodes) return null;
+          
+          // Get all nodes
+          const nodes = graph.graphData().nodes as GraphNode[];
+          
+          // Convert screen coordinates to graph coordinates
+          const { x: graphX, y: graphY } = graph.screen2GraphCoords(x, y);
+          
+          // Find the closest node
+          let closestNode = null;
+          let closestDistance = Infinity;
+          
+          for (const node of nodes) {
+            if (node.x === undefined || node.y === undefined) continue;
+            
+            const distance = Math.sqrt(
+              Math.pow(node.x - graphX, 2) + 
+              Math.pow(node.y - graphY, 2)
+            );
+            
+            // Use a more generous click radius
+            const nodeSize = node.isMe ? 10 : 8;
+            const clickRadius = nodeSize * 3; 
+            
+            if (distance < clickRadius && distance < closestDistance) {
+              closestNode = node;
+              closestDistance = distance;
+            }
+          }
+          
+          return closestNode;
+        };
+        
+        // Add a direct click handler to the canvas
+        const canvasClickHandler = (event: MouseEvent) => {
+          // Get the coordinates relative to the canvas
+          const rect = graph.canvas().getBoundingClientRect();
+          const x = event.clientX - rect.left;
+          const y = event.clientY - rect.top;
+          
+          // Find the closest node
+          const node = getNodeAtPosition(x, y);
+          
+          if (node) {
+            // Handle the click
+            handleNodeClick(node);
+          }
+        };
+        
+        // Add event listener
+        graph.canvas().addEventListener('click', canvasClickHandler);
+        
         console.log("🧩 Enhanced node click detection enabled");
+        
+        // Cleanup
+        return () => {
+          if (graph && graph.canvas()) {
+            graph.canvas().removeEventListener('click', canvasClickHandler);
+          }
+        };
       }
     } catch (error) {
       console.error("Error setting up enhanced click detection:", error);
     }
-  }, [contacts]);
+  }, [contacts, handleNodeClick]);
 
   useEffect(() => {
     if (!contacts?.length) return;
@@ -408,6 +469,14 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
         warmupTicks={100}
         cooldownTime={3000}
         onNodeClick={handleNodeClick}
+        nodePointerAreaPaint={(node: GraphNode, color, ctx) => {
+          // Make clickable area larger than visible node
+          const nodeSize = node.isMe ? 15 : 12; // Much larger than the visual size
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.001)'; // Almost invisible
+          ctx.beginPath();
+          ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI);
+          ctx.fill();
+        }}
         nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
           // Remove any fixed positions without changing type
           if (node.fx !== undefined) node.fx = undefined;
@@ -517,6 +586,7 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
         linkDirectionalParticleWidth={1.5}
         linkDirectionalParticleSpeed={0.002}
         linkDirectionalParticleColor={() => "rgba(0, 0, 0, 0.15)"}
+        enableNodeDrag={false} // Disable node dragging to avoid conflicts with clicks
         d3VelocityDecay={0.4}
         d3AlphaMin={0.05}
         cooldownTicks={100}
