@@ -151,13 +151,28 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
     console.log('🚨 Node clicked:', node);
     
     try {
-      if (!contacts) {
+      if (!contacts?.length) {
         console.log('❌ No contacts available');
         return;
       }
       
       if (!node) {
         console.log('❌ Node is null');
+        return;
+      }
+
+      // Get node data from either direct node or __data__ property
+      const nodeData = node.__data__ || node;
+      
+      // Extract ID using type-safe approach
+      const nodeId = typeof nodeData.id === 'number' ? 
+        nodeData.id : 
+        typeof nodeData.id === 'string' ? 
+          parseInt(nodeData.id, 10) : 
+          nodeData.id?._value;
+
+      if (typeof nodeId !== 'number' || isNaN(nodeId)) {
+        console.log('❌ Invalid node ID:', nodeId);
         return;
       }
       
@@ -234,7 +249,19 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
     if (!contacts?.length) return;
 
     try {
-      const meContact = contacts.find(c => c.isMe);
+      // Normalize contact data to ensure consistent structure
+      const normalizedContacts = contacts.map(contact => ({
+        ...contact,
+        relationshipType: contact.relationshipType || 'unknown',
+        parentId: contact.parentId ?? null,
+        id: Number(contact.id)
+      }));
+
+      // Log available contacts for debugging
+      console.log('📊 Available contacts:', normalizedContacts.map(c => 
+        `${c.id} (${c.name})`).join(', '));
+
+      const meContact = normalizedContacts.find(c => c.isMe);
 
       const getNodeStyle = (contact: Contact): { color: string, gradientColors: string[] } => {
         let palette;
@@ -273,10 +300,10 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
       const nodes: GraphNode[] = contacts.map(contact => {
         const style = getNodeStyle(contact);
         return {
-          id: contact.id,
+          id: Number(contact.id), // Ensure ID is always a number
           name: contact.name,
-          relationshipType: contact.relationshipType,
-          isMe: contact.isMe,
+          relationshipType: contact.relationshipType || 'unknown',
+          isMe: Boolean(contact.isMe),
           color: style.color,
           gradientColors: style.gradientColors,
           x: Math.random() * 100,
