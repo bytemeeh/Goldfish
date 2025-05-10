@@ -217,114 +217,25 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
   
   // Configure additional click handlers for better node detection
   useEffect(() => {
-    if (!graphRef.current || !contacts || !containerRef.current) return;
+    if (!graphRef.current || !contacts) return;
     
     try {
-      // Add a direct reference to the graph object and container
+      // Add a direct reference to the graph object
       const graph = graphRef.current;
-      const container = containerRef.current;
-      
-      if (graph && graph.canvas) {
+      if (graph) {
         console.log("📍 Working node IDs: 7 (Angelina), 9 (Christoph), 12 (test)");
         console.log("📊 All node IDs:", contacts.map(c => `${c.id} (${c.name})`).join(", "));
         
-        // More aggressive node finding function
-        const getNodeAtPosition = (x: number, y: number) => {
-          if (!graph || !graph.graphData().nodes) return null;
-          
-          // Get all nodes
-          const nodes = graph.graphData().nodes as GraphNode[];
-          
-          // Convert screen coordinates to graph coordinates
-          const { x: graphX, y: graphY } = graph.screen2GraphCoords(x, y);
-          
-          // Find the closest node with an EXTREMELY generous click radius
-          let closestNode = null;
-          let closestDistance = Infinity;
-          
-          // Log all node positions for debugging
-          console.log("🎯 Click at graph coordinates:", graphX, graphY);
-          
-          for (const node of nodes) {
-            if (node.x === undefined || node.y === undefined) continue;
-            
-            const distance = Math.sqrt(
-              Math.pow(node.x - graphX, 2) + 
-              Math.pow(node.y - graphY, 2)
-            );
-            
-            // MUCH larger click radius (30x the node size)
-            const nodeSize = node.isMe ? 10 : 8;
-            const clickRadius = nodeSize * 10; // Super generous!
-            
-            // Log distance for debugging
-            console.log(`📏 Node ${node.id} (${node.name}) - distance: ${distance.toFixed(2)}, threshold: ${clickRadius.toFixed(2)}`);
-            
-            if (distance < clickRadius && distance < closestDistance) {
-              closestNode = node;
-              closestDistance = distance;
-            }
-          }
-          
-          if (closestNode) {
-            console.log(`✅ Found closest node: ${closestNode.id} (${closestNode.name}) at distance ${closestDistance.toFixed(2)}`);
-          } else {
-            console.log("❌ No node found near click position");
-          }
-          
-          return closestNode;
-        };
-        
-        // Add a direct click handler to the CONTAINER (not just canvas)
-        // This ensures we catch all clicks in the graph area
-        const containerClickHandler = (event: MouseEvent) => {
-          // Prevent default behavior
-          event.preventDefault();
-          event.stopPropagation();
-          
-          console.log("🖱️ Container clicked!");
-          
-          // Get the coordinates relative to the canvas
-          const rect = graph.canvas().getBoundingClientRect();
-          const x = event.clientX - rect.left;
-          const y = event.clientY - rect.top;
-          
-          console.log("🖱️ Click coordinates:", x, y);
-          
-          // Find the closest node
-          const node = getNodeAtPosition(x, y);
-          
-          if (node) {
-            // Handle the click with some delay to ensure proper handling
-            console.log("🎯 Clicking node:", node.id, node.name);
-            setTimeout(() => {
-              handleNodeClick(node);
-            }, 10);
-          }
-        };
-        
-        // Intercept all clicks in the container
-        container.addEventListener('click', containerClickHandler, true);
-        
-        console.log("🧩 Enhanced node click detection enabled on container");
-        
-        // Double-check the force graph
-        const forceNodes = graph.graphData().nodes;
-        forceNodes.forEach((node: any) => {
-          console.log(`Node ${node.id} (${node.name}): Position (${node.x?.toFixed(2) || 'undef'}, ${node.y?.toFixed(2) || 'undef'})`);
-        });
-        
-        // Cleanup
-        return () => {
-          if (container) {
-            container.removeEventListener('click', containerClickHandler, true);
-          }
-        };
+        // Basic logging of nodes for debugging
+        if (graph.graphData && graph.graphData().nodes) {
+          const forceNodes = graph.graphData().nodes;
+          console.log("🧩 Graph contains", forceNodes.length, "nodes");
+        }
       }
     } catch (error) {
-      console.error("Error setting up enhanced click detection:", error);
+      console.error("Error setting up graph diagnostics:", error);
     }
-  }, [contacts, handleNodeClick]);
+  }, [contacts]);
 
   useEffect(() => {
     if (!contacts?.length) return;
@@ -506,7 +417,7 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
         onNodeClick={handleNodeClick}
         nodePointerAreaPaint={(node: GraphNode, color, ctx) => {
           // Make clickable area larger than visible node
-          const nodeSize = node.isMe ? 15 : 12; // Much larger than the visual size
+          const nodeSize = node.isMe ? 20 : 15; // Significantly larger than the visual size
           ctx.fillStyle = 'rgba(0, 0, 0, 0.001)'; // Almost invisible
           ctx.beginPath();
           ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI);
