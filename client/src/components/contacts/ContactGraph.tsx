@@ -217,13 +217,18 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
   
   // Configure additional click handlers for better node detection
   useEffect(() => {
-    if (!graphRef.current || !contacts) return;
+    if (!graphRef.current || !contacts || !containerRef.current) return;
     
     try {
-      // Add a direct reference to the graph object
+      // Add a direct reference to the graph object and container
       const graph = graphRef.current;
+      const container = containerRef.current;
+      
       if (graph && graph.canvas) {
-        // Create a function that finds the closest node to a click
+        console.log("📍 Working node IDs: 7 (Angelina), 9 (Christoph), 12 (test)");
+        console.log("📊 All node IDs:", contacts.map(c => `${c.id} (${c.name})`).join(", "));
+        
+        // More aggressive node finding function
         const getNodeAtPosition = (x: number, y: number) => {
           if (!graph || !graph.graphData().nodes) return null;
           
@@ -233,9 +238,12 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
           // Convert screen coordinates to graph coordinates
           const { x: graphX, y: graphY } = graph.screen2GraphCoords(x, y);
           
-          // Find the closest node
+          // Find the closest node with an EXTREMELY generous click radius
           let closestNode = null;
           let closestDistance = Infinity;
+          
+          // Log all node positions for debugging
+          console.log("🎯 Click at graph coordinates:", graphX, graphY);
           
           for (const node of nodes) {
             if (node.x === undefined || node.y === undefined) continue;
@@ -245,9 +253,12 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
               Math.pow(node.y - graphY, 2)
             );
             
-            // Use a more generous click radius
+            // MUCH larger click radius (30x the node size)
             const nodeSize = node.isMe ? 10 : 8;
-            const clickRadius = nodeSize * 3; 
+            const clickRadius = nodeSize * 10; // Super generous!
+            
+            // Log distance for debugging
+            console.log(`📏 Node ${node.id} (${node.name}) - distance: ${distance.toFixed(2)}, threshold: ${clickRadius.toFixed(2)}`);
             
             if (distance < clickRadius && distance < closestDistance) {
               closestNode = node;
@@ -255,34 +266,58 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
             }
           }
           
+          if (closestNode) {
+            console.log(`✅ Found closest node: ${closestNode.id} (${closestNode.name}) at distance ${closestDistance.toFixed(2)}`);
+          } else {
+            console.log("❌ No node found near click position");
+          }
+          
           return closestNode;
         };
         
-        // Add a direct click handler to the canvas
-        const canvasClickHandler = (event: MouseEvent) => {
+        // Add a direct click handler to the CONTAINER (not just canvas)
+        // This ensures we catch all clicks in the graph area
+        const containerClickHandler = (event: MouseEvent) => {
+          // Prevent default behavior
+          event.preventDefault();
+          event.stopPropagation();
+          
+          console.log("🖱️ Container clicked!");
+          
           // Get the coordinates relative to the canvas
           const rect = graph.canvas().getBoundingClientRect();
           const x = event.clientX - rect.left;
           const y = event.clientY - rect.top;
           
+          console.log("🖱️ Click coordinates:", x, y);
+          
           // Find the closest node
           const node = getNodeAtPosition(x, y);
           
           if (node) {
-            // Handle the click
-            handleNodeClick(node);
+            // Handle the click with some delay to ensure proper handling
+            console.log("🎯 Clicking node:", node.id, node.name);
+            setTimeout(() => {
+              handleNodeClick(node);
+            }, 10);
           }
         };
         
-        // Add event listener
-        graph.canvas().addEventListener('click', canvasClickHandler);
+        // Intercept all clicks in the container
+        container.addEventListener('click', containerClickHandler, true);
         
-        console.log("🧩 Enhanced node click detection enabled");
+        console.log("🧩 Enhanced node click detection enabled on container");
+        
+        // Double-check the force graph
+        const forceNodes = graph.graphData().nodes;
+        forceNodes.forEach((node: any) => {
+          console.log(`Node ${node.id} (${node.name}): Position (${node.x?.toFixed(2) || 'undef'}, ${node.y?.toFixed(2) || 'undef'})`);
+        });
         
         // Cleanup
         return () => {
-          if (graph && graph.canvas()) {
-            graph.canvas().removeEventListener('click', canvasClickHandler);
+          if (container) {
+            container.removeEventListener('click', containerClickHandler, true);
           }
         };
       }
@@ -596,9 +631,12 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
           const simulation = d3;
           
           simulation.forceCenter(dimensions.width / 2, dimensions.height / 2)
-                   .force("charge", d3.forceManyBody().strength(-120))
-                   .force("collide", d3.forceCollide(30));
+                   .force("charge", d3.forceManyBody().strength(-150)) // Stronger repulsion
+                   .force("collide", d3.forceCollide(50)); // Larger collision distance
 
+          // Add a custom force to spread out nodes more evenly
+          simulation.force("x", d3.forceX(dimensions.width / 2).strength(0.05)); // Gentle force toward center-x
+          
           // Add a custom force to attract nodes to their hierarchical level
           simulation.force("y", d3.forceY().y((node: GraphNode) => {
             // Estimate the level in the hierarchy
@@ -608,22 +646,23 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
             } else if (!node.relationshipType) {
               level = 1; // Connected to personal by default
             } else {
-              // Approximate levels based on type
+              // Approximate levels based on type with more spreading
               const familyTypes = ["mother", "father", "brother", "sister", "sibling", "spouse"];
               const firstLevelTypes = ["friend", "co-worker"];
               
               if (familyTypes.includes(node.relationshipType)) {
-                level = 0.5; // Family close to personal
+                // Add slight random offset for better spreading
+                level = 0.5 + (Math.random() * 0.3 - 0.15); // Family close to personal with jitter
               } else if (firstLevelTypes.includes(node.relationshipType)) {
-                level = 1; // Direct relationships one level out
+                level = 1 + (Math.random() * 0.4 - 0.2); // Direct with jitter
               } else {
-                level = 2; // Anything else is further
+                level = 2 + (Math.random() * 0.5 - 0.25); // Anything else with jitter
               }
             }
             
-            // Map levels to y positions, centering the personal card
-            return dimensions.height / 2 + (level - 1) * 100;
-          }).strength(0.1));
+            // Map levels to y positions with more space between levels
+            return dimensions.height / 2 + (level - 1) * 120;
+          }).strength(0.15)); // Slightly stronger y-force
         }}
         backgroundColor="transparent"
         width={dimensions.width}
