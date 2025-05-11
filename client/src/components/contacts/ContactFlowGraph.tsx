@@ -333,7 +333,7 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
           const y = -300; // Increased vertical spacing from "me" contact
           processContact(contact, 0, x, y);
           
-          // Add edge from "me" to this top-level contact
+          // Add edge from "me" to this top-level contact (now solid lines)
           newEdges.push({
             id: `${meContact.id}-${contact.id}`,
             source: meContact.id.toString(),
@@ -341,8 +341,7 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
             animated: false,
             style: {
               stroke: getRelationshipColor(contact.relationshipType),
-              strokeWidth: 1.5,
-              strokeDasharray: '5,5' // Dashed line for indirect connections
+              strokeWidth: 2 // Solid line with consistent width
             }
           });
         });
@@ -404,6 +403,8 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
           type: 'smoothstep', // Use curved edges for better routing
           style: {
             strokeWidth: 2,
+            // Ensure no dashed lines anywhere
+            strokeDasharray: undefined 
           },
         }}
         minZoom={0.2} // Allow zooming out further to see the entire network
