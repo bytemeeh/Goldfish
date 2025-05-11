@@ -23,32 +23,32 @@ import { memo } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 
-// Color theme for different relationship types
+// Color theme for different relationship types with higher contrast
 const relationshipNodeColors = {
   family: {
-    bg: 'bg-[#00ACE6]/10',
+    bg: 'bg-[#00ACE6]/25',
     border: 'border-[#00ACE6]',
     text: 'text-[#00ACE6]'
   },
   friends: {
-    bg: 'bg-[#FF0080]/10',
+    bg: 'bg-[#FF0080]/25',
     border: 'border-[#FF0080]',
     text: 'text-[#FF0080]'
   },
   professional: {
-    bg: 'bg-[#FF8000]/10',
+    bg: 'bg-[#FF8000]/25',
     border: 'border-[#FF8000]',
     text: 'text-[#FF8000]'
   },
   personal: {
-    bg: 'bg-[#00B359]/10',
+    bg: 'bg-[#00B359]/25',
     border: 'border-[#00B359]',
     text: 'text-[#00B359]'
   },
   default: {
-    bg: 'bg-muted/50',
-    border: 'border-muted-foreground/50',
-    text: 'text-muted-foreground'
+    bg: 'bg-gray-200',
+    border: 'border-gray-400',
+    text: 'text-gray-700'
   }
 };
 
@@ -96,17 +96,17 @@ export const ContactNode = memo(({ data }: NodeProps<ContactNodeData>) => {
   return (
     <div
       className={`
-        group relative w-36 rounded-md border-2 p-2 transition-all duration-200
-        ${nodeStyle.bg} ${nodeStyle.border}
-        ${isSelected ? 'border-primary shadow-lg scale-110' : 'shadow hover:shadow-md'}
+        group relative w-36 rounded-md border-2 p-3 transition-all duration-200
+        ${nodeStyle.bg} ${nodeStyle.border} bg-white
+        ${isSelected ? 'border-primary shadow-lg border-[3px] scale-110' : 'shadow-md hover:shadow-lg'}
         cursor-pointer hover:scale-105
       `}
     >
       <Handle type="target" position={Position.Top} className="!bg-muted-foreground" />
       
       <div className="flex flex-col items-center gap-1">
-        <Avatar className={`w-12 h-12 ${isSelected ? 'ring-2 ring-primary' : ''}`}>
-          <AvatarFallback className={`text-sm ${nodeStyle.text}`}>
+        <Avatar className={`w-12 h-12 ${isSelected ? 'ring-2 ring-primary' : 'ring-1 ring-gray-300'} shadow-sm`}>
+          <AvatarFallback className={`text-base font-semibold ${nodeStyle.text} bg-white`}>
             {getInitials(contact.name)}
           </AvatarFallback>
         </Avatar>
@@ -276,10 +276,11 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
         const maxDepths = children.map(child => calculateMaxDepth(child.id));
         const maxDepth = Math.max(...maxDepths, 1);
         
-        // Increase spacing based on the depth of the subtree
-        const baseSpacing = 300;
-        const depthFactor = 100; // Additional spacing per depth level
-        const spacing = baseSpacing + (maxDepth * depthFactor);
+        // Increase spacing based on the depth of the subtree and number of children
+        const baseSpacing = 400; // Increased base spacing
+        const depthFactor = 150; // Increased additional spacing per depth level
+        const childFactor = 30; // Additional spacing per child in this level
+        const spacing = baseSpacing + (maxDepth * depthFactor) + (childCount * childFactor);
         
         const totalWidth = (childCount - 1) * spacing;
         const startX = x - totalWidth / 2;
@@ -324,13 +325,29 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
       );
       
       if (otherTopLevelContacts.length > 0) {
-        const spacing = 350; // Increased spacing for top-level contacts
-        const totalWidth = (otherTopLevelContacts.length - 1) * spacing;
+        // More spacing for top-level contacts based on how many children they have
+        const topLevelSpacing = 500; // Much larger spacing for top-level contacts
+        const offsetPerChild = 50; // Additional offset per child
+        
+        // Sort top-level contacts to spread them more efficiently
+        const sortedTopLevelContacts = [...otherTopLevelContacts].sort((a, b) => {
+          const aChildCount = contacts.filter(c => c.parentId === a.id).length;
+          const bChildCount = contacts.filter(c => c.parentId === b.id).length;
+          // Put contacts with more children to the outer edges
+          return aChildCount - bChildCount;
+        });
+        
+        const totalWidth = (sortedTopLevelContacts.length - 1) * topLevelSpacing;
         const startX = -totalWidth / 2;
         
-        otherTopLevelContacts.forEach((contact, index) => {
-          const x = startX + index * spacing;
-          const y = -300; // Increased vertical spacing from "me" contact
+        sortedTopLevelContacts.forEach((contact, index) => {
+          // Calculate how many children this contact has for additional spacing
+          const childCount = contacts.filter(c => c.parentId === contact.id).length;
+          const additionalOffset = childCount * offsetPerChild;
+          
+          // Position contacts with wider offsets and staggered vertical positions
+          const x = startX + (index * topLevelSpacing) + additionalOffset;
+          const y = -350 - (index % 2 * 100); // Staggered vertical spacing from "me" contact
           processContact(contact, 0, x, y);
           
           // Add edge from "me" to this top-level contact (now solid lines)
@@ -349,13 +366,31 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
     } else {
       // No "me" contact, process all top-level contacts
       const topLevelContacts = contacts.filter(c => !c.parentId);
-      const spacing = 350; // Increased spacing
-      const totalWidth = (topLevelContacts.length - 1) * spacing;
+      
+      // Use same enhanced spacing as for other top-level contacts
+      const topLevelSpacing = 500; // Larger spacing
+      const offsetPerChild = 50; // Additional offset per child
+      const totalWidth = (topLevelContacts.length - 1) * topLevelSpacing;
       const startX = -totalWidth / 2;
       
-      topLevelContacts.forEach((contact, index) => {
-        const x = startX + index * spacing;
-        processContact(contact, 0, x, 0);
+      // Sort top-level contacts to spread them more efficiently
+      const sortedTopLevelContacts = [...topLevelContacts].sort((a, b) => {
+        const aChildCount = contacts.filter(c => c.parentId === a.id).length;
+        const bChildCount = contacts.filter(c => c.parentId === b.id).length;
+        // Put contacts with more children to the outer edges
+        return aChildCount - bChildCount;
+      });
+      
+      sortedTopLevelContacts.forEach((contact, index) => {
+        // Calculate how many children this contact has for additional spacing
+        const childCount = contacts.filter(c => c.parentId === contact.id).length;
+        const additionalOffset = childCount * offsetPerChild;
+        
+        // Position with staggered layout
+        const x = startX + (index * topLevelSpacing) + additionalOffset;
+        const y = (index % 2) * -100; // Alternating vertical positions
+        
+        processContact(contact, 0, x, y);
       });
     }
     
@@ -411,8 +446,18 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
         maxZoom={1.5} // Limit max zoom to prevent excessive detail
       >
         <Controls />
-        <MiniMap zoomable pannable />
-        <Background color="#aaa" gap={16} />
+        <MiniMap 
+          zoomable 
+          pannable
+          nodeStrokeWidth={3}
+          nodeBorderRadius={2}
+        />
+        <Background
+          color="#999"
+          gap={20}
+          size={1}
+          variant="dots"
+        />
       </ReactFlow>
     </div>
   );
