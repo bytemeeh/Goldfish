@@ -121,7 +121,7 @@ export const ContactNode = memo(({ data }: NodeProps<ContactNodeData>) => {
               variant="outline" 
               className={`mt-1 text-xs ${nodeStyle.text} ${nodeStyle.border}`}
             >
-              {contact.relationshipType.charAt(0).toUpperCase() + contact.relationshipType.slice(1).replace('-', ' ')}
+              {contact.relationshipType}
             </Badge>
           )}
           
@@ -265,21 +265,13 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
       const childCount = children.length;
       
       if (childCount > 0) {
-        // Use a wider spacing to prevent overlapping
-        const spacing = 280; // Increased from 150
-        const verticalSpacing = 180; // Increased from 120
-        
-        // Calculate total width needed for all children
+        const spacing = 150;
         const totalWidth = (childCount - 1) * spacing;
         const startX = x - totalWidth / 2;
         
         children.forEach((child, index) => {
-          // Stagger the nodes slightly vertically for better visibility
-          // Odd children will be positioned slightly higher than even children
-          const verticalOffset = index % 2 === 0 ? 0 : 30;
           const childX = startX + index * spacing;
-          const childY = y + verticalSpacing - verticalOffset;
-          
+          const childY = y + 120; // Vertical spacing
           processContact(child, level + 1, childX, childY, contact.id);
         });
       }
@@ -295,15 +287,13 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
       );
       
       if (otherTopLevelContacts.length > 0) {
-        const spacing = 350; // Increased from 250 for more horizontal space
+        const spacing = 250;
         const totalWidth = (otherTopLevelContacts.length - 1) * spacing;
         const startX = -totalWidth / 2;
         
         otherTopLevelContacts.forEach((contact, index) => {
-          // Stagger the top level nodes horizontally slightly
-          const horizontalOffset = index % 2 === 0 ? -20 : 20;
-          const x = startX + index * spacing + horizontalOffset;
-          const y = -220; // Position above the "me" contact (increased from -200)
+          const x = startX + index * spacing;
+          const y = -200; // Position above the "me" contact
           processContact(contact, 0, x, y);
           
           // Add edge from "me" to this top-level contact
@@ -323,19 +313,13 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
     } else {
       // No "me" contact, process all top-level contacts
       const topLevelContacts = contacts.filter(c => !c.parentId);
-      const spacing = 320; // Increased from 200 for more spacing
+      const spacing = 200;
       const totalWidth = (topLevelContacts.length - 1) * spacing;
       const startX = -totalWidth / 2;
       
       topLevelContacts.forEach((contact, index) => {
-        // Apply horizontal and vertical staggering for better distribution
-        const horizontalOffset = index % 2 === 0 ? -30 : 30;
-        const verticalOffset = index % 3 === 0 ? -40 : (index % 3 === 1 ? 0 : 40);
-        
-        const x = startX + index * spacing + horizontalOffset;
-        const y = verticalOffset;
-        
-        processContact(contact, 0, x, y);
+        const x = startX + index * spacing;
+        processContact(contact, 0, x, 0);
       });
     }
     
@@ -379,35 +363,9 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
         nodeTypes={nodeTypes}
         proOptions={{ hideAttribution: true }}
         fitView
-        fitViewOptions={{
-          padding: 0.5, // Add more padding around the graph
-          maxZoom: 1.5  // Limit maximum zoom to prevent nodes from becoming too large
-        }}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }} // Start with a slightly zoomed out view
       >
         <Controls />
-        <MiniMap 
-          zoomable 
-          pannable
-          nodeColor={(node) => {
-            // Color nodes in the minimap based on their type
-            const data = node.data as ContactNodeData;
-            if (data.contact.isMe) return '#00B359';
-            
-            const type = data.contact.relationshipType;
-            if (!type) return '#6B7280';
-            
-            if (['mother', 'father', 'brother', 'sibling', 'child', 'spouse'].includes(type)) {
-              return '#00ACE6';
-            } else if (['friend', 'boyfriend/girlfriend'].includes(type)) {
-              return '#FF0080';
-            } else if (['co-worker'].includes(type)) {
-              return '#FF8000';
-            }
-            
-            return '#6B7280';
-          }}
-        />
+        <MiniMap zoomable pannable />
         <Background color="#aaa" gap={16} />
       </ReactFlow>
     </div>
