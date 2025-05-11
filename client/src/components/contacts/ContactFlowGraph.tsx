@@ -98,7 +98,8 @@ export const ContactNode = memo(({ data }: NodeProps<ContactNodeData>) => {
       className={`
         group relative w-40 rounded-md border-2 p-2 transition-all duration-200
         ${nodeStyle.bg} ${nodeStyle.border}
-        ${isSelected ? 'border-primary shadow-lg scale-110' : 'shadow'}
+        ${isSelected ? 'border-primary shadow-lg scale-110' : 'shadow hover:shadow-md'}
+        cursor-pointer hover:scale-105
       `}
     >
       <Handle type="target" position={Position.Top} className="!bg-muted-foreground" />
@@ -136,6 +137,10 @@ export const ContactNode = memo(({ data }: NodeProps<ContactNodeData>) => {
           <div className="text-xs text-muted-foreground mt-1">
             Level {level}
           </div>
+          
+          <div className="text-xs text-primary font-medium mt-2">
+            Click to view
+          </div>
         </div>
       </div>
       
@@ -164,15 +169,15 @@ const relationshipColors = {
   default: '#6B7280'       // Default gray
 };
 
+// Memoize node types to avoid React warning
+const nodeTypes = {
+  contactNode: ContactNode as any,
+};
+
 export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
-
-  // Define the node types mapping - make sure it points to our local component
-  const nodeTypes = {
-    contactNode: ContactNode as any,
-  };
 
   // Get contacts data
   const { data: contacts } = useQuery<Contact[]>({
@@ -323,7 +328,10 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
   }, [contacts, selectedContactId]);
 
   // Handle node click
-  const onNodeClick: NodeMouseHandler = useCallback((_, node) => {
+  const onNodeClick: NodeMouseHandler = useCallback((event, node) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
     const contactId = parseInt(node.id);
     
     if (!isNaN(contactId)) {
