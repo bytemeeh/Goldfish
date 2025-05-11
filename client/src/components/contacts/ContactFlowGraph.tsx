@@ -137,10 +137,6 @@ export const ContactNode = memo(({ data }: NodeProps<ContactNodeData>) => {
           <div className="text-xs text-muted-foreground mt-1">
             Level {level}
           </div>
-          
-          <div className="text-xs text-primary font-medium mt-2">
-            Click to view
-          </div>
         </div>
       </div>
       
@@ -265,13 +261,13 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
       const childCount = children.length;
       
       if (childCount > 0) {
-        const spacing = 150;
+        const spacing = 250; // Increased horizontal spacing between nodes
         const totalWidth = (childCount - 1) * spacing;
         const startX = x - totalWidth / 2;
         
         children.forEach((child, index) => {
           const childX = startX + index * spacing;
-          const childY = y + 120; // Vertical spacing
+          const childY = y + 200; // Increased vertical spacing
           processContact(child, level + 1, childX, childY, contact.id);
         });
       }
@@ -287,13 +283,13 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
       );
       
       if (otherTopLevelContacts.length > 0) {
-        const spacing = 250;
+        const spacing = 350; // Increased spacing for top-level contacts
         const totalWidth = (otherTopLevelContacts.length - 1) * spacing;
         const startX = -totalWidth / 2;
         
         otherTopLevelContacts.forEach((contact, index) => {
           const x = startX + index * spacing;
-          const y = -200; // Position above the "me" contact
+          const y = -300; // Increased vertical spacing from "me" contact
           processContact(contact, 0, x, y);
           
           // Add edge from "me" to this top-level contact
@@ -313,7 +309,7 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
     } else {
       // No "me" contact, process all top-level contacts
       const topLevelContacts = contacts.filter(c => !c.parentId);
-      const spacing = 200;
+      const spacing = 350; // Increased spacing
       const totalWidth = (topLevelContacts.length - 1) * spacing;
       const startX = -totalWidth / 2;
       
