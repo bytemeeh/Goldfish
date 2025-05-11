@@ -96,7 +96,7 @@ export const ContactNode = memo(({ data }: NodeProps<ContactNodeData>) => {
   return (
     <div
       className={`
-        group relative w-40 rounded-md border-2 p-2 transition-all duration-200
+        group relative w-36 rounded-md border-2 p-2 transition-all duration-200
         ${nodeStyle.bg} ${nodeStyle.border}
         ${isSelected ? 'border-primary shadow-lg scale-110' : 'shadow hover:shadow-md'}
         cursor-pointer hover:scale-105
@@ -261,13 +261,54 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
       const childCount = children.length;
       
       if (childCount > 0) {
-        const spacing = 250; // Increased horizontal spacing between nodes
+        // Calculate horizontal spacing based on the deepest subtree
+        // This prevents nodes in deeper levels from overlapping
+        const calculateMaxDepth = (contactId: number, currentDepth = 0): number => {
+          const childContacts = contacts.filter(c => c.parentId === contactId);
+          if (childContacts.length === 0) return currentDepth;
+          
+          return Math.max(...childContacts.map(c => 
+            calculateMaxDepth(c.id, currentDepth + 1)
+          ));
+        };
+        
+        // Get the maximum depth of each child's subtree
+        const maxDepths = children.map(child => calculateMaxDepth(child.id));
+        const maxDepth = Math.max(...maxDepths, 1);
+        
+        // Increase spacing based on the depth of the subtree
+        const baseSpacing = 300;
+        const depthFactor = 100; // Additional spacing per depth level
+        const spacing = baseSpacing + (maxDepth * depthFactor);
+        
         const totalWidth = (childCount - 1) * spacing;
         const startX = x - totalWidth / 2;
         
-        children.forEach((child, index) => {
-          const childX = startX + index * spacing;
-          const childY = y + 200; // Increased vertical spacing
+        // Sort children to place those with more descendants in the middle
+        const sortedChildren = [...children].sort((a, b) => {
+          const aChildCount = contacts.filter(c => c.parentId === a.id).length;
+          const bChildCount = contacts.filter(c => c.parentId === b.id).length;
+          
+          // If both have children or neither has children, keep original order
+          if ((aChildCount > 0 && bChildCount > 0) || (aChildCount === 0 && bChildCount === 0)) {
+            return 0;
+          }
+          
+          // Place nodes with children in the middle
+          return bChildCount - aChildCount;
+        });
+        
+        // Stagger positions to avoid vertical alignment
+        sortedChildren.forEach((child, index) => {
+          // Apply alternating offsets based on level
+          const levelOffset = level % 2 === 0 ? 0 : spacing / 3;
+          
+          // Add a small random offset to prevent perfect alignment
+          const jitterOffset = ((child.id * 17) % 50) - 25; // Deterministic "random" offset
+          
+          const childX = startX + (index * spacing) + levelOffset + jitterOffset;
+          const childY = y + 300; // Significant vertical spacing
+          
           processContact(child, level + 1, childX, childY, contact.id);
         });
       }
@@ -359,6 +400,14 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
         nodeTypes={nodeTypes}
         proOptions={{ hideAttribution: true }}
         fitView
+        defaultEdgeOptions={{
+          type: 'smoothstep', // Use curved edges for better routing
+          style: {
+            strokeWidth: 2,
+          },
+        }}
+        minZoom={0.2} // Allow zooming out further to see the entire network
+        maxZoom={1.5} // Limit max zoom to prevent excessive detail
       >
         <Controls />
         <MiniMap zoomable pannable />
