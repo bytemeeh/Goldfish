@@ -368,187 +368,166 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
     if (meContact) {
       processContact(meContact, 0, 0, 0);
       
-      // Process any other top-level contacts (not connected to "me")
-      const otherTopLevelContacts = contacts.filter(c => 
-        !c.isMe && !c.parentId && !processedContacts.has(c.id)
+      // Get all level 1 contacts - both direct children of "me" and orphaned top-level contacts
+      const level1Contacts = contacts.filter(c => 
+        !c.isMe && (!c.parentId || c.parentId === meContact.id) && !processedContacts.has(c.id)
       );
       
-      if (otherTopLevelContacts.length > 0) {
-        // More spacing for top-level contacts based on how many children they have
-        const topLevelSpacing = 500; // Much larger spacing for top-level contacts
-        const offsetPerChild = 50; // Additional offset per child
-        
-        // Sort top-level contacts by relationship type and importance
-        const sortedTopLevelContacts = [...otherTopLevelContacts].sort((a, b) => {
-          // First, sort by relationship type
-          const relationshipOrder = {
-            'sibling': 1,
-            'brother': 1,
-            'sister': 1,
-            'spouse': 2,
-            'boyfriend/girlfriend': 2,
-            'friend': 3,
-            'co-worker': 4,
-            null: 5,
-            undefined: 5
+      if (level1Contacts.length > 0) {
+        // Sort contacts by relationship type and name for more logical grouping
+        const sortedLevel1Contacts = [...level1Contacts].sort((a, b) => {
+          // Priority order by relationship type
+          const typeOrder = {
+            'sibling': 10,
+            'brother': 10,
+            'sister': 10,
+            'spouse': 20,
+            'child': 30,
+            'boyfriend/girlfriend': 40,
+            'friend': 50,
+            'co-worker': 60
           };
           
-          const aRelType = a.relationshipType || 'undefined';
-          const bRelType = b.relationshipType || 'undefined';
-          const relOrder = (relationshipOrder[aRelType as keyof typeof relationshipOrder] || 5) - 
-                         (relationshipOrder[bRelType as keyof typeof relationshipOrder] || 5);
+          const getTypeOrder = (type: string | null | undefined): number => {
+            if (!type) return 999;
+            return (typeOrder as any)[type] || 999;
+          };
           
-          if (relOrder !== 0) return relOrder;
+          // First compare by relationship type
+          const typeComparison = getTypeOrder(a.relationshipType) - getTypeOrder(b.relationshipType);
+          if (typeComparison !== 0) return typeComparison;
           
-          // Then by number of connections (more important contacts have more connections)
+          // Then by name (alphabetically)
+          return a.name.localeCompare(b.name);
+        });
+        
+        // Layout all level 1 contacts in a single row under "me"
+        const nodeSpacing = 200; // Fixed spacing between same-level nodes
+        const rowWidth = (sortedLevel1Contacts.length - 1) * nodeSpacing;
+        const rowStart = -rowWidth / 2; // Center the row
+        const level1Y = 200; // Fixed Y position for level 1
+        
+        // Position each contact in a simple row
+        sortedLevel1Contacts.forEach((contact, index) => {
+          const x = rowStart + (index * nodeSpacing);
+          processContact(contact, 1, x, level1Y);
+          
+          // Only add an edge if this is not already a direct child of "me"
+          // This avoids duplicate edges
+          if (!contact.parentId) {
+            newEdges.push({
+              id: `${meContact.id}-${contact.id}`,
+              source: meContact.id.toString(),
+              target: contact.id.toString(),
+              animated: false,
+              style: {
+                stroke: getRelationshipColor(contact.relationshipType),
+                strokeWidth: 2 // Solid line with consistent width
+              }
+            });
+          }
+        });
+      }
+    } else {
+      // No "me" contact, find the most important contact to use as root
+      const topLevelContacts = contacts.filter(c => !c.parentId);
+      
+      if (topLevelContacts.length > 0) {
+        // Sort contacts to find the most connected one (likely main contact)
+        const sortedByImportance = [...topLevelContacts].sort((a, b) => {
+          // First by number of children (most important = most connections)
           const aChildCount = contacts.filter(c => c.parentId === a.id).length;
           const bChildCount = contacts.filter(c => c.parentId === b.id).length;
           
-          if (aChildCount !== bChildCount) return bChildCount - aChildCount;
+          if (aChildCount !== bChildCount) {
+            return bChildCount - aChildCount; // Most children first
+          }
+          
+          // Then by relationship type
+          const typeOrder = {
+            'sibling': 10,
+            'brother': 10,
+            'sister': 10,
+            'spouse': 20,
+            'child': 30,
+            'boyfriend/girlfriend': 40,
+            'friend': 50,
+            'co-worker': 60
+          };
+          
+          const getTypeOrder = (type: string | null | undefined): number => {
+            if (!type) return 999;
+            return (typeOrder as any)[type] || 999;
+          };
+          
+          const typeCompare = getTypeOrder(a.relationshipType) - getTypeOrder(b.relationshipType);
+          if (typeCompare !== 0) return typeCompare;
           
           // Finally alphabetically
           return a.name.localeCompare(b.name);
         });
         
-        const totalWidth = (sortedTopLevelContacts.length - 1) * topLevelSpacing;
-        const startX = -totalWidth / 2;
+        // Treat the most important contact as root
+        const rootContact = sortedByImportance[0];
+        processContact(rootContact, 0, 0, 0);
         
-        // Position all top-level contacts in a more logical arrangement
-        sortedTopLevelContacts.forEach((contact, index) => {
-          // Calculate position based on relationship type
-          let x = 0;
-          let y = 0;
-          const relType = contact.relationshipType || '';
-          
-          // Logical positioning by relationship type:
-          // - Siblings and family to the left or right
-          // - Spouse/partner near and slightly above
-          // - Friends to the top
-          // - Co-workers to the bottom
-          // - Others off to the sides
-          if (['sibling', 'brother', 'sister'].includes(relType)) {
-            // Siblings to the left
-            const distance = 300 + (index * 50);
-            x = -distance;
-            y = -100 + (index * 30);
-          } 
-          else if (['spouse', 'boyfriend/girlfriend'].includes(relType)) {
-            // Partner close to top right
-            x = 250;
-            y = -150;
-          }
-          else if (relType === 'friend') {
-            // Friends at the top
-            const count = sortedTopLevelContacts.filter(c => c.relationshipType === 'friend').length;
-            const position = sortedTopLevelContacts.filter(c => c.relationshipType === 'friend').indexOf(contact);
-            const angleStep = Math.PI / (count + 1);
-            const angle = Math.PI/2 - angleStep * (position + 1);
-            const radius = 350;
-            x = Math.cos(angle) * radius;
-            y = Math.sin(angle) * radius * -1; // Negative to go upward
-          }
-          else if (relType === 'co-worker') {
-            // Co-workers at the bottom
-            const count = sortedTopLevelContacts.filter(c => c.relationshipType === 'co-worker').length;
-            const position = sortedTopLevelContacts.filter(c => c.relationshipType === 'co-worker').indexOf(contact);
-            const spread = 300;
-            x = -spread/2 + (position * (spread / Math.max(1, count - 1)));
-            y = 350;
-          }
-          else {
-            // Other contacts to the right 
-            const offset = 400 + (index * 70);
-            x = offset;
-            y = -50 + (index * 40);
-          }
-          
-          // Calculate how many children this contact has for spacing calculations
-          const childCount = contacts.filter(c => c.parentId === contact.id).length;
-          
-          // Add some jitter to prevent exact overlaps
-          const jitter = ((contact.id * 13) % 40) - 20;
-          x += jitter;
-          
-          processContact(contact, 0, x, y);
-          
-          // Add edge from "me" to this top-level contact (now solid lines)
-          newEdges.push({
-            id: `${meContact.id}-${contact.id}`,
-            source: meContact.id.toString(),
-            target: contact.id.toString(),
-            animated: false,
-            style: {
-              stroke: getRelationshipColor(contact.relationshipType),
-              strokeWidth: 2 // Solid line with consistent width
-            }
+        // All other top-level contacts go in a row below
+        const otherTopLevel = topLevelContacts.filter(c => c.id !== rootContact.id);
+        
+        if (otherTopLevel.length > 0) {
+          // Sort the other top level contacts
+          const sortedOthers = [...otherTopLevel].sort((a, b) => {
+            // First by relationship type to the root (if any)
+            const typeOrder = {
+              'sibling': 10,
+              'brother': 10,
+              'sister': 10,
+              'spouse': 20,
+              'child': 30,
+              'boyfriend/girlfriend': 40,
+              'friend': 50,
+              'co-worker': 60
+            };
+            
+            const getTypeOrder = (type: string | null | undefined): number => {
+              if (!type) return 999;
+              return (typeOrder as any)[type] || 999;
+            };
+            
+            const typeCompare = getTypeOrder(a.relationshipType) - getTypeOrder(b.relationshipType);
+            if (typeCompare !== 0) return typeCompare;
+            
+            // Then alphabetically
+            return a.name.localeCompare(b.name);
           });
-        });
-      }
-    } else {
-      // No "me" contact, process all top-level contacts
-      const topLevelContacts = contacts.filter(c => !c.parentId);
-      
-      // Sort contacts by relationship type and importance
-      const sortedTopLevelContacts = [...topLevelContacts].sort((a, b) => {
-        // First, sort by relationship type
-        const relationshipOrder = {
-          'sibling': 1,
-          'brother': 1,
-          'sister': 1,
-          'spouse': 2,
-          'boyfriend/girlfriend': 2,
-          'friend': 3,
-          'co-worker': 4,
-          null: 5,
-          undefined: 5
-        };
-        
-        const aRelType = a.relationshipType || 'undefined';
-        const bRelType = b.relationshipType || 'undefined';
-        const relOrder = (relationshipOrder[aRelType as keyof typeof relationshipOrder] || 5) - 
-                     (relationshipOrder[bRelType as keyof typeof relationshipOrder] || 5);
-        
-        if (relOrder !== 0) return relOrder;
-        
-        // Then by number of connections
-        const aChildCount = contacts.filter(c => c.parentId === a.id).length;
-        const bChildCount = contacts.filter(c => c.parentId === b.id).length;
-        
-        if (aChildCount !== bChildCount) return bChildCount - aChildCount;
-        
-        // Finally alphabetically
-        return a.name.localeCompare(b.name);
-      });
-      
-      // Arrange contacts in a radial pattern around the center
-      // with the most connected contacts in the center
-      const maxRadius = 500;
-      const center = { x: 0, y: 0 };
-      
-      sortedTopLevelContacts.forEach((contact, index) => {
-        // Place the first (most important) contact at the center
-        if (index === 0) {
-          processContact(contact, 0, center.x, center.y);
-          return;
+          
+          // Position them in a row
+          const nodeSpacing = 200;
+          const rowWidth = (sortedOthers.length - 1) * nodeSpacing;
+          const rowStart = -rowWidth / 2;
+          const level1Y = 200; // Fixed Y position
+          
+          sortedOthers.forEach((contact, index) => {
+            const x = rowStart + (index * nodeSpacing);
+            processContact(contact, 1, x, level1Y);
+            
+            // Add edge from root to this contact
+            newEdges.push({
+              id: `${rootContact.id}-${contact.id}`,
+              source: rootContact.id.toString(),
+              target: contact.id.toString(),
+              animated: false,
+              style: {
+                stroke: getRelationshipColor(contact.relationshipType),
+                strokeWidth: 2
+              }
+            });
+          });
         }
-        
-        // Calculate how many children this contact has
-        const childCount = contacts.filter(c => c.parentId === contact.id).length;
-        
-        // Calculate position in a spiral pattern
-        // More important contacts (higher index from sort) are closer to center
-        const angleOffset = (index - 1) * (2 * Math.PI / (sortedTopLevelContacts.length - 1));
-        const angle = angleOffset;
-        
-        // Distance from center increases with lower importance
-        const radius = Math.min(150 + (index * 70), maxRadius);
-        
-        // Convert to cartesian coordinates
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
-        
-        processContact(contact, 0, x, y);
-      });
+      } else {
+        // No contacts at all, nothing to do
+        console.log("No contacts to display");
+      }
     }
     
     setNodes(newNodes);
