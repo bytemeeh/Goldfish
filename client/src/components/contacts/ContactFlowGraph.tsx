@@ -289,30 +289,75 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
         const totalWidth = (childCount - 1) * spacing;
         const startX = x - totalWidth / 2;
         
-        // Sort children to place those with more descendants in the middle
+        // Sort children by relationship type and name for a more logical layout
         const sortedChildren = [...children].sort((a, b) => {
+          // Group by relationship type category first
+          const relationshipCategories = {
+            family: ['mother', 'father', 'brother', 'sister', 'sibling', 'child', 'spouse'],
+            romantic: ['boyfriend/girlfriend', 'spouse'],
+            friends: ['friend'],
+            professional: ['co-worker']
+          };
+          
+          // Helper function to get category for a relationship type
+          const getCategory = (relType?: string) => {
+            if (!relType) return 'other';
+            
+            for (const [category, types] of Object.entries(relationshipCategories)) {
+              if (types.includes(relType)) return category;
+            }
+            return 'other';
+          };
+          
+          const aCategory = getCategory(a.relationshipType);
+          const bCategory = getCategory(b.relationshipType);
+          
+          // First sort by category - family first, then romantic, etc.
+          const categoryOrder = ['family', 'romantic', 'friends', 'professional', 'other'];
+          const categoryCompare = categoryOrder.indexOf(aCategory) - categoryOrder.indexOf(bCategory);
+          
+          if (categoryCompare !== 0) return categoryCompare;
+          
+          // Within same category, show family members with children closer to parent
           const aChildCount = contacts.filter(c => c.parentId === a.id).length;
           const bChildCount = contacts.filter(c => c.parentId === b.id).length;
           
-          // If both have children or neither has children, keep original order
-          if ((aChildCount > 0 && bChildCount > 0) || (aChildCount === 0 && bChildCount === 0)) {
-            return 0;
+          if (aCategory === 'family' && bChildCount !== aChildCount) {
+            return bChildCount - aChildCount; // More children = closer to parent
           }
           
-          // Place nodes with children in the middle
-          return bChildCount - aChildCount;
+          // Otherwise alphabetical by name
+          return a.name.localeCompare(b.name);
         });
         
-        // Stagger positions to avoid vertical alignment
+        // Position children in a more intuitive way based on their relationship
         sortedChildren.forEach((child, index) => {
-          // Apply alternating offsets based on level
-          const levelOffset = level % 2 === 0 ? 0 : spacing / 3;
+          // Get the position in the layout
+          const position = index / (childCount - 1 || 1); // 0 to 1 range
           
-          // Add a small random offset to prevent perfect alignment
-          const jitterOffset = ((child.id * 17) % 50) - 25; // Deterministic "random" offset
+          // Calculate horizontal position with weighted distribution
+          // Center positions (0.5) get more emphasis, edges (0, 1) get less
+          const horizontalWeight = 1 - Math.abs(position - 0.5) * 0.5;
+          const weightedOffset = position * totalWidth;
           
-          const childX = startX + (index * spacing) + levelOffset + jitterOffset;
-          const childY = y + 300; // Significant vertical spacing
+          // Add small offset based on relationship type
+          // Family members should be closer to parent
+          const isFamily = ['mother', 'father', 'brother', 'sister', 'sibling', 'child', 'spouse'].includes(child.relationshipType || '');
+          const relationshipOffset = isFamily ? -30 : 0;
+          
+          // Vertical positioning should vary by relationship type too
+          const verticalOffset = (() => {
+            if (child.relationshipType === 'child') return 20; // Children slightly lower
+            if (child.relationshipType === 'spouse') return -30; // Spouses slightly higher
+            if (child.relationshipType === 'sibling') return -10; // Siblings slightly higher
+            return 0;
+          })();
+          
+          // Add a small deterministic offset to prevent perfect alignment
+          const jitterOffset = ((child.id * 13) % 30) - 15; // Smaller jitter
+          
+          const childX = startX + weightedOffset + jitterOffset + relationshipOffset;
+          const childY = y + 250 + verticalOffset; // Base vertical spacing with offsets
           
           processContact(child, level + 1, childX, childY, contact.id);
         });
@@ -333,25 +378,97 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
         const topLevelSpacing = 500; // Much larger spacing for top-level contacts
         const offsetPerChild = 50; // Additional offset per child
         
-        // Sort top-level contacts to spread them more efficiently
+        // Sort top-level contacts by relationship type and importance
         const sortedTopLevelContacts = [...otherTopLevelContacts].sort((a, b) => {
+          // First, sort by relationship type
+          const relationshipOrder = {
+            'sibling': 1,
+            'brother': 1,
+            'sister': 1,
+            'spouse': 2,
+            'boyfriend/girlfriend': 2,
+            'friend': 3,
+            'co-worker': 4,
+            null: 5,
+            undefined: 5
+          };
+          
+          const aRelType = a.relationshipType || 'undefined';
+          const bRelType = b.relationshipType || 'undefined';
+          const relOrder = (relationshipOrder[aRelType as keyof typeof relationshipOrder] || 5) - 
+                         (relationshipOrder[bRelType as keyof typeof relationshipOrder] || 5);
+          
+          if (relOrder !== 0) return relOrder;
+          
+          // Then by number of connections (more important contacts have more connections)
           const aChildCount = contacts.filter(c => c.parentId === a.id).length;
           const bChildCount = contacts.filter(c => c.parentId === b.id).length;
-          // Put contacts with more children to the outer edges
-          return aChildCount - bChildCount;
+          
+          if (aChildCount !== bChildCount) return bChildCount - aChildCount;
+          
+          // Finally alphabetically
+          return a.name.localeCompare(b.name);
         });
         
         const totalWidth = (sortedTopLevelContacts.length - 1) * topLevelSpacing;
         const startX = -totalWidth / 2;
         
+        // Position all top-level contacts in a more logical arrangement
         sortedTopLevelContacts.forEach((contact, index) => {
-          // Calculate how many children this contact has for additional spacing
-          const childCount = contacts.filter(c => c.parentId === contact.id).length;
-          const additionalOffset = childCount * offsetPerChild;
+          // Calculate position based on relationship type
+          let x = 0;
+          let y = 0;
+          const relType = contact.relationshipType || '';
           
-          // Position contacts with wider offsets and staggered vertical positions
-          const x = startX + (index * topLevelSpacing) + additionalOffset;
-          const y = -350 - (index % 2 * 100); // Staggered vertical spacing from "me" contact
+          // Logical positioning by relationship type:
+          // - Siblings and family to the left or right
+          // - Spouse/partner near and slightly above
+          // - Friends to the top
+          // - Co-workers to the bottom
+          // - Others off to the sides
+          if (['sibling', 'brother', 'sister'].includes(relType)) {
+            // Siblings to the left
+            const distance = 300 + (index * 50);
+            x = -distance;
+            y = -100 + (index * 30);
+          } 
+          else if (['spouse', 'boyfriend/girlfriend'].includes(relType)) {
+            // Partner close to top right
+            x = 250;
+            y = -150;
+          }
+          else if (relType === 'friend') {
+            // Friends at the top
+            const count = sortedTopLevelContacts.filter(c => c.relationshipType === 'friend').length;
+            const position = sortedTopLevelContacts.filter(c => c.relationshipType === 'friend').indexOf(contact);
+            const angleStep = Math.PI / (count + 1);
+            const angle = Math.PI/2 - angleStep * (position + 1);
+            const radius = 350;
+            x = Math.cos(angle) * radius;
+            y = Math.sin(angle) * radius * -1; // Negative to go upward
+          }
+          else if (relType === 'co-worker') {
+            // Co-workers at the bottom
+            const count = sortedTopLevelContacts.filter(c => c.relationshipType === 'co-worker').length;
+            const position = sortedTopLevelContacts.filter(c => c.relationshipType === 'co-worker').indexOf(contact);
+            const spread = 300;
+            x = -spread/2 + (position * (spread / Math.max(1, count - 1)));
+            y = 350;
+          }
+          else {
+            // Other contacts to the right 
+            const offset = 400 + (index * 70);
+            x = offset;
+            y = -50 + (index * 40);
+          }
+          
+          // Calculate how many children this contact has for spacing calculations
+          const childCount = contacts.filter(c => c.parentId === contact.id).length;
+          
+          // Add some jitter to prevent exact overlaps
+          const jitter = ((contact.id * 13) % 40) - 20;
+          x += jitter;
+          
           processContact(contact, 0, x, y);
           
           // Add edge from "me" to this top-level contact (now solid lines)
@@ -371,28 +488,64 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
       // No "me" contact, process all top-level contacts
       const topLevelContacts = contacts.filter(c => !c.parentId);
       
-      // Use same enhanced spacing as for other top-level contacts
-      const topLevelSpacing = 500; // Larger spacing
-      const offsetPerChild = 50; // Additional offset per child
-      const totalWidth = (topLevelContacts.length - 1) * topLevelSpacing;
-      const startX = -totalWidth / 2;
-      
-      // Sort top-level contacts to spread them more efficiently
+      // Sort contacts by relationship type and importance
       const sortedTopLevelContacts = [...topLevelContacts].sort((a, b) => {
+        // First, sort by relationship type
+        const relationshipOrder = {
+          'sibling': 1,
+          'brother': 1,
+          'sister': 1,
+          'spouse': 2,
+          'boyfriend/girlfriend': 2,
+          'friend': 3,
+          'co-worker': 4,
+          null: 5,
+          undefined: 5
+        };
+        
+        const aRelType = a.relationshipType || 'undefined';
+        const bRelType = b.relationshipType || 'undefined';
+        const relOrder = (relationshipOrder[aRelType as keyof typeof relationshipOrder] || 5) - 
+                     (relationshipOrder[bRelType as keyof typeof relationshipOrder] || 5);
+        
+        if (relOrder !== 0) return relOrder;
+        
+        // Then by number of connections
         const aChildCount = contacts.filter(c => c.parentId === a.id).length;
         const bChildCount = contacts.filter(c => c.parentId === b.id).length;
-        // Put contacts with more children to the outer edges
-        return aChildCount - bChildCount;
+        
+        if (aChildCount !== bChildCount) return bChildCount - aChildCount;
+        
+        // Finally alphabetically
+        return a.name.localeCompare(b.name);
       });
       
+      // Arrange contacts in a radial pattern around the center
+      // with the most connected contacts in the center
+      const maxRadius = 500;
+      const center = { x: 0, y: 0 };
+      
       sortedTopLevelContacts.forEach((contact, index) => {
-        // Calculate how many children this contact has for additional spacing
-        const childCount = contacts.filter(c => c.parentId === contact.id).length;
-        const additionalOffset = childCount * offsetPerChild;
+        // Place the first (most important) contact at the center
+        if (index === 0) {
+          processContact(contact, 0, center.x, center.y);
+          return;
+        }
         
-        // Position with staggered layout
-        const x = startX + (index * topLevelSpacing) + additionalOffset;
-        const y = (index % 2) * -100; // Alternating vertical positions
+        // Calculate how many children this contact has
+        const childCount = contacts.filter(c => c.parentId === contact.id).length;
+        
+        // Calculate position in a spiral pattern
+        // More important contacts (higher index from sort) are closer to center
+        const angleOffset = (index - 1) * (2 * Math.PI / (sortedTopLevelContacts.length - 1));
+        const angle = angleOffset;
+        
+        // Distance from center increases with lower importance
+        const radius = Math.min(150 + (index * 70), maxRadius);
+        
+        // Convert to cartesian coordinates
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
         
         processContact(contact, 0, x, y);
       });
