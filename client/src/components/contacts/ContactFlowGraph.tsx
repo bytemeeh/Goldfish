@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Contact } from '@/lib/types';
 
@@ -14,6 +14,7 @@ import ReactFlow, {
   Position,
   NodeProps,
   Handle,
+  NodeTypes,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -165,15 +166,18 @@ const relationshipColors = {
   default: '#6B7280'       // Default gray
 };
 
-// Memoize node types to avoid React warning
-const nodeTypes = {
-  contactNode: ContactNode as any,
-};
+// Memoize node types to avoid React warning - must be inside the component
+// Will move this into the component function
 
 export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
+  
+  // Memoize nodeTypes to avoid React Flow warning
+  const nodeTypes = useMemo(() => ({
+    contactNode: ContactNode as any,
+  }), []);
 
   // Get contacts data
   const { data: contacts } = useQuery<Contact[]>({
@@ -431,7 +435,7 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
-        nodeTypes={nodeTypes}
+        nodeTypes={nodeTypes as NodeTypes}
         proOptions={{ hideAttribution: true }}
         fitView
         defaultEdgeOptions={{
@@ -456,7 +460,6 @@ export function ContactFlowGraph({ onContactSelect }: ContactFlowGraphProps) {
           color="#999"
           gap={20}
           size={1}
-          variant="dots"
         />
       </ReactFlow>
     </div>
