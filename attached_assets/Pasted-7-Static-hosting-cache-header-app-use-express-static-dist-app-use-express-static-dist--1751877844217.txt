@@ -1,0 +1,164 @@
+7 Static hosting cache header
+
+-app.use(express.static(dist));
++app.use(
+	•	express.static(dist, {
+	•	maxAge: ‘365d’,
+	•	immutable: true,
+	•	}),
++);
+
+⸻
+
+8 Client src/App.tsx — graph view default
+
+-const [viewMode, setViewMode] = useLocalStorage<‘list’|‘graph’>(‘viewMode’, ‘list’);
++const [viewMode, setViewMode] = useLocalStorage<‘list’|‘graph’>(‘viewMode’, ‘graph’);
+
+<Route path=”/” element={} />
+
+⸻
+
+9 src/components/ContactFlowGraph.tsx
+
+import React, { useCallback } from ‘react’;
+import ReactFlow, {
+ReactFlowProvider,
+NodeMouseHandler,
+ConnectionLineType,
+useReactFlow,
+Edge,
+XYPosition,
+} from ‘reactflow’;
+import { throttle } from ‘lodash-es’;
+import { useMutation, useQueryClient } from ‘@tanstack/react-query’;
+import { api } from ‘@/lib/api’;
+
+const NODE_SIZE = 160;
+
+function isIntersect(a: XYPosition, b: XYPosition) {
+return (
+Math.abs(a.x - b.x) < NODE_SIZE * 0.5 &&
+Math.abs(a.y - b.y) < NODE_SIZE * 0.5
+);
+}
+
+function subtree(edgeList: Edge[], root: string, acc: string[] = []) {
+edgeList
+.filter((e) => e.source === root)
+.forEach((e) => {
+acc.push(e.target);
+subtree(edgeList, e.target, acc);
+});
+return acc;
+}
+
+export default function ContactFlowGraph() {
+const queryClient = useQueryClient();
+const { setNodes, getNodes, getEdges } = useReactFlow();
+
+const reparent = useMutation({
+mutationFn: ({ child, parent }: { child: string; parent: string }) =>
+api.put(/contacts/${child}, { parentId: parent }),
+onSuccess: () => queryClient.invalidateQueries({ queryKey: [‘contacts’] }),
+});
+
+const onDrag = useCallback(
+throttle((_e, dragged) => {
+const targets = getNodes().filter(
+(n) => n.id !== dragged.id && isIntersect(dragged.position, n.position),
+);
+setNodes((ns) =>
+ns.map((n) =>
+targets.some((t) => t.id === n.id)
+? { …n, data: { …n.data, drop: true } }
+: { …n, data: { …n.data, drop: false } },
+),
+);
+}, 80),
+[],
+);
+
+const onDragStop = useCallback(
+(_e, dragged) => {
+const target = getNodes().find(
+(n) => n.data.drop && isIntersect(dragged.position, n.position),
+);
+if (!target) return;
+
+  reparent.mutate({ child: dragged.id, parent: target.id });
+
+  const subs = subtree(getEdges(), dragged.id);  
+  setNodes((ns) =>  
+    ns.map((n) =>  
+      [dragged.id, ...subs].includes(n.id)  
+        ? { ...n, parentNode: target.id }  
+        : n,  
+    ),  
+  );  
+},  
+[],  
+
+);
+
+return (
+
+
+
+);
+}
+
+⸻
+
+10 src/components/ContactNode.tsx — drop highlight
+
+-
++<div
+	•	className={clsx(
+	•	‘rounded-xl bg-white shadow p-4 transition ring-offset-2’,
+	•	data.drop && ‘ring-4 ring-indigo-400’,
+	•	)}
++>
+
+⸻
+
+11 Playwright test tests/reparent.spec.ts
+
+import { test, expect } from ‘@playwright/test’;
+
+test(‘reparent drag-and-drop’, async ({ page }) => {
+await page.goto(’/’);
+await page.getByText(‘Christoph’).dragTo(page.getByText(‘Raissa’));
+await expect(page.getByText(‘Raissa’)).toHaveScreenshot();
+});
+
+⸻
+
+12 CI workflow .github/workflows/test.yml
+
+name: CI
+on: [push]
+jobs:
+build:
+runs-on: ubuntu-latest
+services:
+postgres:
+image: postgres:16
+env:
+POSTGRES_PASSWORD: postgres
+ports: [‘5432:5432’]
+options: >-
+–health-cmd pg_isready
+–health-interval 10s
+–health-timeout 5s
+–health-retries 5
+steps:
+- uses: actions/checkout@v4
+- uses: pnpm/action-setup@v3
+with: { version: 9 }
+- run: pnpm install –frozen-lockfile
+- run: pnpm run drizzle:push
+env: { DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres }
+- run: pnpm test
+- run: pnpm exec playwright install –with-deps
+- run: pnpm exec playwright test
