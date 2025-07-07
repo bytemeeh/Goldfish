@@ -1,9 +1,9 @@
 
 import { Router } from "express";
-import { db } from "@/db";
-import { contacts, locations } from "@/db/schema";
+import { db } from "@db";
+import { contacts, locations } from "@db/schema";
 import { eq, inArray, like, or, and } from "drizzle-orm";
-import { insertContactSchema, type Contact, type Location } from "@/db/schema";
+import { insertContactSchema, type Contact, type Location } from "@db/schema";
 import { logJson } from "../logger";
 
 const router = Router();

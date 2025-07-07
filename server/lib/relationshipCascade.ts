@@ -1,6 +1,6 @@
 
 import { sql } from "drizzle-orm";
-import type { DrizzleTransaction } from "@/db";
+import type { DrizzleTransaction } from "@db/schema";
 
 export async function cascadeRelationship(tx: DrizzleTransaction, startingId: string) {
   await tx.execute(sql`

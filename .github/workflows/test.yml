@@ -1,0 +1,27 @@
+
+name: CI
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with: { version: 9 }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run drizzle:push
+        env: { DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres }
+      - run: pnpm test
+      - run: pnpm exec playwright install --with-deps
+      - run: pnpm exec playwright test
