@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { ContactForm } from "@/components/contacts/ContactForm";
 import { ContactList } from "@/components/contacts/ContactList";
-import { ContactGraph } from "@/components/contacts/ContactGraph";
+import { ContactFlowGraph } from "@/components/contacts/ContactFlowGraph";
 import { DetailedContactView } from "@/components/contacts/DetailedContactView";
 import { SearchBar, type SearchFilters } from "@/components/contacts/SearchBar";
 import { ShareDialog } from "@/components/contacts/ShareDialog";
@@ -36,24 +36,24 @@ export function Home() {
     // Return the saved mode if valid, otherwise default to "list"
     return (savedViewMode === 'list' || savedViewMode === 'graph') 
       ? savedViewMode as ViewMode 
-      : "list";
+      : "graph";
   });
-  
+
   // Enhanced contact selection handler with detail view
   const handleContactSelect = useCallback((contactId: number) => {
     console.log('🚨 Home.tsx - handleContactSelect called with ID:', contactId);
-    
+
     // Save current view mode before switching to detail view
     setPreviousViewMode(viewMode);
-    
+
     // Set the selected contact ID
     setSelectedContactId(contactId);
-    
+
     // Switch to detail view
     setViewMode("detail");
-    
+
   }, [viewMode]);
-  
+
   // Handler for returning from detail view
   const handleBackFromDetail = useCallback(() => {
     // Go back to the previous view mode (graph or list)
@@ -61,12 +61,12 @@ export function Home() {
     // Clear the selection
     setSelectedContactId(null);
   }, [previousViewMode]);
-  
+
   // Debug effects for contact selection
   useEffect(() => {
     console.log('🚨 Home.tsx - selectedContactId changed to:', selectedContactId);
   }, [selectedContactId]);
-  
+
   useEffect(() => {
     console.log('🚨 Home.tsx - viewMode changed to:', viewMode);
   }, [viewMode]);
@@ -74,7 +74,7 @@ export function Home() {
   const { data: contacts } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
   });
-  
+
   // Save the view mode to local storage whenever it changes
   // Only save list or graph modes, not detail
   useEffect(() => {
@@ -99,16 +99,16 @@ export function Home() {
             <Button onClick={handleBackFromDetail}>Go Back</Button>
           </div>
         );
-        
+
       case "list":
         return (
           <ContactList searchFilters={filters} selectedContactId={selectedContactId} />
         );
-        
+
       case "graph":
       default:
         return (
-          <ContactGraph onContactSelect={handleContactSelect} />
+          <ContactFlowGraph onContactSelect={handleContactSelect} />
         );
     }
   };
@@ -119,7 +119,7 @@ export function Home() {
         <div className="space-y-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Goldfish</h1>
-            
+
             {/* Hide view controls in detail view */}
             {viewMode !== "detail" && (
               <div className="grid grid-cols-4 gap-1.5 w-full md:w-auto max-w-full">
