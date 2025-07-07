@@ -165,38 +165,43 @@ export function ContactGraph({ onContactSelect }: ContactGraphProps) {
       const nodeData = node.__data__ || node;
       
       // Extract ID using type-safe approach
+      const nodeId = typeof nodeData.id === 'number' ? 
+        nodeData.id : 
+        typeof nodeData.id === 'string' ? 
+          parseInt(nodeData.id, 10) : 
+          nodeData.id?._value;
+
+      if (typeof nodeId !== 'number' || isNaN(nodeId)) {
+        console.log('❌ Invalid node ID:', nodeId);
+        return;
+      }
+      
+      // Extract node ID from various possible structures
+      // based on react-force-graph implementation details
       let nodeId: number | undefined;
       
-      if (typeof nodeData.id === 'number') {
-        nodeId = nodeData.id;
-        console.log('📌 Using direct nodeData.id:', nodeId);
-      } else if (typeof nodeData.id === 'string') {
-        nodeId = parseInt(nodeData.id, 10);
-        console.log('📌 Converted string nodeData.id to number:', nodeId);
-      } else if (nodeData.id?._value && typeof nodeData.id._value === 'number') {
-        nodeId = nodeData.id._value;
-        console.log('📌 Using observable nodeData.id._value:', nodeId);
-      } else if (typeof node.id === 'number') {
+      if (typeof node.id === 'number') {
+        // Direct ID from the node
         nodeId = node.id;
         console.log('📌 Using direct node.id:', nodeId);
       } else if (node.__data__ && typeof node.__data__.id === 'number') {
+        // ID from internal data structure
         nodeId = node.__data__.id;
         console.log('📌 Using node.__data__.id:', nodeId);
+      } else if (node.id && typeof node.id._value === 'number') {
+        // ID might be wrapped in an observable
+        nodeId = node.id._value;
+        console.log('📌 Using observable node.id._value:', nodeId);
       } else {
         // Try to extract ID as string and convert to number
         const strId = String(node.id || node.__data__?.id || '');
         if (strId && !isNaN(parseInt(strId, 10))) {
           nodeId = parseInt(strId, 10);
-          console.log('📌 Converted fallback string ID to number:', nodeId);
+          console.log('📌 Converted string ID to number:', nodeId);
         } else {
           console.log('❌ Could not find valid node ID in any format', node);
           return;
         }
-      }
-
-      if (typeof nodeId !== 'number' || isNaN(nodeId)) {
-        console.log('❌ Invalid node ID:', nodeId);
-        return;
       }
       
       // Find the contact based on the extracted ID
