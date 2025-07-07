@@ -321,6 +321,52 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "A contact cannot be its own parent" });
       }
 
+      // Check if contact exists
+      const [existingContact] = await db
+        .select()
+        .from(contacts)
+        .where(eq(contacts.id, contactId))
+        .limit(1);
+
+      if (!existingContact) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+
+      // If setting a parent, validate the parent exists
+      if (parentId !== null) {
+        const [parentContact] = await db
+          .select()
+          .from(contacts)
+          .where(eq(contacts.id, parentId))
+          .limit(1);
+
+        if (!parentContact) {
+          return res.status(400).json({ error: "Parent contact not found" });
+        }
+
+        // Check for circular relationships by traversing up the parent chain
+        let currentParentId = parentId;
+        const visitedIds = new Set([contactId]);
+        
+        while (currentParentId !== null) {
+          if (visitedIds.has(currentParentId)) {
+            return res.status(400).json({ error: "Circular relationship detected" });
+          }
+          
+          visitedIds.add(currentParentId);
+          
+          const [parentOfParent] = await db
+            .select({ parentId: contacts.parentId })
+            .from(contacts)
+            .where(eq(contacts.id, currentParentId))
+            .limit(1);
+          
+          currentParentId = parentOfParent?.parentId || null;
+        }
+      }
+
+      console.log(`Updating contact ${contactId} relationship: parentId = ${parentId}`);
+
       const [updatedContact] = await db
         .update(contacts)
         .set({
@@ -331,13 +377,15 @@ export function registerRoutes(app: Express): Server {
         .returning();
 
       if (!updatedContact) {
-        return res.status(404).json({ error: "Contact not found" });
+        return res.status(404).json({ error: "Contact not found after update" });
       }
+
+      console.log(`Successfully updated contact ${contactId} relationship`);
 
       res.json(updatedContact);
     } catch (error) {
-      console.error('Error updating contact:', error);
-      res.status(500).json({ error: "Failed to update contact" });
+      console.error('Error updating contact relationship:', error);
+      res.status(500).json({ error: "Failed to update contact relationship" });
     }
   });
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Contact } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 import ReactFlow, {
   Node,
@@ -20,15 +21,31 @@ import ReactFlow, {
   Connection,
   addEdge,
   NodeDragHandler,
+  ConnectionMode,
+  OnConnectStart,
+  OnConnectEnd,
+  ReactFlowInstance,
+  useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { ReactFlowProvider } from 'reactflow';
 
-// We'll define the ContactNode component directly in this file
-// until we resolve the import issues
 import { memo } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { 
+  Users, 
+  Heart, 
+  Baby, 
+  Briefcase, 
+  UserCircle2, 
+  UserPlus, 
+  HeartHandshake,
+  Link,
+  Unlink,
+  RotateCcw
+} from 'lucide-react';
 
 // Color theme for different relationship types with higher contrast
 const relationshipNodeColors = {
@@ -59,9 +76,23 @@ const relationshipNodeColors = {
   }
 };
 
-// ContactNode component
-export const ContactNode = memo(({ data }: NodeProps<ContactNodeData>) => {
-  const { contact, level, isSelected } = data;
+// Relationship icons
+const relationshipIcons = {
+  sibling: Users,
+  mother: Heart,
+  father: UserCircle2,
+  brother: UserPlus,
+  friend: Users,
+  child: Baby,
+  "co-worker": Briefcase,
+  spouse: HeartHandshake,
+  "boyfriend/girlfriend": Heart,
+};
+
+// ContactNode component with enhanced connection UI
+export const ContactNode = memo(({ data, selected }: NodeProps<ContactNodeData>) => {
+  const { contact, level, isSelected, isConnecting, canConnect, onStartConnection, onEndConnection } = data;
+  const [isHovered, setIsHovered] = useState(false);
 
   // Determine style based on relationship type
   const getNodeStyle = () => {
@@ -70,7 +101,6 @@ export const ContactNode = memo(({ data }: NodeProps<ContactNodeData>) => {
     }
 
     const relType = contact.relationshipType || 'default';
-
     const categories = {
       family: ['mother', 'father', 'brother', 'sibling', 'child', 'spouse'],
       friends: ['friend', 'boyfriend/girlfriend'],
@@ -103,13 +133,21 @@ export const ContactNode = memo(({ data }: NodeProps<ContactNodeData>) => {
   return (
     <div
       className={`
-        group relative w-36 rounded-md border-2 p-3 transition-all duration-200
+        group relative w-40 rounded-md border-2 p-3 transition-all duration-200
         ${nodeStyle.bg} ${nodeStyle.border} bg-white
         ${isSelected ? 'border-primary shadow-lg border-[3px] scale-110' : 'shadow-md hover:shadow-lg'}
+        ${isConnecting ? 'ring-2 ring-blue-400 ring-opacity-50' : ''}
+        ${canConnect ? 'ring-2 ring-green-400 ring-opacity-50 bg-green-50' : ''}
         cursor-pointer hover:scale-105
       `}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      <Handle type="target" position={Position.Top} className="!bg-muted-foreground" />
+      <Handle 
+        type="target" 
+        position={Position.Top} 
+        className="!bg-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" 
+      />
 
       <div className="flex flex-col items-center gap-1">
         <Avatar className={`w-12 h-12 ${isSelected ? 'ring-2 ring-primary' : 'ring-1 ring-gray-300'} shadow-sm`}>
@@ -119,7 +157,7 @@ export const ContactNode = memo(({ data }: NodeProps<ContactNodeData>) => {
         </Avatar>
 
         <div className="text-center mt-1">
-          <h3 className="font-medium text-foreground truncate max-w-full">
+          <h3 className="font-medium text-foreground truncate max-w-full text-sm">
             {contact.name}
           </h3>
 
@@ -145,9 +183,45 @@ export const ContactNode = memo(({ data }: NodeProps<ContactNodeData>) => {
             Level {level}
           </div>
         </div>
+
+        {/* Connection Controls - only show on hover */}
+        {isHovered && !contact.isMe && (
+          <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 w-6 p-0 bg-white shadow-md hover:bg-blue-50"
+              onClick={(e) => {
+                e.stopPropagation();
+                onStartConnection?.(contact.id);
+              }}
+              title="Connect to another contact"
+            >
+              <Link className="h-3 w-3" />
+            </Button>
+            {contact.parentId && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 w-6 p-0 bg-white shadow-md hover:bg-red-50"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEndConnection?.(contact.id, null);
+                }}
+                title="Disconnect from parent"
+              >
+                <Unlink className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
-      <Handle type="source" position={Position.Bottom} className="!bg-muted-foreground" />
+      <Handle 
+        type="source" 
+        position={Position.Bottom} 
+        className="!bg-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" 
+      />
     </div>
   );
 });
@@ -157,6 +231,10 @@ interface ContactNodeData {
   contact: Contact;
   level: number;
   isSelected: boolean;
+  isConnecting?: boolean;
+  canConnect?: boolean;
+  onStartConnection?: (contactId: number) => void;
+  onEndConnection?: (contactId: number, parentId: number | null) => void;
 }
 
 interface ContactFlowGraphProps {
@@ -165,20 +243,22 @@ interface ContactFlowGraphProps {
 
 // Color theme for different relationship types
 const relationshipColors = {
-  family: '#00ACE6',       // Cyan Blue (family: mother, father, brother, sibling, child, spouse)
-  friends: '#FF0080',      // Bright Pink (friend, boyfriend/girlfriend)
-  professional: '#FF8000', // Orange (co-worker)
-  personal: '#00B359',     // Green (personal/me)
-  default: '#6B7280'       // Default gray
+  family: '#00ACE6',
+  friends: '#FF0080',
+  professional: '#FF8000',
+  personal: '#00B359',
+  default: '#6B7280'
 };
-
-// Memoize node types to avoid React warning - must be inside the component
-// Will move this into the component function
 
 export function ContactFlowGraphInner({ onContactSelect }: ContactFlowGraphProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
+  const [connectingFromId, setConnectingFromId] = useState<number | null>(null);
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Memoize nodeTypes to avoid React Flow warning
   const nodeTypes = useMemo(() => ({
@@ -190,27 +270,36 @@ export function ContactFlowGraphInner({ onContactSelect }: ContactFlowGraphProps
     queryKey: ['/api/contacts'],
   });
 
-  const queryClient = useQueryClient();
-
   // Mutation for updating contact relationships
-  const updateContactMutation = useMutation({
+  const updateRelationshipMutation = useMutation({
     mutationFn: async ({ contactId, parentId }: { contactId: number; parentId: number | null }) => {
       const response = await fetch(`/api/contacts/${contactId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ parentId }),
       });
-      if (!response.ok) throw new Error('Failed to update contact');
+      if (!response.ok) throw new Error('Failed to update relationship');
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
+      toast({
+        title: "Connection Updated",
+        description: "Contact relationship has been updated successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Connection Failed",
+        description: error.message || "Failed to update contact relationship.",
+        variant: "destructive",
+      });
     },
   });
 
   // Grid snapping function
   const snapToGrid = (x: number, y: number) => {
-    const gridSize = 50; // 50px grid
+    const gridSize = 50;
     return {
       x: Math.round(x / gridSize) * gridSize,
       y: Math.round(y / gridSize) * gridSize,
@@ -220,7 +309,7 @@ export function ContactFlowGraphInner({ onContactSelect }: ContactFlowGraphProps
   // Handle node drag end to snap to grid
   const handleNodeDragStop: NodeDragHandler = useCallback((event, node, nodes) => {
     const snappedPosition = snapToGrid(node.position.x, node.position.y);
-    
+
     setNodes((nds) =>
       nds.map((n) =>
         n.id === node.id
@@ -230,22 +319,44 @@ export function ContactFlowGraphInner({ onContactSelect }: ContactFlowGraphProps
     );
   }, [setNodes]);
 
-  // Handle connecting nodes (drag from one node to another)
-  const onConnect = useCallback(
-    (params: Connection) => {
-      if (params.source && params.target) {
-        const sourceId = parseInt(params.source);
-        const targetId = parseInt(params.target);
-        
-        // Update the target contact's parent to be the source contact
-        updateContactMutation.mutate({
-          contactId: targetId,
-          parentId: sourceId,
-        });
-      }
-    },
-    [updateContactMutation]
-  );
+  // Start connection mode
+  const handleStartConnection = useCallback((contactId: number) => {
+    setConnectingFromId(contactId);
+    toast({
+      title: "Connection Mode",
+      description: "Click on another contact to create a connection, or click elsewhere to cancel.",
+    });
+  }, [toast]);
+
+  // End connection (connect or disconnect)
+  const handleEndConnection = useCallback((contactId: number, parentId: number | null) => {
+    if (connectingFromId && connectingFromId !== contactId) {
+      // Connecting two contacts
+      updateRelationshipMutation.mutate({
+        contactId: connectingFromId,
+        parentId: contactId,
+      });
+    } else if (parentId === null) {
+      // Disconnecting
+      updateRelationshipMutation.mutate({
+        contactId,
+        parentId: null,
+      });
+    }
+
+    setConnectingFromId(null);
+  }, [connectingFromId, updateRelationshipMutation]);
+
+  // Handle clicking on empty space to cancel connection
+  const handlePaneClick = useCallback(() => {
+    if (connectingFromId) {
+      setConnectingFromId(null);
+      toast({
+        title: "Connection Cancelled",
+        description: "Connection mode has been cancelled.",
+      });
+    }
+  }, [connectingFromId, toast]);
 
   // Determine relationship type color
   const getRelationshipColor = (relationshipType?: string) => {
@@ -300,7 +411,11 @@ export function ContactFlowGraphInner({ onContactSelect }: ContactFlowGraphProps
         data: {
           contact,
           level,
-          isSelected: contact.id === selectedContactId
+          isSelected: contact.id === selectedContactId,
+          isConnecting: connectingFromId === contact.id,
+          canConnect: connectingFromId !== null && connectingFromId !== contact.id && contact.id !== meContact?.id,
+          onStartConnection: handleStartConnection,
+          onEndConnection: handleEndConnection,
         },
         position: { x, y },
         sourcePosition: Position.Bottom,
@@ -315,286 +430,50 @@ export function ContactFlowGraphInner({ onContactSelect }: ContactFlowGraphProps
           id: `${parentId}-${contact.id}`,
           source: parentId.toString(),
           target: contact.id.toString(),
-          animated: false,
+          animated: connectingFromId === parentId || connectingFromId === contact.id,
           style: {
             stroke: getRelationshipColor(contact.relationshipType),
-            strokeWidth: 2
+            strokeWidth: connectingFromId === parentId || connectingFromId === contact.id ? 3 : 2,
+            strokeDasharray: connectingFromId === parentId || connectingFromId === contact.id ? '5,5' : undefined,
           }
         });
       }
 
       // Process children
       const children = contacts.filter(c => c.parentId === contact.id);
-      const childCount = children.length;
-
-      if (childCount > 0) {
-        // Calculate horizontal spacing based on the deepest subtree
-        // This prevents nodes in deeper levels from overlapping
-        const calculateMaxDepth = (contactId: number, currentDepth = 0): number => {
-          const childContacts = contacts.filter(c => c.parentId === contactId);
-          if (childContacts.length === 0) return currentDepth;
-
-          return Math.max(...childContacts.map(c => 
-            calculateMaxDepth(c.id, currentDepth + 1)
-          ));
-        };
-
-        // Get the maximum depth of each child's subtree
-        const maxDepths = children.map(child => calculateMaxDepth(child.id));
-        const maxDepth = Math.max(...maxDepths, 1);
-
-        // Increase spacing based on the depth of the subtree and number of children
-        const baseSpacing = 400; // Increased base spacing
-        const depthFactor = 150; // Increased additional spacing per depth level
-        const childFactor = 30; // Additional spacing per child in this level
-        const spacing = baseSpacing + (maxDepth * depthFactor) + (childCount * childFactor);
-
-        const totalWidth = (childCount - 1) * spacing;
+      if (children.length > 0) {
+        const spacing = 200;
+        const totalWidth = (children.length - 1) * spacing;
         const startX = x - totalWidth / 2;
 
-        // Sort children by relationship type and name for a more logical layout
-        const sortedChildren = [...children].sort((a, b) => {
-          // Group by relationship type category first
-          const relationshipCategories = {
-            family: ['mother', 'father', 'brother', 'sister', 'sibling', 'child', 'spouse'],
-            romantic: ['boyfriend/girlfriend', 'spouse'],
-            friends: ['friend'],
-            professional: ['co-worker']
-          };
-
-          // Helper function to get category for a relationship type
-          const getCategory = (relType?: string) => {
-            if (!relType) return 'other';
-
-            for (const [category, types] of Object.entries(relationshipCategories)) {
-              if (types.includes(relType)) return category;            }
-            return 'other';
-          };
-
-          const aCategory = getCategory(a.relationshipType);
-          const bCategory = getCategory(b.relationshipType);
-
-          // First sort by category - family first, then romantic, etc.
-          const categoryOrder = ['family', 'romantic', 'friends', 'professional', 'other'];
-          const categoryCompare = categoryOrder.indexOf(aCategory) - categoryOrder.indexOf(bCategory);
-
-          if (categoryCompare !== 0) return categoryCompare;
-
-          // Within same category, show family members with children closer to parent
-          const aChildCount = contacts.filter(c => c.parentId === a.id).length;
-          const bChildCount = contacts.filter(c => c.parentId === b.id).length;
-
-          if (aCategory === 'family' && bChildCount !== aChildCount) {
-            return bChildCount - aChildCount; // More children = closer to parent
-          }
-
-          // Otherwise alphabetical by name
-          return a.name.localeCompare(b.name);
-        });
-
-        // Position children in a more intuitive way based on their relationship
-        sortedChildren.forEach((child, index) => {
-          // Get the position in the layout
-          const position = index / (childCount - 1 || 1); // 0 to 1 range
-
-          // Calculate horizontal position with weighted distribution
-          // Center positions (0.5) get more emphasis, edges (0, 1) get less
-          const horizontalWeight = 1 - Math.abs(position - 0.5) * 0.5;
-          const weightedOffset = position * totalWidth;
-
-          // Add small offset based on relationship type
-          // Family members should be closer to parent
-          const isFamily = ['mother', 'father', 'brother', 'sister', 'sibling', 'child', 'spouse'].includes(child.relationshipType || '');
-          const relationshipOffset = isFamily ? -30 : 0;
-
-          // Vertical positioning should vary by relationship type too
-          const verticalOffset = (() => {
-            if (child.relationshipType === 'child') return 20; // Children slightly lower
-            if (child.relationshipType === 'spouse') return -30; // Spouses slightly higher
-            if (child.relationshipType === 'sibling') return -10; // Siblings slightly higher
-            return 0;
-          })();
-
-          // Add a small deterministic offset to prevent perfect alignment
-          const jitterOffset = ((child.id * 13) % 30) - 15; // Smaller jitter
-
-          const childX = startX + weightedOffset + jitterOffset + relationshipOffset;
-          const childY = y + 250 + verticalOffset; // Base vertical spacing with offsets
-
+        children.forEach((child, index) => {
+          const childX = startX + (index * spacing);
+          const childY = y + 250;
           processContact(child, level + 1, childX, childY, contact.id);
         });
       }
     };
 
-    // Start processing from "me" contact or top-level contacts
+    // Start processing from "me" contact or find a suitable root
     if (meContact) {
       processContact(meContact, 0, 0, 0);
-
-      // Get all level 1 contacts - both direct children of "me" and orphaned top-level contacts
-      const level1Contacts = contacts.filter(c => 
-        !c.isMe && (!c.parentId || c.parentId === meContact.id) && !processedContacts.has(c.id)
-      );
-
-      if (level1Contacts.length > 0) {
-        // Sort contacts by relationship type and name for more logical grouping
-        const sortedLevel1Contacts = [...level1Contacts].sort((a, b) => {
-          // Priority order by relationship type
-          const typeOrder = {
-            'sibling': 10,
-            'brother': 10,
-            'sister': 10,
-            'spouse': 20,
-            'child': 30,
-            'boyfriend/girlfriend': 40,
-            'friend': 50,
-            'co-worker': 60
-          };
-
-          const getTypeOrder = (type: string | null | undefined): number => {
-            if (!type) return 999;
-            return (typeOrder as any)[type] || 999;
-          };
-
-          // First compare by relationship type
-          const typeComparison = getTypeOrder(a.relationshipType) - getTypeOrder(b.relationshipType);
-          if (typeComparison !== 0) return typeComparison;
-
-          // Then by name (alphabetically)
-          return a.name.localeCompare(b.name);
-        });
-
-        // Layout all level 1 contacts in a single row under "me"
-        const nodeSpacing = 200; // Fixed spacing between same-level nodes
-        const rowWidth = (sortedLevel1Contacts.length - 1) * nodeSpacing;
-        const rowStart = -rowWidth / 2; // Center the row
-        const level1Y = 200; // Fixed Y position for level 1
-
-        // Position each contact in a simple row
-        sortedLevel1Contacts.forEach((contact, index) => {
-          const x = rowStart + (index * nodeSpacing);
-          processContact(contact, 1, x, level1Y);
-
-          // Only add an edge if this is not already a direct child of "me"
-          // This avoids duplicate edges
-          if (!contact.parentId) {
-            newEdges.push({
-              id: `${meContact.id}-${contact.id}`,
-              source: meContact.id.toString(),
-              target: contact.id.toString(),
-              animated: false,
-              style: {
-                stroke: getRelationshipColor(contact.relationshipType),
-                strokeWidth: 2 // Solid line with consistent width
-              }
-            });
-          }
-        });
-      }
     } else {
-      // No "me" contact, find the most important contact to use as root
+      // Find top-level contacts (no parent)
       const topLevelContacts = contacts.filter(c => !c.parentId);
-
       if (topLevelContacts.length > 0) {
-        // Sort contacts to find the most connected one (likely main contact)
-        const sortedByImportance = [...topLevelContacts].sort((a, b) => {
-          // First by number of children (most important = most connections)
-          const aChildCount = contacts.filter(c => c.parentId === a.id).length;
-          const bChildCount = contacts.filter(c => c.parentId === b.id).length;
-
-          if (aChildCount !== bChildCount) {
-            return bChildCount - aChildCount; // Most children first
-          }
-
-          // Then by relationship type
-          const typeOrder = {
-            'sibling': 10,
-            'brother': 10,
-            'sister': 10,
-            'spouse': 20,
-            'child': 30,
-            'boyfriend/girlfriend': 40,
-            'friend': 50,
-            'co-worker': 60
-          };
-
-          const getTypeOrder = (type: string | null | undefined): number => {
-            if (!type) return 999;
-            return (typeOrder as any)[type] || 999;
-          };
-
-          const typeCompare = getTypeOrder(a.relationshipType) - getTypeOrder(b.relationshipType);
-          if (typeCompare !== 0) return typeCompare;
-
-          // Finally alphabetically
-          return a.name.localeCompare(b.name);
-        });
-
-        // Treat the most important contact as root
-        const rootContact = sortedByImportance[0];
-        processContact(rootContact, 0, 0, 0);
-
-        // All other top-level contacts go in a row below
-        const otherTopLevel = topLevelContacts.filter(c => c.id !== rootContact.id);
-
-        if (otherTopLevel.length > 0) {
-          // Sort the other top level contacts
-          const sortedOthers = [...otherTopLevel].sort((a, b) => {
-            // First by relationship type to the root (if any)
-            const typeOrder = {
-              'sibling': 10,
-              'brother': 10,
-              'sister': 10,
-              'spouse': 20,
-              'child': 30,
-              'boyfriend/girlfriend': 40,
-              'friend': 50,
-              'co-worker': 60
-            };
-
-            const getTypeOrder = (type: string | null | undefined): number => {
-              if (!type) return 999;
-              return (typeOrder as any)[type] || 999;
-            };
-
-            const typeCompare = getTypeOrder(a.relationshipType) - getTypeOrder(b.relationshipType);
-            if (typeCompare !== 0) return typeCompare;
-
-            // Then alphabetically
-            return a.name.localeCompare(b.name);
-          });
-
-          // Position them in a row
-          const nodeSpacing = 200;
-          const rowWidth = (sortedOthers.length - 1) * nodeSpacing;
-          const rowStart = -rowWidth / 2;
-          const level1Y = 200; // Fixed Y position
-
-          sortedOthers.forEach((contact, index) => {
-            const x = rowStart + (index * nodeSpacing);
-            processContact(contact, 1, x, level1Y);
-
-            // Add edge from root to this contact
-            newEdges.push({
-              id: `${rootContact.id}-${contact.id}`,
-              source: rootContact.id.toString(),
-              target: contact.id.toString(),
-              animated: false,
-              style: {
-                stroke: getRelationshipColor(contact.relationshipType),
-                strokeWidth: 2
-              }
-            });
-          });
-        }
-      } else {
-        // No contacts at all, nothing to do
-        console.log("No contacts to display");
+        processContact(topLevelContacts[0], 0, 0, 0);
       }
     }
 
+    // Process any remaining unconnected contacts
+    const remainingContacts = contacts.filter(c => !processedContacts.has(c.id));
+    remainingContacts.forEach((contact, index) => {
+      processContact(contact, 0, 300 + (index * 200), 400);
+    });
+
     setNodes(newNodes);
     setEdges(newEdges);
-  }, [contacts, selectedContactId]);
+  }, [contacts, selectedContactId, connectingFromId, handleStartConnection, handleEndConnection]);
 
   // Handle node click
   const onNodeClick: NodeMouseHandler = useCallback((event, node) => {
@@ -603,15 +482,19 @@ export function ContactFlowGraphInner({ onContactSelect }: ContactFlowGraphProps
 
     const contactId = parseInt(node.id);
 
-    if (!isNaN(contactId)) {
-      setSelectedContactId(contactId);
-
-      if (onContactSelect) {
-        console.log('🔄 ContactFlowGraph - Node clicked, calling onContactSelect with ID:', contactId);
-        onContactSelect(contactId);
+    if (connectingFromId && connectingFromId !== contactId) {
+      // Complete connection
+      handleEndConnection(contactId, contactId);
+    } else {
+      // Regular node selection
+      if (!isNaN(contactId)) {
+        setSelectedContactId(contactId);
+        if (onContactSelect) {
+          onContactSelect(contactId);
+        }
       }
     }
-  }, [onContactSelect]);
+  }, [connectingFromId, handleEndConnection, onContactSelect]);
 
   if (!contacts) {
     return (
@@ -622,31 +505,53 @@ export function ContactFlowGraphInner({ onContactSelect }: ContactFlowGraphProps
   }
 
   return (
-    <div className="w-full h-[calc(100vh-12rem)] bg-card rounded-lg border shadow-sm overflow-hidden">
+    <div className="w-full h-[calc(100vh-12rem)] bg-card rounded-lg border shadow-sm overflow-hidden relative">
+      {/* Connection status indicator */}
+      {connectingFromId && (
+        <div className="absolute top-4 left-4 z-10 bg-blue-100 border border-blue-300 rounded-lg p-3 shadow-lg">
+          <div className="flex items-center gap-2">
+            <Link className="h-4 w-4 text-blue-600" />
+            <span className="text-sm font-medium text-blue-800">
+              Connecting from {contacts.find(c => c.id === connectingFromId)?.name}
+            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setConnectingFromId(null)}
+              className="h-6 w-6 p-0 hover:bg-blue-200"
+            >
+              <RotateCcw className="h-3 w-3" />
+            </Button>
+          </div>
+          <p className="text-xs text-blue-600 mt-1">Click on another contact to connect</p>
+        </div>
+      )}
+
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
-        onConnect={onConnect}
         onNodeDragStop={handleNodeDragStop}
+        onPaneClick={handlePaneClick}
+        onInit={setReactFlowInstance}
         nodeTypes={nodeTypes as NodeTypes}
         proOptions={{ hideAttribution: true }}
         fitView
         snapToGrid={true}
         snapGrid={[50, 50]}
+        connectionMode={ConnectionMode.Loose}
         defaultEdgeOptions={{
           type: 'smoothstep',
           style: {
             strokeWidth: 2,
-            strokeDasharray: undefined 
           },
         }}
         minZoom={0.2}
         maxZoom={1.5}
         nodesDraggable={true}
-        nodesConnectable={true}
+        nodesConnectable={false} // We handle connections manually
         elementsSelectable={true}
       >
         <Controls />
