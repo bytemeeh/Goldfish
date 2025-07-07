@@ -15,68 +15,19 @@ import ReactFlow, {
 import { throttle } from 'lodash-es';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Contact } from '@/lib/types';
-// Import moved inline to fix circular dependency
+import { ContactNode } from './ContactNode';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Undo2, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import 'reactflow/dist/style.css';
 
-
-
-console.log('🔧 About to define ContactNodeComponent');
+// Define nodeTypes outside component to avoid React Flow warning
+const nodeTypes = {
+  contact: ContactNode,
+};
 
 const NODE_SIZE = 160;
-
-// Enhanced collision detection system 
-function resolveCollisions(nodes: { contact: Contact; position: XYPosition; level: number }[]) {
-  const nodeSize = { width: 200, height: 80 }; // Approximate node dimensions
-  const minDistance = 280; // Increased minimum distance between node centers
-  
-  // Group nodes by level for collision detection
-  const levelGroups = new Map<number, { contact: Contact; position: XYPosition; level: number }[]>();
-  nodes.forEach(node => {
-    if (!levelGroups.has(node.level)) {
-      levelGroups.set(node.level, []);
-    }
-    levelGroups.get(node.level)!.push(node);
-  });
-  
-  // Resolve collisions within each level using iterative approach
-  levelGroups.forEach((levelNodes, level) => {
-    if (levelNodes.length <= 1) return;
-    
-    levelNodes.sort((a, b) => a.position.x - b.position.x);
-    
-    // Multiple passes to ensure all collisions are resolved
-    for (let pass = 0; pass < 5; pass++) {
-      for (let i = 0; i < levelNodes.length - 1; i++) {
-        const current = levelNodes[i];
-        const next = levelNodes[i + 1];
-        
-        const distance = Math.abs(next.position.x - current.position.x);
-        if (distance < minDistance) {
-          const adjustment = (minDistance - distance) / 2 + 10; // Extra padding
-          current.position.x -= adjustment;
-          next.position.x += adjustment;
-        }
-      }
-    }
-    
-    // Final pass to ensure minimum viewport bounds and spread out more
-    const totalWidth = levelNodes.length * minDistance;
-    const startX = Math.max(150, 400 - totalWidth / 2);
-    
-    levelNodes.forEach((node, index) => {
-      node.position.x = startX + (index * minDistance);
-      // Ensure bounds
-      if (node.position.x < 150) node.position.x = 150;
-      if (node.position.x > 850) node.position.x = 850;
-    });
-  });
-  
-  return nodes;
-}
 
 function isIntersect(a: XYPosition, b: XYPosition) {
   const threshold = NODE_SIZE * 0.6; // Make it easier to drop
@@ -113,39 +64,12 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { setNodes, getNodes, getEdges, setEdges } = useReactFlow();
-  // Use local state for tracking, but setNodes from useReactFlow for updates
+  const [nodes, setNodeState] = useState<Node[]>([]);
+  const [edges, setEdgeState] = useState<Edge[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [draggedNode, setDraggedNode] = useState<string | null>(null);
   const [undoStack, setUndoStack] = useState<Array<{child: string, parent: string | null, timestamp: number}>>([]);
   const [isReordering, setIsReordering] = useState(false);
-  const [nodesReady, setNodesReady] = useState(false);
-  
-  // Snap-off/snap-on drag state
-  const [pointerDelta, setPointerDelta] = useState<{x: number, y: number} | null>(null);
-  const [isDrop, setIsDrop] = useState(false);
-  const [snapTarget, setSnapTarget] = useState<string | null>(null);
-  const [dragStartPos, setDragStartPos] = useState<{x: number, y: number} | null>(null);
-
-  const onNodesChange = useCallback((changes: any) => {
-    // Block React Flow's position updates when we're controlling snap behavior
-    if (isDrop && changes.some((c: any) => c.type === 'position')) {
-      console.log('🚫 Blocking React Flow position changes during snap');
-      return;
-    }
-    
-    const positionChanges = changes.filter((c: any) => c.type === 'position');
-    if (positionChanges.length > 0) {
-      setNodes(nodes => {
-        return nodes.map(node => {
-          const change = positionChanges.find((c: any) => c.id === node.id);
-          if (change && change.position) {
-            return { ...node, position: { ...change.position } };
-          }
-          return node;
-        });
-      });
-    }
-  }, [setNodes, isDrop]);
 
 
   const reparent = useMutation({
@@ -282,7 +206,55 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       hierarchyData.push(...buildHierarchy(rootContact));
     });
     
-    // Apply collision detection and repositioning using the global function
+    // Apply collision detection and repositioning
+    const resolveCollisions = (nodes: { contact: Contact; position: XYPosition; level: number }[]) => {
+      const nodeSize = { width: 200, height: 80 }; // Approximate node dimensions
+      const minDistance = 280; // Increased minimum distance between node centers
+      
+      // Group nodes by level for collision detection
+      const levelGroups = new Map<number, { contact: Contact; position: XYPosition; level: number }[]>();
+      nodes.forEach(node => {
+        if (!levelGroups.has(node.level)) {
+          levelGroups.set(node.level, []);
+        }
+        levelGroups.get(node.level)!.push(node);
+      });
+      
+      // Resolve collisions within each level using iterative approach
+      levelGroups.forEach((levelNodes, level) => {
+        if (levelNodes.length <= 1) return;
+        
+        levelNodes.sort((a, b) => a.position.x - b.position.x);
+        
+        // Multiple passes to ensure all collisions are resolved
+        for (let pass = 0; pass < 5; pass++) {
+          for (let i = 0; i < levelNodes.length - 1; i++) {
+            const current = levelNodes[i];
+            const next = levelNodes[i + 1];
+            
+            const distance = Math.abs(next.position.x - current.position.x);
+            if (distance < minDistance) {
+              const adjustment = (minDistance - distance) / 2 + 10; // Extra padding
+              current.position.x -= adjustment;
+              next.position.x += adjustment;
+            }
+          }
+        }
+        
+        // Final pass to ensure minimum viewport bounds and spread out more
+        const totalWidth = levelNodes.length * minDistance;
+        const startX = Math.max(150, 400 - totalWidth / 2);
+        
+        levelNodes.forEach((node, index) => {
+          node.position.x = startX + (index * minDistance);
+          // Ensure bounds
+          if (node.position.x < 150) node.position.x = 150;
+          if (node.position.x > 850) node.position.x = 850;
+        });
+      });
+      
+      return nodes;
+    };
     
     const resolvedHierarchy = resolveCollisions([...hierarchyData]);
     
@@ -323,14 +295,14 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       }));
 
     console.log('🔄 Created hierarchical nodes:', newNodes.length, 'edges:', newEdges.length);
-    console.log('🔄 Sample node positions:', newNodes.slice(0, 3).map(n => ({ id: n.id, position: n.position })));
+    setNodeState(newNodes);
+    setEdgeState(newEdges);
     setNodes(newNodes);
     setEdges(newEdges);
-    setNodesReady(true);
   }, [contacts, setNodes, setEdges]);
 
   const onDrag = useCallback(
-    ((_e, dragged) => {
+    throttle((_e, dragged) => {
       console.log('🔄 Dragging node:', dragged.id, 'at position:', dragged.position);
       
       if (!isDragging) {
@@ -339,60 +311,26 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       }
       
       const allNodes = getNodes();
-      const SNAP_RADIUS = 140;
-      
-      // Find potential snap targets using distance calculation
-      const potentialTargets = allNodes.filter(
-        (n) => n.id !== dragged.id && 
-        Math.sqrt(
-          Math.pow(dragged.position.x - n.position.x, 2) + 
-          Math.pow(dragged.position.y - n.position.y, 2)
-        ) < SNAP_RADIUS
+      const targets = allNodes.filter(
+        (n) => n.id !== dragged.id && isIntersect(dragged.position, n.position),
       );
       
-      const hasSnapTarget = potentialTargets.length > 0;
-      const currentTarget = hasSnapTarget ? potentialTargets[0] : null;
-      
-      console.log('🎯 Found snap targets:', potentialTargets.map(t => t.id), 'Distance check with radius:', SNAP_RADIUS);
-      
-      // Snap-on behavior: immediate magnet to target center
-      if (hasSnapTarget && currentTarget && !isDrop) {
-        console.log('🧲 Snapping to target:', currentTarget.id);
-        setIsDrop(true);
-        setSnapTarget(currentTarget.id);
-        
-        const snapPos = {
-          x: currentTarget.position.x,
-          y: currentTarget.position.y + 80 // Position below target
-        };
-        
-        // Apply snap position immediately
-        setNodes(ns => ns.map(n => 
-          n.id === dragged.id 
-            ? { ...n, position: snapPos }
-            : n
-        ));
-      }
-      // Snap-off behavior: release back to raw pointer position
-      else if (!hasSnapTarget && isDrop) {
-        console.log('🔓 Snapping off from target');
-        setIsDrop(false);
-        setSnapTarget(null);
-      }
+      console.log('🎯 Found targets for drop:', targets.map(t => t.id));
       
       // Track dragging without visual trail effects
       
-      // Update visual feedback for drop targets
+      // Only update drop targets, don't rebuild all nodes
       setNodes((ns) =>
         ns.map((n) => {
-          const isTarget = potentialTargets.some((t) => t.id === n.id);
+          const isTarget = targets.some((t) => t.id === n.id);
           const isDraggedNode = n.id === dragged.id;
           
+          // Keep existing position for dragged node to allow React Flow's native drag
           return {
             ...n,
             data: { 
               ...n.data, 
-              drop: isTarget && hasSnapTarget,
+              drop: isTarget,
               isDragging: isDraggedNode,
             }
           };
@@ -415,8 +353,8 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
           },
         }))
       );
-    }),
-    [getNodes, setNodes, setEdges, isDragging, isDrop],
+    }, 50),
+    [getNodes, setNodes, setEdges, isDragging],
   );
 
   const onDragStop = useCallback(
@@ -425,41 +363,27 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       
       const allNodes = getNodes();
       
-      // Reset drag state
+      // Find intersecting nodes based on current positions
+      const intersectingNodes = allNodes.filter(
+        (n) => n.id !== dragged.id && isIntersect(dragged.position, n.position),
+      );
+      
+      console.log('🎯 Intersecting nodes at drop:', intersectingNodes.map(n => n.id));
+      
+      // Use the first intersecting node as target
+      const target = intersectingNodes.length > 0 ? intersectingNodes[0] : null;
+      
+      console.log('🎯 Target found:', target ? target.id : 'none');
+      
+      // Reset drag state and clear visual effects
       setIsDragging(false);
       setDraggedNode(null);
       
-      // If we're in snap mode and have a target, finalize the relationship
-      if (isDrop && snapTarget) {
-        console.log('🎯 Finalizing snap to target:', snapTarget);
-        
-        // Get the old parent before reparenting
-        const currentContact = contacts.find(c => c.id.toString() === dragged.id);
-        const oldParent = currentContact?.parentId?.toString() || null;
-        
-        // Prevent self-parenting and circular references
-        if (snapTarget === dragged.id) {
-          console.log('❌ Cannot parent to self');
-        } else {
-          console.log('🚀 Initiating reparent mutation from snap');
-          reparent.mutate({ child: String(dragged.id), parent: String(snapTarget), oldParent });
-        }
-      } else {
-        console.log('❌ No snap target, keeping current position');
-      }
-      
-      // Clean up snap state
-      setIsDrop(false);
-      setSnapTarget(null);
-      setPointerDelta(null);
-      setDragStartPos(null);
-      
-      // Clear all visual effects
+      // Clear drop highlighting
       setNodes((ns) =>
         ns.map((n) => ({ 
           ...n, 
-          data: { ...n.data, drop: false, isDragging: false },
-          style: { ...n.style, transition: 'none' }
+          data: { ...n.data, drop: false, isDragging: false }
         })),
       );
       
@@ -477,8 +401,26 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
           },
         }))
       );
+      
+      if (!target) {
+        console.log('❌ No valid target found, aborting reparent');
+        return;
+      }
+
+      // Prevent self-parenting and circular references
+      if (target.id === dragged.id) {
+        console.log('❌ Cannot parent to self');
+        return;
+      }
+
+      // Get the old parent before reparenting
+      const currentContact = contacts.find(c => c.id.toString() === dragged.id);
+      const oldParent = currentContact?.parentId?.toString() || null;
+      
+      console.log('🚀 Initiating reparent mutation');
+      reparent.mutate({ child: String(dragged.id), parent: String(target.id), oldParent });
     },
-    [getNodes, setNodes, setEdges, reparent, contacts, isDrop, snapTarget],
+    [getNodes, setNodes, reparent, contacts],
   );
 
   const onNodeClick = useCallback(
@@ -579,59 +521,27 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
     }, 500);
   };
 
-  // Rapid triage for node visibility issues
-  const currentNodes = getNodes();
-  const currentEdges = getEdges();
-  console.log('🔍 Triage - nodes.length:', currentNodes.length, 'inline nodeTypes ready');
-  console.log('🔍 Triage - First node:', currentNodes[0]);
-  console.log('🔍 Triage - nodesReady:', nodesReady);
-
-  if (!nodesReady) {
-    return (
-      <div style={{ height: '600px', width: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="text-gray-500">Loading contact graph...</div>
-      </div>
-    );
-  }
-
   return (
     <div style={{ height: '600px', width: '100%', position: 'relative' }}>
       <ReactFlow
-        nodes={currentNodes}
-        edges={currentEdges}
-        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-        minZoom={0.1}
-        maxZoom={4}
-        nodeTypes={{ contact: ({ data }: { data: any }) => {
-          const { contact, drop = false, isDragging = false, level = 0 } = data;
-          const isMe = contact.isMe;
-          
-          return (
-            <div style={{
-              backgroundColor: 'white',
-              border: '2px solid',
-              borderColor: isMe ? '#10b981' : level === 0 ? '#60a5fa' : level === 1 ? '#4ade80' : '#a78bfa',
-              borderRadius: '8px',
-              padding: '12px',
-              minWidth: '160px',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-              opacity: isDragging ? 0.75 : 1,
-              outline: drop ? '4px solid rgba(99, 102, 241, 0.6)' : 'none'
-            }}>
-              <div style={{ fontWeight: '600', fontSize: '14px', color: '#111827' }}>
-                {contact.name}
-              </div>
-              {contact.relationshipType && (
-                <div style={{ fontSize: '12px', color: '#6b7280', textTransform: 'capitalize' }}>
-                  {contact.relationshipType}
-                </div>
-              )}
-            </div>
-          );
-        } }}
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
         onNodeDrag={onDrag}
         onNodeDragStop={onDragStop}
-        onNodesChange={onNodesChange}
+        onNodesChange={(changes) => {
+          // Allow React Flow's native node changes for smooth dragging
+          const nodeChanges = changes.filter(change => change.type === 'position');
+          if (nodeChanges.length > 0) {
+            setNodes(nodes => nodes.map(node => {
+              const change = nodeChanges.find(c => c.id === node.id);
+              if (change && change.type === 'position' && change.position) {
+                return { ...node, position: change.position };
+              }
+              return node;
+            }));
+          }
+        }}
         onNodeClick={onNodeClick}
         connectionLineType={ConnectionLineType.SmoothStep}
         nodesDraggable={true}

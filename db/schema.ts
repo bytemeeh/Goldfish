@@ -79,13 +79,13 @@ export const relationshipCascadeRules: RelationshipCascadeRule[] = [
 
 // Define the contacts table
 export const contacts = pgTable("contacts", {
-  id: integer("id").primaryKey(),
+  id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   phone: text("phone"),
   email: text("email"),
   birthday: date("birthday", { mode: 'string' }),
   notes: text("notes"),
-  parentId: integer("parent_id").references(() => contacts.id, { onDelete: "cascade" }),
+  parentId: uuid("parent_id").references(() => contacts.id, { onDelete: "cascade" }),
   relationshipType: text("relationship_type", { enum: relationshipTypes }),
   isMe: boolean("is_me").default(false),
   shareToken: text("share_token").unique(),
@@ -162,8 +162,8 @@ export type LocationType = typeof locationTypes[number];
 
 // Define the locations table
 export const locations = pgTable("locations", {
-  id: integer("id").primaryKey(),
-  contactId: integer("contact_id").notNull().references(() => contacts.id, { onDelete: "cascade" }),
+  id: uuid("id").primaryKey().defaultRandom(),
+  contactId: uuid("contact_id").notNull().references(() => contacts.id, { onDelete: "cascade" }),
   type: text("type", { enum: locationTypes }).notNull().default("other"),
   name: text("name"),
   address: text("address"),
