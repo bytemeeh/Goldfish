@@ -58,6 +58,8 @@ interface ContactFlowGraphProps {
   onContactSelect?: (contactId: number) => void;
 }
 
+
+
 function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -67,6 +69,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   const [isDragging, setIsDragging] = useState(false);
   const [draggedNode, setDraggedNode] = useState<string | null>(null);
   const [undoStack, setUndoStack] = useState<Array<{child: string, parent: string | null, timestamp: number}>>([]);
+  const [dragTrail, setDragTrail] = useState<Array<{x: number, y: number, timestamp: number}>>([]);
 
   const reparent = useMutation({
     mutationFn: async ({ child, parent, oldParent }: { child: string; parent: string; oldParent: string | null }) => {
@@ -215,6 +218,14 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       
       console.log('🎯 Found targets for drop:', targets.map(t => t.id));
       
+      // Add current position to drag trail
+      if (draggedNode === dragged.id) {
+        setDragTrail(prev => [
+          ...prev.slice(-10), // Keep last 10 positions for trail effect
+          { x: dragged.position.x, y: dragged.position.y, timestamp: Date.now() }
+        ]);
+      }
+      
       setNodes((ns) =>
         ns.map((n) => {
           const isTarget = targets.some((t) => t.id === n.id);
@@ -229,11 +240,13 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
             },
             style: {
               ...n.style,
-              opacity: isDraggedNode ? 0.8 : (isTarget ? 1 : 0.7),
-              transform: isDraggedNode ? 'scale(1.1)' : (isTarget ? 'scale(1.05)' : 'scale(1)'),
-              transition: 'all 0.2s ease-in-out',
+              opacity: isDraggedNode ? 0.9 : (isTarget ? 1 : 0.6),
+              transform: isDraggedNode ? 'scale(1.15) rotate(2deg)' : (isTarget ? 'scale(1.08)' : 'scale(1)'),
+              transition: isDraggedNode ? 'none' : 'all 0.2s ease-in-out',
               zIndex: isDraggedNode ? 1000 : (isTarget ? 100 : 1),
-              filter: isDraggedNode ? 'drop-shadow(0 8px 16px rgba(0,0,0,0.3))' : 'none',
+              filter: isDraggedNode ? 'drop-shadow(0 12px 24px rgba(0,0,0,0.4)) brightness(1.1)' : 'none',
+              border: isDraggedNode ? '3px solid #3b82f6' : (isTarget ? '3px solid #10b981' : ''),
+              boxShadow: isDraggedNode ? '0 0 20px rgba(59, 130, 246, 0.5)' : (isTarget ? '0 0 15px rgba(16, 185, 129, 0.5)' : ''),
             }
           };
         }),
@@ -280,8 +293,9 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       // Reset drag state and clear visual effects
       setIsDragging(false);
       setDraggedNode(null);
+      setDragTrail([]);
       
-      // Clear drop highlighting with animation
+      // Clear drop highlighting with smooth animation
       setNodes((ns) =>
         ns.map((n) => ({ 
           ...n, 
@@ -289,10 +303,12 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
           style: {
             ...n.style,
             opacity: 1,
-            transform: 'scale(1)',
-            transition: 'all 0.3s ease-out',
+            transform: 'scale(1) rotate(0deg)',
+            transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
             zIndex: 1,
             filter: 'none',
+            border: '',
+            boxShadow: '',
           }
         })),
       );
@@ -405,6 +421,29 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
               Drag to reconnect relationship
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* Drag Trail Effect */}
+      <AnimatePresence>
+        {isDragging && dragTrail.length > 0 && (
+          <div className="absolute inset-0 pointer-events-none z-10">
+            {dragTrail.map((point, index) => (
+              <motion.div
+                key={`${point.timestamp}-${index}`}
+                initial={{ opacity: 0.8, scale: 0.8 }}
+                animate={{ opacity: 0, scale: 1.2 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.6 }}
+                className="absolute w-3 h-3 bg-blue-400 rounded-full shadow-lg"
+                style={{
+                  left: point.x - 6,
+                  top: point.y - 6,
+                  opacity: Math.max(0, (index / dragTrail.length) * 0.6),
+                }}
+              />
+            ))}
+          </div>
         )}
       </AnimatePresence>
     </div>
