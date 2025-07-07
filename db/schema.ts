@@ -204,6 +204,9 @@ export const selectLocationSchema = createSelectSchema(locations);
 
 // Export types
 export type Contact = typeof contacts.$inferSelect;
-export type NewContact = typeof contacts.$inferInsert;
+export type InsertContact = typeof contacts.$inferInsert;
 export type Location = typeof locations.$inferSelect;
-export type NewLocation = typeof locations.$inferInsert;
+export type InsertLocation = typeof locations.$inferInsert;
+
+// Transaction type for cascade operations
+export type DrizzleTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
