@@ -1,5 +1,4 @@
-
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ReactFlow, {
   ReactFlowProvider,
   ConnectionLineType,
@@ -11,9 +10,10 @@ import ReactFlow, {
   MiniMap,
   Background,
   BackgroundVariant,
+  useNodesState,
+  useEdgesState,
 } from 'reactflow';
-import { throttle } from 'lodash-es';
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Contact } from '@/lib/types';
 import { ContactNode } from './ContactNode';
 import { useToast } from '@/hooks/use-toast';
@@ -30,27 +30,11 @@ const nodeTypes = {
 const NODE_SIZE = 160;
 
 function isIntersect(a: XYPosition, b: XYPosition) {
-  const threshold = NODE_SIZE * 0.6; // Make it easier to drop
-  const intersects = (
+  const threshold = NODE_SIZE * 0.6;
+  return (
     Math.abs(a.x - b.x) < threshold &&
     Math.abs(a.y - b.y) < threshold
   );
-  
-  if (intersects) {
-    console.log('🎯 Intersection detected:', { a, b, threshold });
-  }
-  
-  return intersects;
-}
-
-function subtree(edgeList: Edge[], root: string, acc: string[] = []) {
-  edgeList
-    .filter((e) => e.source === root)
-    .forEach((e) => {
-      acc.push(String(e.target));
-      subtree(edgeList, String(e.target), acc);
-    });
-  return acc;
 }
 
 function getSubtreeIds(contacts: Contact[], rootId: string): Set<string> {
@@ -71,26 +55,23 @@ interface ContactFlowGraphProps {
   onContactSelect?: (contactId: number) => void;
 }
 
-
-
 function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { setNodes, getNodes, getEdges, setEdges } = useReactFlow();
-  const [nodes, setNodeState] = useState<Node[]>([]);
-  const [edges, setEdgeState] = useState<Edge[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
-  const [draggedNode, setDraggedNode] = useState<string | null>(null);
+  const reactFlowInstance = useReactFlow();
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [undoStack, setUndoStack] = useState<Array<{child: string, parent: string | null, timestamp: number}>>([]);
   const [isReordering, setIsReordering] = useState(false);
-  const [dragState, setDragState] = useState<{
-    root: string;
-    offset: { x: number; y: number };
+  
+  // Ephemeral drag context stored in ref to avoid re-renders
+  const dragContextRef = useRef<{
+    rootId: string;
     subtree: Set<string>;
-    snapTarget?: string;
-    initialPosition: { x: number; y: number };
+    prevPos: XYPosition;
+    oldParentEdge: Edge | null;
+    snapTarget: string | null;
   } | null>(null);
-
 
   const reparent = useMutation({
     mutationFn: async ({ child, parent, oldParent }: { child: string; parent: string; oldParent: string | null }) => {
@@ -100,48 +81,23 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ parentId: parseInt(parent, 10) }),
       });
-      
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API error', response.status, errorText);
-        
-        // Handle specific error cases
-        if (response.status === 400 && errorText.includes('cycle')) {
-          throw new Error('Cannot create cycle - a contact cannot be a descendant of itself');
-        }
-        
-        throw new Error(`API fail: ${response.status} ${errorText}`);
+        throw new Error('Failed to reparent contact');
       }
-      
-      console.log('✅ Reparent successful');
-      return { response: response.json(), oldParent };
+      return response.json();
     },
-    onSuccess: (data, variables) => {
-      console.log('🔄 Invalidating contacts query');
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
-      
-      // Add to undo stack
-      setUndoStack(prev => [...prev.slice(-4), {
-        child: variables.child,
-        parent: variables.oldParent,
-        timestamp: Date.now()
-      }]);
-      
-      // Show success toast
-      const contact = contacts.find(c => c.id.toString() === variables.child);
-      const targetContact = contacts.find(c => c.id.toString() === variables.parent);
-      
       toast({
-        title: "Relationship changed",
-        description: `${contact?.name} is now connected to ${targetContact?.name}`,
-        duration: 3000,
+        title: "Relationship updated",
+        description: "The contact hierarchy has been updated successfully",
       });
     },
-    onError: (error) => {
-      console.error('❌ Mutation error:', error);
+    onError: (error: Error) => {
+      console.error('❌ Reparent mutation failed:', error);
       toast({
         title: "Failed to update relationship",
-        description: error.message,
+        description: "Please try again or check for circular relationships",
         variant: "destructive",
       });
     },
@@ -177,28 +133,23 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   useEffect(() => {
     console.log('🔄 Building hierarchical tree structure from contacts:', contacts.length);
     
-    // Build hierarchical structure
     const contactMap = new Map(contacts.map(c => [c.id, c]));
     const rootContacts = contacts.filter(c => !c.parentId || !contactMap.has(c.parentId));
     
     const buildHierarchy = (contact: Contact, level: number = 0, parentX: number = 400, parentY: number = 150): { contact: Contact; position: XYPosition; level: number }[] => {
       const result: { contact: Contact; position: XYPosition; level: number }[] = [];
       
-      // Constants for deterministic, non-overlapping layout
       const NODE_WIDTH = 160;
       const NODE_HEIGHT = 120;
-      const HORIZONTAL_GAP = 80;  // Fixed gap between nodes horizontally
-      const VERTICAL_GAP = 100;   // Fixed gap between levels vertically
-      const MIN_X = 100;          // Minimum X position to prevent edge overflow
+      const HORIZONTAL_GAP = 80;
+      const VERTICAL_GAP = 100;
+      const MIN_X = 100;
       
-      // Position calculation based on hierarchy level
       let position: XYPosition;
       
       if (contact.isMe) {
-        // "Me" contact at center-top
         position = { x: 400, y: 50 };
       } else if (level === 0) {
-        // Root level contacts with deterministic spacing
         const rootIndex = rootContacts.indexOf(contact);
         const spacing = NODE_WIDTH + HORIZONTAL_GAP;
         const totalWidth = rootContacts.length * spacing - HORIZONTAL_GAP;
@@ -209,7 +160,6 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
           y: 200 
         };
       } else {
-        // Child contacts with guaranteed non-overlapping positions
         const siblings = contacts.filter(c => c.parentId === contact.parentId);
         const childIndex = siblings.indexOf(contact);
         const spacing = NODE_WIDTH + HORIZONTAL_GAP;
@@ -224,7 +174,6 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       
       result.push({ contact, position, level });
       
-      // Process children recursively
       const children = contacts.filter(c => c.parentId === contact.id);
       children.forEach(child => {
         result.push(...buildHierarchy(child, level + 1, position.x, position.y));
@@ -233,75 +182,21 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       return result;
     };
     
-    // Build all hierarchies
     const hierarchyData: { contact: Contact; position: XYPosition; level: number }[] = [];
-    
     rootContacts.forEach(rootContact => {
       hierarchyData.push(...buildHierarchy(rootContact));
     });
     
-    // Validate positions (minimal collision check since we use deterministic spacing)
-    const validatePositions = (nodes: { contact: Contact; position: XYPosition; level: number }[]) => {
-      // With our deterministic spacing, collisions should be rare
-      // This is mainly a safety check and minor adjustment mechanism
-      const SAFE_DISTANCE = 200; // Minimum safe distance between any two nodes
-      
-      // Group nodes by level for validation
-      const levelGroups = new Map<number, { contact: Contact; position: XYPosition; level: number }[]>();
-      nodes.forEach(node => {
-        if (!levelGroups.has(node.level)) {
-          levelGroups.set(node.level, []);
-        }
-        levelGroups.get(node.level)!.push(node);
-      });
-      
-      // Check and adjust positions if needed (should be minimal with deterministic layout)
-      levelGroups.forEach((levelNodes, level) => {
-        if (levelNodes.length <= 1) return;
-        
-        levelNodes.sort((a, b) => a.position.x - b.position.x);
-        
-        // Multiple passes to ensure all collisions are resolved
-        for (let pass = 0; pass < 5; pass++) {
-          for (let i = 0; i < levelNodes.length - 1; i++) {
-            const current = levelNodes[i];
-            const next = levelNodes[i + 1];
-            
-            const distance = Math.abs(next.position.x - current.position.x);
-            if (distance < SAFE_DISTANCE) {
-              const adjustment = (SAFE_DISTANCE - distance) / 2 + 10; // Extra padding
-              current.position.x -= adjustment;
-              next.position.x += adjustment;
-            }
-          }
-        }
-        
-        // Final pass to ensure minimum viewport bounds and spread out more
-        const totalWidth = levelNodes.length * SAFE_DISTANCE;
-        const startX = Math.max(150, 400 - totalWidth / 2);
-        
-        levelNodes.forEach((node, index) => {
-          node.position.x = startX + (index * SAFE_DISTANCE);
-          // Ensure bounds
-          if (node.position.x < 150) node.position.x = 150;
-          if (node.position.x > 850) node.position.x = 850;
-        });
-      });
-      
-      return nodes;
-    };
-    
-    const resolvedHierarchy = validatePositions([...hierarchyData]);
-    
-    // Create nodes with collision-free positioning
-    const newNodes: Node[] = resolvedHierarchy.map(({ contact, position, level }) => ({
+    // Create nodes
+    const newNodes: Node[] = hierarchyData.map(({ contact, position, level }) => ({
       id: String(contact.id),
       position,
       data: { 
         label: contact.name,
         contact,
         level,
-        drop: false,
+        isDragged: false,
+        isSnapTarget: false,
       },
       type: 'contact',
       draggable: true,
@@ -317,200 +212,195 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         source: String(contact.parentId!),
         target: String(contact.id),
         type: 'smoothstep',
-        animated: !isDragging,
+        animated: false,
+        data: { hidden: false },
         style: {
-          stroke: isDragging && (draggedNode === String(contact.id) || draggedNode === String(contact.parentId)) 
-            ? '#ef4444' 
-            : '#64748b',
-          strokeWidth: isDragging && (draggedNode === String(contact.id) || draggedNode === String(contact.parentId))
-            ? 3
-            : 2,
-          strokeDasharray: isDragging && draggedNode === String(contact.id) ? '5,5' : 'none',
+          stroke: '#64748b',
+          strokeWidth: 2,
         },
       }));
 
     console.log('🔄 Created hierarchical nodes:', newNodes.length, 'edges:', newEdges.length);
-    setNodeState(newNodes);
-    setEdgeState(newEdges);
     setNodes(newNodes);
     setEdges(newEdges);
   }, [contacts, setNodes, setEdges]);
 
-  const onDragStart = useCallback(
-    (_e, node) => {
-      console.log('🚀 Drag start for node:', node.id, 'at position:', node.position);
+  // Drag start - establish drag context
+  const onNodeDragStart = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      console.log('🚀 Drag start for node:', node.id);
       
-      // Calculate subtree of nodes to move together
+      // Calculate subtree
       const subtreeIds = getSubtreeIds(contacts, node.id);
       
-      // Initialize drag state with proper offset calculation
-      setDragState({
-        root: node.id,
-        offset: { x: 0, y: 0 }, // React Flow handles offset internally
+      // Find old parent edge
+      const oldParentEdge = edges.find(e => e.target === node.id) || null;
+      
+      // Set drag context
+      dragContextRef.current = {
+        rootId: node.id,
         subtree: subtreeIds,
-        initialPosition: { ...node.position },
-        snapTarget: undefined,
+        prevPos: node.position,
+        oldParentEdge,
+        snapTarget: null,
+      };
+      
+      // Hide old parent edge
+      if (oldParentEdge) {
+        setEdges(edges => edges.map(e => 
+          e.id === oldParentEdge.id 
+            ? { ...e, data: { ...e.data, hidden: true }, style: { ...e.style, opacity: 0 } }
+            : e
+        ));
+      }
+      
+      // Mark dragged nodes
+      setNodes(nodes => nodes.map(n => 
+        subtreeIds.has(n.id) 
+          ? { ...n, data: { ...n.data, isDragged: true } }
+          : n
+      ));
+    },
+    [contacts, edges, setNodes, setEdges]
+  );
+
+  // Drag - move subtree and handle snap targets
+  const onNodeDrag = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      const dragContext = dragContextRef.current;
+      if (!dragContext) return;
+      
+      // Calculate movement delta
+      const dx = node.position.x - dragContext.prevPos.x;
+      const dy = node.position.y - dragContext.prevPos.y;
+      dragContext.prevPos = node.position;
+      
+      // Move entire subtree
+      setNodes(nodes => nodes.map(n => 
+        dragContext.subtree.has(n.id)
+          ? { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } }
+          : n
+      ));
+      
+      // Find snap targets
+      const intersectingNodes = reactFlowInstance.getIntersectingNodes(node).filter(n => 
+        !dragContext.subtree.has(n.id)
+      );
+      
+      // Find closest valid target within 140px
+      let closestTarget: Node | null = null;
+      let closestDistance = 140;
+      
+      intersectingNodes.forEach(target => {
+        const distance = Math.sqrt(
+          Math.pow(target.position.x - node.position.x, 2) + 
+          Math.pow(target.position.y - node.position.y, 2)
+        );
+        if (distance < closestDistance) {
+          closestTarget = target;
+          closestDistance = distance;
+        }
       });
       
-      setIsDragging(true);
-      setDraggedNode(node.id);
-      
-      console.log('🎯 Drag subtree includes:', Array.from(subtreeIds));
+      // Update snap target
+      const newSnapTarget = closestTarget?.id || null;
+      if (newSnapTarget !== dragContext.snapTarget) {
+        // Remove old snap target styling
+        if (dragContext.snapTarget) {
+          setNodes(nodes => nodes.map(n => 
+            n.id === dragContext.snapTarget 
+              ? { ...n, data: { ...n.data, isSnapTarget: false } }
+              : n
+          ));
+        }
+        
+        // Add new snap target styling
+        if (newSnapTarget) {
+          setNodes(nodes => nodes.map(n => 
+            n.id === newSnapTarget 
+              ? { ...n, data: { ...n.data, isSnapTarget: true } }
+              : n
+          ));
+        }
+        
+        dragContext.snapTarget = newSnapTarget;
+      }
     },
-    [contacts],
+    [reactFlowInstance, setNodes]
   );
 
-  const onDrag = useCallback(
-    throttle((_e, dragged) => {
-      console.log('🔄 Dragging node:', dragged.id, 'at position:', dragged.position);
+  // Drag stop - commit changes
+  const onNodeDragStop = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      const dragContext = dragContextRef.current;
+      if (!dragContext) return;
       
-      if (!dragState) return;
+      console.log('🏁 Drag stop for node:', node.id, 'snap target:', dragContext.snapTarget);
       
-      const allNodes = getNodes();
-      const targets = allNodes.filter(
-        (n) => n.id !== dragged.id && 
-               !dragState.subtree.has(n.id) && // Exclude nodes in subtree
-               isIntersect(dragged.position, n.position),
-      );
+      // Clean up node states
+      setNodes(nodes => nodes.map(n => ({
+        ...n,
+        data: { ...n.data, isDragged: false, isSnapTarget: false }
+      })));
       
-      console.log('🎯 Found targets for drop:', targets.map(t => t.id));
-      
-      // Update drag state with snap target
-      const newSnapTarget = targets.length > 0 ? targets[0].id : undefined;
-      if (newSnapTarget !== dragState.snapTarget) {
-        setDragState({
-          ...dragState,
-          snapTarget: newSnapTarget,
-        });
+      // Restore old parent edge
+      if (dragContext.oldParentEdge) {
+        setEdges(edges => edges.map(e => 
+          e.id === dragContext.oldParentEdge!.id 
+            ? { ...e, data: { ...e.data, hidden: false }, style: { ...e.style, opacity: 1 } }
+            : e
+        ));
       }
       
-      // Update visual feedback for all nodes
-      setNodes((ns) =>
-        ns.map((n) => {
-          const isTarget = targets.some((t) => t.id === n.id);
-          const isDraggedNode = n.id === dragged.id;
-          const isInSubtree = dragState.subtree.has(n.id) && !isDraggedNode;
-          
-          return {
-            ...n,
-            data: { 
-              ...n.data, 
-              drop: isTarget,
-              isDragging: isDraggedNode,
-            },
+      // If we have a snap target, reparent
+      if (dragContext.snapTarget) {
+        const oldParentId = dragContext.oldParentEdge?.source || null;
+        
+        // Add to undo stack
+        setUndoStack(prev => [...prev, {
+          child: dragContext.rootId,
+          parent: oldParentId,
+          timestamp: Date.now(),
+        }]);
+        
+        // Remove old parent edge and add new one
+        setEdges(edges => {
+          const filtered = edges.filter(e => e.target !== dragContext.rootId);
+          return [...filtered, {
+            id: `${dragContext.snapTarget}-${dragContext.rootId}`,
+            source: dragContext.snapTarget!,
+            target: dragContext.rootId,
+            type: 'smoothstep',
+            animated: false,
+            data: { hidden: false },
             style: {
-              ...n.style,
-              opacity: isInSubtree ? 0.7 : isDraggedNode ? 0.9 : 1,
-              transform: isDraggedNode ? 'scale(1.05) rotate(2deg)' : isInSubtree ? 'scale(0.95)' : 'scale(1)',
-              transition: isDraggedNode || isInSubtree ? 'none' : 'all 0.2s ease',
-              zIndex: isDraggedNode ? 1000 : isInSubtree ? 999 : n.style?.zIndex || 1,
-            }
-          };
-        }),
-      );
-      
-      // Update edges with detached parent edge visualization
-      setEdges((edges) =>
-        edges.map((edge) => ({
-          ...edge,
-          animated: !isDragging,
-          style: {
-            ...edge.style,
-            stroke: edge.target === dragged.id 
-              ? '#ef4444' // Red for detached parent edge
-              : edge.source === dragged.id || dragState.subtree.has(edge.source) 
-                ? '#10b981' // Green for subtree edges
-                : '#64748b', // Normal edges
-            strokeWidth: edge.target === dragged.id || edge.source === dragged.id ? 3 : 2,
-            strokeDasharray: edge.target === dragged.id ? '5,5' : 'none',
-            opacity: edge.target === dragged.id ? 0.3 : 1, // Fade detached edge
-          },
-        }))
-      );
-    }, 16), // Smoother at 60fps
-    [getNodes, setNodes, setEdges, isDragging, dragState],
-  );
-
-  const onDragStop = useCallback(
-    (_e, dragged) => {
-      console.log('🛑 Drag stopped for node:', dragged.id, 'at position:', dragged.position);
-      
-      if (!dragState) {
-        console.log('❌ No drag state found, aborting');
-        return;
-      }
-
-      const target = dragState.snapTarget;
-      console.log('🎯 Target found:', target ? target : 'none');
-      
-      // Reset drag state and clear visual effects
-      setIsDragging(false);
-      setDraggedNode(null);
-      setDragState(null);
-      
-      // Clear drop highlighting and reset opacity
-      setNodes((ns) =>
-        ns.map((n) => ({ 
-          ...n, 
-          data: { ...n.data, drop: false, isDragging: false },
-          style: { ...n.style, opacity: 1 }
-        })),
-      );
-      
-      // Reset edges to normal state
-      setEdges((edges) =>
-        edges.map((edge) => ({
-          ...edge,
-          animated: true,
-          style: {
-            ...edge.style,
-            stroke: '#64748b',
-            strokeWidth: 2,
-            strokeDasharray: 'none',
-            opacity: 1,
-          },
-        }))
-      );
-      
-      if (!target) {
-        console.log('❌ No valid target found, aborting reparent');
-        return;
-      }
-
-      // Prevent self-parenting and circular references
-      if (target === dragged.id) {
-        console.log('❌ Cannot parent to self');
-        return;
-      }
-
-      // Prevent creating cycles - check if target is in subtree
-      if (dragState.subtree.has(target)) {
-        console.log('❌ Cannot create cycle - target is in subtree');
-        toast({
-          title: "Cannot create cycle",
-          description: "A contact cannot be a descendant of itself",
-          variant: "destructive",
+              stroke: '#64748b',
+              strokeWidth: 2,
+            },
+          }];
         });
-        return;
+        
+        // Commit to database
+        reparent.mutate({
+          child: dragContext.rootId,
+          parent: dragContext.snapTarget,
+          oldParent: oldParentId,
+        });
       }
-
-      // Get the old parent before reparenting
-      const currentContact = contacts.find(c => c.id.toString() === dragged.id);
-      const oldParent = currentContact?.parentId?.toString() || null;
       
-      console.log('🚀 Initiating reparent mutation');
-      reparent.mutate({ child: String(dragged.id), parent: String(target), oldParent });
+      // Clear drag context
+      dragContextRef.current = null;
     },
-    [dragState, setNodes, setEdges, reparent, contacts, toast],
+    [setNodes, setEdges, setUndoStack, reparent]
   );
 
   const onNodeClick = useCallback(
-    (_event, node) => {
+    (event: React.MouseEvent, node: Node) => {
       if (onContactSelect) {
         onContactSelect(parseInt(node.id));
       }
     },
-    [onContactSelect],
+    [onContactSelect]
   );
 
   const handleUndoAction = () => {
@@ -525,74 +415,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   const handleReorder = () => {
     setIsReordering(true);
     
-    // Trigger a rebuild with enhanced collision detection
-    const contactMap = new Map(contacts.map(c => [c.id, c]));
-    const rootContacts = contacts.filter(c => !c.parentId || !contactMap.has(c.parentId));
-    
-    const buildHierarchy = (contact: Contact, level: number = 0, parentX: number = 400, parentY: number = 150): { contact: Contact; position: XYPosition; level: number }[] => {
-      const result: { contact: Contact; position: XYPosition; level: number }[] = [];
-      
-      let position: XYPosition;
-      
-      if (contact.isMe) {
-        position = { x: 400, y: 100 };
-      } else if (level === 0) {
-        const rootIndex = rootContacts.indexOf(contact);
-        const minSpacing = 300;
-        const totalWidth = Math.max(900, rootContacts.length * minSpacing);
-        const spacing = totalWidth / Math.max(rootContacts.length, 1);
-        position = { 
-          x: 400 - ((rootContacts.length - 1) * spacing) / 2 + (rootIndex * spacing), 
-          y: 250 
-        };
-      } else {
-        const siblings = contacts.filter(c => c.parentId === contact.parentId);
-        const childIndex = siblings.indexOf(contact);
-        const minSpacing = 250;
-        const totalWidth = Math.max(500, siblings.length * minSpacing);
-        const spacing = totalWidth / Math.max(siblings.length, 1);
-        
-        position = {
-          x: parentX - ((siblings.length - 1) * spacing) / 2 + (childIndex * spacing),
-          y: parentY + 180
-        };
-      }
-      
-      result.push({ contact, position, level });
-      
-      const children = contacts.filter(c => c.parentId === contact.id);
-      children.forEach(child => {
-        result.push(...buildHierarchy(child, level + 1, position.x, position.y));
-      });
-      
-      return result;
-    };
-    
-    const hierarchyData: { contact: Contact; position: XYPosition; level: number }[] = [];
-    rootContacts.forEach(rootContact => {
-      hierarchyData.push(...buildHierarchy(rootContact));
-    });
-    
-    const resolvedHierarchy = validatePositions([...hierarchyData]);
-    
-    const reorderedNodes: Node[] = resolvedHierarchy.map(({ contact, position, level }) => ({
-      id: String(contact.id),
-      position,
-      data: { 
-        label: contact.name,
-        contact,
-        level,
-        drop: false,
-      },
-      type: 'contact',
-      draggable: true,
-      style: {
-        zIndex: contact.isMe ? 1000 : (100 - level * 10),
-      }
-    }));
-
-    setNodes(reorderedNodes);
-    
+    // Force a rebuild of the hierarchy with better spacing
     setTimeout(() => {
       setIsReordering(false);
       toast({
@@ -608,23 +431,11 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
-        onNodeDragStart={onDragStart}
-        onNodeDrag={onDrag}
-        onNodeDragStop={onDragStop}
-        onNodesChange={(changes) => {
-          // Allow React Flow's native node changes for smooth dragging
-          const nodeChanges = changes.filter(change => change.type === 'position');
-          if (nodeChanges.length > 0) {
-            setNodes(nodes => nodes.map(node => {
-              const change = nodeChanges.find(c => c.id === node.id);
-              if (change && change.type === 'position' && change.position) {
-                return { ...node, position: change.position };
-              }
-              return node;
-            }));
-          }
-        }}
-
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeDragStart={onNodeDragStart}
+        onNodeDrag={onNodeDrag}
+        onNodeDragStop={onNodeDragStop}
         onNodeClick={onNodeClick}
         connectionLineType={ConnectionLineType.SmoothStep}
         nodesDraggable={true}
@@ -676,25 +487,6 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
           {isReordering ? 'Reordering...' : 'Reorder'}
         </Button>
       </div>
-      
-      {/* Dragging Status Indicator */}
-      <AnimatePresence>
-        {isDragging && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="absolute top-4 left-4 z-50"
-          >
-            <div className="bg-blue-100 border border-blue-300 rounded-lg px-3 py-2 text-sm text-blue-800 shadow-lg">
-              <RotateCcw className="h-4 w-4 inline mr-2 animate-spin" />
-              Drag to reconnect relationship
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      
-
     </div>
   );
 }

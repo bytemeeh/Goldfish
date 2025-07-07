@@ -1,0 +1,64 @@
+Objective
+Fix the visual dragging defect while keeping the existing hierarchy-reparenting logic intact. Use React Flow’s native drag engine and update node positions through the controlled-state API so the subtree follows the cursor smoothly.
+
+⸻
+
+1 — Component control pattern
+	•	Keep nodes and edges in controlled React state via useNodesState and useEdgesState.
+	•	Leave the React Flow prop nodesDraggable enabled.
+	•	Hook three callbacks: onNodeDragStart, onNodeDrag, onNodeDragStop.
+	•	Obtain an imperative helper with useReactFlow() for hit-testing and coordinate projection.
+
+⸻
+
+2 — Ephemeral drag context
+
+Store in a ref instead of React state to avoid re-renders:
+	•	rootId – id of the node initially grabbed.
+	•	subtree – a Set of the root plus every descendant id (calculated once at drag start).
+	•	prevPos – last absolute position of the root as delivered by React Flow.
+	•	oldParentEdge – edge object linking the root to its previous parent (may be absent).
+	•	snapTarget – id of the candidate parent currently under the cursor.
+
+⸻
+
+3 — Drag-start behaviour
+	1.	Depth-first search through current edges to populate subtree.
+	2.	Hide the parent edge (oldParentEdge) by toggling an hidden flag in that edge object.
+	3.	Set data.isDragged = true on every node in subtree so CSS can lower opacity and switch the cursor to grabbing.
+	4.	Record prevPos in the context.
+
+⸻
+
+4 — Per-frame drag handling
+
+For every onNodeDrag event:
+	1.	Compute dx and dy as the difference between the dragged node’s new position and prevPos; update prevPos.
+	2.	Iterate over nodes; if a node id is in subtree, add dx and dy to its position.x and position.y. Write the modified array back with setNodes.
+	3.	Use reactFlowInstance.getIntersectingNodes(draggedNode, 140) to find nodes inside the 140-pixel magnetic radius. Discard results that belong to subtree.
+	4.	If the nearest candidate changes, update snapTarget and mark that node with data.isSnapTarget = true (remove the flag from the old one). Styling will draw a dashed outline.
+
+Because setNodes is called inside React Flow’s rAF-throttled handler, motion remains 60 FPS even on large graphs.
+
+⸻
+
+5 — Drag-stop behaviour
+	1.	Remove data.isDragged and data.isSnapTarget from all nodes.
+	2.	Unhide oldParentEdge.
+	3.	If snapTarget is defined, delete any edge whose target equals rootId and push a new edge whose source is snapTarget and target is rootId. Commit this optimistic change with setEdges, then dispatch a TanStack Query mutation that performs the same re-parenting in the database; handle server rejection to roll back if a cycle is detected.
+	4.	Clear the drag context.
+
+⸻
+
+6 — Styling cues
+	•	Nodes with data-is-dragged="true": 0.8 opacity, cursor grabbing.
+	•	Nodes with data-is-snap-target="true": 2 px dashed outline in theme blue.
+	•	Edges with data-hidden="true": stroke opacity zero; transition back to full opacity in 120 ms when unhidden.
+
+These attributes are attached directly to the HTML element representing each node or edge and can be targeted by Tailwind utility classes or plain CSS.
+
+⸻
+
+7 — Why this fixes the defect
+
+The prior attempt tried to move DOM elements outside React Flow’s reconciliation loop, so the underlying positions became desynchronized. In the revised approach React Flow continues to own all DOM transforms; the application simply mutates the canonical nodes array each frame. Because React Flow re-reads those positions before painting, the node and its descendants visually track the pointer exactly, eliminating jitter or lag.

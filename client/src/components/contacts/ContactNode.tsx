@@ -8,40 +8,41 @@ interface ContactNodeProps {
   data: {
     contact: Contact;
     drop?: boolean;
-    isDragging?: boolean;
+    isDragged?: boolean;
+    isSnapTarget?: boolean;
     level?: number;
     label: string;
   };
 }
 
 export function ContactNode({ data }: ContactNodeProps) {
-  const { contact, drop = false, isDragging = false, level = 0 } = data;
+  const { contact, drop = false, isDragged = false, isSnapTarget = false, level = 0 } = data;
   const isMe = contact.isMe;
   
   return (
     <div
       className={clsx(
         'rounded-xl shadow-lg p-4 ring-offset-2 border-2',
-        'hover:shadow-xl',
-        isDragging ? 'transition-none cursor-grabbing shadow-2xl' : 'transition-all duration-200 cursor-grab',
-        drop && 'ring-4 ring-indigo-400 animate-pulse',
+        'hover:shadow-xl transition-all duration-120',
+        isDragged ? 'opacity-80 cursor-grabbing shadow-2xl' : 'cursor-grab',
+        isSnapTarget && 'ring-2 ring-blue-400 ring-dashed',
         level === 0 && !isMe && 'border-blue-300 bg-blue-50',
         level === 1 && 'border-green-300 bg-green-50',
         level >= 2 && 'border-purple-300 bg-purple-50',
         isMe 
           ? 'bg-gradient-to-br from-emerald-400 to-cyan-500 border-emerald-300 shadow-emerald-200' 
           : 'bg-white border-gray-100',
-        drop && 'ring-4 ring-indigo-400',
+        drop && 'ring-4 ring-indigo-400 animate-pulse',
         drop && isMe && 'bg-gradient-to-br from-emerald-300 to-cyan-400',
-        drop && !isMe && 'bg-indigo-50',
-        isDragging && 'opacity-90 scale-105 rotate-1'
+        drop && !isMe && 'bg-indigo-50'
       )}
       style={{ 
         width: '160px', 
         minHeight: '120px',
-        transform: isDragging ? 'scale(1.05) rotate(2deg)' : 'scale(1)',
-        zIndex: isDragging ? 1000 : 1,
+        zIndex: isDragged ? 1000 : 1,
       }}
+      data-is-dragged={isDragged}
+      data-is-snap-target={isSnapTarget}
     >
       <Handle
         type="target"
