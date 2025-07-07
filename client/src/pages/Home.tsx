@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { ContactForm } from "@/components/contacts/ContactForm";
 import { ContactList } from "@/components/contacts/ContactList";
-import { ContactFlowGraph } from "@/components/contacts/ContactFlowGraph";
+import ContactFlowGraph from "@/components/contacts/ContactFlowGraph";
 import { DetailedContactView } from "@/components/contacts/DetailedContactView";
 import { SearchBar, type SearchFilters } from "@/components/contacts/SearchBar";
 import { ShareDialog } from "@/components/contacts/ShareDialog";
@@ -108,7 +108,10 @@ export function Home() {
       case "graph":
       default:
         return (
-          <ContactFlowGraph onContactSelect={handleContactSelect} />
+          <ContactFlowGraph 
+            contacts={contacts || []} 
+            onContactSelect={handleContactSelect} 
+          />
         );
     }
   };

@@ -1,23 +1,34 @@
-
+import { db } from "@db/index";
 import { sql } from "drizzle-orm";
-import type { DrizzleTransaction } from "@db/schema";
 
-export async function cascadeRelationship(tx: DrizzleTransaction, startingId: string) {
+export async function cascadeRelationship(tx: any, startingId: string) {
+  // Use a single WITH RECURSIVE UPDATE to handle relationship cascading
   await tx.execute(sql`
-    WITH RECURSIVE d AS (
-      SELECT id, parent_id, relationship FROM contacts WHERE id = ${startingId}
+    WITH RECURSIVE relationship_tree AS (
+      -- Base case: start with the given contact
+      SELECT id, parent_id, relationship_type, 0 as level
+      FROM contacts 
+      WHERE id = ${startingId}
+      
       UNION ALL
-      SELECT c.id, c.parent_id, c.relationship
-        FROM contacts c JOIN d ON c.parent_id = d.id
+      
+      -- Recursive case: find all descendants
+      SELECT c.id, c.parent_id, c.relationship_type, rt.level + 1
+      FROM contacts c
+      INNER JOIN relationship_tree rt ON c.parent_id = rt.id
+    ),
+    updated_relationships AS (
+      UPDATE contacts 
+      SET relationship_type = CASE 
+        WHEN rt.level = 0 THEN contacts.relationship_type -- Keep original for starting contact
+        WHEN rt.level = 1 THEN 'child' -- Direct children
+        WHEN rt.level = 2 THEN 'child' -- Grandchildren also become children
+        ELSE 'other' -- Great-grandchildren and beyond
+      END
+      FROM relationship_tree rt
+      WHERE contacts.id = rt.id AND rt.level > 0
+      RETURNING contacts.id, contacts.relationship_type
     )
-    UPDATE contacts AS c
-      SET relationship = rules.new_type,
-          updated_at   = now()
-      FROM relationship_cascade_rules AS rules,
-           d
-      WHERE c.id = d.id
-        AND rules.parent_type = d.relationship
-        AND rules.child_type  = c.relationship
-        AND c.id <> ${startingId};
+    SELECT * FROM updated_relationships;
   `);
 }

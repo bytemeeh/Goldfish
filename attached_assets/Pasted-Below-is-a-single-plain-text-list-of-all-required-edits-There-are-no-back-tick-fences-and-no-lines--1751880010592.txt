@@ -1,0 +1,221 @@
+Below is a single plain-text list of all required edits.
+There are no back-tick fences and no lines indented by four or more spaces, so you can copy-paste directly.
+
+⸻
+
+STEP 1 - New migration file migrations/2025-07-07_goldfish.sql
+
+1-a Enable pgcrypto, switch contacts.id and locations.id to UUID, add DB-managed timestamps.
+CREATE EXTENSION IF NOT EXISTS “pgcrypto”;
+ALTER TABLE contacts
+ ALTER COLUMN id DROP DEFAULT,
+ ALTER COLUMN id SET DATA TYPE uuid USING gen_random_uuid(),
+ ALTER COLUMN id SET DEFAULT gen_random_uuid(),
+ ALTER COLUMN created_at SET DEFAULT now(),
+ ALTER COLUMN updated_at SET DEFAULT now();
+ALTER TABLE locations
+ ALTER COLUMN id DROP DEFAULT,
+ ALTER COLUMN id SET DATA TYPE uuid USING gen_random_uuid(),
+ ALTER COLUMN id SET DEFAULT gen_random_uuid();
+
+1-b Create relationship_type ENUM if missing, convert contacts.relationship to that ENUM.
+DO $$ BEGIN
+ IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = ‘relationship_type’) THEN
+  CREATE TYPE relationship_type AS ENUM (‘parent’,‘mother’,‘father’,‘spouse’,‘child’,‘sibling’,‘friend’,‘colleague’,‘other’);
+ END IF;
+END$$;
+ALTER TABLE contacts
+ ALTER COLUMN relationship TYPE relationship_type
+ USING relationship::relationship_type;
+
+1-c Quality constraints.
+ALTER TABLE contacts
+ ADD CONSTRAINT one_me UNIQUE (is_me) DEFERRABLE INITIALLY DEFERRED,
+ ADD CONSTRAINT birthday_past CHECK (birthday IS NULL OR birthday <= CURRENT_DATE);
+ALTER TABLE contacts
+ ALTER COLUMN parent_id DROP NOT NULL,
+ ALTER COLUMN parent_id DROP DEFAULT,
+ ALTER COLUMN parent_id TYPE uuid USING parent_id::uuid,
+ ADD CONSTRAINT contacts_parent_fk FOREIGN KEY (parent_id)
+  REFERENCES contacts(id) ON DELETE SET NULL DEFERRABLE INITIALLY DEFERRED;
+ALTER TABLE locations
+ ALTER COLUMN latitude  TYPE double precision USING latitude::double precision,
+ ALTER COLUMN longitude TYPE double precision USING longitude::double precision,
+ ADD CONSTRAINT latlng_range CHECK (latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180);
+ALTER TABLE locations
+ ADD CONSTRAINT fk_location_contact
+  FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
+CREATE INDEX IF NOT EXISTS idx_locations_contact ON locations(contact_id);
+
+1-d Cycle-prevention trigger.
+CREATE OR REPLACE FUNCTION reject_cycle() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NEW.parent_id IS NULL THEN RETURN NEW; END IF;
+ IF EXISTS (WITH RECURSIVE path(id) AS (SELECT NEW.parent_id UNION ALL SELECT parent_id FROM contacts c JOIN path ON c.id = path.id WHERE parent_id IS NOT NULL) SELECT 1 FROM path WHERE id = NEW.id)
+ THEN RAISE EXCEPTION ‘Re-parenting % → % would create a cycle’, NEW.id, NEW.parent_id; END IF;
+ RETURN NEW;
+END; $$;
+DROP TRIGGER IF EXISTS contacts_acyclic ON contacts;
+CREATE TRIGGER contacts_acyclic BEFORE INSERT OR UPDATE OF parent_id ON contacts FOR EACH ROW EXECUTE FUNCTION reject_cycle();
+
+1-e Auto-timestamp trigger.
+CREATE OR REPLACE FUNCTION set_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
+DROP TRIGGER IF EXISTS contacts_set_updated ON contacts;
+CREATE TRIGGER contacts_set_updated BEFORE UPDATE ON contacts FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+1-f Share token and change-log.
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS share_token text UNIQUE;
+CREATE TABLE IF NOT EXISTS contact_changes (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ contact_id uuid REFERENCES contacts(id) ON DELETE CASCADE,
+ op text CHECK (op IN (‘insert’,‘update’,‘delete’)),
+ payload jsonb,
+ ts timestamptz DEFAULT now(),
+ device_id uuid
+);
+
+1-g Text-search indexes.
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX IF NOT EXISTS contacts_name_trgm  ON contacts USING GIN (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS contacts_email_trgm ON contacts USING GIN (email gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS contacts_phone_trgm ON contacts USING GIN (phone gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS contacts_notes_trgm ON contacts USING GIN (notes gin_trgm_ops);
+
+⸻
+
+STEP 2 - server/index.ts
+
+• Add imports: cors, helmet, express-rate-limit, pino-http, http.
+• Replace hard-coded port with
+const PORT = Number(process.env.PORT ?? 5000);
+• Insert middleware chain in this order:
+express.json({ limit: ‘2mb’ })
+helmet()
+cors({ origin: true, credentials: true })
+rateLimit({ windowMs: 15601000, limit: (req)=>req.path.startsWith(’/sync’)?100:1000, standardHeaders: true, legacyHeaders: false, keyGenerator: req=>req.headers[‘x-device-id’]??req.ip })
+pinoHttp()
+• Error handler: respond but do not re-throw.
+• Static bundle:
+app.use(express.static(dist, { maxAge: ‘365d’, immutable: true }));
+• Start server with http.createServer(app).listen(PORT, …).
+
+⸻
+
+STEP 3 - new helper server/logger.ts
+
+import { pino } from ‘pino’;
+const logger = pino();
+export const logJson = (res:any, body:unknown) => {
+ if (res.headersSent) return;
+ const b = JSON.stringify(body);
+ logger.info({ payload: b.length<=80 ? b : b.slice(0,77)+’…’ }, ‘response’);
+};
+
+Remove any previous res.json monkey-patch; instead call logJson before sending JSON.
+
+⸻
+
+STEP 4 - server/routes/contacts.ts
+
+• Wrap POST, PUT, DELETE in db.transaction and insert matching row into contact_changes.
+• For DELETE, block when contact.isMe.
+• Replace N+1 location lookup with single inArray query.
+
+⸻
+
+STEP 5 - server/lib/relationshipCascade.ts
+
+Replace JS recursion with one WITH RECURSIVE UPDATE as described earlier; function name cascadeRelationship(tx, startingId).
+
+⸻
+
+STEP 6 - server/validation/locationSchemas.ts
+
+latitude and longitude must be z.number().gte(-90).lte(90) and z.number().gte(-180).lte(180).
+
+⸻
+
+STEP 7 - in the same server/index.ts (already partly handled)
+
+app.use(express.static(dist, { maxAge: ‘365d’, immutable: true }));
+
+⸻
+
+STEP 8 - src/App.tsx
+
+Default to graph view:
+const [viewMode, setViewMode] = useLocalStorage<‘list’|‘graph’>(‘viewMode’, ‘graph’);
+Add route redirect:
+<Route path=”/” element={} />
+
+⸻
+
+STEP 9 - full component src/components/ContactFlowGraph.tsx
+
+Import ReactFlow, throttle, TanStack Query, api helper.
+Implement functions isIntersect and subtree (see earlier).
+Handlers: onNodeDrag highlights potential parent; onNodeDragStop calls api.put(/contacts/${child}, { parentId }) and makes optimistic UI update; wrap graph in ReactFlowProvider.
+NODE_SIZE constant 160.
+
+⸻
+
+STEP 10 - src/components/ContactNode.tsx
+
+Change wrapper class to include drop highlight:
+clsx(‘rounded-xl bg-white shadow p-4 transition ring-offset-2’, data.drop && ‘ring-4 ring-indigo-400’)
+
+⸻
+
+STEP 11 - Playwright test tests/reparent.spec.ts
+
+import { test, expect } from ‘@playwright/test’;
+test(‘reparent drag-and-drop’, async ({ page }) => {
+ await page.goto(’/’);
+ await page.getByText(‘Christoph’).dragTo(page.getByText(‘Raissa’));
+ await expect(page.getByText(‘Raissa’)).toHaveScreenshot();
+});
+
+⸻
+
+STEP 12 - CI workflow .github/workflows/test.yml
+
+name: CI
+on: [push]
+jobs:
+build:
+runs-on: ubuntu-latest
+services:
+postgres:
+image: postgres:16
+env:
+POSTGRES_PASSWORD: postgres
+ports: [‘5432:5432’]
+options: –health-cmd pg_isready –health-interval 10s –health-timeout 5s –health-retries 5
+steps:
+- uses: actions/checkout@v4
+- uses: pnpm/action-setup@v3
+with: { version: 9 }
+- run: pnpm install –frozen-lockfile
+- run: pnpm run drizzle:push
+env: { DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres }
+- run: pnpm test
+- run: pnpm exec playwright install –with-deps
+- run: pnpm exec playwright test
+
+⸻
+
+STEP 13 - UI quick-wins (summary)
+
+1 Change contact list wrapper to grid: grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4
+2 Add use-long-press in ContactCard for action bar (call, email, share)
+3 Integrate kbar command palette in App root with actions for new contact, import, toggle view, and contact search
+4 Implement inline field editing via double-click; autosave on blur
+5 Debounced duplicate hint during new-contact entry via fuzzy search endpoint
+6 Add fixed top SyncBar showing ✓, ↻, or ✕
+7 Global undo snackbar for deletes and re-parents (5-second window)
+8 Settings drawer: dark-mode toggle and font-size slider bound to CSS variable –app-font-scale
+9 Map pop-over: distance badge plus “Open in Maps”; heat-map cluster toggle
+10 Empty-state illustration and CTA when contacts array is empty
+
+⸻
+
