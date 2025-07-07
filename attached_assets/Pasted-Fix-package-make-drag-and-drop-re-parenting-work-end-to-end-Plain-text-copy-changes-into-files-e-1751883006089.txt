@@ -1,0 +1,155 @@
+Fix-package: make drag-and-drop re-parenting work end-to-end
+
+(Plain text; copy changes into files exactly as shown.  Sequence matters.)
+
+⸻
+
+1 Client – guarantee every node carries a UUID string
+
+File client/src/hooks/useContacts.ts (or wherever list is mapped to nodes)
+Replace map line:
+id: contact.id,
+with
+id: String(contact.id),   // ensures ReactFlow gets a string UUID
+
+⸻
+
+2 Client – move nodeTypes out of render and silence warning
+
+File client/src/components/contacts/ContactFlowGraph.tsx
+Add above component definition (top of file):
+const nodeTypes = { contact: ContactNode };
+
+Inside <ReactFlow …> prop list change
+nodeTypes={{ contact: ContactNode }}
+to
+nodeTypes={nodeTypes}
+
+⸻
+
+3 Client – improve optimistic update & API payload
+
+Still in ContactFlowGraph.tsx handler onDragStop:
+
+• Ensure IDs are strings
+reparent.mutate({ child: String(dragged.id), parent: String(target.id) });
+
+• When building subs list include root node id casted to string
+const subs = subtree(getEdges(), String(dragged.id));
+
+⸻
+
+4 Client – add request logger to surface backend error quickly
+
+File client/src/lib/api.ts (Axios or fetch wrapper)
+After fetch/axios call add:
+if (!res.ok) { console.error('API error', res.status, await res.text()); throw new Error('API fail'); }
+
+⸻
+
+5 Server – log every incoming request path
+
+File server/index.ts – immediately after const app = express();
+
+app.use((req, _res, next) => {
+  console.info(new Date().toISOString(), req.method, req.path);
+  next();
+});
+
+
+
+⸻
+
+6 Server – expose real stack traces in dev
+
+Replace error handler at bottom of server/index.ts:
+
+app.use((err, _req, res, _next) => {
+  console.error(err);              // full stack
+  res.status(err.status ?? 500).json({ error: err.message });
+});
+
+
+
+⸻
+
+7 Server – dedicated partial-update validation
+
+File server/validation/contactSchemas.ts (create if absent)
+
+import { z } from 'zod';
+export const reparentSchema = z.object({
+  parentId: z.string().uuid().nullable()
+});
+
+
+
+⸻
+
+8 Server – rebuild PUT route for parent change
+
+File server/routes/contacts.ts
+
+Locate existing PUT /api/contacts/:id and replace entire handler with:
+
+router.put('/api/contacts/:id', async (req, res, next) => {
+  const id = req.params.id;              // UUID string
+  const parse = reparentSchema.safeParse(req.body);
+  if (!parse.success) return res.status(400).json({ error: 'Bad payload' });
+
+  try {
+    const { parentId } = parse.data;     // may be null
+    const updated = await db
+      .update(contacts)
+      .set({ parentId })
+      .where(eq(contacts.id, id))
+      .returning();
+
+    if (!updated.length) return res.status(404).json({ error: 'Not found' });
+
+    await db.insert(contact_changes).values({
+      contact_id: id,
+      op: 'update',
+      payload: { parentId },
+      device_id: req.headers['x-device-id']
+    });
+
+    res.json(updated[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+(Uses simple update; no transaction wrapper.)
+
+⸻
+
+9 Server – fix intersection with UUID when computing subtree
+
+File client/src/components/contacts/ContactFlowGraph.tsx helper subtree
+
+Change recursive push line:
+acc.push(e.target);
+to
+acc.push(String(e.target));
+
+⸻
+
+10 Database – confirm IDs are UUID strings
+
+Run once in psql or UI:
+SELECT id, parent_id FROM contacts LIMIT 5;
+Verify they look like b8c1d8f4-….
+If any numeric remnants exist migrate them or rebuild demo data.
+
+⸻
+
+11 Test – manual check
+	1.	Refresh browser.
+	2.	Drag node A onto node B.
+	3.	Browser console shows PUT /api/contacts/<uuid> 200.
+	4.	Reload page – edge A→B persists.
+
+⸻
+
+Everything above completes the feature without runtime warnings, exposes raw errors during future debugging, and aligns ID types across client, API and database.

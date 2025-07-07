@@ -16,6 +16,7 @@ import { throttle } from 'lodash-es';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Contact } from '@/lib/types';
 import { ContactNode } from './ContactNode';
+import { useToast } from '@/hooks/use-toast';
 import 'reactflow/dist/style.css';
 
 // Define nodeTypes outside component to avoid React Flow warning
@@ -56,13 +57,14 @@ interface ContactFlowGraphProps {
 
 function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphProps) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { setNodes, getNodes, getEdges, setEdges } = useReactFlow();
   const [nodes, setNodeState] = useState<Node[]>([]);
   const [edges, setEdgeState] = useState<Edge[]>([]);
 
   const reparent = useMutation({
-    mutationFn: async ({ child, parent }: { child: string; parent: string }) => {
-      console.log('🔄 Attempting to reparent:', { child, parent });
+    mutationFn: async ({ child, parent, oldParent }: { child: string; parent: string; oldParent: string | null }) => {
+      console.log('🔄 Attempting to reparent:', { child, parent, oldParent });
       const response = await fetch(`/api/contacts/${child}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -76,16 +78,64 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       }
       
       console.log('✅ Reparent successful');
-      return response.json();
+      return { response: response.json(), oldParent };
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       console.log('🔄 Invalidating contacts query');
       queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
+      
+      // Show undo toast
+      const contact = contacts.find(c => c.id.toString() === variables.child);
+      const targetContact = contacts.find(c => c.id.toString() === variables.parent);
+      
+      toast({
+        title: "Relationship changed",
+        description: `${contact?.name} is now connected to ${targetContact?.name}`,
+        action: (
+          <button 
+            onClick={() => handleUndo(variables.child, variables.oldParent)}
+            className="px-2 py-1 bg-primary text-primary-foreground rounded text-sm"
+          >
+            Undo
+          </button>
+        ),
+      });
     },
     onError: (error) => {
       console.error('❌ Mutation error:', error);
+      toast({
+        title: "Failed to update relationship",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
+
+  const handleUndo = async (childId: string, oldParentId: string | null) => {
+    try {
+      const response = await fetch(`/api/contacts/${childId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parentId: oldParentId ? parseInt(oldParentId, 10) : null }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to undo');
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
+      toast({
+        title: "Relationship restored",
+        description: "The change has been undone",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to undo",
+        description: "Could not restore the previous relationship",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Convert contacts to nodes and edges
   useEffect(() => {
@@ -183,10 +233,14 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         return;
       }
 
+      // Get the old parent before reparenting
+      const currentContact = contacts.find(c => c.id.toString() === dragged.id);
+      const oldParent = currentContact?.parentId?.toString() || null;
+      
       console.log('🚀 Initiating reparent mutation');
-      reparent.mutate({ child: dragged.id, parent: target.id });
+      reparent.mutate({ child: dragged.id, parent: target.id, oldParent });
     },
-    [getNodes, setNodes, reparent],
+    [getNodes, setNodes, reparent, contacts],
   );
 
   const onNodeClick = useCallback(

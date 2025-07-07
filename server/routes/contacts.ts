@@ -5,6 +5,7 @@ import { contacts, locations } from "@db/schema";
 import { eq, inArray, like, or, and } from "drizzle-orm";
 import { insertContactSchema, type Contact, type Location } from "@db/schema";
 import { logJson } from "../logger";
+import { reparentSchema } from "../validation/reparentSchema";
 
 const router = Router();
 
@@ -13,6 +14,27 @@ interface SearchFilters {
   email?: string;
   phone?: string;
   notes?: string;
+}
+
+// Helper function to get all descendants of a contact
+async function getDescendants(contactId: number): Promise<number[]> {
+  const descendants: number[] = [];
+  const queue = [contactId];
+  
+  while (queue.length > 0) {
+    const currentId = queue.shift()!;
+    const children = await db
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(eq(contacts.parentId, currentId));
+    
+    for (const child of children) {
+      descendants.push(child.id);
+      queue.push(child.id);
+    }
+  }
+  
+  return descendants;
 }
 
 // GET /api/contacts
@@ -168,8 +190,21 @@ router.put("/:id", async (req, res) => {
 
     // Handle specific parent_id update for drag-and-drop
     if (req.body.parentId !== undefined) {
-      const newParentId = req.body.parentId;
+      const validation = reparentSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: "Invalid reparent request", details: validation.error.issues });
+      }
+
+      const newParentId = validation.data.parentId;
       console.log('Updating parentId for contact', id, 'to', newParentId);
+      
+      // Cycle detection: ensure newParentId is not a descendant of id
+      if (newParentId) {
+        const descendants = await getDescendants(id);
+        if (descendants.includes(newParentId)) {
+          return res.status(400).json({ error: "Cannot create cycle: target is a descendant of source" });
+        }
+      }
       
       const [updatedContact] = await db
         .update(contacts)

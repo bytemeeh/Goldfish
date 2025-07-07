@@ -1,0 +1,101 @@
+Drag-and-drop re-parenting — full implementation blueprint
+(plain text — copy straight into the workflow of the next LLM)
+
+⸻
+
+Phase A: Up-front prerequisites
+
+A-1 Database contacts.id and parent_id must both be UUIDs, not integers.
+A-2 There is an HTTP PUT /api/contacts/:id route reachable under the same origin as the SPA.
+A-3 Graph data already renders with React Flow; each node’s id equals contact.id.
+
+⸻
+
+Phase B: Client-side work (React + React Flow)
+
+B-1 Static nodeTypes
+ • At top of ContactFlowGraph.tsx:
+  const nodeTypes = { contact: ContactNode };
+ • Pass nodeTypes={nodeTypes} into <ReactFlow> to avoid re-creation warnings.
+
+B-2 Guarantee IDs are strings
+ When mapping contacts to nodes:
+ id: String(contact.id)
+ parentNode: contact.parentId ? String(contact.parentId) : undefined
+
+B-3 Highlight potential drop-target
+ During onNodeDrag: iterate over all nodes except the one being dragged; if their centres are within NODE_SIZE * 0.5 pixels both horizontally and vertically, set node.data.drop=true.
+
+B-4 Complete drop (onNodeDragStop)
+ • Resolve target = first node with data.drop flag.
+ • If none, exit.
+ • Call reparentMutation.mutate({ child: dragged.id, parent: target.id }).
+ • Compute descendantIds via DFS on current edge list; update setNodes optimistically so root and every descendant now have parentNode = target.id.
+
+B-5 Mutation helper
+ reparentMutation uses TanStack Query’s useMutation.
+ • mutationFn issues PUT /api/contacts/<childId> with body { parentId: <parentId|null> }.
+ • On success: queryClient.invalidateQueries(['contacts']).
+ • On error: toast + rollback optimistic change.
+
+B-6 Undo
+ Push { childId, oldParentId } onto global undo store; show 5-second snackbar “Relationship changed – Undo?”.  Clicking undo triggers the same PUT with oldParentId.
+
+⸻
+
+Phase C: Server-side work (Express + Drizzle)
+
+C-1 Validation schema
+ reparentSchema = z.object({ parentId: z.string().uuid().nullable() })
+
+C-2 Route handler (PUT /api/contacts/:id)
+ 1. Parse id param as UUID; parse body with reparentSchema.
+ 2. Run single SQL update:
+  UPDATE contacts SET parent_id = $parentId WHERE id = $id RETURNING *;
+ 3. If row not found ⇒ 404.
+ 4. Log change in contact_changes table.
+ 5. Respond with updated row.
+
+C-3 Cycle guard
+ Ensure trigger reject_cycle (see migration spec) is present so illegal drops return 400 with meaningful message.
+
+C-4 Relationship cascade
+ Inside updateRelationshipsCascading() (or CTE variant) recalc relationship_type for subtree starting at $id.  Handler should await this before sending response.
+
+C-5 Error handler must not swallow stack
+ In dev, log full error; in prod, still log stack to stderr.
+
+⸻
+
+Phase D: Acceptance tests
+
+D-1 Unit test (Jest / Vitest)
+ • Insert three contacts (A root, B child of A, C child of B).
+ • Call PUT /api/contacts/B with parentId = C  (should 400 cycle).
+ • Call PUT /api/contacts/B with parentId = null then assert D-B-C now top-level.
+
+D-2 E2E test (Playwright)
+ • Load /; drag node “Christoph” onto “Raissa”.
+ • Wait for network PUT 200.
+ • Reload; edge Christoph→Raissa persists.
+
+D-3 Performance smoke
+ Drag a node with 50-descendant subtree; UI responds <100 ms, backend returns 200 within one RTT.
+
+⸻
+
+Phase E: Verification checklist (run before troubleshooting)
+	1.	Can fetch /api/contacts, see UUID ids.
+	2.	Front-end console shows no “new nodeTypes object” warnings.
+	3.	Dragging logs PUT /api/contacts/<uuid> 200 (network tab).
+	4.	Database row SELECT parent_id FROM contacts WHERE id='<child>' equals new parent UUID.
+	5.	Reload page: edge rendered in graph.
+	6.	Attempt to drag node onto descendant → alert “Cannot create cycle” (400).
+	7.	Undo snackbar appears; clicking Undo restores original edge.
+	8.	Error handler logs full stack when cycle error occurs.
+
+If any check fails, note which step and begin targeted troubleshooting.
+
+⸻
+
+Deliver the implementation following Phases A→E. Only after every checklist item returns “pass” should troubleshooting start.
