@@ -3,6 +3,7 @@ import { ContactCard } from "./ContactCard";
 import { type Contact, type Location, type RelationshipType } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { SearchFilters } from "./SearchBar";
+import { buildContactTree, flattenContactTree, groupByFamilyTrees, calculateRelationshipLevels, type HierarchicalContact } from "@/lib/hierarchicalSort";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -135,14 +136,14 @@ function getClosestLocation(contact: Contact, userLat?: number, userLon?: number
 }
 
 // Define sort types
-type SortType = 'hierarchical' | 'proximity' | 'manual';
+type SortType = 'hierarchical' | 'proximity' | 'manual' | 'family-trees' | 'relationship-depth';
 
 export function ContactList({ searchFilters, selectedContactId }: ContactListProps) {
   const { toast } = useToast();
   // Create refs for selected contact scrolling
   const contactRefs = useRef<Record<number, HTMLDivElement | null>>({});
   // State hooks - must be called in the same order every render
-  const [sortType, setSortType] = useState<SortType>('hierarchical');
+  const [sortType, setSortType] = useState<SortType>('family-trees');
   const [proximitySort, setProximitySort] = useState(() => {
     return localStorage.getItem('proximity_sort') === 'true';
   });
@@ -439,6 +440,55 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
       children: buildHierarchy(personalContact.id)
     };
   }
+
+  // Apply intelligent hierarchical sorting
+  const getSortedContacts = (): Contact[] => {
+    let sortedContacts = [...contacts];
+
+    switch (sortType) {
+      case 'family-trees':
+        const familyTrees = groupByFamilyTrees(contacts);
+        sortedContacts = familyTrees.flat();
+        break;
+        
+      case 'hierarchical':
+        const tree = buildContactTree(contacts);
+        sortedContacts = flattenContactTree(tree);
+        break;
+        
+      case 'relationship-depth':
+        const relationshipLevels = calculateRelationshipLevels(contacts);
+        sortedContacts = contacts.sort((a, b) => {
+          const levelA = relationshipLevels.get(a.id) || 999;
+          const levelB = relationshipLevels.get(b.id) || 999;
+          
+          if (levelA !== levelB) return levelA - levelB;
+          return a.name.localeCompare(b.name);
+        });
+        break;
+        
+      case 'proximity':
+        sortedContacts = sortContactsByProximity(contacts);
+        break;
+        
+      case 'manual':
+        if (manualOrderIds.length > 0) {
+          const orderMap = new Map(manualOrderIds.map((id, index) => [id, index]));
+          sortedContacts = contacts.sort((a, b) => {
+            const orderA = orderMap.get(a.id) ?? 999;
+            const orderB = orderMap.get(b.id) ?? 999;
+            if (orderA !== orderB) return orderA - orderB;
+            return a.name.localeCompare(b.name);
+          });
+        }
+        break;
+        
+      default:
+        sortedContacts = contacts.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    return sortedContacts;
+  };
 
   // Apply proximity-based sorting if enabled
   const sortContactsByProximity = (contactsToSort: Contact[]) => {

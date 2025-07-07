@@ -8,12 +8,13 @@ interface ContactNodeProps {
   data: {
     contact: Contact;
     drop?: boolean;
+    isDragging?: boolean;
     label: string;
   };
 }
 
 export function ContactNode({ data }: ContactNodeProps) {
-  const { contact, drop } = data;
+  const { contact, drop = false, isDragging = false } = data;
   const isMe = contact.isMe;
   
   return (
@@ -21,6 +22,8 @@ export function ContactNode({ data }: ContactNodeProps) {
       className={clsx(
         'rounded-xl shadow-lg p-4 transition-all duration-200 ring-offset-2 border-2',
         'hover:shadow-xl hover:scale-105',
+        isDragging && 'cursor-grabbing shadow-2xl ring-4 ring-blue-300',
+        drop && 'ring-4 ring-green-400 bg-green-50 border-green-300 animate-pulse',
         isMe 
           ? 'bg-gradient-to-br from-emerald-400 to-cyan-500 border-emerald-300 shadow-emerald-200' 
           : 'bg-white border-gray-100',

@@ -17,6 +17,9 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Contact } from '@/lib/types';
 import { ContactNode } from './ContactNode';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Undo2, RotateCcw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import 'reactflow/dist/style.css';
 
 // Define nodeTypes outside component to avoid React Flow warning
@@ -61,6 +64,9 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   const { setNodes, getNodes, getEdges, setEdges } = useReactFlow();
   const [nodes, setNodeState] = useState<Node[]>([]);
   const [edges, setEdgeState] = useState<Edge[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggedNode, setDraggedNode] = useState<string | null>(null);
+  const [undoStack, setUndoStack] = useState<Array<{child: string, parent: string | null, timestamp: number}>>([]);
 
   const reparent = useMutation({
     mutationFn: async ({ child, parent, oldParent }: { child: string; parent: string; oldParent: string | null }) => {
@@ -84,21 +90,21 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       console.log('🔄 Invalidating contacts query');
       queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
       
-      // Show undo toast
+      // Add to undo stack
+      setUndoStack(prev => [...prev.slice(-4), {
+        child: variables.child,
+        parent: variables.oldParent,
+        timestamp: Date.now()
+      }]);
+      
+      // Show success toast
       const contact = contacts.find(c => c.id.toString() === variables.child);
       const targetContact = contacts.find(c => c.id.toString() === variables.parent);
       
       toast({
         title: "Relationship changed",
         description: `${contact?.name} is now connected to ${targetContact?.name}`,
-        action: (
-          <button 
-            onClick={() => handleUndo(variables.child, variables.oldParent)}
-            className="px-2 py-1 bg-primary text-primary-foreground rounded text-sm"
-          >
-            Undo
-          </button>
-        ),
+        duration: 3000,
       });
     },
     onError: (error) => {
@@ -175,7 +181,16 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         source: String(contact.parentId!),
         target: String(contact.id),
         type: 'smoothstep',
-        animated: true,
+        animated: !isDragging,
+        style: {
+          stroke: isDragging && (draggedNode === String(contact.id) || draggedNode === String(contact.parentId)) 
+            ? '#ef4444' 
+            : '#64748b',
+          strokeWidth: isDragging && (draggedNode === String(contact.id) || draggedNode === String(contact.parentId))
+            ? 3
+            : 2,
+          strokeDasharray: isDragging && draggedNode === String(contact.id) ? '5,5' : 'none',
+        },
       }));
 
     setNodeState(newNodes);
@@ -188,6 +203,11 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
     throttle((_e, dragged) => {
       console.log('🔄 Dragging node:', dragged.id, 'at position:', dragged.position);
       
+      if (!isDragging) {
+        setIsDragging(true);
+        setDraggedNode(dragged.id);
+      }
+      
       const allNodes = getNodes();
       const targets = allNodes.filter(
         (n) => n.id !== dragged.id && isIntersect(dragged.position, n.position),
@@ -196,14 +216,47 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       console.log('🎯 Found targets for drop:', targets.map(t => t.id));
       
       setNodes((ns) =>
-        ns.map((n) =>
-          targets.some((t) => t.id === n.id)
-            ? { ...n, data: { ...n.data, drop: true } }
-            : { ...n, data: { ...n.data, drop: false } },
-        ),
+        ns.map((n) => {
+          const isTarget = targets.some((t) => t.id === n.id);
+          const isDraggedNode = n.id === dragged.id;
+          
+          return {
+            ...n,
+            data: { 
+              ...n.data, 
+              drop: isTarget,
+              isDragging: isDraggedNode,
+            },
+            style: {
+              ...n.style,
+              opacity: isDraggedNode ? 0.8 : (isTarget ? 1 : 0.7),
+              transform: isDraggedNode ? 'scale(1.1)' : (isTarget ? 'scale(1.05)' : 'scale(1)'),
+              transition: 'all 0.2s ease-in-out',
+              zIndex: isDraggedNode ? 1000 : (isTarget ? 100 : 1),
+              filter: isDraggedNode ? 'drop-shadow(0 8px 16px rgba(0,0,0,0.3))' : 'none',
+            }
+          };
+        }),
       );
-    }, 100),
-    [getNodes, setNodes],
+      
+      // Update edges with animation effects
+      setEdges((edges) =>
+        edges.map((edge) => ({
+          ...edge,
+          animated: !isDragging,
+          style: {
+            ...edge.style,
+            stroke: edge.source === dragged.id || edge.target === dragged.id 
+              ? '#ef4444' 
+              : '#64748b',
+            strokeWidth: edge.source === dragged.id || edge.target === dragged.id ? 3 : 2,
+            strokeDasharray: edge.source === dragged.id ? '5,5' : 'none',
+            opacity: edge.source === dragged.id || edge.target === dragged.id ? 0.6 : 1,
+          },
+        }))
+      );
+    }, 50),
+    [getNodes, setNodes, setEdges, isDragging],
   );
 
   const onDragStop = useCallback(
@@ -224,9 +277,39 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       
       console.log('🎯 Target found:', target ? target.id : 'none');
       
-      // Clear drop highlighting
+      // Reset drag state and clear visual effects
+      setIsDragging(false);
+      setDraggedNode(null);
+      
+      // Clear drop highlighting with animation
       setNodes((ns) =>
-        ns.map((n) => ({ ...n, data: { ...n.data, drop: false } })),
+        ns.map((n) => ({ 
+          ...n, 
+          data: { ...n.data, drop: false, isDragging: false },
+          style: {
+            ...n.style,
+            opacity: 1,
+            transform: 'scale(1)',
+            transition: 'all 0.3s ease-out',
+            zIndex: 1,
+            filter: 'none',
+          }
+        })),
+      );
+      
+      // Reset edges
+      setEdges((edges) =>
+        edges.map((edge) => ({
+          ...edge,
+          animated: true,
+          style: {
+            ...edge.style,
+            stroke: '#64748b',
+            strokeWidth: 2,
+            strokeDasharray: 'none',
+            opacity: 1,
+          },
+        }))
       );
       
       if (!target) {
@@ -259,8 +342,17 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
     [onContactSelect],
   );
 
+  const handleUndoAction = () => {
+    if (undoStack.length === 0) return;
+    
+    const lastAction = undoStack[undoStack.length - 1];
+    setUndoStack(prev => prev.slice(0, -1));
+    
+    handleUndo(lastAction.child, lastAction.parent);
+  };
+
   return (
-    <div style={{ height: '600px', width: '100%' }}>
+    <div style={{ height: '600px', width: '100%', position: 'relative' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -276,6 +368,45 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         <Controls />
         <MiniMap />
       </ReactFlow>
+      
+      {/* Undo Button */}
+      <AnimatePresence>
+        {undoStack.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="absolute top-4 right-4 z-50"
+          >
+            <Button
+              onClick={handleUndoAction}
+              variant="secondary"
+              size="sm"
+              className="shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white"
+            >
+              <Undo2 className="h-4 w-4 mr-2" />
+              Undo ({undoStack.length})
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* Dragging Status Indicator */}
+      <AnimatePresence>
+        {isDragging && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="absolute top-4 left-4 z-50"
+          >
+            <div className="bg-blue-100 border border-blue-300 rounded-lg px-3 py-2 text-sm text-blue-800 shadow-lg">
+              <RotateCcw className="h-4 w-4 inline mr-2 animate-spin" />
+              Drag to reconnect relationship
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
