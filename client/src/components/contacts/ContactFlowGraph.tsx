@@ -136,34 +136,34 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
     const contactMap = new Map(contacts.map(c => [c.id, c]));
     const rootContacts = contacts.filter(c => !c.parentId || !contactMap.has(c.parentId));
     
-    const buildHierarchy = (contact: Contact, level: number = 0, parentX: number = 400, parentY: number = 150): { contact: Contact; position: XYPosition; level: number }[] => {
+    const buildHierarchy = (contact: Contact, level: number = 0, parentX: number = 600, parentY: number = 200): { contact: Contact; position: XYPosition; level: number }[] => {
       const result: { contact: Contact; position: XYPosition; level: number }[] = [];
       
       const NODE_WIDTH = 160;
       const NODE_HEIGHT = 120;
-      const HORIZONTAL_GAP = 80;
-      const VERTICAL_GAP = 100;
-      const MIN_X = 100;
+      const HORIZONTAL_GAP = 120; // Increased for better spacing
+      const VERTICAL_GAP = 150;   // Increased for better vertical spacing
+      const MIN_X = 50;           // Start closer to edge for more space
       
       let position: XYPosition;
       
       if (contact.isMe) {
-        position = { x: 400, y: 50 };
+        position = { x: 600, y: 100 }; // Centered in larger canvas
       } else if (level === 0) {
         const rootIndex = rootContacts.indexOf(contact);
         const spacing = NODE_WIDTH + HORIZONTAL_GAP;
-        const totalWidth = rootContacts.length * spacing - HORIZONTAL_GAP;
-        const startX = Math.max(MIN_X, 400 - totalWidth / 2);
+        const totalWidth = Math.max(800, rootContacts.length * spacing);
+        const startX = Math.max(MIN_X, 600 - totalWidth / 2);
         
         position = { 
           x: startX + rootIndex * spacing, 
-          y: 200 
+          y: 300 // More space below "me" contact
         };
       } else {
         const siblings = contacts.filter(c => c.parentId === contact.parentId);
         const childIndex = siblings.indexOf(contact);
         const spacing = NODE_WIDTH + HORIZONTAL_GAP;
-        const totalWidth = siblings.length * spacing - HORIZONTAL_GAP;
+        const totalWidth = Math.max(400, siblings.length * spacing);
         const startX = Math.max(MIN_X, parentX - totalWidth / 2);
         
         position = {
@@ -426,7 +426,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   };
 
   return (
-    <div style={{ height: '600px', width: '100%', position: 'relative' }}>
+    <div style={{ height: '100vh', width: '100%', position: 'relative' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -444,48 +444,98 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         snapToGrid={false}
         preventScrolling={false}
         nodeOrigin={[0.5, 0.5]}
-        panOnDrag={false}
+        panOnDrag={true}
         selectNodesOnDrag={false}
+        zoomOnScroll={true}
+        zoomOnPinch={true}
+        zoomOnDoubleClick={true}
+        panOnScrollMode="free"
+        minZoom={0.1}
+        maxZoom={2}
+        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
         fitView
-        fitViewOptions={{ padding: 0.2 }}
+        fitViewOptions={{ 
+          padding: 0.3,
+          includeHiddenNodes: false,
+          minZoom: 0.3,
+          maxZoom: 1.2
+        }}
       >
-        <Background variant={BackgroundVariant.Dots} />
-        <Controls />
-        <MiniMap />
+        <Background 
+          variant={BackgroundVariant.Dots}
+          gap={20}
+          size={1}
+          color="#e2e8f0"
+        />
+        <Controls 
+          position="top-left"
+          showZoom={true}
+          showFitView={true}
+          showInteractive={true}
+        />
+        <MiniMap 
+          nodeColor={(node) => {
+            const contact = node.data.contact;
+            if (contact.isMe) return '#10b981';
+            if (node.data.level === 0) return '#3b82f6';
+            if (node.data.level === 1) return '#22c55e';
+            return '#a855f7';
+          }}
+          nodeStrokeWidth={2}
+          nodeBorderRadius={8}
+          pannable={true}
+          zoomable={true}
+          position="bottom-right"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            border: '1px solid #e2e8f0'
+          }}
+        />
       </ReactFlow>
       
-      {/* Undo Button */}
-      <div className="absolute top-4 right-4 z-50 flex gap-2">
-        <AnimatePresence>
-          {undoStack.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-            >
-              <Button
-                onClick={handleUndoAction}
-                variant="secondary"
-                size="sm"
-                className="shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white"
-              >
-                <Undo2 className="h-4 w-4 mr-2" />
-                Undo ({undoStack.length})
-              </Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {/* Control Panel */}
+      <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
+        {/* Navigation Info */}
+        <div className="bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 shadow-lg">
+          <div className="font-medium mb-1">Navigation:</div>
+          <div>• Mouse wheel: Zoom in/out</div>
+          <div>• Click + drag: Pan around</div>
+          <div>• Double-click: Zoom to fit</div>
+        </div>
         
-        <Button
-          onClick={handleReorder}
-          variant="outline"
-          size="sm"
-          disabled={isReordering}
-          className="shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white"
-        >
-          <RotateCcw className={`h-4 w-4 mr-2 ${isReordering ? 'animate-spin' : ''}`} />
-          {isReordering ? 'Reordering...' : 'Reorder'}
-        </Button>
+        {/* Action Buttons */}
+        <div className="flex gap-2">
+          <AnimatePresence>
+            {undoStack.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+              >
+                <Button
+                  onClick={handleUndoAction}
+                  variant="secondary"
+                  size="sm"
+                  className="shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white"
+                >
+                  <Undo2 className="h-4 w-4 mr-2" />
+                  Undo ({undoStack.length})
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          <Button
+            onClick={handleReorder}
+            variant="outline"
+            size="sm"
+            disabled={isReordering}
+            className="shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white"
+          >
+            <RotateCcw className={`h-4 w-4 mr-2 ${isReordering ? 'animate-spin' : ''}`} />
+            {isReordering ? 'Reordering...' : 'Reorder'}
+          </Button>
+        </div>
       </div>
     </div>
   );
