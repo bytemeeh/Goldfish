@@ -15,17 +15,45 @@ import ReactFlow, {
 import { throttle } from 'lodash-es';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Contact } from '@/lib/types';
-import { ContactNode } from './ContactNode';
+// Import moved inline to fix circular dependency
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Undo2, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import 'reactflow/dist/style.css';
 
-// Define nodeTypes outside component to avoid React Flow warning
-const nodeTypes = {
-  contact: ContactNode,
+
+
+// Simple contact node component
+const ContactNodeComponent = ({ data }: { data: any }) => {
+  const { contact, drop = false, isDragging = false, level = 0 } = data;
+  const isMe = contact.isMe;
+  
+  return (
+    <div style={{
+      backgroundColor: 'white',
+      border: '2px solid',
+      borderColor: isMe ? '#10b981' : level === 0 ? '#60a5fa' : level === 1 ? '#4ade80' : '#a78bfa',
+      borderRadius: '8px',
+      padding: '12px',
+      minWidth: '160px',
+      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+      opacity: isDragging ? 0.75 : 1,
+      outline: drop ? '4px solid rgba(99, 102, 241, 0.6)' : 'none'
+    }}>
+      <div style={{ fontWeight: '600', fontSize: '14px', color: '#111827' }}>
+        {contact.name}
+      </div>
+      {contact.relationshipType && (
+        <div style={{ fontSize: '12px', color: '#6b7280', textTransform: 'capitalize' }}>
+          {contact.relationshipType}
+        </div>
+      )}
+    </div>
+  );
 };
+
+console.log('🔧 ContactNodeComponent defined:', ContactNodeComponent);
 
 const NODE_SIZE = 160;
 
@@ -583,7 +611,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   // Rapid triage for node visibility issues
   const currentNodes = getNodes();
   const currentEdges = getEdges();
-  console.log('🔍 Triage - nodes.length:', currentNodes.length, 'nodeTypes:', nodeTypes);
+  console.log('🔍 Triage - nodes.length:', currentNodes.length, 'ContactNodeComponent:', ContactNodeComponent);
   console.log('🔍 Triage - First node:', currentNodes[0]);
   console.log('🔍 Triage - nodesReady:', nodesReady);
 
@@ -603,7 +631,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         minZoom={0.1}
         maxZoom={4}
-        nodeTypes={nodeTypes}
+        nodeTypes={{ contact: ContactNodeComponent }}
         onNodeDrag={onDrag}
         onNodeDragStop={onDragStop}
         onNodesChange={onNodesChange}
