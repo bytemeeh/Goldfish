@@ -1,0 +1,82 @@
+Drag-and-drop re-parenting — implementation plan and troubleshooting workflow
+
+⸻
+
+IMPLEMENTATION STEPS (complete, in order)
+
+1  Database readiness
+• contacts.id and contacts.parent_id are UUID, non-null for children
+• reject_cycle trigger present to block loops
+
+2  Backend route
+• PUT /api/contacts/:id accepts JSON { parentId: uuid|null }
+• Zod schema: parentId is uuid string or null
+• Single SQL UPDATE contacts SET parent_id = $parentId WHERE id = $id RETURNING *
+• On success insert row into contact_changes, return 200 JSON
+
+3  Front-end data mapping
+• Fetch contacts list → map to React Flow nodes
+• Ensure id is String(contact.id)
+• position numeric, parentNode = contact.parentId ? String(contact.parentId) : undefined
+• Keep nodeTypes object declared once, reused each render
+
+4  Drag logic inside ContactFlowGraph
+• onNodeDragStart: record offset delta and descendant set
+• onNodeDrag (throttled ≤30 ms):
+– calculate distance to every other node
+– set data.drop = true on nodes within SNAP_RADIUS
+– setNodes to update highlight ring
+• onNodeDragStop:
+– if drop target found →
+· optimistic setNodes to move subtree (update parentNode)
+· reparentMutation.mutate({ child: dragged.id, parent: target.id })
+– else leave position unchanged
+• reparentMutation success: invalidateQueries([‘contacts’]); error: rollback optimistic update and show toast
+
+5  Visual feedback
+• ContactNode wrapper class uses ring-4 ring-indigo-400 when data.drop is true
+• No absolute positioning that zeroes width/height; keep relative
+
+6  Undo feature
+• After successful optimistic move, push { childId, oldParentId } to undo store
+• Snackbar for 5 s: “Relationship changed — Undo?”
+• Undo triggers same mutation with oldParentId
+
+7  E2E test
+• Playwright: drag node A onto node B, expect PUT 200, reload, edge persists
+• Attempt cycle drag, expect 400 and warning toast
+
+⸻
+
+TROUBLESHOOTING WORKFLOW (when the card doesn’t follow the cursor or disappears)
+
+Step 1  Data sanity
+– Inspect browser console: window.__rf?.getNodes?.().length should be > 0
+– Verify each node object: id string, position numbers, type ‘contact’
+
+Step 2  React-Flow context
+– Confirm ReactFlowProvider present (Elements panel)
+– Check for console warning “new nodeTypes object”; if present, move nodeTypes outside render
+
+Step 3  Event flow
+– Add console.log in onNodeDrag; ensure it fires repeatedly during drag
+– If not firing: parent overlay blocks pointer events or nodesDraggable=false
+
+Step 4  Visual layer
+– Inspect .react-flow__node in Elements; if width/height 0 or display:none, correct CSS
+– If node hidden behind overlay, adjust z-index or pointer-events
+
+Step 5  Backend linkage
+– Drop action should issue PUT /api/contacts/ 200; check Network tab
+– If 400: cycle rejection or bad UUID; if 500: inspect server logs for stack trace
+
+Step 6  State rollback
+– If node jumps back after drop: onNodesChange overriding optimistic move; disable update when dragState.isDrop true
+
+Step 7  Performance filters
+– If movement feels frozen: throttle/debounce interval too high; reduce to 20–30 ms or switch to requestAnimationFrame
+
+Step 8  StrictMode artefacts
+– In dev, double-mount may clear state; test with StrictMode removed
+
+Work through steps sequentially—fix first failing check before proceeding.
