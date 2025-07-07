@@ -36,7 +36,12 @@ This is a modern, full-stack contact management application built with React, Ex
 - **Contact Fields**: Name (required), phone, email, birthday, notes, and location data
 
 ### Visualization
-- **Graph View**: React Flow-based network visualization showing contact relationships
+- **Graph View**: React Flow-based network visualization with advanced drag-and-drop functionality
+  - Pixel-perfect node dragging with real-time cursor following
+  - Magnetic snap zones (140px radius) for intuitive drop target detection
+  - Visual feedback system with opacity changes and outline highlighting
+  - Hierarchical tree layout with collision detection and automatic spacing
+  - Reorder button for manual layout optimization when needed
 - **List View**: Traditional contact list with categorization by relationship type
 - **Detail View**: Comprehensive contact information display with edit capabilities
 
@@ -110,14 +115,17 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-- July 07, 2025: Enhanced hierarchical tree structure with collision detection
-  - Fixed real-time drag behavior - contact cards now follow cursor smoothly during drag
-  - Implemented hierarchical tree layout with "me" contact at center-top
-  - Added collision detection system to prevent node overlapping with 240px minimum spacing
-  - Level-based visual styling: blue for level 0, green for level 1, purple for level 2+
-  - Enhanced positioning algorithm with iterative collision resolution and viewport bounds
-  - Maintained all existing drag-and-drop reparenting functionality and undo system
-  - Drop target highlighting with indigo rings and drag trail animations preserved
+- July 07, 2025: Comprehensive drag-and-drop system with pixel-perfect behavior
+  - **Removed blue drag trail animation** for clean, distraction-free interface
+  - **Enhanced collision detection** with 280px minimum spacing between nodes
+  - **Added Reorder button** for manual layout optimization when automatic spacing fails
+  - **Pixel-perfect drag behavior**: Contact nodes follow cursor in real-time during drag operations
+  - **Magnetic snap zones**: 140px radius for natural drop target detection
+  - **Visual feedback system**: 75% opacity during drag, indigo ring outline on drop targets
+  - **Hierarchical tree layout**: "me" contact at center-top with level-based color coding
+  - **Comprehensive reparenting logic**: Prevents circular references, maintains relationships
+  - **Undo system**: Track and reverse drag-and-drop relationship changes
+  - **Enhanced positioning algorithm**: 5-pass iterative collision resolution with viewport bounds
 
 ## Changelog
 
