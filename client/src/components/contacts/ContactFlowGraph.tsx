@@ -381,10 +381,16 @@ export function ContactFlowGraphInner({ onContactSelect }: ContactFlowGraphProps
 
   // Transform contacts data to nodes and edges
   useEffect(() => {
-    if (!contacts?.length) return;
+    if (!contacts?.length) {
+      console.log('❌ No contacts available for graph');
+      return;
+    }
+
+    console.log('🔄 Processing contacts for graph:', contacts.length);
 
     // Find the "me" contact
     const meContact = contacts.find(c => c.isMe);
+    console.log('👤 Me contact:', meContact?.name || 'Not found');
 
     // Track processed contacts to avoid duplicates
     const processedContacts = new Set<number>();
@@ -401,8 +407,13 @@ export function ContactFlowGraphInner({ onContactSelect }: ContactFlowGraphProps
       y: number = 0,
       parentId?: number
     ) => {
-      if (processedContacts.has(contact.id)) return;
+      if (processedContacts.has(contact.id)) {
+        console.log(`⚠️ Contact ${contact.name} already processed, skipping`);
+        return;
+      }
       processedContacts.add(contact.id);
+
+      console.log(`📍 Processing contact: ${contact.name} (ID: ${contact.id}) at level ${level}`);
 
       // Create node for this contact
       const node: Node<ContactNodeData> = {
@@ -420,14 +431,16 @@ export function ContactFlowGraphInner({ onContactSelect }: ContactFlowGraphProps
         position: { x, y },
         sourcePosition: Position.Bottom,
         targetPosition: Position.Top,
+        draggable: true,
       };
 
       newNodes.push(node);
 
       // Create edge if there's a parent
       if (parentId !== undefined) {
+        const edgeId = `edge-${parentId}-${contact.id}`;
         newEdges.push({
-          id: `${parentId}-${contact.id}`,
+          id: edgeId,
           source: parentId.toString(),
           target: contact.id.toString(),
           animated: connectingFromId === parentId || connectingFromId === contact.id,
@@ -442,6 +455,7 @@ export function ContactFlowGraphInner({ onContactSelect }: ContactFlowGraphProps
       // Process children
       const children = contacts.filter(c => c.parentId === contact.id);
       if (children.length > 0) {
+        console.log(`👶 Found ${children.length} children for ${contact.name}`);
         const spacing = 200;
         const totalWidth = (children.length - 1) * spacing;
         const startX = x - totalWidth / 2;
@@ -456,20 +470,35 @@ export function ContactFlowGraphInner({ onContactSelect }: ContactFlowGraphProps
 
     // Start processing from "me" contact or find a suitable root
     if (meContact) {
+      console.log('🚀 Starting from me contact');
       processContact(meContact, 0, 0, 0);
     } else {
+      console.log('🔍 No me contact found, looking for top-level contacts');
       // Find top-level contacts (no parent)
       const topLevelContacts = contacts.filter(c => !c.parentId);
+      console.log(`📊 Found ${topLevelContacts.length} top-level contacts`);
+      
       if (topLevelContacts.length > 0) {
-        processContact(topLevelContacts[0], 0, 0, 0);
+        // Process all top-level contacts
+        topLevelContacts.forEach((contact, index) => {
+          const x = index * 300; // Space them out horizontally
+          processContact(contact, 0, x, 0);
+        });
       }
     }
 
     // Process any remaining unconnected contacts
     const remainingContacts = contacts.filter(c => !processedContacts.has(c.id));
+    console.log(`🔄 Processing ${remainingContacts.length} remaining contacts`);
+    
     remainingContacts.forEach((contact, index) => {
-      processContact(contact, 0, 300 + (index * 200), 400);
+      const x = 300 + (index * 200);
+      const y = 400;
+      processContact(contact, 0, x, y);
     });
+
+    console.log(`✅ Created ${newNodes.length} nodes and ${newEdges.length} edges`);
+    console.log('📍 Node positions:', newNodes.map(n => `${n.data.contact.name}: (${n.position.x}, ${n.position.y})`));
 
     setNodes(newNodes);
     setEdges(newEdges);
@@ -503,6 +532,22 @@ export function ContactFlowGraphInner({ onContactSelect }: ContactFlowGraphProps
       </div>
     );
   }
+
+  if (contacts.length === 0) {
+    return (
+      <div className="p-4 text-center text-muted-foreground">
+        No contacts found. Add some contacts to see them in the network view.
+      </div>
+    );
+  }
+
+  console.log('🎯 Rendering ContactFlowGraph with:', {
+    contactsCount: contacts.length,
+    nodesCount: nodes.length,
+    edgesCount: edges.length,
+    selectedContactId,
+    connectingFromId
+  });
 
   return (
     <div className="w-full h-[calc(100vh-12rem)] bg-card rounded-lg border shadow-sm overflow-hidden relative">
