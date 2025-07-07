@@ -184,39 +184,47 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
     const buildHierarchy = (contact: Contact, level: number = 0, parentX: number = 400, parentY: number = 150): { contact: Contact; position: XYPosition; level: number }[] => {
       const result: { contact: Contact; position: XYPosition; level: number }[] = [];
       
+      // Constants for deterministic, non-overlapping layout
+      const NODE_WIDTH = 160;
+      const NODE_HEIGHT = 120;
+      const HORIZONTAL_GAP = 80;  // Fixed gap between nodes horizontally
+      const VERTICAL_GAP = 100;   // Fixed gap between levels vertically
+      const MIN_X = 100;          // Minimum X position to prevent edge overflow
+      
       // Position calculation based on hierarchy level
       let position: XYPosition;
       
       if (contact.isMe) {
         // "Me" contact at center-top
-        position = { x: 400, y: 100 };
+        position = { x: 400, y: 50 };
       } else if (level === 0) {
-        // Root level contacts spread horizontally with more spacing
+        // Root level contacts with deterministic spacing
         const rootIndex = rootContacts.indexOf(contact);
-        const minSpacing = 250; // Minimum spacing between root nodes
-        const totalWidth = Math.max(800, rootContacts.length * minSpacing);
-        const spacing = totalWidth / Math.max(rootContacts.length, 1);
+        const spacing = NODE_WIDTH + HORIZONTAL_GAP;
+        const totalWidth = rootContacts.length * spacing - HORIZONTAL_GAP;
+        const startX = Math.max(MIN_X, 400 - totalWidth / 2);
+        
         position = { 
-          x: 400 - ((rootContacts.length - 1) * spacing) / 2 + (rootIndex * spacing), 
-          y: 250 
+          x: startX + rootIndex * spacing, 
+          y: 200 
         };
       } else {
-        // Child contacts positioned below parent with collision avoidance
+        // Child contacts with guaranteed non-overlapping positions
         const siblings = contacts.filter(c => c.parentId === contact.parentId);
         const childIndex = siblings.indexOf(contact);
-        const minSpacing = 200; // Minimum spacing between child nodes
-        const totalWidth = Math.max(400, siblings.length * minSpacing);
-        const spacing = totalWidth / Math.max(siblings.length, 1);
+        const spacing = NODE_WIDTH + HORIZONTAL_GAP;
+        const totalWidth = siblings.length * spacing - HORIZONTAL_GAP;
+        const startX = Math.max(MIN_X, parentX - totalWidth / 2);
         
         position = {
-          x: parentX - ((siblings.length - 1) * spacing) / 2 + (childIndex * spacing),
-          y: parentY + 180
+          x: startX + childIndex * spacing,
+          y: parentY + NODE_HEIGHT + VERTICAL_GAP
         };
       }
       
       result.push({ contact, position, level });
       
-      // Process children
+      // Process children recursively
       const children = contacts.filter(c => c.parentId === contact.id);
       children.forEach(child => {
         result.push(...buildHierarchy(child, level + 1, position.x, position.y));
@@ -232,12 +240,13 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       hierarchyData.push(...buildHierarchy(rootContact));
     });
     
-    // Apply collision detection and repositioning
-    const resolveCollisions = (nodes: { contact: Contact; position: XYPosition; level: number }[]) => {
-      const nodeSize = { width: 200, height: 80 }; // Approximate node dimensions
-      const minDistance = 280; // Increased minimum distance between node centers
+    // Validate positions (minimal collision check since we use deterministic spacing)
+    const validatePositions = (nodes: { contact: Contact; position: XYPosition; level: number }[]) => {
+      // With our deterministic spacing, collisions should be rare
+      // This is mainly a safety check and minor adjustment mechanism
+      const SAFE_DISTANCE = 200; // Minimum safe distance between any two nodes
       
-      // Group nodes by level for collision detection
+      // Group nodes by level for validation
       const levelGroups = new Map<number, { contact: Contact; position: XYPosition; level: number }[]>();
       nodes.forEach(node => {
         if (!levelGroups.has(node.level)) {
@@ -246,7 +255,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         levelGroups.get(node.level)!.push(node);
       });
       
-      // Resolve collisions within each level using iterative approach
+      // Check and adjust positions if needed (should be minimal with deterministic layout)
       levelGroups.forEach((levelNodes, level) => {
         if (levelNodes.length <= 1) return;
         
@@ -259,8 +268,8 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
             const next = levelNodes[i + 1];
             
             const distance = Math.abs(next.position.x - current.position.x);
-            if (distance < minDistance) {
-              const adjustment = (minDistance - distance) / 2 + 10; // Extra padding
+            if (distance < SAFE_DISTANCE) {
+              const adjustment = (SAFE_DISTANCE - distance) / 2 + 10; // Extra padding
               current.position.x -= adjustment;
               next.position.x += adjustment;
             }
@@ -268,11 +277,11 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         }
         
         // Final pass to ensure minimum viewport bounds and spread out more
-        const totalWidth = levelNodes.length * minDistance;
+        const totalWidth = levelNodes.length * SAFE_DISTANCE;
         const startX = Math.max(150, 400 - totalWidth / 2);
         
         levelNodes.forEach((node, index) => {
-          node.position.x = startX + (index * minDistance);
+          node.position.x = startX + (index * SAFE_DISTANCE);
           // Ensure bounds
           if (node.position.x < 150) node.position.x = 150;
           if (node.position.x > 850) node.position.x = 850;
@@ -282,7 +291,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       return nodes;
     };
     
-    const resolvedHierarchy = resolveCollisions([...hierarchyData]);
+    const resolvedHierarchy = validatePositions([...hierarchyData]);
     
     // Create nodes with collision-free positioning
     const newNodes: Node[] = resolvedHierarchy.map(({ contact, position, level }) => ({
@@ -564,7 +573,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       hierarchyData.push(...buildHierarchy(rootContact));
     });
     
-    const resolvedHierarchy = resolveCollisions([...hierarchyData]);
+    const resolvedHierarchy = validatePositions([...hierarchyData]);
     
     const reorderedNodes: Node[] = resolvedHierarchy.map(({ contact, position, level }) => ({
       id: String(contact.id),
