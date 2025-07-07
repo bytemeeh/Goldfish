@@ -119,6 +119,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   const [draggedNode, setDraggedNode] = useState<string | null>(null);
   const [undoStack, setUndoStack] = useState<Array<{child: string, parent: string | null, timestamp: number}>>([]);
   const [isReordering, setIsReordering] = useState(false);
+  const [nodesReady, setNodesReady] = useState(false);
 
   const onNodesChange = useCallback((changes: any) => {
     const positionChanges = changes.filter((c: any) => c.type === 'position');
@@ -311,8 +312,10 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       }));
 
     console.log('🔄 Created hierarchical nodes:', newNodes.length, 'edges:', newEdges.length);
+    console.log('🔄 Sample node positions:', newNodes.slice(0, 3).map(n => ({ id: n.id, position: n.position })));
     setNodes(newNodes);
     setEdges(newEdges);
+    setNodesReady(true);
   }, [contacts, setNodes, setEdges]);
 
   const onDrag = useCallback(
@@ -535,11 +538,20 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
     }, 500);
   };
 
+  if (!nodesReady) {
+    return (
+      <div style={{ height: '600px', width: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="text-gray-500">Loading contact graph...</div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ height: '600px', width: '100%', position: 'relative' }}>
       <ReactFlow
-        nodes={getNodes()}
-        edges={getEdges()}
+        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+        minZoom={0.1}
+        maxZoom={4}
         nodeTypes={nodeTypes}
         onNodeDrag={onDrag}
         onNodeDragStop={onDragStop}

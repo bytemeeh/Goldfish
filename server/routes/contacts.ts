@@ -142,28 +142,36 @@ router.get("/:id", async (req, res) => {
 // POST /api/contacts
 router.post("/", async (req, res) => {
   try {
+    console.log('POST /api/contacts - Request body:', req.body);
+    
     const result = insertContactSchema.safeParse(req.body);
     if (!result.success) {
+      console.log('Validation failed:', result.error.issues);
       return res.status(400).json({ error: result.error.issues });
     }
 
     const data = result.data;
+    console.log('Validated data:', data);
     
-    // Wrap in transaction with change tracking
-    const rec = await db.transaction(async (tx) => {
-      const [newContact] = await tx.insert(contacts).values(data).returning();
-      
-      // Note: contactChanges table will be created by migration
-      // For now, just log the change
-      console.log('Contact created:', { id: newContact.id, operation: 'insert' });
-      
-      return newContact;
-    });
+    // Insert contact directly (no transaction support in neon-http)
+    console.log('About to insert contact with data:', data);
+    const [newContact] = await db.insert(contacts).values(data).returning();
+    
+    // Note: contactChanges table will be created by migration
+    // For now, just log the change
+    console.log('Contact created:', { id: newContact.id, operation: 'insert' });
+    
+    const rec = newContact;
 
     logJson(res, rec);
     res.status(201).json(rec);
   } catch (error) {
     console.error("Error creating contact:", error);
+    console.error("Error details:", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     res.status(500).json({ error: "Failed to create contact" });
   }
 });
