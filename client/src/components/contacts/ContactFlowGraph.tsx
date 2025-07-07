@@ -580,6 +580,13 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
     }, 500);
   };
 
+  // Rapid triage for node visibility issues
+  const currentNodes = getNodes();
+  const currentEdges = getEdges();
+  console.log('🔍 Triage - nodes.length:', currentNodes.length, 'nodeTypes:', nodeTypes);
+  console.log('🔍 Triage - First node:', currentNodes[0]);
+  console.log('🔍 Triage - nodesReady:', nodesReady);
+
   if (!nodesReady) {
     return (
       <div style={{ height: '600px', width: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -591,6 +598,8 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   return (
     <div style={{ height: '600px', width: '100%', position: 'relative' }}>
       <ReactFlow
+        nodes={currentNodes}
+        edges={currentEdges}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         minZoom={0.1}
         maxZoom={4}
