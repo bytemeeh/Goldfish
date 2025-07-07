@@ -29,6 +29,56 @@ const nodeTypes = {
 
 const NODE_SIZE = 160;
 
+// Enhanced collision detection system 
+function resolveCollisions(nodes: { contact: Contact; position: XYPosition; level: number }[]) {
+  const nodeSize = { width: 200, height: 80 }; // Approximate node dimensions
+  const minDistance = 280; // Increased minimum distance between node centers
+  
+  // Group nodes by level for collision detection
+  const levelGroups = new Map<number, { contact: Contact; position: XYPosition; level: number }[]>();
+  nodes.forEach(node => {
+    if (!levelGroups.has(node.level)) {
+      levelGroups.set(node.level, []);
+    }
+    levelGroups.get(node.level)!.push(node);
+  });
+  
+  // Resolve collisions within each level using iterative approach
+  levelGroups.forEach((levelNodes, level) => {
+    if (levelNodes.length <= 1) return;
+    
+    levelNodes.sort((a, b) => a.position.x - b.position.x);
+    
+    // Multiple passes to ensure all collisions are resolved
+    for (let pass = 0; pass < 5; pass++) {
+      for (let i = 0; i < levelNodes.length - 1; i++) {
+        const current = levelNodes[i];
+        const next = levelNodes[i + 1];
+        
+        const distance = Math.abs(next.position.x - current.position.x);
+        if (distance < minDistance) {
+          const adjustment = (minDistance - distance) / 2 + 10; // Extra padding
+          current.position.x -= adjustment;
+          next.position.x += adjustment;
+        }
+      }
+    }
+    
+    // Final pass to ensure minimum viewport bounds and spread out more
+    const totalWidth = levelNodes.length * minDistance;
+    const startX = Math.max(150, 400 - totalWidth / 2);
+    
+    levelNodes.forEach((node, index) => {
+      node.position.x = startX + (index * minDistance);
+      // Ensure bounds
+      if (node.position.x < 150) node.position.x = 150;
+      if (node.position.x > 850) node.position.x = 850;
+    });
+  });
+  
+  return nodes;
+}
+
 function isIntersect(a: XYPosition, b: XYPosition) {
   const threshold = NODE_SIZE * 0.6; // Make it easier to drop
   const intersects = (
@@ -220,55 +270,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       hierarchyData.push(...buildHierarchy(rootContact));
     });
     
-    // Apply collision detection and repositioning
-    const resolveCollisions = (nodes: { contact: Contact; position: XYPosition; level: number }[]) => {
-      const nodeSize = { width: 200, height: 80 }; // Approximate node dimensions
-      const minDistance = 280; // Increased minimum distance between node centers
-      
-      // Group nodes by level for collision detection
-      const levelGroups = new Map<number, { contact: Contact; position: XYPosition; level: number }[]>();
-      nodes.forEach(node => {
-        if (!levelGroups.has(node.level)) {
-          levelGroups.set(node.level, []);
-        }
-        levelGroups.get(node.level)!.push(node);
-      });
-      
-      // Resolve collisions within each level using iterative approach
-      levelGroups.forEach((levelNodes, level) => {
-        if (levelNodes.length <= 1) return;
-        
-        levelNodes.sort((a, b) => a.position.x - b.position.x);
-        
-        // Multiple passes to ensure all collisions are resolved
-        for (let pass = 0; pass < 5; pass++) {
-          for (let i = 0; i < levelNodes.length - 1; i++) {
-            const current = levelNodes[i];
-            const next = levelNodes[i + 1];
-            
-            const distance = Math.abs(next.position.x - current.position.x);
-            if (distance < minDistance) {
-              const adjustment = (minDistance - distance) / 2 + 10; // Extra padding
-              current.position.x -= adjustment;
-              next.position.x += adjustment;
-            }
-          }
-        }
-        
-        // Final pass to ensure minimum viewport bounds and spread out more
-        const totalWidth = levelNodes.length * minDistance;
-        const startX = Math.max(150, 400 - totalWidth / 2);
-        
-        levelNodes.forEach((node, index) => {
-          node.position.x = startX + (index * minDistance);
-          // Ensure bounds
-          if (node.position.x < 150) node.position.x = 150;
-          if (node.position.x > 850) node.position.x = 850;
-        });
-      });
-      
-      return nodes;
-    };
+    // Apply collision detection and repositioning using the global function
     
     const resolvedHierarchy = resolveCollisions([...hierarchyData]);
     
