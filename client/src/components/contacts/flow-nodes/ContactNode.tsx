@@ -41,21 +41,21 @@ const relationshipColors = {
 
 export const ContactNode = memo(({ data }: NodeProps<ContactNodeData>) => {
   const { contact, level, isSelected } = data;
-  
+
   // Determine style based on relationship type
   const getNodeStyle = () => {
     if (contact.isMe) {
       return relationshipColors.personal;
     }
-    
+
     const relType = contact.relationshipType || 'default';
-    
+
     const categories = {
       family: ['mother', 'father', 'brother', 'sibling', 'child', 'spouse'],
       friends: ['friend', 'boyfriend/girlfriend'],
       professional: ['co-worker']
     };
-    
+
     if (categories.family.includes(relType)) {
       return relationshipColors.family;
     } else if (categories.friends.includes(relType)) {
@@ -63,12 +63,12 @@ export const ContactNode = memo(({ data }: NodeProps<ContactNodeData>) => {
     } else if (categories.professional.includes(relType)) {
       return relationshipColors.professional;
     }
-    
+
     return relationshipColors.default;
   };
-  
+
   const nodeStyle = getNodeStyle();
-  
+
   // Generate initials for avatar
   const getInitials = (name: string) => {
     return name
@@ -78,7 +78,18 @@ export const ContactNode = memo(({ data }: NodeProps<ContactNodeData>) => {
       .toUpperCase()
       .substring(0, 2);
   };
-  
+
+  const handleDragOver = (event: any) => {
+    event.preventDefault();
+  };
+
+  const handleDrop = (event: any) => {
+    event.preventDefault();
+    // Handle the drop event here, e.g., update the relationship between contacts
+    console.log('Dropped:', contact.id);
+    // You'll likely want to dispatch an action to update the internal database and hierarchical view
+  };
+
   return (
     <div
       className={`
@@ -86,21 +97,23 @@ export const ContactNode = memo(({ data }: NodeProps<ContactNodeData>) => {
         ${nodeStyle.bg} ${nodeStyle.border}
         ${isSelected ? 'border-primary shadow-lg scale-110' : 'shadow'}
       `}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
     >
       <Handle type="target" position={Position.Top} className="!bg-muted-foreground" />
-      
+
       <div className="flex flex-col items-center gap-1">
         <Avatar className={`w-12 h-12 ${isSelected ? 'ring-2 ring-primary' : ''}`}>
           <AvatarFallback className={`text-sm ${nodeStyle.text}`}>
             {getInitials(contact.name)}
           </AvatarFallback>
         </Avatar>
-        
+
         <div className="text-center mt-1">
           <h3 className="font-medium text-foreground truncate max-w-full">
             {contact.name}
           </h3>
-          
+
           {contact.relationshipType && (
             <Badge 
               variant="outline" 
@@ -109,7 +122,7 @@ export const ContactNode = memo(({ data }: NodeProps<ContactNodeData>) => {
               {contact.relationshipType}
             </Badge>
           )}
-          
+
           {contact.isMe && (
             <Badge 
               variant="outline" 
@@ -118,13 +131,13 @@ export const ContactNode = memo(({ data }: NodeProps<ContactNodeData>) => {
               You
             </Badge>
           )}
-          
+
           <div className="text-xs text-muted-foreground mt-1">
             Level {level}
           </div>
         </div>
       </div>
-      
+
       <Handle type="source" position={Position.Bottom} className="!bg-muted-foreground" />
     </div>
   );
