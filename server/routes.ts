@@ -4,6 +4,7 @@ import { db } from "@db";
 import { contacts, locations, insertContactSchema, insertLocationSchema, getCascadedRelationshipType, getValidChildRelationshipTypes, type RelationshipType, type Location } from "@db/schema";
 import { and, or, eq, ilike, sql, inArray } from "drizzle-orm";
 import contactsRouter from "./routes/contacts";
+import aiRouter from "./routes/ai";
 
 interface SearchFilters {
   name?: string;
@@ -69,6 +70,7 @@ async function updateRelationshipsCascading(contactId: number, newParentId: numb
 export function registerRoutes(app: Express): Server {
   // Use contacts router
   app.use("/api/contacts", contactsRouter);
+  app.use("/api/ai", aiRouter);
 
   // Locations API
   app.get("/api/locations", async (req, res) => {

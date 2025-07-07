@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, Map } from "lucide-react";
+import { Loader2, Map, Sparkles } from "lucide-react";
+import { VoiceInput } from "@/components/ai/VoiceInput";
 import { Textarea } from "@/components/ui/textarea";
 import { type Contact, type RelationshipType, type Location } from "@/lib/types";
 import { useState, useEffect } from "react";
@@ -53,6 +54,8 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [locations, setLocations] = useState<Location[]>(initialData?.locations || []);
+  const [isVoiceProcessing, setIsVoiceProcessing] = useState(false);
+  const [voiceTranscription, setVoiceTranscription] = useState<string>("");
   
   // For personal card, automatically use current location
   useEffect(() => {
@@ -121,6 +124,41 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
       longitude: initialData?.longitude || null,
     },
   });
+
+  // Voice processing handlers
+  const handleVoiceTranscription = (text: string) => {
+    setVoiceTranscription(text);
+  };
+
+  const handleVoiceProcessingComplete = (result: any) => {
+    if (result.type === 'contact_created') {
+      // The contact was created on the server, refresh the data
+      queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
+      onSuccess?.();
+      toast({
+        title: "Contact created via voice",
+        description: `${result.contact.name} has been added to your contacts.`
+      });
+    } else if (result.type === 'contact_extracted') {
+      // Fill the form with extracted data
+      const contact = result.contact;
+      form.setValue('name', contact.name || '');
+      form.setValue('phone', contact.phone || '');
+      form.setValue('email', contact.email || '');
+      form.setValue('birthday', contact.birthday || '');
+      form.setValue('notes', contact.notes || '');
+      form.setValue('color', contact.color || 'blue');
+      if (contact.relationshipType) {
+        form.setValue('relationshipType', contact.relationshipType);
+      }
+      
+      toast({
+        title: "Contact details extracted",
+        description: "Voice input has been processed and form fields filled."
+      });
+    }
+    setIsVoiceProcessing(false);
+  };
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (data: any) => {
@@ -213,6 +251,30 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
     <div className="relative flex flex-col max-h-[70vh]">
       <Form {...form}>
         <form id="contact-form" onSubmit={onSubmit} className="space-y-4 pr-2 pb-2 overflow-y-auto">
+          
+          {/* Voice Input Section */}
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-200">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <Sparkles className="h-5 w-5 text-blue-600" />
+                <h3 className="text-sm font-medium text-blue-900">AI Voice Input</h3>
+              </div>
+              <VoiceInput 
+                onTranscription={handleVoiceTranscription}
+                onProcessingComplete={handleVoiceProcessingComplete}
+                placeholder="Speak contact details..."
+                mode="contact"
+                isProcessing={isVoiceProcessing}
+                className="text-xs"
+              />
+            </div>
+            {voiceTranscription && (
+              <div className="text-xs text-gray-600 bg-white p-2 rounded border">
+                <strong>Transcription:</strong> "{voiceTranscription}"
+              </div>
+            )}
+          </div>
+
           <FormField
             control={form.control}
             name="name"

@@ -115,6 +115,18 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+- July 07, 2025: AI Voice Integration & Color System Enhancement
+  - **Added comprehensive color coding system** with 10 color options for contact cards
+  - **Implemented AI voice input components** for contact creation and relationship management
+  - **Created VoiceInput component** with recording, transcription, and processing capabilities
+  - **Added RelationshipManager component** for voice-controlled relationship changes in graph view
+  - **Enhanced contact form** with AI voice input section for hands-free contact creation
+  - **Updated database schema** to include color field for contact cards
+  - **Applied consistent color styling** across list view, graph view, and minimap
+  - **Integrated OpenAI API** for speech-to-text and natural language processing
+  - **Voice commands support**: "Add John Smith, phone 555-1234, make him my co-worker"
+  - **Relationship voice commands**: "Make Sarah John's daughter", "Connect Mike as Tom's friend"
+
 - July 07, 2025: Comprehensive drag-and-drop system with pixel-perfect behavior
   - **Removed blue drag trail animation** for clean, distraction-free interface
   - **Enhanced collision detection** with 280px minimum spacing between nodes

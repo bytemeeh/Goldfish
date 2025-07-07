@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, List, Network, User, Share2 } from "lucide-react";
+import { Plus, List, Network, User, Share2, Mic } from "lucide-react";
+import { VoiceInput } from "@/components/ai/VoiceInput";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,7 @@ export function Home() {
   const [isSharing, setIsSharing] = useState(false);
   const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>("graph");
+  const [voiceTranscription, setVoiceTranscription] = useState<string>("");
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     // Try to get the saved view mode from local storage
     const savedViewMode = localStorage.getItem(STORAGE_KEY_VIEW_MODE);
@@ -74,6 +76,18 @@ export function Home() {
   const { data: contacts } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
   });
+
+  // Voice processing handlers
+  const handleVoiceTranscription = (text: string) => {
+    setVoiceTranscription(text);
+  };
+
+  const handleVoiceProcessingComplete = (result: any) => {
+    if (result.type === 'contact_created') {
+      // Contact was created successfully
+      setIsAddingContact(false); // Close any open dialogs
+    }
+  };
 
   // Save the view mode to local storage whenever it changes
   // Only save list or graph modes, not detail
@@ -195,8 +209,32 @@ export function Home() {
 
           {/* Hide search bar in detail view */}
           {viewMode !== "detail" && (
-            <div className="w-full max-w-2xl">
-              <SearchBar onSearch={setFilters} />
+            <div className="space-y-4">
+              <div className="w-full max-w-2xl">
+                <SearchBar onSearch={setFilters} />
+              </div>
+              
+              {/* AI Voice Input */}
+              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 border border-indigo-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Mic className="h-5 w-5 text-indigo-600" />
+                    <h3 className="text-sm font-medium text-indigo-900">Quick AI Contact Creation</h3>
+                  </div>
+                  <VoiceInput 
+                    onTranscription={handleVoiceTranscription}
+                    onProcessingComplete={handleVoiceProcessingComplete}
+                    placeholder="Speak to add contact..."
+                    mode="contact"
+                    className="text-sm"
+                  />
+                </div>
+                {voiceTranscription && (
+                  <div className="mt-3 text-xs text-gray-600 bg-white p-2 rounded border">
+                    <strong>Voice Input:</strong> "{voiceTranscription}"
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

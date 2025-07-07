@@ -17,6 +17,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Contact } from '@/lib/types';
 import { getContactColorClasses } from '@/lib/colors';
 import { ContactNode } from './ContactNode';
+import { RelationshipManager } from '@/components/ai/RelationshipManager';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Undo2, RotateCcw } from 'lucide-react';
@@ -428,6 +429,11 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
 
   return (
     <div style={{ height: '100vh', width: '100%', position: 'relative' }}>
+      {/* Relationship Manager - positioned in top-right corner */}
+      <div className="absolute top-4 right-4 z-10 w-80">
+        <RelationshipManager />
+      </div>
+      
       <ReactFlow
         nodes={nodes}
         edges={edges}
