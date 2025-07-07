@@ -326,7 +326,6 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
           
           return {
             ...n,
-            position: isDraggedNode ? dragged.position : n.position,
             data: { 
               ...n.data, 
               drop: isTarget,
@@ -451,6 +450,10 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         onNodeDragStop={onDragStop}
         onNodeClick={onNodeClick}
         connectionLineType={ConnectionLineType.SmoothStep}
+        nodesDraggable={true}
+        edgesFocusable={false}
+        nodesFocusable={false}
+        snapToGrid={false}
         fitView
         fitViewOptions={{ padding: 0.2 }}
       >

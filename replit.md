@@ -110,13 +110,14 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-- July 07, 2025: Enhanced contact graph visualization
-  - Fixed duplicate variable declaration error in ContactGraph.tsx 
-  - Implemented production-ready CSP configuration for Vite development
-  - Created interactive ContactFlowGraph with ReactFlow drag-and-drop functionality
-  - Added custom ContactNode component with distinctive styling for "me" contact
-  - Default view mode changed to graph view
-  - "Me" contact now displays with emerald gradient background and central positioning
+- July 07, 2025: Enhanced hierarchical tree structure with collision detection
+  - Fixed real-time drag behavior - contact cards now follow cursor smoothly during drag
+  - Implemented hierarchical tree layout with "me" contact at center-top
+  - Added collision detection system to prevent node overlapping with 240px minimum spacing
+  - Level-based visual styling: blue for level 0, green for level 1, purple for level 2+
+  - Enhanced positioning algorithm with iterative collision resolution and viewport bounds
+  - Maintained all existing drag-and-drop reparenting functionality and undo system
+  - Drop target highlighting with indigo rings and drag trail animations preserved
 
 ## Changelog
 
