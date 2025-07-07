@@ -211,9 +211,16 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       console.log('🛑 Drag stopped for node:', dragged.id, 'at position:', dragged.position);
       
       const allNodes = getNodes();
-      const target = allNodes.find(
-        (n) => n.data.drop && isIntersect(dragged.position, n.position),
+      
+      // Find intersecting nodes based on current positions
+      const intersectingNodes = allNodes.filter(
+        (n) => n.id !== dragged.id && isIntersect(dragged.position, n.position),
       );
+      
+      console.log('🎯 Intersecting nodes at drop:', intersectingNodes.map(n => n.id));
+      
+      // Use the first intersecting node as target
+      const target = intersectingNodes.length > 0 ? intersectingNodes[0] : null;
       
       console.log('🎯 Target found:', target ? target.id : 'none');
       
