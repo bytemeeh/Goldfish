@@ -375,27 +375,51 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         });
       }
       
-      // Update visual feedback
-      setNodes((ns) =>
-        ns.map((n) => {
-          const isTarget = targets.some((t) => t.id === n.id);
-          const isDraggedNode = n.id === dragged.id;
-          const isInSubtree = dragState.subtree.has(n.id);
-          
-          return {
-            ...n,
-            data: { 
-              ...n.data, 
-              drop: isTarget,
-              isDragging: isDraggedNode,
-            },
-            style: {
-              ...n.style,
-              opacity: isInSubtree ? 0.8 : 1,
+      // Calculate movement delta for subtree nodes
+      const rootNode = allNodes.find(n => n.id === dragged.id);
+      if (rootNode) {
+        const deltaX = dragged.position.x - dragState.initialPosition.x;
+        const deltaY = dragged.position.y - dragState.initialPosition.y;
+        
+        // Update all nodes with visual feedback and subtree movement
+        setNodes((ns) =>
+          ns.map((n) => {
+            const isTarget = targets.some((t) => t.id === n.id);
+            const isDraggedNode = n.id === dragged.id;
+            const isInSubtree = dragState.subtree.has(n.id) && !isDraggedNode;
+            
+            let newPosition = n.position;
+            
+            // Move subtree nodes with the dragged node
+            if (isInSubtree) {
+              const originalNode = nodes.find(node => node.id === n.id);
+              if (originalNode) {
+                newPosition = {
+                  x: originalNode.position.x + deltaX,
+                  y: originalNode.position.y + deltaY,
+                };
+              }
             }
-          };
-        }),
-      );
+            
+            return {
+              ...n,
+              position: newPosition,
+              data: { 
+                ...n.data, 
+                drop: isTarget,
+                isDragging: isDraggedNode,
+              },
+              style: {
+                ...n.style,
+                opacity: isInSubtree ? 0.8 : isDraggedNode ? 0.9 : 1,
+                transform: isDraggedNode ? 'scale(1.05)' : isInSubtree ? 'scale(0.95)' : 'scale(1)',
+                transition: isDraggedNode || isInSubtree ? 'none' : 'all 0.2s ease',
+                zIndex: isDraggedNode ? 1000 : isInSubtree ? 999 : n.style?.zIndex || 1,
+              }
+            };
+          }),
+        );
+      }
       
       // Update edges with detached parent edge visualization
       setEdges((edges) =>
@@ -415,8 +439,8 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
           },
         }))
       );
-    }, 30), // Reduced throttle for smoother movement
-    [getNodes, setNodes, setEdges, isDragging, dragState],
+    }, 16), // Smoother at 60fps
+    [getNodes, setNodes, setEdges, isDragging, dragState, nodes],
   );
 
   const onDragStop = useCallback(

@@ -22,8 +22,9 @@ export function ContactNode({ data }: ContactNodeProps) {
     <div
       className={clsx(
         'rounded-xl shadow-lg p-4 ring-offset-2 border-2',
-        'hover:shadow-xl transition-all duration-200',
-        drop && 'ring-4 ring-indigo-400',
+        'hover:shadow-xl',
+        isDragging ? 'transition-none cursor-grabbing shadow-2xl' : 'transition-all duration-200 cursor-grab',
+        drop && 'ring-4 ring-indigo-400 animate-pulse',
         level === 0 && !isMe && 'border-blue-300 bg-blue-50',
         level === 1 && 'border-green-300 bg-green-50',
         level >= 2 && 'border-purple-300 bg-purple-50',
@@ -32,9 +33,15 @@ export function ContactNode({ data }: ContactNodeProps) {
           : 'bg-white border-gray-100',
         drop && 'ring-4 ring-indigo-400',
         drop && isMe && 'bg-gradient-to-br from-emerald-300 to-cyan-400',
-        drop && !isMe && 'bg-indigo-50'
+        drop && !isMe && 'bg-indigo-50',
+        isDragging && 'opacity-90 scale-105 rotate-1'
       )}
-      style={{ width: '160px', minHeight: '120px' }}
+      style={{ 
+        width: '160px', 
+        minHeight: '120px',
+        transform: isDragging ? 'scale(1.05) rotate(2deg)' : 'scale(1)',
+        zIndex: isDragging ? 1000 : 1,
+      }}
     >
       <Handle
         type="target"
