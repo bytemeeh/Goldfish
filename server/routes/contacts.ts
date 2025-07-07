@@ -154,43 +154,62 @@ router.put("/:id", async (req, res) => {
       return res.status(400).json({ error: "Invalid contact ID" });
     }
 
-    const result = insertContactSchema.safeParse(req.body);
+    console.log('PUT request for contact', id, 'with data:', req.body);
+
+    // Check if contact exists first
+    const [existingContact] = await db
+      .select()
+      .from(contacts)
+      .where(eq(contacts.id, id));
+
+    if (!existingContact) {
+      return res.status(404).json({ error: "Contact not found" });
+    }
+
+    // Handle specific parent_id update for drag-and-drop
+    if (req.body.parentId !== undefined) {
+      const newParentId = req.body.parentId;
+      console.log('Updating parentId for contact', id, 'to', newParentId);
+      
+      const [updatedContact] = await db
+        .update(contacts)
+        .set({ 
+          parentId: newParentId,
+          updatedAt: new Date().toISOString() 
+        })
+        .where(eq(contacts.id, id))
+        .returning();
+
+      console.log('Contact parent updated successfully:', updatedContact);
+      logJson(res, updatedContact);
+      return res.json(updatedContact);
+    }
+
+    // For other updates, use schema validation
+    const updateSchema = insertContactSchema.partial();
+    const result = updateSchema.safeParse(req.body);
     if (!result.success) {
       return res.status(400).json({ error: result.error.issues });
     }
 
     const data = result.data;
 
-    // Wrap in transaction with change tracking
-    const rec = await db.transaction(async (tx) => {
-      // Get old data first
-      const [oldContact] = await tx
-        .select()
-        .from(contacts)
-        .where(eq(contacts.id, id));
+    // Update the contact
+    const [updatedContact] = await db
+      .update(contacts)
+      .set({ ...data, updatedAt: new Date().toISOString() })
+      .where(eq(contacts.id, id))
+      .returning();
 
-      if (!oldContact) {
-        throw new Error("Contact not found");
-      }
-
-      const [updatedContact] = await tx
-        .update(contacts)
-        .set({ ...data, updatedAt: new Date().toISOString() })
-        .where(eq(contacts.id, id))
-        .returning();
-
-      // Note: contactChanges table will be created by migration
-      // For now, just log the change
-      console.log('Contact updated:', { id, operation: 'update' });
-
-      return updatedContact;
-    });
+    console.log('Contact updated:', { id, operation: 'update', data });
+    const rec = updatedContact;
 
     logJson(res, rec);
     res.json(rec);
   } catch (error) {
     console.error("Error updating contact:", error);
-    res.status(500).json({ error: "Failed to update contact" });
+    console.error("Full error details:", error);
+    res.status(500).json({ error: "Failed to update contact", details: error.message });
   }
 });
 
