@@ -27,7 +27,7 @@ const nodeTypes = {
   contact: ContactNode,
 };
 
-const NODE_SIZE = 140;
+const NODE_SIZE = 160;
 
 function isIntersect(a: XYPosition, b: XYPosition) {
   const threshold = NODE_SIZE * 0.6; // Make it easier to drop
@@ -164,26 +164,26 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         // "Me" contact at center-top
         position = { x: 400, y: 100 };
       } else if (level === 0) {
-        // Root level contacts spread horizontally with optimized spacing
+        // Root level contacts spread horizontally with more spacing
         const rootIndex = rootContacts.indexOf(contact);
-        const minSpacing = 180; // Optimized spacing for smaller cards
-        const totalWidth = Math.max(600, rootContacts.length * minSpacing);
+        const minSpacing = 250; // Minimum spacing between root nodes
+        const totalWidth = Math.max(800, rootContacts.length * minSpacing);
         const spacing = totalWidth / Math.max(rootContacts.length, 1);
         position = { 
           x: 400 - ((rootContacts.length - 1) * spacing) / 2 + (rootIndex * spacing), 
           y: 250 
         };
       } else {
-        // Child contacts positioned below parent with optimized spacing
+        // Child contacts positioned below parent with collision avoidance
         const siblings = contacts.filter(c => c.parentId === contact.parentId);
         const childIndex = siblings.indexOf(contact);
-        const minSpacing = 160; // Optimized spacing for smaller cards
-        const totalWidth = Math.max(320, siblings.length * minSpacing);
+        const minSpacing = 200; // Minimum spacing between child nodes
+        const totalWidth = Math.max(400, siblings.length * minSpacing);
         const spacing = totalWidth / Math.max(siblings.length, 1);
         
         position = {
           x: parentX - ((siblings.length - 1) * spacing) / 2 + (childIndex * spacing),
-          y: parentY + 150
+          y: parentY + 180
         };
       }
       
@@ -207,8 +207,8 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
     
     // Apply collision detection and repositioning
     const resolveCollisions = (nodes: { contact: Contact; position: XYPosition; level: number }[]) => {
-      const nodeSize = { width: 140, height: 90 }; // Optimized node dimensions
-      const minDistance = 160; // Minimum distance between node centers
+      const nodeSize = { width: 200, height: 80 }; // Approximate node dimensions
+      const minDistance = 240; // Minimum distance between node centers
       
       // Group nodes by level for collision detection
       const levelGroups = new Map<number, { contact: Contact; position: XYPosition; level: number }[]>();
