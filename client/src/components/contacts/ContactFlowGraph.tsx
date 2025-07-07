@@ -21,7 +21,7 @@ import 'reactflow/dist/style.css';
 
 // Define nodeTypes outside component to avoid React Flow warning
 const nodeTypes = {
-  contactNode: ContactNode,
+  contact: ContactNode,
 };
 
 const NODE_SIZE = 160;
@@ -44,8 +44,8 @@ function subtree(edgeList: Edge[], root: string, acc: string[] = []) {
   edgeList
     .filter((e) => e.source === root)
     .forEach((e) => {
-      acc.push(e.target);
-      subtree(edgeList, e.target, acc);
+      acc.push(String(e.target));
+      subtree(edgeList, String(e.target), acc);
     });
   return acc;
 }
@@ -73,8 +73,8 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       
       if (!response.ok) {
         const error = await response.text();
-        console.error('❌ Reparent failed:', error);
-        throw new Error(`Failed to reparent: ${error}`);
+        console.error('API error', response.status, error);
+        throw new Error('API fail');
       }
       
       console.log('✅ Reparent successful');
@@ -156,14 +156,14 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       }
 
       return {
-        id: contact.id.toString(),
+        id: String(contact.id),
         position,
         data: { 
           label: contact.name,
           contact,
           drop: false,
         },
-        type: 'contactNode',
+        type: 'contact',
         draggable: true,
       };
     });
@@ -172,8 +172,8 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       .filter(contact => contact.parentId)
       .map(contact => ({
         id: `${contact.parentId}-${contact.id}`,
-        source: contact.parentId!.toString(),
-        target: contact.id.toString(),
+        source: String(contact.parentId!),
+        target: String(contact.id),
         type: 'smoothstep',
         animated: true,
       }));
@@ -238,7 +238,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       const oldParent = currentContact?.parentId?.toString() || null;
       
       console.log('🚀 Initiating reparent mutation');
-      reparent.mutate({ child: dragged.id, parent: target.id, oldParent });
+      reparent.mutate({ child: String(dragged.id), parent: String(target.id), oldParent });
     },
     [getNodes, setNodes, reparent, contacts],
   );

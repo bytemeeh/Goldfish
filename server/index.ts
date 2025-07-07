@@ -10,6 +10,11 @@ import { setupVite, serveStatic, log } from "./vite";
 const PORT = Number(process.env.PORT ?? 5000);
 
 const app = express();
+
+app.use((req, _res, next) => {
+  console.info(new Date().toISOString(), req.method, req.path);
+  next();
+});
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(helmet({
@@ -73,10 +78,8 @@ app.use((req, res, next) => {
   const server = registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
+    console.error(err);              // full stack
+    res.status(err.status ?? 500).json({ error: err.message });
   });
 
   // importantly only setup vite in development and after
