@@ -21,74 +21,74 @@ export function ContactNode({ data }: ContactNodeProps) {
   return (
     <div
       className={clsx(
-        'rounded-xl shadow-lg p-4 ring-offset-2 border-2',
-        'hover:shadow-xl transition-all duration-200',
-        drop && 'ring-4 ring-indigo-400',
+        'rounded-lg shadow-md border-2 cursor-grab',
+        'hover:shadow-lg transition-all duration-150',
+        drop && 'ring-3 ring-indigo-400 ring-offset-1',
         level === 0 && !isMe && 'border-blue-300 bg-blue-50',
         level === 1 && 'border-green-300 bg-green-50',
         level >= 2 && 'border-purple-300 bg-purple-50',
         isMe 
-          ? 'bg-gradient-to-br from-emerald-400 to-cyan-500 border-emerald-300 shadow-emerald-200' 
-          : 'bg-white border-gray-100',
-        drop && 'ring-4 ring-indigo-400',
-        drop && isMe && 'bg-gradient-to-br from-emerald-300 to-cyan-400',
-        drop && !isMe && 'bg-indigo-50'
+          ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white border-emerald-500' 
+          : 'bg-white border-gray-300'
       )}
-      style={{ width: '160px', minHeight: '120px' }}
+      style={{ 
+        width: '140px', 
+        height: '90px',
+        padding: '8px'
+      }}
     >
       <Handle
         type="target"
         position={Position.Top}
-        className={clsx(
-          'w-2 h-2',
-          isMe ? 'bg-emerald-600' : 'bg-gray-400'
-        )}
+        className="w-2 h-2 bg-transparent border-transparent"
       />
       
-      <div className="flex flex-col items-center space-y-2">
-        <div className={clsx(
-          'w-10 h-10 rounded-full flex items-center justify-center',
-          isMe 
-            ? 'bg-gradient-to-br from-emerald-600 to-cyan-700 shadow-lg' 
-            : 'bg-gradient-to-br from-blue-500 to-purple-600'
-        )}>
-          <User className="w-5 h-5 text-white" />
-        </div>
-        
-        <div className="text-center">
-          <h3 className={clsx(
-            'font-semibold text-sm truncate',
-            isMe ? 'text-white' : 'text-gray-900'
+      <div className="flex flex-col h-full justify-between">
+        {/* Header with avatar and name */}
+        <div className="flex items-center space-x-2">
+          <div className={clsx(
+            'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
+            isMe 
+              ? 'bg-white/20' 
+              : 'bg-gray-100'
           )}>
-            {contact.name}
-          </h3>
-          {contact.relationshipType && (
-            <p className={clsx(
-              'text-xs capitalize',
-              isMe ? 'text-emerald-100' : 'text-gray-500'
+            <User className={clsx('w-4 h-4', isMe ? 'text-white' : 'text-gray-600')} />
+          </div>
+          
+          <div className="flex-1 min-w-0">
+            <h3 className={clsx(
+              'font-semibold text-sm leading-tight truncate',
+              isMe ? 'text-white' : 'text-gray-900'
             )}>
-              {contact.relationshipType}
-            </p>
-          )}
-          {isMe && (
-            <p className="text-xs text-emerald-100 font-medium">
-              You
-            </p>
-          )}
+              {contact.name}
+            </h3>
+            {contact.relationshipType && (
+              <p className={clsx(
+                'text-xs capitalize truncate',
+                isMe ? 'text-white/80' : 'text-gray-500'
+              )}>
+                {contact.relationshipType}
+              </p>
+            )}
+          </div>
         </div>
         
-        <div className="flex space-x-2">
+        {/* Contact info icons */}
+        <div className="flex items-center space-x-3">
           {contact.phone && (
-            <Phone className={clsx(
-              'w-3 h-3',
-              isMe ? 'text-emerald-100' : 'text-gray-400'
-            )} />
+            <div className="flex items-center space-x-1">
+              <Phone className={clsx('w-3 h-3', isMe ? 'text-white/80' : 'text-gray-500')} />
+              <span className={clsx(
+                'text-xs truncate max-w-20',
+                isMe ? 'text-white/90' : 'text-gray-600'
+              )}>
+                {contact.phone.slice(-4)}
+              </span>
+            </div>
           )}
+          
           {contact.email && (
-            <Mail className={clsx(
-              'w-3 h-3',
-              isMe ? 'text-emerald-100' : 'text-gray-400'
-            )} />
+            <Mail className={clsx('w-3 h-3', isMe ? 'text-white/80' : 'text-gray-500')} />
           )}
         </div>
       </div>
@@ -96,10 +96,7 @@ export function ContactNode({ data }: ContactNodeProps) {
       <Handle
         type="source"
         position={Position.Bottom}
-        className={clsx(
-          'w-2 h-2',
-          isMe ? 'bg-emerald-600' : 'bg-gray-400'
-        )}
+        className="w-2 h-2 bg-transparent border-transparent"
       />
     </div>
   );
