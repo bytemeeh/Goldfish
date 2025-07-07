@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Contact } from '@/lib/types';
 
 import ReactFlow, {
@@ -15,6 +15,11 @@ import ReactFlow, {
   NodeProps,
   Handle,
   NodeTypes,
+  OnNodesChange,
+  OnConnect,
+  Connection,
+  addEdge,
+  NodeDragHandler,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { ReactFlowProvider } from 'reactflow';
@@ -184,6 +189,63 @@ export function ContactFlowGraphInner({ onContactSelect }: ContactFlowGraphProps
   const { data: contacts } = useQuery<Contact[]>({
     queryKey: ['/api/contacts'],
   });
+
+  const queryClient = useQueryClient();
+
+  // Mutation for updating contact relationships
+  const updateContactMutation = useMutation({
+    mutationFn: async ({ contactId, parentId }: { contactId: number; parentId: number | null }) => {
+      const response = await fetch(`/api/contacts/${contactId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parentId }),
+      });
+      if (!response.ok) throw new Error('Failed to update contact');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
+    },
+  });
+
+  // Grid snapping function
+  const snapToGrid = (x: number, y: number) => {
+    const gridSize = 50; // 50px grid
+    return {
+      x: Math.round(x / gridSize) * gridSize,
+      y: Math.round(y / gridSize) * gridSize,
+    };
+  };
+
+  // Handle node drag end to snap to grid
+  const handleNodeDragStop: NodeDragHandler = useCallback((event, node, nodes) => {
+    const snappedPosition = snapToGrid(node.position.x, node.position.y);
+    
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id === node.id
+          ? { ...n, position: snappedPosition }
+          : n
+      )
+    );
+  }, [setNodes]);
+
+  // Handle connecting nodes (drag from one node to another)
+  const onConnect = useCallback(
+    (params: Connection) => {
+      if (params.source && params.target) {
+        const sourceId = parseInt(params.source);
+        const targetId = parseInt(params.target);
+        
+        // Update the target contact's parent to be the source contact
+        updateContactMutation.mutate({
+          contactId: targetId,
+          parentId: sourceId,
+        });
+      }
+    },
+    [updateContactMutation]
+  );
 
   // Determine relationship type color
   const getRelationshipColor = (relationshipType?: string) => {
@@ -567,19 +629,25 @@ export function ContactFlowGraphInner({ onContactSelect }: ContactFlowGraphProps
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
+        onConnect={onConnect}
+        onNodeDragStop={handleNodeDragStop}
         nodeTypes={nodeTypes as NodeTypes}
         proOptions={{ hideAttribution: true }}
         fitView
+        snapToGrid={true}
+        snapGrid={[50, 50]}
         defaultEdgeOptions={{
-          type: 'smoothstep', // Use curved edges for better routing
+          type: 'smoothstep',
           style: {
             strokeWidth: 2,
-            // Ensure no dashed lines anywhere
             strokeDasharray: undefined 
           },
         }}
-        minZoom={0.2} // Allow zooming out further to see the entire network
-        maxZoom={1.5} // Limit max zoom to prevent excessive detail
+        minZoom={0.2}
+        maxZoom={1.5}
+        nodesDraggable={true}
+        nodesConnectable={true}
+        elementsSelectable={true}
       >
         <Controls />
         <MiniMap 
@@ -589,9 +657,10 @@ export function ContactFlowGraphInner({ onContactSelect }: ContactFlowGraphProps
           nodeBorderRadius={2}
         />
         <Background
-          color="#999"
-          gap={20}
-          size={1}
+          color="#aaa"
+          gap={50}
+          size={2}
+          variant="dots"
         />
       </ReactFlow>
     </div>

@@ -76,7 +76,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       console.log('Fetching contacts with filters:', filters);
-      
+
       // First get all contacts matching the filters
       const contactsResult = await db
         .select({
@@ -113,12 +113,12 @@ export function registerRoutes(app: Express): Server {
         parentId: c.parentId,
         relationshipType: c.relationshipType
       })));
-      
+
       // If we have contacts, get their locations
       if (contactsResult.length > 0) {
         // Get all locations for all contacts in one query
         const contactIds = contactsResult.map(c => c.id);
-        
+
         // Need to use parameterized queries instead of string concatenation
         let allLocations: Location[] = [];
         if (contactIds.length > 0) {
@@ -133,17 +133,17 @@ export function registerRoutes(app: Express): Server {
                   .where(eq(locations.contactId, contactId))
               )
             );
-            
+
             // Flatten the results
             allLocations = [
               ...allLocations,
               ...batchLocations.flat()
             ];
           }
-          
+
           console.log(`Found ${allLocations.length} total locations for ${contactIds.length} contacts`);
         }
-        
+
         // Group locations by contact ID
         const locationsByContactId: Record<number, Location[]> = {};
         allLocations.forEach(loc => {
@@ -152,13 +152,13 @@ export function registerRoutes(app: Express): Server {
           }
           locationsByContactId[loc.contactId].push(loc);
         });
-        
+
         // Add locations to each contact
         const contactsWithLocations = contactsResult.map(contact => ({
           ...contact,
           locations: locationsByContactId[contact.id] || [],
         }));
-        
+
         res.json(contactsWithLocations);
       } else {
         res.json(contactsResult); // Return empty array if no contacts found
@@ -235,7 +235,7 @@ export function registerRoutes(app: Express): Server {
 
       // Extract locations from request body
       const { locations: locationData, ...contactData } = req.body;
-      
+
       // Validate the contact data
       const validatedContactData = insertContactSchema.parse(contactData);
       console.log('Validated contact data:', validatedContactData);
@@ -253,7 +253,7 @@ export function registerRoutes(app: Express): Server {
       // Now handle the locations if any
       if (locationData && Array.isArray(locationData) && locationData.length > 0) {
         console.log(`Adding ${locationData.length} locations for new contact`);
-        
+
         // Process each location individually to avoid type issues
         for (const location of locationData) {
           const preparedLocation = {
@@ -265,12 +265,12 @@ export function registerRoutes(app: Express): Server {
             isNew: undefined,
             isDeleted: undefined
           };
-          
+
           await db
             .insert(locations)
             .values(preparedLocation);
         }
-          
+
         console.log(`Added ${locationData.length} locations for contact`);
       }
 
@@ -289,7 +289,7 @@ export function registerRoutes(app: Express): Server {
         .select()
         .from(locations)
         .where(eq(locations.contactId, newContact.id));
-        
+
       res.json({
         ...newContact,
         locations: contactLocations
@@ -302,16 +302,55 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.patch("/api/contacts/:id", async (req, res) => {
+    try {
+      const contactId = parseInt(req.params.id);
+      if (isNaN(contactId)) {
+        return res.status(400).json({ error: "Invalid contact ID" });
+      }
+
+      const { parentId } = req.body;
+
+      // Validate that parentId is either null or a valid number
+      if (parentId !== null && (typeof parentId !== 'number' || isNaN(parentId))) {
+        return res.status(400).json({ error: "Invalid parent ID" });
+      }
+
+      // Prevent circular relationships
+      if (parentId === contactId) {
+        return res.status(400).json({ error: "A contact cannot be its own parent" });
+      }
+
+      const [updatedContact] = await db
+        .update(contacts)
+        .set({
+          parentId,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(contacts.id, contactId))
+        .returning();
+
+      if (!updatedContact) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+
+      res.json(updatedContact);
+    } catch (error) {
+      console.error('Error updating contact:', error);
+      res.status(500).json({ error: "Failed to update contact" });
+    }
+  });
+
   app.put("/api/contacts/:id", async (req, res) => {
     const { id } = req.params;
     const contactId = parseInt(id);
 
     try {
       console.log(`Updating contact with ID ${id}, Data: `, req.body);
-      
+
       // Extract locations from request body
       const { locations: locationData, ...contactData } = req.body;
-      
+
       // Validate the contact data
       const validatedContactData = insertContactSchema.parse(contactData);
       console.log('Validated contact data:', validatedContactData);
@@ -327,20 +366,20 @@ export function registerRoutes(app: Express): Server {
         .returning();
 
       console.log('Updated contact:', updatedContact);
-      
+
       // Handle locations if they're provided
       if (locationData && Array.isArray(locationData) && locationData.length > 0) {
         console.log(`Processing ${locationData.length} locations for contact ${id}`);
-        
+
         // Group locations into new, updated, and deleted
         const newLocations = locationData.filter(loc => !loc.id || (loc.id && loc.id < 0));
         const existingLocations = locationData.filter(loc => loc.id && loc.id > 0 && !loc.isDeleted);
         const deletedLocationIds = locationData
           .filter(loc => loc.id && loc.id > 0 && loc.isDeleted)
           .map(loc => loc.id);
-          
+
         console.log(`Locations breakdown - New: ${newLocations.length}, Updated: ${existingLocations.length}, Deleted: ${deletedLocationIds.length}`);
-        
+
         // Delete locations that are marked for deletion
         if (deletedLocationIds.length > 0) {
           // Delete in batches to avoid SQL issues
@@ -352,23 +391,23 @@ export function registerRoutes(app: Express): Server {
           }
           console.log(`Deleted ${deletedLocationIds.length} locations`);
         }
-        
+
         // Update existing locations
         for (const location of existingLocations) {
           // Process latitude and longitude appropriately
           let latitude = null;
           let longitude = null;
-          
+
           if (location.latitude && location.latitude.toString().trim() !== '') {
             latitude = Number(location.latitude);
             if (isNaN(latitude)) latitude = null;
           }
-          
+
           if (location.longitude && location.longitude.toString().trim() !== '') {
             longitude = Number(location.longitude);
             if (isNaN(longitude)) longitude = null;
           }
-          
+
           await db
             .update(locations)
             .set({
@@ -384,7 +423,7 @@ export function registerRoutes(app: Express): Server {
             .where(eq(locations.id, location.id));
         }
         console.log(`Updated ${existingLocations.length} existing locations`);
-        
+
         // Insert new locations
         if (newLocations.length > 0) {
           // Process each new location individually
@@ -392,12 +431,12 @@ export function registerRoutes(app: Express): Server {
             // Process latitude and longitude appropriately
             let latitude = null;
             let longitude = null;
-            
+
             if (location.latitude && location.latitude.toString().trim() !== '') {
               latitude = Number(location.latitude);
               if (isNaN(latitude)) latitude = null;
             }
-            
+
             if (location.longitude && location.longitude.toString().trim() !== '') {
               longitude = Number(location.longitude);
               if (isNaN(longitude)) longitude = null;
@@ -415,12 +454,12 @@ export function registerRoutes(app: Express): Server {
               isNew: undefined,
               isDeleted: undefined
             };
-            
+
             await db
               .insert(locations)
               .values(preparedLocation);
           }
-            
+
           console.log(`Inserted ${newLocations.length} new locations`);
         }
       }
@@ -440,7 +479,7 @@ export function registerRoutes(app: Express): Server {
         .select()
         .from(locations)
         .where(eq(locations.contactId, contactId));
-        
+
       res.json({
         ...updatedContact,
         locations: contactLocations
