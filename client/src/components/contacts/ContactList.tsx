@@ -848,7 +848,6 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
           <AnimatePresence mode="sync">
             {personalHierarchy && (
               <motion.div
-                key={`personal-contact-${personalHierarchy.id}`}
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
@@ -894,7 +893,7 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                 {categorizedContacts.map((category, index) => 
                   category.contacts.length > 0 && (
                     <Reorder.Item
-                      key={`manual-category-${category.title}`}
+                      key={category.title}
                       value={categories.find(c => c.title === category.title) || category}
                       className="relative cursor-move"
                     >
@@ -937,7 +936,7 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                         >
                           {category.contacts.map(contact => (
                             <Reorder.Item 
-                              key={`manual-category-contact-${contact.id}`} 
+                              key={contact.id} 
                               value={contact}
                               className="relative pb-2 cursor-move"
                             >
@@ -983,7 +982,7 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                 {categorizedContacts.map((category, index) => 
                   category.contacts.length > 0 && (
                     <motion.div 
-                      key={`static-category-${category.title}-${index}-${sortType}`}
+                      key={category.title}
                       initial={{ opacity: 0, y: -20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
@@ -1001,7 +1000,7 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                         <div className="space-y-6">
                           {category.contacts.map(contact => (
                             <motion.div
-                              key={`static-contact-${contact.id}`}
+                              key={contact.id}
                               initial={{ opacity: 0, x: -20 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ duration: 0.3 }}
@@ -1031,7 +1030,6 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
 
             {uncategorizedContacts.length > 0 && (
               <motion.div
-                key={`uncategorized-contacts-${sortType}`}
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
@@ -1064,7 +1062,7 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                     >
                       {uncategorizedContacts.map(contact => (
                         <Reorder.Item 
-                          key={`manual-uncategorized-contact-${contact.id}`} 
+                          key={contact.id} 
                           value={contact}
                           className="relative pb-2 cursor-move"
                         >
@@ -1117,7 +1115,7 @@ export function ContactList({ searchFilters, selectedContactId }: ContactListPro
                     <div className="space-y-6">
                       {uncategorizedContacts.map(contact => (
                         <motion.div
-                          key={`static-uncategorized-contact-${contact.id}`}
+                          key={contact.id}
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.3 }}

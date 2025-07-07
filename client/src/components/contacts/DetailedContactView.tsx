@@ -66,51 +66,40 @@ export function DetailedContactView({ contactId, onBack }: DetailedContactViewPr
     <div className="space-y-6">
       {/* Header with back button */}
       <motion.div 
-        className="flex flex-col space-y-4 mb-6"
+        className="flex items-center justify-between"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
       >
-        <div className="flex items-center justify-between">
-          <Button 
-            variant="default" 
-            size="sm" 
-            className="flex items-center gap-2 px-4 py-2 h-10"
-            onClick={onBack}
-          >
-            <ArrowLeft className="h-5 w-5" />
-            <span>Back to Network View</span>
-          </Button>
-          
-          <Dialog open={isEditing} onOpenChange={setIsEditing}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="flex items-center gap-1">
-                <Edit className="h-4 w-4" />
-                <span>Edit</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="h-[80vh] max-w-3xl flex flex-col overflow-hidden">
-              <DialogHeader>
-                <DialogTitle>Edit Contact</DialogTitle>
-              </DialogHeader>
-              <div className="flex flex-1 overflow-hidden">
-                <ContactForm 
-                  onSuccess={() => setIsEditing(false)} 
-                  initialData={contact}
-                />
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="flex items-center gap-1"
+          onClick={onBack}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to Network</span>
+        </Button>
         
-        <div className="flex items-center">
-          <Badge variant="outline" className="text-xs">
-            Contact Details
-          </Badge>
-          <div className="ml-2 text-muted-foreground text-sm">
-            Viewing individual contact card
-          </div>
-        </div>
+        <Dialog open={isEditing} onOpenChange={setIsEditing}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="flex items-center gap-1">
+              <Edit className="h-4 w-4" />
+              <span>Edit</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="h-[80vh] max-w-3xl flex flex-col overflow-hidden">
+            <DialogHeader>
+              <DialogTitle>Edit Contact</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-1 overflow-hidden">
+              <ContactForm 
+                onSuccess={() => setIsEditing(false)} 
+                initialData={contact}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
       </motion.div>
 
       {/* Contact Card */}
