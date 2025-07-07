@@ -293,7 +293,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
     setEdgeState(newEdges);
     setNodes(newNodes);
     setEdges(newEdges);
-  }, [contacts, setNodes, setEdges, isDragging, draggedNode]);
+  }, [contacts, setNodes, setEdges]);
 
   const onDrag = useCallback(
     throttle((_e, dragged) => {
@@ -312,18 +312,18 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       console.log('🎯 Found targets for drop:', targets.map(t => t.id));
       
       // Add current position to drag trail
-      if (draggedNode === dragged.id) {
-        setDragTrail(prev => [
-          ...prev.slice(-10), // Keep last 10 positions for trail effect
-          { x: dragged.position.x, y: dragged.position.y, timestamp: Date.now() }
-        ]);
-      }
+      setDragTrail(prev => [
+        ...prev.slice(-10), // Keep last 10 positions for trail effect
+        { x: dragged.position.x, y: dragged.position.y, timestamp: Date.now() }
+      ]);
       
+      // Only update drop targets, don't rebuild all nodes
       setNodes((ns) =>
         ns.map((n) => {
           const isTarget = targets.some((t) => t.id === n.id);
           const isDraggedNode = n.id === dragged.id;
           
+          // Keep existing position for dragged node to allow React Flow's native drag
           return {
             ...n,
             data: { 
@@ -454,6 +454,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         edgesFocusable={false}
         nodesFocusable={false}
         snapToGrid={false}
+        preventScrolling={false}
         fitView
         fitViewOptions={{ padding: 0.2 }}
       >
