@@ -69,7 +69,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   const [isDragging, setIsDragging] = useState(false);
   const [draggedNode, setDraggedNode] = useState<string | null>(null);
   const [undoStack, setUndoStack] = useState<Array<{child: string, parent: string | null, timestamp: number}>>([]);
-  const [dragTrail, setDragTrail] = useState<Array<{x: number, y: number, timestamp: number}>>([]);
+
 
   const reparent = useMutation({
     mutationFn: async ({ child, parent, oldParent }: { child: string; parent: string; oldParent: string | null }) => {
@@ -311,11 +311,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       
       console.log('🎯 Found targets for drop:', targets.map(t => t.id));
       
-      // Add current position to drag trail
-      setDragTrail(prev => [
-        ...prev.slice(-10), // Keep last 10 positions for trail effect
-        { x: dragged.position.x, y: dragged.position.y, timestamp: Date.now() }
-      ]);
+      // Track dragging without visual trail effects
       
       // Only update drop targets, don't rebuild all nodes
       setNodes((ns) =>
@@ -376,7 +372,6 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       // Reset drag state and clear visual effects
       setIsDragging(false);
       setDraggedNode(null);
-      setDragTrail([]);
       
       // Clear drop highlighting
       setNodes((ns) =>
@@ -448,6 +443,19 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         nodeTypes={nodeTypes}
         onNodeDrag={onDrag}
         onNodeDragStop={onDragStop}
+        onNodesChange={(changes) => {
+          // Allow React Flow's native node changes for smooth dragging
+          const nodeChanges = changes.filter(change => change.type === 'position');
+          if (nodeChanges.length > 0) {
+            setNodes(nodes => nodes.map(node => {
+              const change = nodeChanges.find(c => c.id === node.id);
+              if (change && change.type === 'position' && change.position) {
+                return { ...node, position: change.position };
+              }
+              return node;
+            }));
+          }
+        }}
         onNodeClick={onNodeClick}
         connectionLineType={ConnectionLineType.SmoothStep}
         nodesDraggable={true}
@@ -502,28 +510,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         )}
       </AnimatePresence>
       
-      {/* Drag Trail Effect */}
-      <AnimatePresence>
-        {isDragging && dragTrail.length > 0 && (
-          <div className="absolute inset-0 pointer-events-none z-10">
-            {dragTrail.map((point, index) => (
-              <motion.div
-                key={`${point.timestamp}-${index}`}
-                initial={{ opacity: 0.8, scale: 0.8 }}
-                animate={{ opacity: 0, scale: 1.2 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.6 }}
-                className="absolute w-3 h-3 bg-blue-400 rounded-full shadow-lg"
-                style={{
-                  left: point.x - 6,
-                  top: point.y - 6,
-                  opacity: Math.max(0, (index / dragTrail.length) * 0.6),
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </AnimatePresence>
+
     </div>
   );
 }
