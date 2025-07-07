@@ -82,9 +82,15 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       });
       
       if (!response.ok) {
-        const error = await response.text();
-        console.error('API error', response.status, error);
-        throw new Error('API fail');
+        const errorText = await response.text();
+        console.error('API error', response.status, errorText);
+        
+        // Handle specific error cases
+        if (response.status === 400 && errorText.includes('cycle')) {
+          throw new Error('Cannot create cycle - a contact cannot be a descendant of itself');
+        }
+        
+        throw new Error(`API fail: ${response.status} ${errorText}`);
       }
       
       console.log('✅ Reparent successful');

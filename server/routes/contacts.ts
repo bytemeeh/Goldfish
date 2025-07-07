@@ -37,6 +37,17 @@ async function getDescendants(contactId: number): Promise<number[]> {
   return descendants;
 }
 
+// Helper function to check for circular relationships
+async function wouldCreateCycle(childId: number, newParentId: number | null): Promise<boolean> {
+  if (!newParentId) return false; // Setting parent to null can't create a cycle
+  
+  // Get all descendants of the child
+  const descendants = await getDescendants(childId);
+  
+  // Check if the new parent is among the descendants
+  return descendants.includes(newParentId);
+}
+
 // GET /api/contacts
 router.get("/", async (req, res) => {
   try {
@@ -177,6 +188,21 @@ router.put("/:id", async (req, res) => {
     }
 
     console.log('PUT request for contact', id, 'with data:', req.body);
+
+    // If this is a reparenting operation, validate the schema
+    if (req.body.hasOwnProperty('parentId')) {
+      const parseResult = reparentSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: 'Invalid payload for reparenting' });
+      }
+      
+      const { parentId } = parseResult.data;
+      
+      // Check for cycle creation
+      if (parentId && await wouldCreateCycle(id, parentId)) {
+        return res.status(400).json({ error: 'Cannot create cycle - a contact cannot be a descendant of itself' });
+      }
+    }
 
     // Check if contact exists first
     const [existingContact] = await db
