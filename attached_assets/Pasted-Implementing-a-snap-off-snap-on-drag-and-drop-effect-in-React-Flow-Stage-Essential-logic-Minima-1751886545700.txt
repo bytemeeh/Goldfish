@@ -1,0 +1,30 @@
+Implementing a “snap-off / snap-on” drag-and-drop effect in React-Flow
+
+Stage	Essential logic	Minimal code sketch (pseudo-JS)
+1. Track live pointer offset	Store pointer Δ from node origin on onNodeDragStart so snap feels natural when you re-pick a node.	const delta = {x: pointer.x - node.position.x, y: …};
+2. Detect potential target	During onNodeDrag compute isIntersect(node,target); maintain isDrop=true flag only while distance < SNAP_RADIUS.	const SNAP_RADIUS = 140;
+3. Snap-on (magnet)	If isDrop → immediately set node.position to exact target.center minus delta; descendants follow via existing subtree move; optionally apply CSS transition: transform 80ms ease-out for visual pop.	setNodes(ns=>ns.map(n=> n.id===dragId? {...n, position: snapPos}: n));
+4. Snap-off (release)	When pointer leaves radius before mouse-up, revert position to raw pointer offset (live drag) and clear isDrop.	Toggle same flag; call setNodes with pointerPos each frame.
+5. Finalise on drop	On onNodeDragStop if isDrop true → fire API PUT /contacts/childId and keep snapped pos; else do nothing (node already in free position).	existing mutation.
+
+Troubleshooting matrix
+
+Symptom	Likely cause	Immediate check	Targeted fix
+Node jumps back after snap	your optimistic setNodes overwritten by React-Flow’s internal change event	Console-log inside onNodesChange; if React-Flow re-emits stale position, set isDraggable=false on node while you own the drag, or stop propagating NodesChange when isDrop true.	
+Node sticks half-way	Snap target coords computed with different transform origin (wrapper div, paddings)	Use getBoundingClientRect() on both elements; compare centers; adjust by wrapper offsets.	
+Descendants lag behind	subtree() set doesn’t include new grandchildren created after first call	Re-compute descendants every onNodeDrag OR keep draggedIds set updated from edge list.	
+Snap-off never triggers	Threshold too large or distance calc wrong	Log dist each move; verify it crosses SNAP_RADIUS; tune radius or use circle vs rect math consistently.	
+Snap-on fires but API 400	Cycle-prevention trigger rejects update	Check network response; if 400, show toast “Cannot attach to descendant.”	
+Visual stutter	Throttle interval > frame budget (16 ms)	Cut throttle to 20-30 ms or switch to requestAnimationFrame loop.	
+Snap highlight persists after release	isDrop not cleared on onDragStop when pointer exits early	Ensure cleanup in both onNodeDragStop and onNodeDrag.	
+Snap works in dev, not in prod	Strict-mode double render masks state reset in dev only	Remove <React.StrictMode> wrapper to test; ensure no assumption on mount count.	
+Nothing moves	External CSS sets transition: none!important or fixed transforms	Inspect computed style during drag; strip conflicting classes.	
+
+Checklist before debugging
+	1.	Log pointer, node position, isDrop each onNodeDrag.
+	2.	Confirm setNodes runs with snapped coords.
+	3.	Verify onNodesChange does not override them.
+	4.	Check final network call succeeds.
+	5.	Reload page: new hierarchy persists.
+
+Fix in descending order of failure likelihood: state override > coordinate mis-math > CSS interference > business-logic rejection.

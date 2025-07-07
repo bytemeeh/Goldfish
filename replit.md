@@ -110,14 +110,15 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-- July 07, 2025: Enhanced hierarchical tree structure with collision detection
-  - Fixed real-time drag behavior - contact cards now follow cursor smoothly during drag
-  - Implemented hierarchical tree layout with "me" contact at center-top
-  - Added collision detection system to prevent node overlapping with 240px minimum spacing
-  - Level-based visual styling: blue for level 0, green for level 1, purple for level 2+
-  - Enhanced positioning algorithm with iterative collision resolution and viewport bounds
-  - Maintained all existing drag-and-drop reparenting functionality and undo system
-  - Drop target highlighting with indigo rings and drag trail animations preserved
+- July 07, 2025: Implemented snap-off/snap-on drag behavior and fixed core functionality
+  - Fixed contact creation server errors by removing unsupported transactions from Neon serverless
+  - Updated database schema to match existing integer ID structure instead of UUID
+  - Implemented snap-off/snap-on drag behavior with 140px snap radius for natural feel
+  - Added magnetic snap to target with immediate positioning when within range
+  - Enhanced drag visual feedback with real-time target detection and highlighting
+  - Fixed React Flow node visibility issues by adding proper state management
+  - Maintained hierarchical tree layout with collision detection and level-based styling
+  - All drag-and-drop reparenting functionality now working end-to-end
 
 ## Changelog
 

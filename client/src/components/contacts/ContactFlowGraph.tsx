@@ -120,8 +120,20 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   const [undoStack, setUndoStack] = useState<Array<{child: string, parent: string | null, timestamp: number}>>([]);
   const [isReordering, setIsReordering] = useState(false);
   const [nodesReady, setNodesReady] = useState(false);
+  
+  // Snap-off/snap-on drag state
+  const [pointerDelta, setPointerDelta] = useState<{x: number, y: number} | null>(null);
+  const [isDrop, setIsDrop] = useState(false);
+  const [snapTarget, setSnapTarget] = useState<string | null>(null);
+  const [dragStartPos, setDragStartPos] = useState<{x: number, y: number} | null>(null);
 
   const onNodesChange = useCallback((changes: any) => {
+    // Block React Flow's position updates when we're controlling snap behavior
+    if (isDrop && changes.some((c: any) => c.type === 'position')) {
+      console.log('🚫 Blocking React Flow position changes during snap');
+      return;
+    }
+    
     const positionChanges = changes.filter((c: any) => c.type === 'position');
     if (positionChanges.length > 0) {
       setNodes(nodes => {
@@ -134,7 +146,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         });
       });
     }
-  }, [setNodes]);
+  }, [setNodes, isDrop]);
 
 
   const reparent = useMutation({
@@ -328,26 +340,60 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       }
       
       const allNodes = getNodes();
-      const targets = allNodes.filter(
-        (n) => n.id !== dragged.id && isIntersect(dragged.position, n.position),
+      const SNAP_RADIUS = 140;
+      
+      // Find potential snap targets using distance calculation
+      const potentialTargets = allNodes.filter(
+        (n) => n.id !== dragged.id && 
+        Math.sqrt(
+          Math.pow(dragged.position.x - n.position.x, 2) + 
+          Math.pow(dragged.position.y - n.position.y, 2)
+        ) < SNAP_RADIUS
       );
       
-      console.log('🎯 Found targets for drop:', targets.map(t => t.id));
+      const hasSnapTarget = potentialTargets.length > 0;
+      const currentTarget = hasSnapTarget ? potentialTargets[0] : null;
+      
+      console.log('🎯 Found snap targets:', potentialTargets.map(t => t.id), 'Distance check with radius:', SNAP_RADIUS);
+      
+      // Snap-on behavior: immediate magnet to target center
+      if (hasSnapTarget && currentTarget && !isDrop) {
+        console.log('🧲 Snapping to target:', currentTarget.id);
+        setIsDrop(true);
+        setSnapTarget(currentTarget.id);
+        
+        const snapPos = {
+          x: currentTarget.position.x,
+          y: currentTarget.position.y + 80 // Position below target
+        };
+        
+        // Apply snap position immediately
+        setNodes(ns => ns.map(n => 
+          n.id === dragged.id 
+            ? { ...n, position: snapPos }
+            : n
+        ));
+      }
+      // Snap-off behavior: release back to raw pointer position
+      else if (!hasSnapTarget && isDrop) {
+        console.log('🔓 Snapping off from target');
+        setIsDrop(false);
+        setSnapTarget(null);
+      }
       
       // Track dragging without visual trail effects
       
-      // Only update drop targets, don't rebuild all nodes
+      // Update visual feedback for drop targets
       setNodes((ns) =>
         ns.map((n) => {
-          const isTarget = targets.some((t) => t.id === n.id);
+          const isTarget = potentialTargets.some((t) => t.id === n.id);
           const isDraggedNode = n.id === dragged.id;
           
-          // Keep existing position for dragged node to allow React Flow's native drag
           return {
             ...n,
             data: { 
               ...n.data, 
-              drop: isTarget,
+              drop: isTarget && hasSnapTarget,
               isDragging: isDraggedNode,
             }
           };
@@ -371,7 +417,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         }))
       );
     }),
-    [getNodes, setNodes, setEdges, isDragging],
+    [getNodes, setNodes, setEdges, isDragging, isDrop],
   );
 
   const onDragStop = useCallback(
@@ -380,27 +426,41 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       
       const allNodes = getNodes();
       
-      // Find intersecting nodes based on current positions
-      const intersectingNodes = allNodes.filter(
-        (n) => n.id !== dragged.id && isIntersect(dragged.position, n.position),
-      );
-      
-      console.log('🎯 Intersecting nodes at drop:', intersectingNodes.map(n => n.id));
-      
-      // Use the first intersecting node as target
-      const target = intersectingNodes.length > 0 ? intersectingNodes[0] : null;
-      
-      console.log('🎯 Target found:', target ? target.id : 'none');
-      
-      // Reset drag state and clear visual effects
+      // Reset drag state
       setIsDragging(false);
       setDraggedNode(null);
       
-      // Clear drop highlighting
+      // If we're in snap mode and have a target, finalize the relationship
+      if (isDrop && snapTarget) {
+        console.log('🎯 Finalizing snap to target:', snapTarget);
+        
+        // Get the old parent before reparenting
+        const currentContact = contacts.find(c => c.id.toString() === dragged.id);
+        const oldParent = currentContact?.parentId?.toString() || null;
+        
+        // Prevent self-parenting and circular references
+        if (snapTarget === dragged.id) {
+          console.log('❌ Cannot parent to self');
+        } else {
+          console.log('🚀 Initiating reparent mutation from snap');
+          reparent.mutate({ child: String(dragged.id), parent: String(snapTarget), oldParent });
+        }
+      } else {
+        console.log('❌ No snap target, keeping current position');
+      }
+      
+      // Clean up snap state
+      setIsDrop(false);
+      setSnapTarget(null);
+      setPointerDelta(null);
+      setDragStartPos(null);
+      
+      // Clear all visual effects
       setNodes((ns) =>
         ns.map((n) => ({ 
           ...n, 
-          data: { ...n.data, drop: false, isDragging: false }
+          data: { ...n.data, drop: false, isDragging: false },
+          style: { ...n.style, transition: 'none' }
         })),
       );
       
@@ -418,26 +478,8 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
           },
         }))
       );
-      
-      if (!target) {
-        console.log('❌ No valid target found, aborting reparent');
-        return;
-      }
-
-      // Prevent self-parenting and circular references
-      if (target.id === dragged.id) {
-        console.log('❌ Cannot parent to self');
-        return;
-      }
-
-      // Get the old parent before reparenting
-      const currentContact = contacts.find(c => c.id.toString() === dragged.id);
-      const oldParent = currentContact?.parentId?.toString() || null;
-      
-      console.log('🚀 Initiating reparent mutation');
-      reparent.mutate({ child: String(dragged.id), parent: String(target.id), oldParent });
     },
-    [getNodes, setNodes, reparent, contacts],
+    [getNodes, setNodes, setEdges, reparent, contacts, isDrop, snapTarget],
   );
 
   const onNodeClick = useCallback(
