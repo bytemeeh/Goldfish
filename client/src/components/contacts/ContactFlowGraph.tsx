@@ -164,22 +164,26 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         // "Me" contact at center-top
         position = { x: 400, y: 100 };
       } else if (level === 0) {
-        // Root level contacts spread horizontally
+        // Root level contacts spread horizontally with more spacing
         const rootIndex = rootContacts.indexOf(contact);
-        const spacing = Math.min(300, 800 / Math.max(rootContacts.length, 1));
+        const minSpacing = 250; // Minimum spacing between root nodes
+        const totalWidth = Math.max(800, rootContacts.length * minSpacing);
+        const spacing = totalWidth / Math.max(rootContacts.length, 1);
         position = { 
           x: 400 - ((rootContacts.length - 1) * spacing) / 2 + (rootIndex * spacing), 
-          y: 200 
+          y: 250 
         };
       } else {
-        // Child contacts positioned below parent
+        // Child contacts positioned below parent with collision avoidance
         const siblings = contacts.filter(c => c.parentId === contact.parentId);
         const childIndex = siblings.indexOf(contact);
-        const spacing = Math.min(200, 600 / Math.max(siblings.length, 1));
+        const minSpacing = 200; // Minimum spacing between child nodes
+        const totalWidth = Math.max(400, siblings.length * minSpacing);
+        const spacing = totalWidth / Math.max(siblings.length, 1);
         
         position = {
           x: parentX - ((siblings.length - 1) * spacing) / 2 + (childIndex * spacing),
-          y: parentY + 150
+          y: parentY + 180
         };
       }
       
@@ -201,8 +205,55 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       hierarchyData.push(...buildHierarchy(rootContact));
     });
     
-    // Create nodes with hierarchical positioning
-    const newNodes: Node[] = hierarchyData.map(({ contact, position, level }) => ({
+    // Apply collision detection and repositioning
+    const resolveCollisions = (nodes: { contact: Contact; position: XYPosition; level: number }[]) => {
+      const nodeSize = { width: 200, height: 80 }; // Approximate node dimensions
+      const minDistance = 240; // Minimum distance between node centers
+      
+      // Group nodes by level for collision detection
+      const levelGroups = new Map<number, { contact: Contact; position: XYPosition; level: number }[]>();
+      nodes.forEach(node => {
+        if (!levelGroups.has(node.level)) {
+          levelGroups.set(node.level, []);
+        }
+        levelGroups.get(node.level)!.push(node);
+      });
+      
+      // Resolve collisions within each level using iterative approach
+      levelGroups.forEach((levelNodes, level) => {
+        if (levelNodes.length <= 1) return;
+        
+        levelNodes.sort((a, b) => a.position.x - b.position.x);
+        
+        // Multiple passes to ensure all collisions are resolved
+        for (let pass = 0; pass < 3; pass++) {
+          for (let i = 0; i < levelNodes.length - 1; i++) {
+            const current = levelNodes[i];
+            const next = levelNodes[i + 1];
+            
+            const distance = Math.abs(next.position.x - current.position.x);
+            if (distance < minDistance) {
+              const adjustment = (minDistance - distance) / 2;
+              current.position.x -= adjustment;
+              next.position.x += adjustment;
+            }
+          }
+        }
+        
+        // Final pass to ensure minimum viewport bounds
+        levelNodes.forEach(node => {
+          if (node.position.x < 100) node.position.x = 100;
+          if (node.position.x > 700) node.position.x = 700;
+        });
+      });
+      
+      return nodes;
+    };
+    
+    const resolvedHierarchy = resolveCollisions([...hierarchyData]);
+    
+    // Create nodes with collision-free positioning
+    const newNodes: Node[] = resolvedHierarchy.map(({ contact, position, level }) => ({
       id: String(contact.id),
       position,
       data: { 
