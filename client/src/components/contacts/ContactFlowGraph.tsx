@@ -53,6 +53,19 @@ function subtree(edgeList: Edge[], root: string, acc: string[] = []) {
   return acc;
 }
 
+function getSubtreeIds(contacts: Contact[], rootId: string): Set<string> {
+  const subtreeIds = new Set<string>();
+  
+  function traverse(nodeId: string) {
+    subtreeIds.add(nodeId);
+    const children = contacts.filter(c => c.parentId?.toString() === nodeId);
+    children.forEach(child => traverse(child.id.toString()));
+  }
+  
+  traverse(rootId);
+  return subtreeIds;
+}
+
 interface ContactFlowGraphProps {
   contacts: Contact[];
   onContactSelect?: (contactId: number) => void;
@@ -70,6 +83,13 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   const [draggedNode, setDraggedNode] = useState<string | null>(null);
   const [undoStack, setUndoStack] = useState<Array<{child: string, parent: string | null, timestamp: number}>>([]);
   const [isReordering, setIsReordering] = useState(false);
+  const [dragState, setDragState] = useState<{
+    root: string;
+    offset: { x: number; y: number };
+    subtree: Set<string>;
+    snapTarget?: string;
+    initialPosition: { x: number; y: number };
+  } | null>(null);
 
 
   const reparent = useMutation({
@@ -307,93 +327,125 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
     setEdges(newEdges);
   }, [contacts, setNodes, setEdges]);
 
+  const onDragStart = useCallback(
+    (_e, node) => {
+      console.log('🚀 Drag start for node:', node.id, 'at position:', node.position);
+      
+      // Calculate subtree of nodes to move together
+      const subtreeIds = getSubtreeIds(contacts, node.id);
+      
+      // Initialize drag state with proper offset calculation
+      setDragState({
+        root: node.id,
+        offset: { x: 0, y: 0 }, // React Flow handles offset internally
+        subtree: subtreeIds,
+        initialPosition: { ...node.position },
+        snapTarget: undefined,
+      });
+      
+      setIsDragging(true);
+      setDraggedNode(node.id);
+      
+      console.log('🎯 Drag subtree includes:', Array.from(subtreeIds));
+    },
+    [contacts],
+  );
+
   const onDrag = useCallback(
     throttle((_e, dragged) => {
       console.log('🔄 Dragging node:', dragged.id, 'at position:', dragged.position);
       
-      if (!isDragging) {
-        setIsDragging(true);
-        setDraggedNode(dragged.id);
-      }
+      if (!dragState) return;
       
       const allNodes = getNodes();
       const targets = allNodes.filter(
-        (n) => n.id !== dragged.id && isIntersect(dragged.position, n.position),
+        (n) => n.id !== dragged.id && 
+               !dragState.subtree.has(n.id) && // Exclude nodes in subtree
+               isIntersect(dragged.position, n.position),
       );
       
       console.log('🎯 Found targets for drop:', targets.map(t => t.id));
       
-      // Track dragging without visual trail effects
+      // Update drag state with snap target
+      const newSnapTarget = targets.length > 0 ? targets[0].id : undefined;
+      if (newSnapTarget !== dragState.snapTarget) {
+        setDragState({
+          ...dragState,
+          snapTarget: newSnapTarget,
+        });
+      }
       
-      // Only update drop targets, don't rebuild all nodes
+      // Update visual feedback
       setNodes((ns) =>
         ns.map((n) => {
           const isTarget = targets.some((t) => t.id === n.id);
           const isDraggedNode = n.id === dragged.id;
+          const isInSubtree = dragState.subtree.has(n.id);
           
-          // Keep existing position for dragged node to allow React Flow's native drag
           return {
             ...n,
             data: { 
               ...n.data, 
               drop: isTarget,
               isDragging: isDraggedNode,
+            },
+            style: {
+              ...n.style,
+              opacity: isInSubtree ? 0.8 : 1,
             }
           };
         }),
       );
       
-      // Update edges with animation effects
+      // Update edges with detached parent edge visualization
       setEdges((edges) =>
         edges.map((edge) => ({
           ...edge,
           animated: !isDragging,
           style: {
             ...edge.style,
-            stroke: edge.source === dragged.id || edge.target === dragged.id 
-              ? '#ef4444' 
-              : '#64748b',
-            strokeWidth: edge.source === dragged.id || edge.target === dragged.id ? 3 : 2,
-            strokeDasharray: edge.source === dragged.id ? '5,5' : 'none',
-            opacity: edge.source === dragged.id || edge.target === dragged.id ? 0.6 : 1,
+            stroke: edge.target === dragged.id 
+              ? '#ef4444' // Red for detached parent edge
+              : edge.source === dragged.id || dragState.subtree.has(edge.source) 
+                ? '#10b981' // Green for subtree edges
+                : '#64748b', // Normal edges
+            strokeWidth: edge.target === dragged.id || edge.source === dragged.id ? 3 : 2,
+            strokeDasharray: edge.target === dragged.id ? '5,5' : 'none',
+            opacity: edge.target === dragged.id ? 0.3 : 1, // Fade detached edge
           },
         }))
       );
-    }, 50),
-    [getNodes, setNodes, setEdges, isDragging],
+    }, 30), // Reduced throttle for smoother movement
+    [getNodes, setNodes, setEdges, isDragging, dragState],
   );
 
   const onDragStop = useCallback(
     (_e, dragged) => {
       console.log('🛑 Drag stopped for node:', dragged.id, 'at position:', dragged.position);
       
-      const allNodes = getNodes();
-      
-      // Find intersecting nodes based on current positions
-      const intersectingNodes = allNodes.filter(
-        (n) => n.id !== dragged.id && isIntersect(dragged.position, n.position),
-      );
-      
-      console.log('🎯 Intersecting nodes at drop:', intersectingNodes.map(n => n.id));
-      
-      // Use the first intersecting node as target
-      const target = intersectingNodes.length > 0 ? intersectingNodes[0] : null;
-      
-      console.log('🎯 Target found:', target ? target.id : 'none');
+      if (!dragState) {
+        console.log('❌ No drag state found, aborting');
+        return;
+      }
+
+      const target = dragState.snapTarget;
+      console.log('🎯 Target found:', target ? target : 'none');
       
       // Reset drag state and clear visual effects
       setIsDragging(false);
       setDraggedNode(null);
+      setDragState(null);
       
-      // Clear drop highlighting
+      // Clear drop highlighting and reset opacity
       setNodes((ns) =>
         ns.map((n) => ({ 
           ...n, 
-          data: { ...n.data, drop: false, isDragging: false }
+          data: { ...n.data, drop: false, isDragging: false },
+          style: { ...n.style, opacity: 1 }
         })),
       );
       
-      // Reset edges
+      // Reset edges to normal state
       setEdges((edges) =>
         edges.map((edge) => ({
           ...edge,
@@ -414,8 +466,19 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       }
 
       // Prevent self-parenting and circular references
-      if (target.id === dragged.id) {
+      if (target === dragged.id) {
         console.log('❌ Cannot parent to self');
+        return;
+      }
+
+      // Prevent creating cycles - check if target is in subtree
+      if (dragState.subtree.has(target)) {
+        console.log('❌ Cannot create cycle - target is in subtree');
+        toast({
+          title: "Cannot create cycle",
+          description: "A contact cannot be a descendant of itself",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -424,9 +487,9 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       const oldParent = currentContact?.parentId?.toString() || null;
       
       console.log('🚀 Initiating reparent mutation');
-      reparent.mutate({ child: String(dragged.id), parent: String(target.id), oldParent });
+      reparent.mutate({ child: String(dragged.id), parent: String(target), oldParent });
     },
-    [getNodes, setNodes, reparent, contacts],
+    [dragState, setNodes, setEdges, reparent, contacts, toast],
   );
 
   const onNodeClick = useCallback(
@@ -533,6 +596,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        onNodeDragStart={onDragStart}
         onNodeDrag={onDrag}
         onNodeDragStop={onDragStop}
         onNodesChange={(changes) => {

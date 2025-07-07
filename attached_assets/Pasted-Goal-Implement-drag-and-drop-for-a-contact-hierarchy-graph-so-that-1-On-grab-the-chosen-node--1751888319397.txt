@@ -1,0 +1,174 @@
+Goal
+
+Implement drag-and-drop for a “contact–hierarchy” graph so that:
+	1.	On grab the chosen node ( N ) immediately detaches from its current parent (upper) edge while retaining all outgoing (child) edges.
+	2.	While the pointer is held down, the entire sub-tree rooted at N follows the pointer pixel-for-pixel.
+	3.	When this moving bundle hovers over another contact card P (candidate parent) a “snap” preview appears.
+	4.	On release, if a snap preview is active, re-parent N under P; otherwise leave N parentless.
+
+⸻
+
+1. Data structures (immutable core, mutable view-state)
+
+type NodeId = string;
+interface Node {
+  id: NodeId;
+  // business data …  
+}
+interface Edge { parent: NodeId; child: NodeId; }
+
+interface Graph {
+  nodes: Map<NodeId, Node>;
+  edges: Set<Edge>;              // canonical structure (immutable per tick)
+}
+
+interface ViewState {
+  pos: Map<NodeId, {x:number,y:number}>; // pixel position
+  drag?: {
+    root: NodeId;                // id of grabbed node
+    offset: {dx:number,dy:number}; // pointer-to-root delta at grab
+    subtree: Set<NodeId>;        // root ∪ descendants
+    snapTarget?: NodeId;         // candidate parent under pointer
+  };
+}
+
+Keep the semantic graph immutable during drag; store transient UI facts in ViewState.drag.
+
+⸻
+
+2. Rendering primitive
+
+Use SVG groups (<g>) or Canvas layers:
+	•	Layer-0: static edges
+	•	Layer-1: static nodes
+	•	Layer-2: drag layer (ghost of moving sub-tree)
+	•	Layer-3: snap overlay indicator
+
+Separating layers prevents z-fighting and simplifies redraw.
+
+⸻
+
+3. Drag initiation (pointerdown on node N)
+	1.	Hit-test → obtain N.id
+	2.	Compute subtree = DFS_children(N) using the immutable edge set.
+	3.	Store
+
+drag = {
+  root: N.id,
+  offset: pointerPos − view.pos.get(N.id),
+  subtree,
+  snapTarget: undefined
+}
+
+	4.	Detach visual edge to current parent:
+Remove (or hide via CSS) edge where edge.child === N.id.
+
+No update to the canonical edges; only the picture changes until drop.
+
+⸻
+
+4. Pointer-move loop (pointermove)
+
+if (!drag) return;
+
+const newRootPos = pointerPos − drag.offset;
+
+// translate every node in drag.subtree by Δ = newRootPos − current root pos
+for childId of drag.subtree:
+    view.pos[childId] += Δ
+
+This keeps relative geometry intact and yields true pixel-by-pixel movement.
+
+⸻
+
+4.1 Snap-detection
+
+Spatial index: Maintain a quadtree of node bounding boxes for O(log n) spatial queries.
+
+Algorithm each pointermove:
+
+nearest = quadtree.find(pointerPos, SNAP_RADIUS)
+if nearest && !drag.subtree.has(nearest.id):
+    drag.snapTarget = nearest.id
+else:
+    drag.snapTarget = undefined
+
+Render snap overlay (e.g., halo around nearest) when drag.snapTarget is defined.
+
+Edge cases
+	•	Prevent self-parenting and cycles by rejecting nodes in drag.subtree.
+	•	Optional: reject if nearest is currently a descendant of N in canonical graph (cycle check).
+
+⸻
+
+5. Drop (pointerup)
+
+If no drag → ignore.
+	1.	If drag.snapTarget defined
+
+newEdge = { parent: drag.snapTarget, child: drag.root };
+graph = {
+  ...graph,
+  edges: graph.edges
+          .filter(e => e.child !== drag.root)   // remove old parent edge
+          .add(newEdge)
+}
+
+
+	2.	Else leave drag.root without parent (becomes top-level).
+	3.	Clear drag, rebuild spatial index, redraw full scene.
+
+Atomic update guarantees graph consistency.
+
+⸻
+
+6. Visual polish
+
+Concern	Technique
+Unsnap animation	120 ms cubic-out fade of removed edge.
+Ghost while dragging	80 % opacity or CSS class .dragging.
+Snap hint	Scale up target card 1.1× and draw dashed border.
+Drop transition	If parent changed, animate new edge draw (stroke-dashoffset).
+
+
+⸻
+
+7. Performance considerations
+	•	Large graphs → throttle pointermove with requestAnimationFrame (16 ms cadence).
+	•	Hit-testing on SVG: avoid elementFromPoint in large DOMs; prefer quadtree or Canvas composite & pixel read.
+	•	Immutable graph snapshots enable time-travel debugging and undo/redo.
+
+⸻
+
+8. Accessibility & input diversity
+	•	Mirror drag-sequence with keyboard: Space to “lift” node, arrow keys to move, Enter to drop.
+	•	Provide ARIA live region alerts: “Contact X detached; use arrows to move; press Enter to re-attach.”
+
+⸻
+
+9. Testing checklist
+	1.	Correct edge removal when grabbed.
+	2.	Child retention: descendants continue to display and move.
+	3.	Snap acceptance only for non-cyclic parent.
+	4.	Undo/redo restores prior hierarchy.
+	5.	Multiple concurrent drags rejected (pointer lock).
+	6.	Performance: 60 fps with 1 000 nodes.
+
+⸻
+
+Minimal pseudocode glue (framework-agnostic)
+
+onPointerDown(e) {
+  const node = hitTest(e);
+  beginDrag(node, e.pos);
+}
+
+onPointerMove(e) {
+  if (drag) updateDrag(e.pos);
+}
+
+onPointerUp(e) {
+  if (drag)   completeDrag();
+}
+
+Back ends (React, D3, PixiJS, etc.) differ only in view reconciliation, not in data-flow above.
