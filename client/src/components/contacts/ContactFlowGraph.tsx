@@ -64,12 +64,26 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { setNodes, getNodes, getEdges, setEdges } = useReactFlow();
-  const [nodes, setNodeState] = useState<Node[]>([]);
-  const [edges, setEdgeState] = useState<Edge[]>([]);
+  // Use local state for tracking, but setNodes from useReactFlow for updates
   const [isDragging, setIsDragging] = useState(false);
   const [draggedNode, setDraggedNode] = useState<string | null>(null);
   const [undoStack, setUndoStack] = useState<Array<{child: string, parent: string | null, timestamp: number}>>([]);
   const [isReordering, setIsReordering] = useState(false);
+
+  const onNodesChange = useCallback((changes: any) => {
+    const positionChanges = changes.filter((c: any) => c.type === 'position');
+    if (positionChanges.length > 0) {
+      setNodes(nodes => {
+        return nodes.map(node => {
+          const change = positionChanges.find((c: any) => c.id === node.id);
+          if (change && change.position) {
+            return { ...node, position: { ...change.position } };
+          }
+          return node;
+        });
+      });
+    }
+  }, [setNodes]);
 
 
   const reparent = useMutation({
@@ -295,14 +309,12 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       }));
 
     console.log('🔄 Created hierarchical nodes:', newNodes.length, 'edges:', newEdges.length);
-    setNodeState(newNodes);
-    setEdgeState(newEdges);
     setNodes(newNodes);
     setEdges(newEdges);
   }, [contacts, setNodes, setEdges]);
 
   const onDrag = useCallback(
-    throttle((_e, dragged) => {
+    ((_e, dragged) => {
       console.log('🔄 Dragging node:', dragged.id, 'at position:', dragged.position);
       
       if (!isDragging) {
@@ -353,7 +365,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
           },
         }))
       );
-    }, 50),
+    }),
     [getNodes, setNodes, setEdges, isDragging],
   );
 
@@ -524,24 +536,12 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   return (
     <div style={{ height: '600px', width: '100%', position: 'relative' }}>
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
+        nodes={getNodes()}
+        edges={getEdges()}
         nodeTypes={nodeTypes}
         onNodeDrag={onDrag}
         onNodeDragStop={onDragStop}
-        onNodesChange={(changes) => {
-          // Allow React Flow's native node changes for smooth dragging
-          const nodeChanges = changes.filter(change => change.type === 'position');
-          if (nodeChanges.length > 0) {
-            setNodes(nodes => nodes.map(node => {
-              const change = nodeChanges.find(c => c.id === node.id);
-              if (change && change.type === 'position' && change.position) {
-                return { ...node, position: change.position };
-              }
-              return node;
-            }));
-          }
-        }}
+        onNodesChange={onNodesChange}
         onNodeClick={onNodeClick}
         connectionLineType={ConnectionLineType.SmoothStep}
         nodesDraggable={true}
