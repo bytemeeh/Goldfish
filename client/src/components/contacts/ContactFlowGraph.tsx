@@ -233,20 +233,11 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
           
           return {
             ...n,
+            position: isDraggedNode ? dragged.position : n.position,
             data: { 
               ...n.data, 
               drop: isTarget,
               isDragging: isDraggedNode,
-            },
-            style: {
-              ...n.style,
-              opacity: isDraggedNode ? 0.9 : (isTarget ? 1 : 0.6),
-              transform: isDraggedNode ? 'scale(1.15) rotate(2deg)' : (isTarget ? 'scale(1.08)' : 'scale(1)'),
-              transition: isDraggedNode ? 'none' : 'all 0.2s ease-in-out',
-              zIndex: isDraggedNode ? 1000 : (isTarget ? 100 : 1),
-              filter: isDraggedNode ? 'drop-shadow(0 12px 24px rgba(0,0,0,0.4)) brightness(1.1)' : 'none',
-              border: isDraggedNode ? '3px solid #3b82f6' : (isTarget ? '3px solid #10b981' : ''),
-              boxShadow: isDraggedNode ? '0 0 20px rgba(59, 130, 246, 0.5)' : (isTarget ? '0 0 15px rgba(16, 185, 129, 0.5)' : ''),
             }
           };
         }),
@@ -295,21 +286,11 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       setDraggedNode(null);
       setDragTrail([]);
       
-      // Clear drop highlighting with smooth animation
+      // Clear drop highlighting
       setNodes((ns) =>
         ns.map((n) => ({ 
           ...n, 
-          data: { ...n.data, drop: false, isDragging: false },
-          style: {
-            ...n.style,
-            opacity: 1,
-            transform: 'scale(1) rotate(0deg)',
-            transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-            zIndex: 1,
-            filter: 'none',
-            border: '',
-            boxShadow: '',
-          }
+          data: { ...n.data, drop: false, isDragging: false }
         })),
       );
       

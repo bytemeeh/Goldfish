@@ -20,10 +20,9 @@ export function ContactNode({ data }: ContactNodeProps) {
   return (
     <div
       className={clsx(
-        'rounded-xl shadow-lg p-4 transition-all duration-200 ring-offset-2 border-2',
-        'hover:shadow-xl hover:scale-105',
-        isDragging && 'cursor-grabbing shadow-2xl ring-4 ring-blue-300',
-        drop && 'ring-4 ring-green-400 bg-green-50 border-green-300 animate-pulse',
+        'rounded-xl shadow-lg p-4 ring-offset-2 border-2',
+        'hover:shadow-xl',
+        drop && 'ring-4 ring-indigo-400',
         isMe 
           ? 'bg-gradient-to-br from-emerald-400 to-cyan-500 border-emerald-300 shadow-emerald-200' 
           : 'bg-white border-gray-100',
