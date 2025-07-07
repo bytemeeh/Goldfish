@@ -69,6 +69,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   const [isDragging, setIsDragging] = useState(false);
   const [draggedNode, setDraggedNode] = useState<string | null>(null);
   const [undoStack, setUndoStack] = useState<Array<{child: string, parent: string | null, timestamp: number}>>([]);
+  const [isReordering, setIsReordering] = useState(false);
 
 
   const reparent = useMutation({
@@ -208,7 +209,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
     // Apply collision detection and repositioning
     const resolveCollisions = (nodes: { contact: Contact; position: XYPosition; level: number }[]) => {
       const nodeSize = { width: 200, height: 80 }; // Approximate node dimensions
-      const minDistance = 240; // Minimum distance between node centers
+      const minDistance = 280; // Increased minimum distance between node centers
       
       // Group nodes by level for collision detection
       const levelGroups = new Map<number, { contact: Contact; position: XYPosition; level: number }[]>();
@@ -226,24 +227,29 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         levelNodes.sort((a, b) => a.position.x - b.position.x);
         
         // Multiple passes to ensure all collisions are resolved
-        for (let pass = 0; pass < 3; pass++) {
+        for (let pass = 0; pass < 5; pass++) {
           for (let i = 0; i < levelNodes.length - 1; i++) {
             const current = levelNodes[i];
             const next = levelNodes[i + 1];
             
             const distance = Math.abs(next.position.x - current.position.x);
             if (distance < minDistance) {
-              const adjustment = (minDistance - distance) / 2;
+              const adjustment = (minDistance - distance) / 2 + 10; // Extra padding
               current.position.x -= adjustment;
               next.position.x += adjustment;
             }
           }
         }
         
-        // Final pass to ensure minimum viewport bounds
-        levelNodes.forEach(node => {
-          if (node.position.x < 100) node.position.x = 100;
-          if (node.position.x > 700) node.position.x = 700;
+        // Final pass to ensure minimum viewport bounds and spread out more
+        const totalWidth = levelNodes.length * minDistance;
+        const startX = Math.max(150, 400 - totalWidth / 2);
+        
+        levelNodes.forEach((node, index) => {
+          node.position.x = startX + (index * minDistance);
+          // Ensure bounds
+          if (node.position.x < 150) node.position.x = 150;
+          if (node.position.x > 850) node.position.x = 850;
         });
       });
       
@@ -435,6 +441,86 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
     handleUndo(lastAction.child, lastAction.parent);
   };
 
+  const handleReorder = () => {
+    setIsReordering(true);
+    
+    // Trigger a rebuild with enhanced collision detection
+    const contactMap = new Map(contacts.map(c => [c.id, c]));
+    const rootContacts = contacts.filter(c => !c.parentId || !contactMap.has(c.parentId));
+    
+    const buildHierarchy = (contact: Contact, level: number = 0, parentX: number = 400, parentY: number = 150): { contact: Contact; position: XYPosition; level: number }[] => {
+      const result: { contact: Contact; position: XYPosition; level: number }[] = [];
+      
+      let position: XYPosition;
+      
+      if (contact.isMe) {
+        position = { x: 400, y: 100 };
+      } else if (level === 0) {
+        const rootIndex = rootContacts.indexOf(contact);
+        const minSpacing = 300;
+        const totalWidth = Math.max(900, rootContacts.length * minSpacing);
+        const spacing = totalWidth / Math.max(rootContacts.length, 1);
+        position = { 
+          x: 400 - ((rootContacts.length - 1) * spacing) / 2 + (rootIndex * spacing), 
+          y: 250 
+        };
+      } else {
+        const siblings = contacts.filter(c => c.parentId === contact.parentId);
+        const childIndex = siblings.indexOf(contact);
+        const minSpacing = 250;
+        const totalWidth = Math.max(500, siblings.length * minSpacing);
+        const spacing = totalWidth / Math.max(siblings.length, 1);
+        
+        position = {
+          x: parentX - ((siblings.length - 1) * spacing) / 2 + (childIndex * spacing),
+          y: parentY + 180
+        };
+      }
+      
+      result.push({ contact, position, level });
+      
+      const children = contacts.filter(c => c.parentId === contact.id);
+      children.forEach(child => {
+        result.push(...buildHierarchy(child, level + 1, position.x, position.y));
+      });
+      
+      return result;
+    };
+    
+    const hierarchyData: { contact: Contact; position: XYPosition; level: number }[] = [];
+    rootContacts.forEach(rootContact => {
+      hierarchyData.push(...buildHierarchy(rootContact));
+    });
+    
+    const resolvedHierarchy = resolveCollisions([...hierarchyData]);
+    
+    const reorderedNodes: Node[] = resolvedHierarchy.map(({ contact, position, level }) => ({
+      id: String(contact.id),
+      position,
+      data: { 
+        label: contact.name,
+        contact,
+        level,
+        drop: false,
+      },
+      type: 'contact',
+      draggable: true,
+      style: {
+        zIndex: contact.isMe ? 1000 : (100 - level * 10),
+      }
+    }));
+
+    setNodes(reorderedNodes);
+    
+    setTimeout(() => {
+      setIsReordering(false);
+      toast({
+        title: "Contacts reordered",
+        description: "Hierarchy layout has been optimized",
+      });
+    }, 500);
+  };
+
   return (
     <div style={{ height: '600px', width: '100%', position: 'relative' }}>
       <ReactFlow
@@ -472,26 +558,38 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       </ReactFlow>
       
       {/* Undo Button */}
-      <AnimatePresence>
-        {undoStack.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="absolute top-4 right-4 z-50"
-          >
-            <Button
-              onClick={handleUndoAction}
-              variant="secondary"
-              size="sm"
-              className="shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white"
+      <div className="absolute top-4 right-4 z-50 flex gap-2">
+        <AnimatePresence>
+          {undoStack.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
             >
-              <Undo2 className="h-4 w-4 mr-2" />
-              Undo ({undoStack.length})
-            </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <Button
+                onClick={handleUndoAction}
+                variant="secondary"
+                size="sm"
+                className="shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white"
+              >
+                <Undo2 className="h-4 w-4 mr-2" />
+                Undo ({undoStack.length})
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        <Button
+          onClick={handleReorder}
+          variant="outline"
+          size="sm"
+          disabled={isReordering}
+          className="shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white"
+        >
+          <RotateCcw className={`h-4 w-4 mr-2 ${isReordering ? 'animate-spin' : ''}`} />
+          {isReordering ? 'Reordering...' : 'Reorder'}
+        </Button>
+      </div>
       
       {/* Dragging Status Indicator */}
       <AnimatePresence>
