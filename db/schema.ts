@@ -88,6 +88,7 @@ export const contacts = pgTable("contacts", {
   parentId: uuid("parent_id").references(() => contacts.id, { onDelete: "cascade" }),
   relationshipType: text("relationship_type", { enum: relationshipTypes }),
   isMe: boolean("is_me").default(false),
+  color: text("color"),
   shareToken: text("share_token").unique(),
   shareDepth: integer("share_depth"),
   shareableUntil: timestamp("shareable_until", { mode: "string" }),

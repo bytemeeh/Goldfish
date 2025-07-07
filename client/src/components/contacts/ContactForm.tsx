@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RelationshipTypeSelector } from "./RelationshipTypeSelector";
 import { LocationList } from "./LocationList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ColorPicker } from "@/components/ui/color-picker";
 
 const contactSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -30,6 +31,7 @@ const contactSchema = z.object({
   parentId: z.number().optional().nullable(),
   relationshipType: z.enum(['sibling', 'mother', 'father', 'brother', 'friend', 'child', 'co-worker', 'spouse', 'boyfriend/girlfriend'] as const).optional().nullable(),
   isMe: z.boolean().optional(),
+  color: z.string().optional(),
   // Legacy location fields
   street: z.string().optional().nullable(),
   city: z.string().optional().nullable(),
@@ -108,6 +110,7 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
       parentId: parentId || initialData?.parentId || null,
       relationshipType: initialData?.relationshipType || null,
       isMe: isPersonalCard || initialData?.isMe || false,
+      color: initialData?.color || "blue",
       // Location fields
       street: initialData?.street || "",
       city: initialData?.city || "",
@@ -246,6 +249,23 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
               )}
             />
           )}
+
+          <FormField
+            control={form.control}
+            name="color"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Card Color</FormLabel>
+                <FormControl>
+                  <ColorPicker
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           <FormField
             control={form.control}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Handle, Position } from 'reactflow';
 import { Contact } from '@/lib/types';
+import { getContactColorClasses } from '@/lib/colors';
 import { User, Phone, Mail } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -18,6 +19,7 @@ interface ContactNodeProps {
 export function ContactNode({ data }: ContactNodeProps) {
   const { contact, drop = false, isDragged = false, isSnapTarget = false, level = 0 } = data;
   const isMe = contact.isMe;
+  const colorClasses = getContactColorClasses(contact.color || 'blue');
   
   return (
     <div
@@ -26,12 +28,9 @@ export function ContactNode({ data }: ContactNodeProps) {
         'hover:shadow-xl transition-all duration-120',
         isDragged ? 'opacity-80 cursor-grabbing shadow-2xl' : 'cursor-grab',
         isSnapTarget && 'ring-2 ring-blue-400 ring-dashed',
-        level === 0 && !isMe && 'border-blue-300 bg-blue-50',
-        level === 1 && 'border-green-300 bg-green-50',
-        level >= 2 && 'border-purple-300 bg-purple-50',
         isMe 
           ? 'bg-gradient-to-br from-emerald-400 to-cyan-500 border-emerald-300 shadow-emerald-200' 
-          : 'bg-white border-gray-100',
+          : `${colorClasses.bg} ${colorClasses.border}`,
         drop && 'ring-4 ring-indigo-400 animate-pulse',
         drop && isMe && 'bg-gradient-to-br from-emerald-300 to-cyan-400',
         drop && !isMe && 'bg-indigo-50'

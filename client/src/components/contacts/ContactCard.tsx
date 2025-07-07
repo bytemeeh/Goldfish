@@ -44,6 +44,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ContactForm } from "./ContactForm";
 import { type Contact, type RelationshipType } from "@/lib/types";
+import { getContactColorClasses, type ContactColor } from "@/lib/colors";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import cn from 'classnames';
@@ -109,6 +110,9 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
     professional: ["co-worker"],
   };
 
+  // Get color classes for the contact
+  const colorClasses = getContactColorClasses(contact.color || 'blue');
+
   return (
     <div className={`relative ${indentClass} group`}>
       
@@ -149,10 +153,11 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
         <Card
           className={`
             relative
-            border
+            ${colorClasses.border}
+            ${colorClasses.bg}
             rounded-lg
             ${level === 0 ? 'shadow-md' : 'shadow-sm'}
-            ${isSelected ? 'ring-2 ring-primary ring-opacity-70 bg-primary/5 shadow-lg' : ''}
+            ${isSelected ? `ring-2 ${colorClasses.ring} ring-opacity-70 shadow-lg` : ''}
             transition-all
             duration-300
             ease-in-out

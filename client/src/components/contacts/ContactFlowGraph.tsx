@@ -15,6 +15,7 @@ import ReactFlow, {
 } from 'reactflow';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Contact } from '@/lib/types';
+import { getContactColorClasses } from '@/lib/colors';
 import { ContactNode } from './ContactNode';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -477,9 +478,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
           nodeColor={(node) => {
             const contact = node.data.contact;
             if (contact.isMe) return '#10b981';
-            if (node.data.level === 0) return '#3b82f6';
-            if (node.data.level === 1) return '#22c55e';
-            return '#a855f7';
+            return getContactColorClasses(contact.color || 'blue').hex;
           }}
           nodeStrokeWidth={2}
           nodeBorderRadius={8}
