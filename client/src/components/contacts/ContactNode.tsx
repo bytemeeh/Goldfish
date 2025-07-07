@@ -9,20 +9,24 @@ interface ContactNodeProps {
     contact: Contact;
     drop?: boolean;
     isDragging?: boolean;
+    level?: number;
     label: string;
   };
 }
 
 export function ContactNode({ data }: ContactNodeProps) {
-  const { contact, drop = false, isDragging = false } = data;
+  const { contact, drop = false, isDragging = false, level = 0 } = data;
   const isMe = contact.isMe;
   
   return (
     <div
       className={clsx(
         'rounded-xl shadow-lg p-4 ring-offset-2 border-2',
-        'hover:shadow-xl',
+        'hover:shadow-xl transition-all duration-200',
         drop && 'ring-4 ring-indigo-400',
+        level === 0 && !isMe && 'border-blue-300 bg-blue-50',
+        level === 1 && 'border-green-300 bg-green-50',
+        level >= 2 && 'border-purple-300 bg-purple-50',
         isMe 
           ? 'bg-gradient-to-br from-emerald-400 to-cyan-500 border-emerald-300 shadow-emerald-200' 
           : 'bg-white border-gray-100',

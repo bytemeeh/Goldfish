@@ -146,36 +146,77 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
     }
   };
 
-  // Convert contacts to nodes and edges
+  // Convert contacts to hierarchical tree nodes and edges
   useEffect(() => {
-    const newNodes: Node[] = contacts.map((contact, index) => {
-      // Place "me" contact in center, others around it
-      let position;
+    console.log('🔄 Building hierarchical tree structure from contacts:', contacts.length);
+    
+    // Build hierarchical structure
+    const contactMap = new Map(contacts.map(c => [c.id, c]));
+    const rootContacts = contacts.filter(c => !c.parentId || !contactMap.has(c.parentId));
+    
+    const buildHierarchy = (contact: Contact, level: number = 0, parentX: number = 400, parentY: number = 150): { contact: Contact; position: XYPosition; level: number }[] => {
+      const result: { contact: Contact; position: XYPosition; level: number }[] = [];
+      
+      // Position calculation based on hierarchy level
+      let position: XYPosition;
+      
       if (contact.isMe) {
-        position = { x: 400, y: 300 }; // Center position
+        // "Me" contact at center-top
+        position = { x: 400, y: 100 };
+      } else if (level === 0) {
+        // Root level contacts spread horizontally
+        const rootIndex = rootContacts.indexOf(contact);
+        const spacing = Math.min(300, 800 / Math.max(rootContacts.length, 1));
+        position = { 
+          x: 400 - ((rootContacts.length - 1) * spacing) / 2 + (rootIndex * spacing), 
+          y: 200 
+        };
       } else {
-        // Arrange other contacts in a circle around the center
-        const nonMeIndex = contacts.filter(c => !c.isMe).findIndex(c => c.id === contact.id);
-        const angle = (nonMeIndex * 2 * Math.PI) / Math.max(contacts.length - 1, 1);
-        const radius = 250;
+        // Child contacts positioned below parent
+        const siblings = contacts.filter(c => c.parentId === contact.parentId);
+        const childIndex = siblings.indexOf(contact);
+        const spacing = Math.min(200, 600 / Math.max(siblings.length, 1));
+        
         position = {
-          x: 400 + radius * Math.cos(angle),
-          y: 300 + radius * Math.sin(angle)
+          x: parentX - ((siblings.length - 1) * spacing) / 2 + (childIndex * spacing),
+          y: parentY + 150
         };
       }
-
-      return {
-        id: String(contact.id),
-        position,
-        data: { 
-          label: contact.name,
-          contact,
-          drop: false,
-        },
-        type: 'contact',
-        draggable: true,
-      };
+      
+      result.push({ contact, position, level });
+      
+      // Process children
+      const children = contacts.filter(c => c.parentId === contact.id);
+      children.forEach(child => {
+        result.push(...buildHierarchy(child, level + 1, position.x, position.y));
+      });
+      
+      return result;
+    };
+    
+    // Build all hierarchies
+    const hierarchyData: { contact: Contact; position: XYPosition; level: number }[] = [];
+    
+    rootContacts.forEach(rootContact => {
+      hierarchyData.push(...buildHierarchy(rootContact));
     });
+    
+    // Create nodes with hierarchical positioning
+    const newNodes: Node[] = hierarchyData.map(({ contact, position, level }) => ({
+      id: String(contact.id),
+      position,
+      data: { 
+        label: contact.name,
+        contact,
+        level,
+        drop: false,
+      },
+      type: 'contact',
+      draggable: true,
+      style: {
+        zIndex: contact.isMe ? 1000 : (100 - level * 10),
+      }
+    }));
 
     const newEdges: Edge[] = contacts
       .filter(contact => contact.parentId)
@@ -196,11 +237,12 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         },
       }));
 
+    console.log('🔄 Created hierarchical nodes:', newNodes.length, 'edges:', newEdges.length);
     setNodeState(newNodes);
     setEdgeState(newEdges);
     setNodes(newNodes);
     setEdges(newEdges);
-  }, [contacts, setNodes, setEdges]);
+  }, [contacts, setNodes, setEdges, isDragging, draggedNode]);
 
   const onDrag = useCallback(
     throttle((_e, dragged) => {
