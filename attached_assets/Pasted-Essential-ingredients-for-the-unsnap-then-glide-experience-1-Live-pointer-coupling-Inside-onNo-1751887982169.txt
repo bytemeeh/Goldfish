@@ -1,0 +1,32 @@
+Essential ingredients for the “unsnap-then-glide” experience
+	1.	Live pointer coupling
+• Inside onNodeDrag, you must call setNodes on every pointer move (or every rAF) with an updated position for the dragged node.
+• The update must supply fresh numeric x and y values; any undefined or NaN kills the render and the node appears to freeze.
+• Throttle no slower than one frame every ≈ 16 ms; otherwise motion looks jerky or “sticks”.
+	2.	Stable identity
+• Each node’s id stays exactly the same string throughout the drag—usually the contact’s UUID.
+• If you create a new object with a new id mid-drag, React Flow treats it as a new node and the visual will pop or vanish.
+	3.	No CSS interference
+• The wrapper around the card must be implicitly positioned (position: relative) and have a visible size; classes like absolute without top/left, hidden, or opacity-0 will make the node disappear even though the transform updates.
+• Avoid any custom transform: styles; React Flow writes its own translate()—yours will overwrite it.
+	4.	React-Flow configuration
+• nodesDraggable is true, and you are not supplying per-node { draggable:false }.
+• <ReactFlowProvider> encloses the canvas; without it the internal drag handlers never attach.
+• nodeTypes is created once (static reference) so React Flow doesn’t remount nodes during a drag.
+	5.	Pointer offset (delta) bookkeeping
+• On onNodeDragStart capture the difference between pointer coordinates and the node’s top-left—otherwise the node will jump under the cursor instead of gliding smoothly from its unsnapped position.
+	6.	Highlight & target detection
+• During drag, compute distance from dragged node centre to every potential parent.
+• When distance < SNAP_RADIUS, set data.drop = true on the target node to show the highlight ring; clear it when you leave the radius (“unsnap-off”).
+• Do not change parentNode yet—only after mouse-up.
+	7.	Drop commit
+• In onNodeDragStop, if a highlighted target exists, update the dragged node’s parentNode (optimistic UI) and fire PUT /api/contacts/:id with { parentId: targetId }.
+• Cycle-prevention trigger must accept the change or return 400; surface that error so the user knows why snapping failed.
+	8.	Descendant cohesion
+• Before the drag begins, compute the complete descendant list and treat those nodes as a set; move them by the same delta every frame so the subtree glides in unison.
+	9.	Undo safety net
+• Keep { childId, oldParentId } in a stack; if API call fails or user clicks “Undo”, roll back both UI and backend to maintain consistency.
+	10.	Debug visibility
+• Always log onNodeDrag events in development (console.log(id, position.x, position.y)). A missing or frozen stream immediately reveals that the drag handler isn’t firing, throttling is too strict, or state updates are being ignored.
+
+If any one of these ten elements is wrong—invalid positions, duplicate ids, CSS hiding the node, drag events not propagating, or backend rejecting the parent change—the visual glide either never starts, stalls mid-drag, or snaps back after drop.
