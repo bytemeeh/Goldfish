@@ -89,6 +89,7 @@ export const contacts = pgTable("contacts", {
   relationshipType: text("relationship_type", { enum: relationshipTypes }),
   isMe: boolean("is_me").default(false),
   color: text("color"),
+  photo: text("photo"), // Base64 encoded photo or URL
   shareToken: text("share_token").unique(),
   shareDepth: integer("share_depth"),
   shareableUntil: timestamp("shareable_until", { mode: "string" }),

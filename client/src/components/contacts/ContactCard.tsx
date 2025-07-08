@@ -45,6 +45,7 @@ import { Badge } from "@/components/ui/badge";
 import { ContactForm } from "./ContactForm";
 import { type Contact, type RelationshipType } from "@/lib/types";
 import { getContactColorClasses, type ContactColor } from "@/lib/colors";
+import { ProfilePhoto } from "@/components/ui/ProfilePhoto";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import cn from 'classnames';
@@ -196,7 +197,13 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
                   <ChevronRight className="h-5 w-5" />
                 )
               ) : (
-                <User className="h-4 w-4" />
+                <div className="mr-1">
+                  <ProfilePhoto 
+                    photo={contact.photo}
+                    name={contact.name}
+                    size="sm"
+                  />
+                </div>
               )}
             </motion.div>
 

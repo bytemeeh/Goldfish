@@ -22,6 +22,7 @@ import { RelationshipTypeSelector } from "./RelationshipTypeSelector";
 import { LocationList } from "./LocationList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ColorPicker } from "@/components/ui/color-picker";
+import { PhotoUpload } from "@/components/ui/PhotoUpload";
 
 const contactSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -33,6 +34,7 @@ const contactSchema = z.object({
   relationshipType: z.enum(['sibling', 'mother', 'father', 'brother', 'friend', 'child', 'co-worker', 'spouse', 'boyfriend/girlfriend'] as const).optional().nullable(),
   isMe: z.boolean().optional(),
   color: z.string().optional(),
+  photo: z.string().optional().nullable(),
   // Legacy location fields
   street: z.string().optional().nullable(),
   city: z.string().optional().nullable(),
@@ -114,6 +116,7 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
       relationshipType: initialData?.relationshipType || null,
       isMe: isPersonalCard || initialData?.isMe || false,
       color: initialData?.color || "blue",
+      photo: initialData?.photo || null,
       // Location fields
       street: initialData?.street || "",
       city: initialData?.city || "",
@@ -322,6 +325,23 @@ export function ContactForm({ onSuccess, initialData, parentId, isPersonalCard }
                   <ColorPicker
                     value={field.value}
                     onValueChange={field.onChange}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="photo"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Profile Photo</FormLabel>
+                <FormControl>
+                  <PhotoUpload
+                    currentPhoto={field.value || undefined}
+                    onPhotoChange={field.onChange}
                   />
                 </FormControl>
                 <FormMessage />

@@ -28,6 +28,7 @@ export interface Contact {
   relationshipType?: RelationshipType;
   isMe?: boolean;
   color?: string;
+  photo?: string;
   shareToken?: string;
   shareDepth?: number;
   shareableUntil?: string;

@@ -4,6 +4,7 @@ import { Contact } from '@/lib/types';
 import { getContactColorClasses } from '@/lib/colors';
 import { User, Phone, Mail } from 'lucide-react';
 import { clsx } from 'clsx';
+import { ProfilePhoto } from '@/components/ui/ProfilePhoto';
 
 interface ContactNodeProps {
   data: {
@@ -53,14 +54,15 @@ export function ContactNode({ data }: ContactNodeProps) {
       />
       
       <div className="flex flex-col items-center space-y-2">
-        <div className={clsx(
-          'w-10 h-10 rounded-full flex items-center justify-center',
-          isMe 
-            ? 'bg-gradient-to-br from-emerald-600 to-cyan-700 shadow-lg' 
-            : 'bg-gradient-to-br from-blue-500 to-purple-600'
-        )}>
-          <User className="w-5 h-5 text-white" />
-        </div>
+        <ProfilePhoto 
+          photo={contact.photo}
+          name={contact.name}
+          size="md"
+          className={clsx(
+            'shadow-md',
+            isMe && 'border-emerald-500 bg-emerald-50'
+          )}
+        />
         
         <div className="text-center">
           <h3 className={clsx(
