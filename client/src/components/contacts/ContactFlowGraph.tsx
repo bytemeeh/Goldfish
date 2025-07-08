@@ -429,8 +429,8 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
 
   return (
     <div style={{ height: '100vh', width: '100%', position: 'relative' }}>
-      {/* Relationship Manager - positioned in top-right corner */}
-      <div className="absolute top-4 right-4 z-10 w-80">
+      {/* Relationship Manager - positioned in top-left corner */}
+      <div className="absolute top-4 left-4 z-10 w-80">
         <RelationshipManager />
       </div>
       
@@ -475,7 +475,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
           color="#e2e8f0"
         />
         <Controls 
-          position="top-left"
+          position="bottom-left"
           showZoom={true}
           showFitView={true}
           showInteractive={true}
@@ -499,48 +499,37 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       </ReactFlow>
       
       {/* Control Panel */}
-      <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
-        {/* Navigation Info */}
-        <div className="bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 shadow-lg">
-          <div className="font-medium mb-1">Navigation:</div>
-          <div>• Mouse wheel: Zoom in/out</div>
-          <div>• Click + drag: Pan around</div>
-          <div>• Double-click: Zoom to fit</div>
-        </div>
-        
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          <AnimatePresence>
-            {undoStack.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
+      <div className="absolute top-4 right-4 z-50 flex gap-2">
+        <AnimatePresence>
+          {undoStack.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+            >
+              <Button
+                onClick={handleUndoAction}
+                variant="secondary"
+                size="sm"
+                className="shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white"
               >
-                <Button
-                  onClick={handleUndoAction}
-                  variant="secondary"
-                  size="sm"
-                  className="shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white"
-                >
-                  <Undo2 className="h-4 w-4 mr-2" />
-                  Undo ({undoStack.length})
-                </Button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          
-          <Button
-            onClick={handleReorder}
-            variant="outline"
-            size="sm"
-            disabled={isReordering}
-            className="shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white"
-          >
-            <RotateCcw className={`h-4 w-4 mr-2 ${isReordering ? 'animate-spin' : ''}`} />
-            {isReordering ? 'Reordering...' : 'Reorder'}
-          </Button>
-        </div>
+                <Undo2 className="h-4 w-4 mr-2" />
+                Undo ({undoStack.length})
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        <Button
+          onClick={handleReorder}
+          variant="outline"
+          size="sm"
+          disabled={isReordering}
+          className="shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white"
+        >
+          <RotateCcw className={`h-4 w-4 mr-2 ${isReordering ? 'animate-spin' : ''}`} />
+          {isReordering ? 'Reordering...' : 'Reorder'}
+        </Button>
       </div>
     </div>
   );

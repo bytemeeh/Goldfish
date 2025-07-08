@@ -209,31 +209,22 @@ export function Home() {
 
           {/* Hide search bar in detail view */}
           {viewMode !== "detail" && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="w-full max-w-2xl">
                 <SearchBar onSearch={setFilters} />
               </div>
               
-              {/* AI Voice Input */}
-              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 border border-indigo-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Mic className="h-5 w-5 text-indigo-600" />
-                    <h3 className="text-sm font-medium text-indigo-900">Quick AI Contact Creation</h3>
-                  </div>
-                  <VoiceInput 
-                    onTranscription={handleVoiceTranscription}
-                    onProcessingComplete={handleVoiceProcessingComplete}
-                    placeholder="Speak to add contact..."
-                    mode="contact"
-                    className="text-sm"
-                  />
-                </div>
-                {voiceTranscription && (
-                  <div className="mt-3 text-xs text-gray-600 bg-white p-2 rounded border">
-                    <strong>Voice Input:</strong> "{voiceTranscription}"
-                  </div>
-                )}
+              {/* AI Voice Input - Simplified */}
+              <div className="flex items-center justify-center gap-3 p-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
+                <Mic className="h-4 w-4 text-indigo-600" />
+                <span className="text-sm font-medium text-indigo-900">Quick AI Contact Creation:</span>
+                <VoiceInput 
+                  onTranscription={handleVoiceTranscription}
+                  onProcessingComplete={handleVoiceProcessingComplete}
+                  placeholder="Speak to add contact..."
+                  mode="contact"
+                  className="text-sm"
+                />
               </div>
             </div>
           )}
