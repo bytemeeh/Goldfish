@@ -142,20 +142,20 @@ export function Home() {
               <div className="grid grid-cols-4 gap-1.5 w-full md:w-auto max-w-full">
                 <div className="flex items-center border rounded-md overflow-hidden h-8 col-span-1">
                   <Button
-                    variant={viewMode === "list" ? "default" : "ghost"}
-                    onClick={() => setViewMode("list")}
-                    size="sm"
-                    className="h-8 w-full rounded-none px-1"
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                  <Button
                     variant={viewMode === "graph" ? "default" : "ghost"}
                     onClick={() => setViewMode("graph")}
                     size="sm"
                     className="h-8 w-full rounded-none px-1"
                   >
                     <Network className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === "list" ? "default" : "ghost"}
+                    onClick={() => setViewMode("list")}
+                    size="sm"
+                    className="h-8 w-full rounded-none px-1"
+                  >
+                    <List className="h-4 w-4" />
                   </Button>
                 </div>
                 <Dialog open={isEditingPersonal} onOpenChange={setIsEditingPersonal}>
@@ -214,16 +214,7 @@ export function Home() {
                 <SearchBar onSearch={setFilters} />
               </div>
               
-              {/* AI Voice Input - Compact Button */}
-              <div className="flex justify-center">
-                <VoiceInput 
-                  onTranscription={handleVoiceTranscription}
-                  onProcessingComplete={handleVoiceProcessingComplete}
-                  placeholder="Voice Input"
-                  mode="contact"
-                  className="text-sm"
-                />
-              </div>
+
             </div>
           )}
 

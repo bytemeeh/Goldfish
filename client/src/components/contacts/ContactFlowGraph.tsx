@@ -18,6 +18,7 @@ import { Contact } from '@/lib/types';
 import { getContactColorClasses } from '@/lib/colors';
 import { ContactNode } from './ContactNode';
 import { RelationshipManager } from '@/components/ai/RelationshipManager';
+import { VoiceInput } from '@/components/ai/VoiceInput';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Undo2, RotateCcw } from 'lucide-react';
@@ -65,6 +66,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [undoStack, setUndoStack] = useState<Array<{child: string, parent: string | null, timestamp: number}>>([]);
   const [isReordering, setIsReordering] = useState(false);
+  const [voiceTranscription, setVoiceTranscription] = useState<string>("");
   
   // Ephemeral drag context stored in ref to avoid re-renders
   const dragContextRef = useRef<{
@@ -495,7 +497,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       </ReactFlow>
       
       {/* Control Panel */}
-      <div className="absolute top-4 right-4 z-50 flex gap-2">
+      <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
         <AnimatePresence>
           {undoStack.length > 0 && (
             <motion.div
@@ -521,11 +523,28 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
           variant="outline"
           size="sm"
           disabled={isReordering}
-          className="shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white"
+          className="shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white w-full"
         >
           <RotateCcw className={`h-4 w-4 mr-2 ${isReordering ? 'animate-spin' : ''}`} />
           {isReordering ? 'Reordering...' : 'Reorder'}
         </Button>
+        
+        {/* Voice Input Button */}
+        <VoiceInput 
+          onTranscription={setVoiceTranscription}
+          onProcessingComplete={(result) => {
+            if (result.type === 'contact_created') {
+              queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
+              toast({
+                title: "Contact created",
+                description: `${result.contact.name} has been added to your contacts`
+              });
+            }
+          }}
+          placeholder="Voice Input"
+          mode="contact"
+          className="text-sm shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white w-full"
+        />
       </div>
     </div>
   );
