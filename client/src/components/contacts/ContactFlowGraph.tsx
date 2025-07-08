@@ -19,6 +19,7 @@ import { getContactColorClasses } from '@/lib/colors';
 import { ContactNode } from './ContactNode';
 import { RelationshipManager } from '@/components/ai/RelationshipManager';
 import { VoiceInput } from '@/components/ai/VoiceInput';
+import { ProximityFilter } from './ProximityFilter';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Undo2, RotateCcw } from 'lucide-react';
@@ -67,6 +68,70 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   const [undoStack, setUndoStack] = useState<Array<{child: string, parent: string | null, timestamp: number}>>([]);
   const [isReordering, setIsReordering] = useState(false);
   const [voiceTranscription, setVoiceTranscription] = useState<string>("");
+  const [proximityFilter, setProximityFilter] = useState<{
+    enabled: boolean;
+    userLocation: { lat: number; lng: number } | null;
+  }>({ enabled: false, userLocation: null });
+
+  // Calculate distance between two points in kilometers
+  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  // Filter contacts based on proximity
+  const filterContactsByProximity = (contacts: Contact[]): Contact[] => {
+    if (!proximityFilter.enabled || !proximityFilter.userLocation) {
+      return contacts;
+    }
+
+    return contacts.filter(contact => {
+      // Always show "me" contact
+      if (contact.isMe) return true;
+
+      // Check if contact has location data
+      const hasLocation = contact.locations && contact.locations.length > 0;
+      const hasLegacyLocation = contact.latitude && contact.longitude;
+
+      if (!hasLocation && !hasLegacyLocation) return false;
+
+      // Check distance for each location
+      if (hasLocation) {
+        return contact.locations!.some(location => {
+          const distance = calculateDistance(
+            proximityFilter.userLocation!.lat,
+            proximityFilter.userLocation!.lng,
+            parseFloat(location.latitude.toString()),
+            parseFloat(location.longitude.toString())
+          );
+          return distance <= 1; // Within 1km
+        });
+      }
+
+      // Check legacy location
+      if (hasLegacyLocation) {
+        const distance = calculateDistance(
+          proximityFilter.userLocation!.lat,
+          proximityFilter.userLocation!.lng,
+          parseFloat(contact.latitude!),
+          parseFloat(contact.longitude!)
+        );
+        return distance <= 1; // Within 1km
+      }
+
+      return false;
+    });
+  };
+
+  const handleProximityFilterChange = (enabled: boolean, userLocation?: { lat: number; lng: number }) => {
+    setProximityFilter({ enabled, userLocation: userLocation || null });
+  };
   
   // Ephemeral drag context stored in ref to avoid re-renders
   const dragContextRef = useRef<{
@@ -137,8 +202,12 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   useEffect(() => {
     console.log('🔄 Building hierarchical tree structure from contacts:', contacts.length);
     
-    const contactMap = new Map(contacts.map(c => [c.id, c]));
-    const rootContacts = contacts.filter(c => !c.parentId || !contactMap.has(c.parentId));
+    // Apply proximity filter first
+    const filteredContacts = filterContactsByProximity(contacts);
+    console.log('🔄 Filtered contacts by proximity:', filteredContacts.length);
+    
+    const contactMap = new Map(filteredContacts.map(c => [c.id, c]));
+    const rootContacts = filteredContacts.filter(c => !c.parentId || !contactMap.has(c.parentId));
     
     const buildHierarchy = (contact: Contact, level: number = 0, parentX: number = 600, parentY: number = 200): { contact: Contact; position: XYPosition; level: number }[] => {
       const result: { contact: Contact; position: XYPosition; level: number }[] = [];
@@ -178,7 +247,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       
       result.push({ contact, position, level });
       
-      const children = contacts.filter(c => c.parentId === contact.id);
+      const children = filteredContacts.filter(c => c.parentId === contact.id);
       children.forEach(child => {
         result.push(...buildHierarchy(child, level + 1, position.x, position.y));
       });
@@ -209,7 +278,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       }
     }));
 
-    const newEdges: Edge[] = contacts
+    const newEdges: Edge[] = filteredContacts
       .filter(contact => contact.parentId)
       .map(contact => ({
         id: `${contact.parentId}-${contact.id}`,
@@ -227,7 +296,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
     console.log('🔄 Created hierarchical nodes:', newNodes.length, 'edges:', newEdges.length);
     setNodes(newNodes);
     setEdges(newEdges);
-  }, [contacts, setNodes, setEdges]);
+  }, [contacts, setNodes, setEdges, proximityFilter]);
 
   // Drag start - establish drag context
   const onNodeDragStart = useCallback(
@@ -543,6 +612,12 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
           }}
           placeholder="Voice Input"
           mode="contact"
+          className="text-sm shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white w-full"
+        />
+        
+        {/* Proximity Filter Button */}
+        <ProximityFilter 
+          onFilterChange={handleProximityFilterChange}
           className="text-sm shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white w-full"
         />
       </div>
