@@ -67,6 +67,14 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   const [undoStack, setUndoStack] = useState<Array<{child: string, parent: string | null, timestamp: number}>>([]);
   const [isReordering, setIsReordering] = useState(false);
   const [voiceTranscription, setVoiceTranscription] = useState<string>("");
+  const [haloGroups, setHaloGroups] = useState<Array<{
+    id: string;
+    type: 'family' | 'friends' | 'work' | 'me';
+    center: { x: number; y: number };
+    radius: number;
+    contacts: string[];
+    color: string;
+  }>>([]);
   
   // Ephemeral drag context stored in ref to avoid re-renders
   const dragContextRef = useRef<{
@@ -136,6 +144,18 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
   // Convert contacts to hierarchical tree nodes and edges
   useEffect(() => {
     console.log('🔄 Building hierarchical tree structure from contacts:', contacts.length);
+    
+    // Group contacts by relationship type for halo groups
+    const familyTypes = ['mother', 'father', 'brother', 'sibling', 'child', 'spouse', 'boyfriend/girlfriend'];
+    const workTypes = ['co-worker'];
+    const friendTypes = ['friend'];
+
+    const groupedContacts = {
+      family: contacts.filter(c => !c.isMe && c.relationshipType && familyTypes.includes(c.relationshipType)),
+      friends: contacts.filter(c => !c.isMe && c.relationshipType && friendTypes.includes(c.relationshipType)),
+      work: contacts.filter(c => !c.isMe && c.relationshipType && workTypes.includes(c.relationshipType)),
+      me: contacts.filter(c => c.isMe)
+    };
     
     const contactMap = new Map(contacts.map(c => [c.id, c]));
     const rootContacts = contacts.filter(c => !c.parentId || !contactMap.has(c.parentId));
@@ -223,6 +243,70 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
           strokeWidth: 2,
         },
       }));
+
+    // Calculate halo groups based on positioned nodes
+    const calculateHaloGroups = () => {
+      const groups = [];
+      
+      // Helper function to calculate center and radius for a group of nodes
+      const createHaloGroup = (nodes: Node[], type: 'family' | 'friends' | 'work' | 'me', color: string) => {
+        if (nodes.length === 0) return null;
+        
+        const positions = nodes.map(n => n.position);
+        const centerX = positions.reduce((sum, pos) => sum + pos.x, 0) / positions.length;
+        const centerY = positions.reduce((sum, pos) => sum + pos.y, 0) / positions.length;
+        
+        // Calculate radius to encompass all nodes with some padding
+        const maxDistance = Math.max(...positions.map(pos => 
+          Math.sqrt(Math.pow(pos.x - centerX, 2) + Math.pow(pos.y - centerY, 2))
+        ));
+        
+        return {
+          id: `halo-${type}`,
+          type,
+          center: { x: centerX, y: centerY },
+          radius: Math.max(120, maxDistance + 80), // Minimum 120px radius, plus padding
+          contacts: nodes.map(n => n.id),
+          color
+        };
+      };
+      
+      // Group nodes by relationship type using the same logic
+      const familyNodes = newNodes.filter(n => {
+        const contact = contacts.find(c => c.id === parseInt(n.id));
+        return contact && !contact.isMe && contact.relationshipType && 
+          familyTypes.includes(contact.relationshipType);
+      });
+      const friendNodes = newNodes.filter(n => {
+        const contact = contacts.find(c => c.id === parseInt(n.id));
+        return contact && !contact.isMe && contact.relationshipType && 
+          friendTypes.includes(contact.relationshipType);
+      });
+      const workNodes = newNodes.filter(n => {
+        const contact = contacts.find(c => c.id === parseInt(n.id));
+        return contact && !contact.isMe && contact.relationshipType && 
+          workTypes.includes(contact.relationshipType);
+      });
+      const meNodes = newNodes.filter(n => {
+        const contact = contacts.find(c => c.id === parseInt(n.id));
+        return contact && contact.isMe;
+      });
+      
+      // Create halo groups
+      const familyHalo = createHaloGroup(familyNodes, 'family', 'rgba(239, 68, 68, 0.1)'); // red
+      const friendsHalo = createHaloGroup(friendNodes, 'friends', 'rgba(34, 197, 94, 0.1)'); // green
+      const workHalo = createHaloGroup(workNodes, 'work', 'rgba(59, 130, 246, 0.1)'); // blue
+      const meHalo = createHaloGroup(meNodes, 'me', 'rgba(168, 85, 247, 0.1)'); // purple
+      
+      [familyHalo, friendsHalo, workHalo, meHalo].forEach(halo => {
+        if (halo) groups.push(halo);
+      });
+      
+      return groups;
+    };
+    
+    const newHaloGroups = calculateHaloGroups();
+    setHaloGroups(newHaloGroups);
 
     console.log('🔄 Created hierarchical nodes:', newNodes.length, 'edges:', newEdges.length);
     setNodes(newNodes);
@@ -466,6 +550,45 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
           maxZoom: 1.2
         }}
       >
+        {/* Halo Groups - Render behind nodes */}
+        <svg 
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: 1
+          }}
+        >
+          {haloGroups.map((halo) => (
+            <g key={halo.id}>
+              <circle
+                cx={halo.center.x + 80} // Offset by half node width
+                cy={halo.center.y + 60} // Offset by half node height
+                r={halo.radius}
+                fill={halo.color}
+                stroke={halo.color.replace('0.1', '0.3')}
+                strokeWidth="2"
+                strokeDasharray="5,5"
+                opacity="0.7"
+              />
+              <text
+                x={halo.center.x + 80}
+                y={halo.center.y + 60 - halo.radius + 20}
+                textAnchor="middle"
+                fontSize="12"
+                fill="#64748b"
+                fontWeight="600"
+                style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}
+              >
+                {halo.type === 'me' ? 'Me' : halo.type}
+              </text>
+            </g>
+          ))}
+        </svg>
+        
         <Background 
           variant={BackgroundVariant.Dots}
           gap={20}
