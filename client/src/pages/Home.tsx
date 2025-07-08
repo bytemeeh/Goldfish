@@ -214,14 +214,12 @@ export function Home() {
                 <SearchBar onSearch={setFilters} />
               </div>
               
-              {/* AI Voice Input - Simplified */}
-              <div className="flex items-center justify-center gap-3 p-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
-                <Mic className="h-4 w-4 text-indigo-600" />
-                <span className="text-sm font-medium text-indigo-900">Quick AI Contact Creation:</span>
+              {/* AI Voice Input - Compact Button */}
+              <div className="flex justify-center">
                 <VoiceInput 
                   onTranscription={handleVoiceTranscription}
                   onProcessingComplete={handleVoiceProcessingComplete}
-                  placeholder="Speak to add contact..."
+                  placeholder="Voice Input"
                   mode="contact"
                   className="text-sm"
                 />

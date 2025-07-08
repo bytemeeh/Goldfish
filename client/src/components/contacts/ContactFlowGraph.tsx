@@ -429,10 +429,6 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
 
   return (
     <div style={{ height: '100vh', width: '100%', position: 'relative' }}>
-      {/* Relationship Manager - positioned in top-left corner */}
-      <div className="absolute top-4 left-4 z-10 w-80">
-        <RelationshipManager />
-      </div>
       
       <ReactFlow
         nodes={nodes}
