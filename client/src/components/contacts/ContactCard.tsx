@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ContextualFloatingMenu } from "@/components/ui/ContextualFloatingMenu";
+import { useContextualActions } from "@/hooks/useContextualActions";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import {
   MoreVertical,
@@ -26,6 +28,7 @@ import {
   EyeOff,
   Pencil,
   Trash2,
+  Share2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -438,70 +441,64 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
             </div>
 
             <div className="flex items-center">
-              {/* Hide button moved to dropdown menu */}
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              {/* Contextual floating menu with smart placement */}
+              <ContextualFloatingMenu
+                trigger={
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 hover:bg-primary/5 transition-colors"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsEditing(true);
-                    }}
-                    className="flex items-center justify-start"
-                  >
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Edit
-                  </DropdownMenuItem>
-                  {!isMaxDepth && (
-                    <DropdownMenuItem 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsAddingChild(true);
-                      }}
-                      className="flex items-center justify-start"
-                    >
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Add Related Contact
-                    </DropdownMenuItem>
-                  )}
-                  {/* Hide option */}
-                  {!contact.isMe && (
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Emit hide event through custom event
-                        if (window.dispatchEvent) {
-                          const hideEvent = new CustomEvent('contact:hide', { detail: { contactId: contact.id } });
-                          window.dispatchEvent(hideEvent);
+                }
+                items={useContextualActions({
+                  context: 'contact',
+                  selectedContact: contact,
+                  onEdit: (contact) => setIsEditing(true),
+                  onDelete: (contact) => setShowDeleteConfirm(true),
+                  onCall: (contact) => {
+                    if (contact.phone) {
+                      window.location.href = `tel:${contact.phone}`;
+                    }
+                  },
+                  onEmail: (contact) => {
+                    if (contact.email) {
+                      window.location.href = `mailto:${contact.email}`;
+                    }
+                  },
+                  onAddRelationship: !isMaxDepth ? (contact) => setIsAddingChild(true) : undefined,
+                  onArchive: !contact.isMe ? (contact) => {
+                    // Emit hide event through custom event
+                    if (window.dispatchEvent) {
+                      const hideEvent = new CustomEvent('contact:hide', { detail: { contactId: contact.id } });
+                      window.dispatchEvent(hideEvent);
+                    }
+                  } : undefined,
+                  customActions: [
+                    {
+                      id: 'share',
+                      label: 'Share Contact',
+                      icon: <Share2 className="h-4 w-4" />,
+                      action: () => {
+                        // Share contact functionality
+                        if (navigator.share) {
+                          navigator.share({
+                            title: contact.name,
+                            text: `Contact: ${contact.name}${contact.phone ? ` - ${contact.phone}` : ''}${contact.email ? ` - ${contact.email}` : ''}`,
+                          });
                         }
-                      }}
-                      className="flex items-center justify-start"
-                    >
-                      <EyeOff className="h-4 w-4 mr-2" />
-                      Hide
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem
-                    className="text-destructive flex items-center justify-start"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowDeleteConfirm(true);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                      },
+                      priority: 50,
+                      category: 'secondary' as const
+                    }
+                  ]
+                })}
+                position="auto"
+                maxItems={5}
+                className="z-50"
+              />
             </div>
           </CardHeader>
 
