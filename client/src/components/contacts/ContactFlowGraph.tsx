@@ -565,67 +565,70 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         />
       </ReactFlow>
       
-      {/* Control Panel - Redesigned with better hierarchy and spacing */}
-      <div className="absolute top-3 right-3 sm:top-6 sm:right-6 z-50 flex flex-col gap-2 sm:gap-3">
-        {/* Primary Action: Undo */}
-        <AnimatePresence>
-          {undoStack.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-            >
-              <Button
-                onClick={handleUndoAction}
-                variant="default"
-                size="sm"
-                className="shadow-sm bg-foreground text-background hover:bg-foreground/90 min-w-[80px] sm:min-w-[100px] justify-start font-medium h-8 text-xs touch-manipulation"
+      {/* Bottom-centered toolbar - Less intrusive and more integrated */}
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+        <div className="flex items-center gap-1 bg-background/95 backdrop-blur-sm border border-border/40 rounded-full px-3 py-1.5 shadow-sm">
+          {/* Undo button */}
+          <AnimatePresence>
+            {undoStack.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.2 }}
               >
-                <Undo2 className="h-3.5 w-3.5 mr-1.5" />
-                Undo ({undoStack.length})
-              </Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        {/* Secondary Actions Panel */}
-        <div className="bg-background/90 backdrop-blur-sm border border-border/40 rounded-lg p-1.5 sm:p-2 shadow-sm">
-          <div className="flex flex-col gap-1 sm:gap-1.5">
-            <Button
-              onClick={handleReorder}
-              variant="outline"
-              size="sm"
-              disabled={isReordering}
-              className="justify-start min-w-[80px] sm:min-w-[100px] h-8 sm:h-8 font-normal border hover:bg-muted/30 text-xs touch-manipulation"
-            >
-              <RotateCcw className={`h-3.5 w-3.5 mr-1.5 ${isReordering ? 'animate-spin' : ''}`} />
-              {isReordering ? 'Reordering...' : 'Reorder'}
-            </Button>
-            
-            {/* Voice Input */}
-            <VoiceInput 
-              onTranscription={setVoiceTranscription}
-              onProcessingComplete={(result) => {
-                if (result.type === 'contact_created') {
-                  queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
-                  toast({
-                    title: "Contact created",
-                    description: `${result.contact.name} has been added to your contacts`
-                  });
-                }
-              }}
-              placeholder="Add by Voice"
-              mode="contact"
-              className="justify-start min-w-[80px] sm:min-w-[100px] h-8 sm:h-8 font-normal border hover:bg-muted/30 text-xs touch-manipulation"
-            />
-            
-            {/* Proximity Filter */}
-            <ProximityFilter 
-              onFilterChange={handleProximityFilterChange}
-              className="justify-start min-w-[80px] sm:min-w-[100px] h-8 sm:h-8 font-normal border hover:bg-muted/30 text-xs touch-manipulation"
-            />
-          </div>
+                <Button
+                  onClick={handleUndoAction}
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 font-normal hover:bg-muted/30 text-xs touch-manipulation"
+                >
+                  <Undo2 className="h-3 w-3 mr-1" />
+                  Undo ({undoStack.length})
+                </Button>
+                <div className="w-px h-4 bg-border/40 mx-1" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          {/* Reorder button */}
+          <Button
+            onClick={handleReorder}
+            variant="ghost"
+            size="sm"
+            disabled={isReordering}
+            className="h-6 px-2 font-normal hover:bg-muted/30 text-xs touch-manipulation"
+          >
+            <RotateCcw className={`h-3 w-3 mr-1 ${isReordering ? 'animate-spin' : ''}`} />
+            {isReordering ? 'Reordering...' : 'Reorder'}
+          </Button>
+          
+          <div className="w-px h-4 bg-border/40 mx-1" />
+          
+          {/* Voice Input */}
+          <VoiceInput 
+            onTranscription={setVoiceTranscription}
+            onProcessingComplete={(result) => {
+              if (result.type === 'contact_created') {
+                queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
+                toast({
+                  title: "Contact created",
+                  description: `${result.contact.name} has been added to your contacts`
+                });
+              }
+            }}
+            placeholder="Add by Voice"
+            mode="contact"
+            className="h-6 px-2 font-normal hover:bg-muted/30 text-xs touch-manipulation"
+          />
+          
+          <div className="w-px h-4 bg-border/40 mx-1" />
+          
+          {/* Proximity Filter */}
+          <ProximityFilter 
+            onFilterChange={handleProximityFilterChange}
+            className="h-6 px-2 font-normal hover:bg-muted/30 text-xs touch-manipulation"
+          />
         </div>
       </div>
     </div>
