@@ -133,14 +133,14 @@ export function Home() {
   return (
     <div className="min-h-screen bg-background">
       {/* Clean header with value proposition */}
-      <div className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container mx-auto px-4 sm:px-6 py-4">
+      <div className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 shadow-sm">
+        <div className="container mx-auto px-4 sm:px-6 py-5">
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
                 Goldfish
               </h1>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-base text-muted-foreground mt-2 font-medium">
                 Your intelligent contact network
               </p>
             </div>
@@ -151,7 +151,7 @@ export function Home() {
                 {/* Primary action button */}
                 <Dialog open={isAddingContact} onOpenChange={setIsAddingContact}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="h-9 px-3">
+                    <Button size="default" className="h-11 px-6 font-semibold bg-foreground text-background hover:bg-foreground/90 shadow-md">
                       <Plus className="h-4 w-4 mr-2" />
                       Add Contact
                     </Button>
@@ -166,11 +166,11 @@ export function Home() {
                   </DialogContent>
                 </Dialog>
 
-                {/* Secondary actions in popover */}
-                <div className="flex items-center gap-1">
+                {/* Secondary actions */}
+                <div className="flex items-center gap-3">
                   <Dialog open={isEditingPersonal} onOpenChange={setIsEditingPersonal}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-9 px-3">
+                      <Button variant="outline" size="default" className="h-11 px-4 font-medium border-2 hover:bg-muted/50">
                         <User className="h-4 w-4 mr-2" />
                         My Info
                       </Button>
@@ -191,8 +191,8 @@ export function Home() {
                   
                   <Button
                     variant="outline"
-                    size="sm"
-                    className="h-9 px-3"
+                    size="default"
+                    className="h-11 px-4 font-medium border-2 hover:bg-muted/50"
                     onClick={() => setIsSharing(true)}
                   >
                     <Share2 className="h-4 w-4 mr-2" />
@@ -203,15 +203,19 @@ export function Home() {
             )}
           </div>
 
-          {/* View mode selector - bottom tab bar style */}
+          {/* View mode selector - refined tab bar */}
           {viewMode !== "detail" && (
-            <div className="flex items-center justify-center mt-4">
-              <div className="flex items-center border rounded-lg p-1 bg-muted/50">
+            <div className="flex items-center justify-center mt-6">
+              <div className="flex items-center border-2 rounded-xl p-1.5 bg-muted/30 backdrop-blur-sm">
                 <Button
                   variant={viewMode === "graph" ? "default" : "ghost"}
                   onClick={() => setViewMode("graph")}
                   size="sm"
-                  className="h-8 px-4"
+                  className={`h-10 px-5 font-medium transition-all ${
+                    viewMode === "graph" 
+                      ? "bg-foreground text-background shadow-md" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  }`}
                 >
                   <Network className="h-4 w-4 mr-2" />
                   Network
@@ -220,7 +224,11 @@ export function Home() {
                   variant={viewMode === "list" ? "default" : "ghost"}
                   onClick={() => setViewMode("list")}
                   size="sm"
-                  className="h-8 px-4"
+                  className={`h-10 px-5 font-medium transition-all ${
+                    viewMode === "list" 
+                      ? "bg-foreground text-background shadow-md" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  }`}
                 >
                   <List className="h-4 w-4 mr-2" />
                   List
@@ -232,8 +240,8 @@ export function Home() {
       </div>
 
       {/* Main content area */}
-      <div className="container mx-auto px-4 sm:px-6 py-6">
-        <div className="space-y-6">
+      <div className="container mx-auto px-4 sm:px-6 py-8">
+        <div className="space-y-8">
           {/* Hide search bar in detail view */}
           {viewMode !== "detail" && (
             <div className="flex justify-center">
@@ -244,7 +252,7 @@ export function Home() {
           )}
 
           {/* Content with smooth transitions */}
-          <div className="mt-6">
+          <div className="mt-8">
             <AnimatePresence mode="wait">
               <motion.div
                 key={viewMode}

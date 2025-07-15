@@ -156,14 +156,17 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
             relative
             ${colorClasses.border}
             ${colorClasses.bg}
-            rounded-lg
-            ${level === 0 ? 'shadow-md' : 'shadow-sm'}
-            ${isSelected ? `ring-2 ${colorClasses.ring} ring-opacity-70 shadow-lg` : ''}
+            rounded-xl
+            border-2
+            ${level === 0 ? 'shadow-lg' : 'shadow-md'}
+            ${isSelected ? `ring-2 ${colorClasses.ring} ring-opacity-70 shadow-xl` : ''}
             transition-all
             duration-300
             ease-in-out
             transform-gpu
             cursor-pointer
+            hover:shadow-xl
+            hover:border-border
           `}
         >
           {/* Level indicator */}
@@ -180,7 +183,7 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
             </div>
           )}
 
-          <CardHeader className="flex flex-row items-start space-x-3 pb-1 pt-2 px-3">
+          <CardHeader className="flex flex-row items-start space-x-3 pb-1 pt-3 px-4">
             <motion.div
               className={`
                 h-7 w-7 mt-0.5 flex items-center justify-center
@@ -217,10 +220,10 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
                     <h3 className={`
-                      ${level === 0 ? 'text-base font-semibold' : 'text-sm font-medium'}
+                      ${level === 0 ? 'text-lg font-semibold' : 'text-base font-medium'}
                       tracking-tight
                       text-foreground
-                      leading-none
+                      leading-tight
                     `}>
                       {contact.name}
                     </h3>

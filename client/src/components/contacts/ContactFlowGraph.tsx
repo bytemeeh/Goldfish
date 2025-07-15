@@ -580,7 +580,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
                 onClick={handleUndoAction}
                 variant="default"
                 size="sm"
-                className="shadow-lg bg-primary text-primary-foreground hover:bg-primary/90 min-w-[120px] justify-start"
+                className="shadow-lg bg-foreground text-background hover:bg-foreground/90 min-w-[120px] justify-start font-semibold h-10"
               >
                 <Undo2 className="h-4 w-4 mr-2" />
                 Undo ({undoStack.length})
@@ -590,14 +590,14 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         </AnimatePresence>
         
         {/* Secondary Actions Panel */}
-        <div className="bg-background/95 backdrop-blur-sm border border-border/50 rounded-lg p-2 shadow-lg">
-          <div className="flex flex-col gap-2">
+        <div className="bg-background/95 backdrop-blur-sm border-2 border-border/50 rounded-xl p-3 shadow-lg">
+          <div className="flex flex-col gap-3">
             <Button
               onClick={handleReorder}
               variant="outline"
               size="sm"
               disabled={isReordering}
-              className="justify-start min-w-[120px] h-9"
+              className="justify-start min-w-[120px] h-10 font-medium border-2 hover:bg-muted/50"
             >
               <RotateCcw className={`h-4 w-4 mr-2 ${isReordering ? 'animate-spin' : ''}`} />
               {isReordering ? 'Reordering...' : 'Reorder'}
@@ -615,15 +615,15 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
                   });
                 }
               }}
-              placeholder="Voice Input"
+              placeholder="Add by Voice"
               mode="contact"
-              className="justify-start min-w-[120px] h-9"
+              className="justify-start min-w-[120px] h-10 font-medium border-2 hover:bg-muted/50"
             />
             
             {/* Proximity Filter */}
             <ProximityFilter 
               onFilterChange={handleProximityFilterChange}
-              className="justify-start min-w-[120px] h-9"
+              className="justify-start min-w-[120px] h-10 font-medium border-2 hover:bg-muted/50"
             />
           </div>
         </div>

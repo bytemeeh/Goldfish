@@ -44,20 +44,20 @@ export function SearchBar({ onSearch }: SearchBarProps) {
   return (
     <div className="w-full">
       <div className="relative">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-4 top-4 h-4 w-4 text-muted-foreground" />
         <Input
           type="search"
           placeholder="Search contacts..."
           value={searchText}
           onChange={(e) => handleSearchChange(e.target.value)}
-          className="pl-10 pr-10 h-11 text-sm w-full rounded-lg border-2 border-border/50 bg-background/60 focus:border-primary/50 focus:bg-background transition-colors"
+          className="pl-12 pr-12 h-12 text-base w-full rounded-xl border-2 border-border/50 bg-background/60 focus:border-foreground/20 focus:bg-background transition-all font-medium placeholder:text-muted-foreground/60 shadow-sm"
         />
         {searchText && (
           <Button
             variant="ghost"
             size="sm"
             onClick={clearSearch}
-            className="absolute right-2 top-2 text-muted-foreground h-7 w-7 p-0 hover:bg-muted/50 rounded-md"
+            className="absolute right-2 top-2 text-muted-foreground h-8 w-8 p-0 hover:bg-muted/50 rounded-lg"
           >
             <X className="h-4 w-4" />
           </Button>

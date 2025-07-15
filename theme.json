@@ -1,12 +1,12 @@
 {
-  "variant": "professional",
-  "primary": "hsl(220, 85%, 60%)",
+  "variant": "tint",
+  "primary": "hsl(229, 84%, 5%)",
   "appearance": "light",
-  "radius": 0.75,
+  "radius": 1,
   "chart": {
     "1": "hsl(142, 76%, 36%)",
     "2": "hsl(45, 93%, 47%)",
-    "3": "hsl(220, 85%, 60%)",
+    "3": "hsl(229, 84%, 5%)",
     "4": "hsl(280, 87%, 65%)",
     "5": "hsl(19, 97%, 57%)"
   }
