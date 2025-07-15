@@ -151,8 +151,8 @@ export function Home() {
                 {/* Primary action button */}
                 <Dialog open={isAddingContact} onOpenChange={setIsAddingContact}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="h-9 sm:h-8 px-4 font-medium bg-foreground text-background hover:bg-foreground/90 shadow-sm text-sm border-0">
-                      <Plus className="h-3.5 w-3.5 mr-1.5" />
+                    <Button size="sm" className="h-7 sm:h-6 px-3 font-normal bg-muted-foreground/60 text-background hover:bg-muted-foreground/70 shadow-sm text-xs border-0">
+                      <Plus className="h-3 w-3 mr-1" />
                       Add Contact
                     </Button>
                   </DialogTrigger>
@@ -170,8 +170,8 @@ export function Home() {
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <Dialog open={isEditingPersonal} onOpenChange={setIsEditingPersonal}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-9 sm:h-8 px-3 font-normal border hover:bg-muted/30 flex-1 sm:flex-none text-sm">
-                        <User className="h-3.5 w-3.5 mr-1.5 sm:mr-1.5" />
+                      <Button variant="outline" size="sm" className="h-7 sm:h-6 px-2 font-normal border-muted-foreground/30 hover:bg-muted/20 flex-1 sm:flex-none text-xs">
+                        <User className="h-3 w-3 mr-1 sm:mr-1" />
                         <span className="sm:inline">My Info</span>
                       </Button>
                     </DialogTrigger>
@@ -192,10 +192,10 @@ export function Home() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-9 sm:h-8 px-3 font-normal border hover:bg-muted/30 flex-1 sm:flex-none text-sm"
+                    className="h-7 sm:h-6 px-2 font-normal border-muted-foreground/30 hover:bg-muted/20 flex-1 sm:flex-none text-xs"
                     onClick={() => setIsSharing(true)}
                   >
-                    <Share2 className="h-3.5 w-3.5 mr-1.5 sm:mr-1.5" />
+                    <Share2 className="h-3 w-3 mr-1 sm:mr-1" />
                     <span className="sm:inline">Share</span>
                   </Button>
                 </div>
@@ -211,26 +211,26 @@ export function Home() {
                   variant={viewMode === "graph" ? "default" : "ghost"}
                   onClick={() => setViewMode("graph")}
                   size="sm"
-                  className={`h-8 sm:h-7 px-3 sm:px-4 font-normal transition-all flex-1 sm:flex-none text-sm ${
+                  className={`h-6 sm:h-5 px-2 sm:px-3 font-normal transition-all flex-1 sm:flex-none text-xs ${
                     viewMode === "graph" 
-                      ? "bg-foreground text-background shadow-sm" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                      ? "bg-muted-foreground/60 text-background shadow-sm" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/20"
                   }`}
                 >
-                  <Network className="h-3.5 w-3.5 mr-1.5" />
+                  <Network className="h-3 w-3 mr-1" />
                   Network
                 </Button>
                 <Button
                   variant={viewMode === "list" ? "default" : "ghost"}
                   onClick={() => setViewMode("list")}
                   size="sm"
-                  className={`h-8 sm:h-7 px-3 sm:px-4 font-normal transition-all flex-1 sm:flex-none text-sm ${
+                  className={`h-6 sm:h-5 px-2 sm:px-3 font-normal transition-all flex-1 sm:flex-none text-xs ${
                     viewMode === "list" 
-                      ? "bg-foreground text-background shadow-sm" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                      ? "bg-muted-foreground/60 text-background shadow-sm" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/20"
                   }`}
                 >
-                  <List className="h-3.5 w-3.5 mr-1.5" />
+                  <List className="h-3 w-3 mr-1" />
                   List
                 </Button>
               </div>
