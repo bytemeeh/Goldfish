@@ -183,7 +183,7 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
             </div>
           )}
 
-          <CardHeader className="flex flex-row items-start space-x-3 pb-1 pt-3 px-4">
+          <CardHeader className="flex flex-row items-start space-x-3 pb-1 pt-3 px-3 sm:px-4">
             <motion.div
               className={`
                 h-7 w-7 mt-0.5 flex items-center justify-center
@@ -220,7 +220,7 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
                     <h3 className={`
-                      ${level === 0 ? 'text-lg font-semibold' : 'text-base font-medium'}
+                      ${level === 0 ? 'text-base sm:text-lg font-semibold' : 'text-sm sm:text-base font-medium'}
                       tracking-tight
                       text-foreground
                       leading-tight

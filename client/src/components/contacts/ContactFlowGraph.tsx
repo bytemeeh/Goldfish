@@ -566,7 +566,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
       </ReactFlow>
       
       {/* Control Panel - Redesigned with better hierarchy and spacing */}
-      <div className="absolute top-6 right-6 z-50 flex flex-col gap-3">
+      <div className="absolute top-3 right-3 sm:top-6 sm:right-6 z-50 flex flex-col gap-2 sm:gap-3">
         {/* Primary Action: Undo */}
         <AnimatePresence>
           {undoStack.length > 0 && (
@@ -580,7 +580,7 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
                 onClick={handleUndoAction}
                 variant="default"
                 size="sm"
-                className="shadow-lg bg-foreground text-background hover:bg-foreground/90 min-w-[120px] justify-start font-semibold h-10"
+                className="shadow-lg bg-foreground text-background hover:bg-foreground/90 min-w-[100px] sm:min-w-[120px] justify-start font-semibold h-10 text-sm touch-manipulation"
               >
                 <Undo2 className="h-4 w-4 mr-2" />
                 Undo ({undoStack.length})
@@ -590,14 +590,14 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         </AnimatePresence>
         
         {/* Secondary Actions Panel */}
-        <div className="bg-background/95 backdrop-blur-sm border-2 border-border/50 rounded-xl p-3 shadow-lg">
-          <div className="flex flex-col gap-3">
+        <div className="bg-background/95 backdrop-blur-sm border-2 border-border/50 rounded-xl p-2 sm:p-3 shadow-lg">
+          <div className="flex flex-col gap-2 sm:gap-3">
             <Button
               onClick={handleReorder}
               variant="outline"
               size="sm"
               disabled={isReordering}
-              className="justify-start min-w-[120px] h-10 font-medium border-2 hover:bg-muted/50"
+              className="justify-start min-w-[100px] sm:min-w-[120px] h-10 sm:h-10 font-medium border-2 hover:bg-muted/50 text-sm touch-manipulation"
             >
               <RotateCcw className={`h-4 w-4 mr-2 ${isReordering ? 'animate-spin' : ''}`} />
               {isReordering ? 'Reordering...' : 'Reorder'}
@@ -617,13 +617,13 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
               }}
               placeholder="Add by Voice"
               mode="contact"
-              className="justify-start min-w-[120px] h-10 font-medium border-2 hover:bg-muted/50"
+              className="justify-start min-w-[100px] sm:min-w-[120px] h-10 sm:h-10 font-medium border-2 hover:bg-muted/50 text-sm touch-manipulation"
             />
             
             {/* Proximity Filter */}
             <ProximityFilter 
               onFilterChange={handleProximityFilterChange}
-              className="justify-start min-w-[120px] h-10 font-medium border-2 hover:bg-muted/50"
+              className="justify-start min-w-[100px] sm:min-w-[120px] h-10 sm:h-10 font-medium border-2 hover:bg-muted/50 text-sm touch-manipulation"
             />
           </div>
         </div>

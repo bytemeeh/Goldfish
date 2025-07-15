@@ -41,6 +41,30 @@ input, textarea, select {
   box-shadow: 0 10px 40px -10px hsl(var(--foreground)/0.1);
 }
 
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Larger touch targets on mobile */
+  button {
+    min-height: 44px;
+  }
+  
+  /* Improved mobile typography */
+  body {
+    font-size: 16px; /* Prevents iOS zoom on input focus */
+  }
+  
+  /* Better mobile spacing */
+  .container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;

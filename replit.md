@@ -126,6 +126,7 @@ Preferred communication style: Simple, everyday language.
   - **Redesigned control panel** - Grouped secondary actions in floating panel
   - **iOS-inspired tab bar** - Centered view mode selector with clear labels
   - **Sticky header** - Persistent navigation with backdrop blur effect and subtle shadow
+  - **iPhone optimization** - Mobile-first responsive design with larger touch targets and better spacing
 
 - July 07, 2025: AI Voice Integration & Color System Enhancement
   - **Added comprehensive color coding system** with 10 color options for contact cards

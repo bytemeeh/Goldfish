@@ -50,14 +50,14 @@ export function SearchBar({ onSearch }: SearchBarProps) {
           placeholder="Search contacts..."
           value={searchText}
           onChange={(e) => handleSearchChange(e.target.value)}
-          className="pl-12 pr-12 h-12 text-base w-full rounded-xl border-2 border-border/50 bg-background/60 focus:border-foreground/20 focus:bg-background transition-all font-medium placeholder:text-muted-foreground/60 shadow-sm"
+          className="pl-12 pr-12 h-12 sm:h-12 text-base w-full rounded-xl border-2 border-border/50 bg-background/60 focus:border-foreground/20 focus:bg-background transition-all font-medium placeholder:text-muted-foreground/60 shadow-sm"
         />
         {searchText && (
           <Button
             variant="ghost"
             size="sm"
             onClick={clearSearch}
-            className="absolute right-2 top-2 text-muted-foreground h-8 w-8 p-0 hover:bg-muted/50 rounded-lg"
+            className="absolute right-2 top-2 text-muted-foreground h-8 w-8 p-0 hover:bg-muted/50 rounded-lg touch-manipulation"
           >
             <X className="h-4 w-4" />
           </Button>
