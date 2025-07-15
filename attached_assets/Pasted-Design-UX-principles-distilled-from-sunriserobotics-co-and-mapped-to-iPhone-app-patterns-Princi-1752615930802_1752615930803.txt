@@ -1,0 +1,27 @@
+Design & UX principles distilled from sunriserobotics.co and mapped to iPhone-app patterns
+
+#	Principle on the site	Why it works	iPhone-app translation
+1	Instant single-sentence value prop sits at the very top: “Intelligent robotics transforming manufacturing.”  ￼	Users grasp purpose in <3 s (Jakob Nielsen’s “scent of information”).	Launch/on-boarding screen uses one line of large-type copy + sub-label; no carousel or walkthrough unless strictly needed.
+2	Ultra-lean primary navigation (About, Careers, Media Assets, Contact)  ￼	Reduces cognitive load; each item is a clear noun.	Bottom tab bar limited to 3-4 icons; anything else in a “More” sheet.
+3	Vertical “story” layout—stacked sections with generous white space and full-width typography blocks  ￼	Keeps reading flow linear; supports skim-then-dive behavior on mobile.	Use full-height scroll sections; snap-to-section paging if the content is long, otherwise continuous scroll with large section headers.
+4	Triad tagline rendered as separate lines with periods: “Intelligence. Flexibility. Scalability.”  ￼	Creates rhythmic, memorable anchor.	Implement as swipeable three-item segmented control or paging cards; each tag becomes a filter or feature card in the app.
+5	Benefit-oriented sub-heads (“Built-in Perception”, “Human-like Coordination”, “Driven by Artificial Intelligence”, etc.)  ￼	Frames features in human-value terms first.	In app, feature lists/tour bullets use the same pattern: short verb-noun headline + 1–2 line explanation; avoids jargon.
+6	Strong, singular CTAs (“Get more information”, “Open Positions”) placed after each narrative block  ￼	Progressive commitment; each screen ends with an action.	Each major view ends with one primary button; secondary actions live in an overflow menu; buttons pinned near natural thumb zone (≈ bottom third).
+7	Immediate form microcopy (“Thank you! Your submission has been received.” / error states)  ￼	Confirms success; prevents user doubt.	Use in-line validation and success toasts; never rely on silent success. Error copy human-readable, no codes.
+8	Large type scale & high contrast (H1≈32-40 px, plenty of white around)  ￼	Aids scan-reading and accessibility.	Respect Dynamic Type; minimum 17 pt body, 28 pt+ hero; 1.4–1.6 line-height; check AAA contrast.
+9	Section re-use & symmetry (feature blocks repeat the same layout)  ￼	Users learn the pattern once, then rely on recognition.	Reusable SwiftUI components for cards/rows; maintain identical padding/margins.
+10	Clear voice & absence of marketing fluff—short sentences, plain language  ￼	Builds trust; easier parsing on mobile.	Copy for iOS adopts same tone; prefers “Do X” over vague adverbs; aligns with Apple’s Human Interface Guidelines on clarity.
+11	Minimal imagery, but purposeful (team portraits, mission photos only where needed)  ￼	Focus stays on idea, not decoration.	Use imagery sparingly—illustrations only if they add functional context (e.g., empty-state).
+12	Consistent feedback loops (“Oops! Something went wrong…” error)  ￼	Sets expectation of resolution; keeps user in flow.	Centralized error handler with actionable recovery (retry, contact support).
+13	Whitespace as a design element (sections breathe; no dense clusters)  ￼	Improves touch accuracy; avoids visual fatigue.	Respect safe areas; minimum 16 pt horizontal padding; 44 pt tappable targets.
+14	Content leads, visuals follow—textual hierarchy dominates; imagery supportive  ￼	Works even under poor network; favors accessibility.	Primary layout text-first; lazy-load images; keep critical information above the fold.
+15	Human-centric mission statement repeated (mission on both home & about)  ￼	Reinforces brand ethos; fosters alignment.	In app, surface the mission briefly on settings/about; keeps user oriented to purpose.
+
+Cross-checking & edge-case considerations
+	•	All principles align with Apple HIG fundamentals: clarity, deference, depth.
+	•	Dynamic Type, VoiceOver, and reduced-motion users are covered via large text, sparse animation.
+	•	Offline/poor-network scenario handled by text-first fallback (#14).
+	•	Minimal nav (#2) avoids “mystery meat” hamburger, matching iOS heuristic.
+	•	Error/success microcopy (#7, #12) covers rare but critical flows.
+
+These distilled guidelines give you a concrete, evidence-based blueprint for an iPhone app that inherits the clarity and authority of the Sunrise Robotics site while respecting iOS conventions.

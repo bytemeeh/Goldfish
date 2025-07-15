@@ -131,67 +131,29 @@ export function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
-      <div className="container mx-auto px-2 sm:px-4 py-6 sm:py-8">
-        <div className="space-y-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Goldfish</h1>
-
-            {/* Hide view controls in detail view */}
+    <div className="min-h-screen bg-background">
+      {/* Clean header with value proposition */}
+      <div className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+        <div className="container mx-auto px-4 sm:px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                Goldfish
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Your intelligent contact network
+              </p>
+            </div>
+            
+            {/* Simplified navigation - only show when not in detail view */}
             {viewMode !== "detail" && (
-              <div className="grid grid-cols-4 gap-1.5 w-full md:w-auto max-w-full">
-                <div className="flex items-center border rounded-md overflow-hidden h-8 col-span-1">
-                  <Button
-                    variant={viewMode === "graph" ? "default" : "ghost"}
-                    onClick={() => setViewMode("graph")}
-                    size="sm"
-                    className="h-8 w-full rounded-none px-1"
-                  >
-                    <Network className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === "list" ? "default" : "ghost"}
-                    onClick={() => setViewMode("list")}
-                    size="sm"
-                    className="h-8 w-full rounded-none px-1"
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                </div>
-                <Dialog open={isEditingPersonal} onOpenChange={setIsEditingPersonal}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 col-span-1 px-1 py-0">
-                      <User className="h-4 w-4 mr-1" />
-                      <span className="whitespace-nowrap text-xs">My Info</span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="h-[80vh] max-w-3xl flex flex-col overflow-hidden">
-                    <DialogHeader>
-                      <DialogTitle>Edit Personal Card</DialogTitle>
-                    </DialogHeader>
-                    <div className="flex flex-1 overflow-hidden">
-                      <ContactForm 
-                        onSuccess={() => setIsEditingPersonal(false)} 
-                        isPersonalCard={true}
-                        initialData={contacts?.find(c => c.isMe)}
-                      />
-                    </div>
-                  </DialogContent>
-                </Dialog>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 col-span-1 px-1 py-0"
-                  onClick={() => setIsSharing(true)}
-                >
-                  <Share2 className="h-4 w-4 mr-1" />
-                  <span className="whitespace-nowrap text-xs">Share</span>
-                </Button>
+              <div className="flex items-center gap-2">
+                {/* Primary action button */}
                 <Dialog open={isAddingContact} onOpenChange={setIsAddingContact}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="h-8 col-span-1 px-1 py-0">
-                      <Plus className="h-4 w-4 mr-1" />
-                      <span className="whitespace-nowrap text-xs">New</span>
+                    <Button size="sm" className="h-9 px-3">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Contact
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="h-[80vh] max-w-3xl flex flex-col overflow-hidden">
@@ -203,21 +165,85 @@ export function Home() {
                     </div>
                   </DialogContent>
                 </Dialog>
+
+                {/* Secondary actions in popover */}
+                <div className="flex items-center gap-1">
+                  <Dialog open={isEditingPersonal} onOpenChange={setIsEditingPersonal}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-9 px-3">
+                        <User className="h-4 w-4 mr-2" />
+                        My Info
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="h-[80vh] max-w-3xl flex flex-col overflow-hidden">
+                      <DialogHeader>
+                        <DialogTitle>Edit Personal Card</DialogTitle>
+                      </DialogHeader>
+                      <div className="flex flex-1 overflow-hidden">
+                        <ContactForm 
+                          onSuccess={() => setIsEditingPersonal(false)} 
+                          isPersonalCard={true}
+                          initialData={contacts?.find(c => c.isMe)}
+                        />
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 px-3"
+                    onClick={() => setIsSharing(true)}
+                  >
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share
+                  </Button>
+                </div>
               </div>
             )}
           </div>
 
+          {/* View mode selector - bottom tab bar style */}
+          {viewMode !== "detail" && (
+            <div className="flex items-center justify-center mt-4">
+              <div className="flex items-center border rounded-lg p-1 bg-muted/50">
+                <Button
+                  variant={viewMode === "graph" ? "default" : "ghost"}
+                  onClick={() => setViewMode("graph")}
+                  size="sm"
+                  className="h-8 px-4"
+                >
+                  <Network className="h-4 w-4 mr-2" />
+                  Network
+                </Button>
+                <Button
+                  variant={viewMode === "list" ? "default" : "ghost"}
+                  onClick={() => setViewMode("list")}
+                  size="sm"
+                  className="h-8 px-4"
+                >
+                  <List className="h-4 w-4 mr-2" />
+                  List
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Main content area */}
+      <div className="container mx-auto px-4 sm:px-6 py-6">
+        <div className="space-y-6">
           {/* Hide search bar in detail view */}
           {viewMode !== "detail" && (
-            <div className="space-y-3">
+            <div className="flex justify-center">
               <div className="w-full max-w-2xl">
                 <SearchBar onSearch={setFilters} />
               </div>
-              
-
             </div>
           )}
 
+          {/* Content with smooth transitions */}
           <div className="mt-6">
             <AnimatePresence mode="wait">
               <motion.div

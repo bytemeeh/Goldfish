@@ -565,20 +565,22 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
         />
       </ReactFlow>
       
-      {/* Control Panel */}
-      <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
+      {/* Control Panel - Redesigned with better hierarchy and spacing */}
+      <div className="absolute top-6 right-6 z-50 flex flex-col gap-3">
+        {/* Primary Action: Undo */}
         <AnimatePresence>
           {undoStack.length > 0 && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
             >
               <Button
                 onClick={handleUndoAction}
-                variant="secondary"
+                variant="default"
                 size="sm"
-                className="shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white"
+                className="shadow-lg bg-primary text-primary-foreground hover:bg-primary/90 min-w-[120px] justify-start"
               >
                 <Undo2 className="h-4 w-4 mr-2" />
                 Undo ({undoStack.length})
@@ -587,39 +589,44 @@ function ContactFlowGraphInner({ contacts, onContactSelect }: ContactFlowGraphPr
           )}
         </AnimatePresence>
         
-        <Button
-          onClick={handleReorder}
-          variant="outline"
-          size="sm"
-          disabled={isReordering}
-          className="shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white w-full"
-        >
-          <RotateCcw className={`h-4 w-4 mr-2 ${isReordering ? 'animate-spin' : ''}`} />
-          {isReordering ? 'Reordering...' : 'Reorder'}
-        </Button>
-        
-        {/* Voice Input Button */}
-        <VoiceInput 
-          onTranscription={setVoiceTranscription}
-          onProcessingComplete={(result) => {
-            if (result.type === 'contact_created') {
-              queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
-              toast({
-                title: "Contact created",
-                description: `${result.contact.name} has been added to your contacts`
-              });
-            }
-          }}
-          placeholder="Voice Input"
-          mode="contact"
-          className="text-sm shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white w-full"
-        />
-        
-        {/* Proximity Filter Button */}
-        <ProximityFilter 
-          onFilterChange={handleProximityFilterChange}
-          className="text-sm shadow-lg bg-white/90 backdrop-blur-sm border border-gray-200 hover:bg-white w-full"
-        />
+        {/* Secondary Actions Panel */}
+        <div className="bg-background/95 backdrop-blur-sm border border-border/50 rounded-lg p-2 shadow-lg">
+          <div className="flex flex-col gap-2">
+            <Button
+              onClick={handleReorder}
+              variant="outline"
+              size="sm"
+              disabled={isReordering}
+              className="justify-start min-w-[120px] h-9"
+            >
+              <RotateCcw className={`h-4 w-4 mr-2 ${isReordering ? 'animate-spin' : ''}`} />
+              {isReordering ? 'Reordering...' : 'Reorder'}
+            </Button>
+            
+            {/* Voice Input */}
+            <VoiceInput 
+              onTranscription={setVoiceTranscription}
+              onProcessingComplete={(result) => {
+                if (result.type === 'contact_created') {
+                  queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
+                  toast({
+                    title: "Contact created",
+                    description: `${result.contact.name} has been added to your contacts`
+                  });
+                }
+              }}
+              placeholder="Voice Input"
+              mode="contact"
+              className="justify-start min-w-[120px] h-9"
+            />
+            
+            {/* Proximity Filter */}
+            <ProximityFilter 
+              onFilterChange={handleProximityFilterChange}
+              className="justify-start min-w-[120px] h-9"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

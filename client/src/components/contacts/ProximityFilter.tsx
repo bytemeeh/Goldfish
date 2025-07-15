@@ -87,7 +87,7 @@ export function ProximityFilter({ onFilterChange, className }: ProximityFilterPr
       ) : (
         <MapPin className="h-4 w-4 mr-2" />
       )}
-      {isLoading ? 'Getting location...' : isEnabled ? 'Within 1km' : 'Nearby'}
+{isLoading ? 'Getting location...' : isEnabled ? 'Within 1km' : 'Show Nearby'}
     </Button>
   );
 }

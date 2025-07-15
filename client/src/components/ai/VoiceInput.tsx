@@ -159,7 +159,7 @@ export function VoiceInput({
           ) : (
             <MessageCircle className="h-4 w-4 mr-2" />
           )}
-          {placeholder}
+          {placeholder || (mode === 'contact' ? 'Add by Voice' : 'Voice Command')}
         </>
       )}
     </Button>
