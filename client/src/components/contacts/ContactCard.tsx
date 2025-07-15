@@ -183,7 +183,7 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
             </div>
           )}
 
-          <CardHeader className="flex flex-row items-start space-x-3 pb-1 pt-3 px-3 sm:px-4">
+          <CardHeader className="flex flex-row items-start space-x-2 pb-1 pt-2 px-3 sm:px-3">
             <motion.div
               className={`
                 h-7 w-7 mt-0.5 flex items-center justify-center

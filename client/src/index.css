@@ -18,27 +18,27 @@ input, textarea, select {
 
 /* Enhanced button styles */
 .btn-primary {
-  background: linear-gradient(135deg, hsl(var(--foreground)), hsl(var(--foreground)/0.9));
+  background: linear-gradient(135deg, hsl(var(--foreground)), hsl(var(--foreground)/0.95));
   color: hsl(var(--background));
   border: none;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 25px -8px hsl(var(--foreground)/0.3);
+  transform: translateY(-0.5px);
+  box-shadow: 0 4px 12px -4px hsl(var(--foreground)/0.2);
 }
 
 /* Card hover effects */
 .card-hover {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 40px -10px hsl(var(--foreground)/0.1);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px -6px hsl(var(--foreground)/0.08);
 }
 
 /* Mobile optimizations */

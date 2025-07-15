@@ -134,25 +134,25 @@ export function Home() {
     <div className="min-h-screen bg-background">
       {/* Clean header with value proposition */}
       <div className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 shadow-sm">
-        <div className="container mx-auto px-3 sm:px-6 py-3 sm:py-5">
-          <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+        <div className="container mx-auto px-3 sm:px-6 py-2 sm:py-3">
+          <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
             <div className="flex flex-col">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-foreground">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
                 Goldfish
               </h1>
-              <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2 font-medium">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1 font-normal">
                 Your intelligent contact network
               </p>
             </div>
             
             {/* Simplified navigation - only show when not in detail view */}
             {viewMode !== "detail" && (
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-2">
                 {/* Primary action button */}
                 <Dialog open={isAddingContact} onOpenChange={setIsAddingContact}>
                   <DialogTrigger asChild>
-                    <Button size="default" className="h-12 sm:h-11 px-6 font-semibold bg-foreground text-background hover:bg-foreground/90 shadow-md text-base sm:text-sm">
-                      <Plus className="h-4 w-4 mr-2" />
+                    <Button size="sm" className="h-9 sm:h-8 px-4 font-medium bg-foreground text-background hover:bg-foreground/90 shadow-sm text-sm border-0">
+                      <Plus className="h-3.5 w-3.5 mr-1.5" />
                       Add Contact
                     </Button>
                   </DialogTrigger>
@@ -167,11 +167,11 @@ export function Home() {
                 </Dialog>
 
                 {/* Secondary actions */}
-                <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   <Dialog open={isEditingPersonal} onOpenChange={setIsEditingPersonal}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="default" className="h-12 sm:h-11 px-4 font-medium border-2 hover:bg-muted/50 flex-1 sm:flex-none">
-                        <User className="h-4 w-4 mr-2 sm:mr-2" />
+                      <Button variant="outline" size="sm" className="h-9 sm:h-8 px-3 font-normal border hover:bg-muted/30 flex-1 sm:flex-none text-sm">
+                        <User className="h-3.5 w-3.5 mr-1.5 sm:mr-1.5" />
                         <span className="sm:inline">My Info</span>
                       </Button>
                     </DialogTrigger>
@@ -191,11 +191,11 @@ export function Home() {
                   
                   <Button
                     variant="outline"
-                    size="default"
-                    className="h-12 sm:h-11 px-4 font-medium border-2 hover:bg-muted/50 flex-1 sm:flex-none"
+                    size="sm"
+                    className="h-9 sm:h-8 px-3 font-normal border hover:bg-muted/30 flex-1 sm:flex-none text-sm"
                     onClick={() => setIsSharing(true)}
                   >
-                    <Share2 className="h-4 w-4 mr-2 sm:mr-2" />
+                    <Share2 className="h-3.5 w-3.5 mr-1.5 sm:mr-1.5" />
                     <span className="sm:inline">Share</span>
                   </Button>
                 </div>
@@ -205,32 +205,32 @@ export function Home() {
 
           {/* View mode selector - refined tab bar */}
           {viewMode !== "detail" && (
-            <div className="flex items-center justify-center mt-4 sm:mt-6">
-              <div className="flex items-center border-2 rounded-xl p-1.5 bg-muted/30 backdrop-blur-sm w-full sm:w-auto">
+            <div className="flex items-center justify-center mt-3 sm:mt-4">
+              <div className="flex items-center border rounded-lg p-1 bg-muted/20 backdrop-blur-sm w-full sm:w-auto">
                 <Button
                   variant={viewMode === "graph" ? "default" : "ghost"}
                   onClick={() => setViewMode("graph")}
                   size="sm"
-                  className={`h-12 sm:h-10 px-4 sm:px-5 font-medium transition-all flex-1 sm:flex-none ${
+                  className={`h-8 sm:h-7 px-3 sm:px-4 font-normal transition-all flex-1 sm:flex-none text-sm ${
                     viewMode === "graph" 
-                      ? "bg-foreground text-background shadow-md" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      ? "bg-foreground text-background shadow-sm" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
                   }`}
                 >
-                  <Network className="h-4 w-4 mr-2" />
+                  <Network className="h-3.5 w-3.5 mr-1.5" />
                   Network
                 </Button>
                 <Button
                   variant={viewMode === "list" ? "default" : "ghost"}
                   onClick={() => setViewMode("list")}
                   size="sm"
-                  className={`h-12 sm:h-10 px-4 sm:px-5 font-medium transition-all flex-1 sm:flex-none ${
+                  className={`h-8 sm:h-7 px-3 sm:px-4 font-normal transition-all flex-1 sm:flex-none text-sm ${
                     viewMode === "list" 
-                      ? "bg-foreground text-background shadow-md" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      ? "bg-foreground text-background shadow-sm" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
                   }`}
                 >
-                  <List className="h-4 w-4 mr-2" />
+                  <List className="h-3.5 w-3.5 mr-1.5" />
                   List
                 </Button>
               </div>
@@ -240,8 +240,8 @@ export function Home() {
       </div>
 
       {/* Main content area */}
-      <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8">
-        <div className="space-y-4 sm:space-y-8">
+      <div className="container mx-auto px-3 sm:px-6 py-3 sm:py-6">
+        <div className="space-y-3 sm:space-y-6">
           {/* Hide search bar in detail view */}
           {viewMode !== "detail" && (
             <div className="flex justify-center">
@@ -252,7 +252,7 @@ export function Home() {
           )}
 
           {/* Content with smooth transitions */}
-          <div className="mt-4 sm:mt-8">
+          <div className="mt-3 sm:mt-6">
             <AnimatePresence mode="wait">
               <motion.div
                 key={viewMode}

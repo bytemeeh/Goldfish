@@ -1,8 +1,8 @@
 {
   "variant": "tint",
-  "primary": "hsl(229, 84%, 5%)",
+  "primary": "hsl(230, 30%, 20%)",
   "appearance": "light",
-  "radius": 1,
+  "radius": 0.5,
   "chart": {
     "1": "hsl(142, 76%, 36%)",
     "2": "hsl(45, 93%, 47%)",
