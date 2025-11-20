@@ -1,5 +1,6 @@
 import OpenAI from "openai";
-import { Contact, RelationshipType } from "@db/schema";
+import { db } from "../../db";
+import { contacts, locations, type Contact, type RelationshipType } from "../../db/schema";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 let openai: OpenAI | null = null;
@@ -9,8 +10,8 @@ function getOpenAIClient(): OpenAI {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error('OpenAI API key is not configured');
     }
-    openai = new OpenAI({ 
-      apiKey: process.env.OPENAI_API_KEY 
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
     });
   }
   return openai;
@@ -38,8 +39,8 @@ export interface RelationshipCommand {
 export async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
   try {
     const client = getOpenAIClient();
-    const file = new File([audioBuffer], 'audio.webm', { type: 'audio/webm' });
-    
+    const file = new File([audioBuffer as any], 'audio.webm', { type: 'audio/webm' });
+
     const transcription = await client.audio.transcriptions.create({
       file: file,
       model: "whisper-1",
@@ -93,7 +94,7 @@ Would return: {"name": "Sarah Johnson", "phone": "555-0123", "email": "sarah@ema
     });
 
     const result = JSON.parse(response.choices[0].message.content || '{}');
-    
+
     // Validate required fields
     if (!result.name) {
       throw new Error('Contact name is required');
@@ -107,13 +108,13 @@ Would return: {"name": "Sarah Johnson", "phone": "555-0123", "email": "sarah@ema
 }
 
 export async function parseRelationshipCommand(
-  transcription: string, 
+  transcription: string,
   existingContacts: Contact[]
 ): Promise<RelationshipCommand> {
   try {
     const client = getOpenAIClient();
     const contactNames = existingContacts.map(c => c.name).join(', ');
-    
+
     const prompt = `Parse this relationship command and return JSON.
 
 Available relationship types: sibling, mother, father, brother, friend, child, co-worker, spouse, boyfriend/girlfriend
@@ -151,7 +152,7 @@ Examples:
     });
 
     const result = JSON.parse(response.choices[0].message.content || '{}');
-    
+
     // Validate required fields
     if (!result.action || !result.sourceName || !result.targetName) {
       throw new Error('Invalid relationship command format');

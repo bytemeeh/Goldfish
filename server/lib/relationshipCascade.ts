@@ -1,4 +1,5 @@
-import { db } from "@db/index";
+import { db } from "../../db";
+import { contacts, type RelationshipType, getCascadedRelationshipType } from "../../db/schema";
 import { sql } from "drizzle-orm";
 
 export async function cascadeRelationship(tx: any, startingId: string) {

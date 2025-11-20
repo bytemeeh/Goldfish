@@ -1,7 +1,8 @@
+
 import { Router } from 'express';
 import multer from 'multer';
-import { db } from '@db/index';
-import { contacts } from '@db/schema';
+import { db } from "../../db";
+import { contacts, locations, type Contact, type Location } from "../../db/schema";
 import { eq, or, ilike } from 'drizzle-orm';
 import { transcribeAudio, extractContactInfo, parseRelationshipCommand } from '../lib/openai';
 import { log } from '../vite';
@@ -18,7 +19,7 @@ const upload = multer({
     if (file.mimetype.startsWith('audio/')) {
       cb(null, true);
     } else {
-      cb(new Error('Only audio files are allowed'), false);
+      cb(new Error('Only audio files are allowed') as any, false);
     }
   }
 });
@@ -33,7 +34,7 @@ router.post('/transcribe', upload.single('audio'), async (req, res) => {
     const mode = req.body.mode || 'contact';
     const audioBuffer = req.file.buffer;
 
-    log(`AI: Processing ${mode} mode audio (${audioBuffer.length} bytes)`);
+    log(`AI: Processing ${mode} mode audio(${audioBuffer.length} bytes)`);
 
     // Transcribe the audio
     const transcription = await transcribeAudio(audioBuffer);
@@ -44,13 +45,13 @@ router.post('/transcribe', upload.single('audio'), async (req, res) => {
     if (mode === 'contact') {
       // Extract contact information
       const contactData = await extractContactInfo(transcription);
-      log(`AI: Extracted contact data:`, contactData);
+      log(`AI: Extracted contact data: ${JSON.stringify(contactData)}`);
 
       // Find parent contact if specified
       let parentId = null;
       if (contactData.parentName) {
         const parentContact = await db.query.contacts.findFirst({
-          where: ilike(contacts.name, `%${contactData.parentName}%`)
+          where: ilike(contacts.name, `% ${contactData.parentName}% `)
         });
         if (parentContact) {
           parentId = parentContact.id;
@@ -58,7 +59,7 @@ router.post('/transcribe', upload.single('audio'), async (req, res) => {
       }
 
       // Create the contact
-      const [newContact] = await db.insert(contacts).values({
+      const insertedContacts = await db.insert(contacts).values({
         name: contactData.name,
         phone: contactData.phone,
         email: contactData.email,
@@ -68,7 +69,8 @@ router.post('/transcribe', upload.single('audio'), async (req, res) => {
         parentId: parentId,
         color: contactData.color || 'blue',
         isMe: false
-      }).returning();
+      }).returning() as any;
+      const newContact = insertedContacts[0];
 
       result = {
         type: 'contact_created',
@@ -78,23 +80,23 @@ router.post('/transcribe', upload.single('audio'), async (req, res) => {
     } else if (mode === 'relationship') {
       // Get all contacts for relationship parsing
       const allContacts = await db.query.contacts.findMany();
-      
+
       // Parse relationship command
       const relationshipCommand = await parseRelationshipCommand(transcription, allContacts);
-      log(`AI: Parsed relationship command:`, relationshipCommand);
+      log(`AI: Parsed relationship command: ${JSON.stringify(relationshipCommand)}`);
 
       // Find source and target contacts
-      const sourceContact = allContacts.find(c => 
+      const sourceContact = allContacts.find(c =>
         c.name.toLowerCase().includes(relationshipCommand.sourceName.toLowerCase())
       );
-      const targetContact = allContacts.find(c => 
+      const targetContact = allContacts.find(c =>
         c.name.toLowerCase().includes(relationshipCommand.targetName.toLowerCase())
       );
 
       if (!sourceContact || !targetContact) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: 'Could not find one or both contacts mentioned in the command',
-          transcription 
+          transcription
         });
       }
 
@@ -130,7 +132,7 @@ router.post('/transcribe', upload.single('audio'), async (req, res) => {
 
   } catch (error) {
     console.error('AI transcription error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to process audio',
       details: error instanceof Error ? error.message : 'Unknown error'
     });

@@ -13,13 +13,13 @@ interface VoiceInputProps {
   className?: string;
 }
 
-export function VoiceInput({ 
-  onTranscription, 
+export function VoiceInput({
+  onTranscription,
   onProcessingComplete,
   placeholder = "Click to speak...",
   mode = 'contact',
   isProcessing = false,
-  className 
+  className
 }: VoiceInputProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -30,11 +30,11 @@ export function VoiceInput({
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
+
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus'
       });
-      
+
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -47,14 +47,14 @@ export function VoiceInput({
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         await transcribeAudio(audioBlob);
-        
+
         // Clean up
         stream.getTracks().forEach(track => track.stop());
       };
 
       mediaRecorder.start();
       setIsRecording(true);
-      
+
       toast({
         title: "Recording started",
         description: mode === 'contact' ? "Speak the contact details..." : "Speak the relationship command..."
@@ -93,14 +93,14 @@ export function VoiceInput({
       }
 
       const data = await response.json();
-      
+
       if (data.transcription) {
         onTranscription(data.transcription);
-        
+
         if (data.result && onProcessingComplete) {
           onProcessingComplete(data.result);
         }
-        
+
         toast({
           title: "Voice processed",
           description: mode === 'contact' ? "Contact details extracted!" : "Relationship command processed!"
@@ -129,6 +129,10 @@ export function VoiceInput({
   const isLoading = isTranscribing || isProcessing;
   const isActive = isRecording || isLoading;
 
+  // Feature hidden for v1 release
+  return null;
+
+  /* Original implementation hidden
   return (
     <Button
       onClick={handleClick}
@@ -164,4 +168,5 @@ export function VoiceInput({
       )}
     </Button>
   );
+  */
 }

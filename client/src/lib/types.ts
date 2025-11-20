@@ -1,8 +1,8 @@
 export type LocationType = 'home' | 'work' | 'other';
 
 export interface Location {
-  id?: number;
-  contactId?: number;
+  id?: string;
+  contactId?: string;
   type: LocationType;
   name?: string;
   address?: string;
@@ -18,15 +18,18 @@ export interface Location {
 }
 
 export interface Contact {
-  id: number;
+  id: string;
   name: string;
+  type?: 'person' | 'pet';
+  contextNotes?: string;
   phone?: string;
   email?: string;
   birthday?: string;
   notes?: string;
-  parentId?: number;
-  relationshipType?: RelationshipType;
-  isMe?: boolean;
+  parentId: string | null;
+  relationshipType: RelationshipType | string | null;
+  relationshipToUser?: string | null;
+  isMe: boolean;
   color?: string;
   photo?: string;
   shareToken?: string;
@@ -47,7 +50,7 @@ export interface Contact {
   children?: Contact[];
 }
 
-export type RelationshipType = 
+export type RelationshipType =
   | "sibling"
   | "mother"
   | "father"
@@ -56,4 +59,5 @@ export type RelationshipType =
   | "child"
   | "co-worker"
   | "spouse"
-  | "boyfriend/girlfriend";
+  | "boyfriend/girlfriend"
+  | "pet";

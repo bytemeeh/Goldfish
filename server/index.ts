@@ -1,4 +1,5 @@
-
+import 'dotenv/config'; // Load environment variables
+// Force restarts, { type Request, Response, NextFunction } from "express";
 import express, { type Request, Response, NextFunction } from "express";
 import cors from 'cors';
 import helmet from 'helmet';
@@ -7,7 +8,7 @@ import pinoHttp from 'pino-http';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
-const PORT = Number(process.env.PORT ?? 5000);
+const PORT = Number(process.env.PORT ?? 5001);
 
 const app = express();
 

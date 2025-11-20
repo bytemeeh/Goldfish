@@ -3,18 +3,20 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 import type { PgTableFn } from 'drizzle-orm/pg-core';
-
+import { db } from "./index";
 // Define relationship types first to avoid circular reference
 export const relationshipTypes = [
   "sibling",
   "mother",
   "father",
   "brother",
+  "sister",
   "friend",
   "child",
   "co-worker",
   "spouse",
-  "boyfriend/girlfriend"
+  "boyfriend/girlfriend",
+  "pet"
 ] as const;
 
 export type RelationshipType = typeof relationshipTypes[number];
@@ -77,6 +79,15 @@ export const relationshipCascadeRules: RelationshipCascadeRule[] = [
   }
 ];
 
+// Define relationship definitions table for custom types
+export const relationshipDefinitions = pgTable("relationship_definitions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull().unique(),
+  category: text("category").notNull(), // family, friend, work, etc.
+  isCore: boolean("is_core").default(false).notNull(),
+  createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
+});
+
 // Define the contacts table
 export const contacts = pgTable("contacts", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -85,8 +96,16 @@ export const contacts = pgTable("contacts", {
   email: text("email"),
   birthday: date("birthday", { mode: 'string' }),
   notes: text("notes"),
-  parentId: uuid("parent_id").references(() => contacts.id, { onDelete: "cascade" }),
-  relationshipType: text("relationship_type", { enum: relationshipTypes }),
+  // Entity type (person, pet, etc.)
+  type: text("type", { enum: ["person", "pet"] }).notNull().default("person"),
+  contextNotes: text("context_notes"),
+
+  parentId: uuid("parent_id").references((): any => contacts.id, { onDelete: "cascade" }),
+  // Relationship to the parent contact (hierarchical)
+  relationshipType: text("relationship_type"),
+  // Direct relationship to the user (contextual)
+  relationshipToUser: text("relationship_to_user"),
+
   isMe: boolean("is_me").default(false),
   color: text("color"),
   photo: text("photo"), // Base64 encoded photo or URL
@@ -139,12 +158,15 @@ export function getCascadedRelationshipType(
 // Create Zod schemas with proper validation
 export const insertContactSchema = createInsertSchema(contacts, {
   name: z.string().min(1, "Name is required"),
+  type: z.enum(["person", "pet"]).default("person"),
+  contextNotes: z.string().optional().nullable(),
   email: z.string().email("Invalid email").nullable().optional(),
   phone: z.string().optional().nullable(),
   birthday: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
-  parentId: z.number().optional().nullable(),
-  relationshipType: z.enum(relationshipTypes).optional().nullable(),
+  parentId: z.string().optional().nullable(),
+  relationshipType: z.string().optional().nullable(),
+  relationshipToUser: z.string().optional().nullable(),
   isMe: z.boolean().optional(),
   shareToken: z.string().optional().nullable(),
   shareDepth: z.number().optional().nullable(),
@@ -212,3 +234,15 @@ export type InsertLocation = typeof locations.$inferInsert;
 
 // Transaction type for cascade operations
 export type DrizzleTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+// Define analytics events table
+export const analyticsEvents = pgTable("analytics_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  anonymousId: text("anonymous_id").notNull(),
+  eventType: text("event_type").notNull(),
+  properties: jsonb("properties"),
+  createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
+});
+
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+export type InsertAnalyticsEvent = typeof analyticsEvents.$inferInsert;

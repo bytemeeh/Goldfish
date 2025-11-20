@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, List, Network, User, Share2, Mic } from "lucide-react";
-import { VoiceInput } from "@/components/ai/VoiceInput";
+import { Plus, Network, User, Share2, Settings2, HelpCircle } from "lucide-react";
+// import { List } from "lucide-react"; // FUTURE FEATURE: List view - Currently hidden, may be added in future releases
+// import { VoiceInput } from "@/components/ai/VoiceInput"; // FUTURE FEATURE: AI Voice Typing - Currently hidden, may be added in future releases
 import {
   Dialog,
   DialogContent,
@@ -10,16 +11,21 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ContactForm } from "@/components/contacts/ContactForm";
-import { ContactList } from "@/components/contacts/ContactList";
+// import { ContactList } from "@/components/contacts/ContactList"; // FUTURE FEATURE: List view component - Currently not used
 import ContactFlowGraph from "@/components/contacts/ContactFlowGraph";
 import { DetailedContactView } from "@/components/contacts/DetailedContactView";
 import { SearchBar, type SearchFilters } from "@/components/contacts/SearchBar";
 import { ShareDialog } from "@/components/contacts/ShareDialog";
+import { RelationshipManager } from "@/components/settings/RelationshipManager";
+import { WelcomeWalkthrough } from "@/components/onboarding/WelcomeWalkthrough";
+import { HelpDialog } from "@/components/onboarding/HelpDialogFinal";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import { MotionButton, tapAnimation } from "@/components/ui/MotionButton";
 import type { Contact } from "@/lib/types";
 
-type ViewMode = "list" | "graph" | "detail";
+// FUTURE FEATURE: "list" mode is currently hidden but may be reintroduced in future releases
+type ViewMode = "graph" | "detail"; // "list" | removed for initial launch
 
 // Local storage keys
 const STORAGE_KEY_VIEW_MODE = 'contacts-app-view-mode';
@@ -29,20 +35,16 @@ export function Home() {
   const [isAddingContact, setIsAddingContact] = useState(false);
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
-  const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>("graph");
-  const [voiceTranscription, setVoiceTranscription] = useState<string>("");
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    // Try to get the saved view mode from local storage
-    const savedViewMode = localStorage.getItem(STORAGE_KEY_VIEW_MODE);
-    // Return the saved mode if valid, otherwise default to "list"
-    return (savedViewMode === 'list' || savedViewMode === 'graph') 
-      ? savedViewMode as ViewMode 
-      : "graph";
-  });
+  // const [voiceTranscription, setVoiceTranscription] = useState<string>(""); // Hidden for initial release
+  const [viewMode, setViewMode] = useState<ViewMode>("graph"); // FUTURE FEATURE: Always default to graph view (list view hidden for initial launch)
+
+  const [relationContext, setRelationContext] = useState<{ parentId: string | null }>({ parentId: null });
 
   // Enhanced contact selection handler with detail view
-  const handleContactSelect = useCallback((contactId: number) => {
+  const handleContactSelect = useCallback((contactId: string) => {
     console.log('🚨 Home.tsx - handleContactSelect called with ID:', contactId);
 
     // Save current view mode before switching to detail view
@@ -55,6 +57,12 @@ export function Home() {
     setViewMode("detail");
 
   }, [viewMode]);
+
+  const handleAddRelation = useCallback((sourceId: string, type: 'child' | 'parent') => {
+    console.log('Adding relation:', { sourceId, type });
+    setRelationContext({ parentId: type === 'child' ? sourceId : null });
+    setIsAddingContact(true);
+  }, []);
 
   // Handler for returning from detail view
   const handleBackFromDetail = useCallback(() => {
@@ -78,6 +86,8 @@ export function Home() {
   });
 
   // Voice processing handlers
+  // Voice processing handlers - Hidden for initial release
+  /*
   const handleVoiceTranscription = (text: string) => {
     setVoiceTranscription(text);
   };
@@ -88,23 +98,23 @@ export function Home() {
       setIsAddingContact(false); // Close any open dialogs
     }
   };
+  */
 
-  // Save the view mode to local storage whenever it changes
-  // Only save list or graph modes, not detail
-  useEffect(() => {
-    if (viewMode === "list" || viewMode === "graph") {
-      localStorage.setItem(STORAGE_KEY_VIEW_MODE, viewMode);
-    }
-  }, [viewMode]);
+  // FUTURE FEATURE: View mode persistence - Currently only graph mode is available
+  // useEffect(() => {
+  //   if (viewMode === "graph") {
+  //     localStorage.setItem(STORAGE_KEY_VIEW_MODE, viewMode);
+  //   }
+  // }, [viewMode]);
 
   // Render content based on view mode
   const renderContent = () => {
     switch (viewMode) {
       case "detail":
         return selectedContactId ? (
-          <DetailedContactView 
-            contactId={selectedContactId} 
-            onBack={handleBackFromDetail} 
+          <DetailedContactView
+            contactId={selectedContactId}
+            onBack={handleBackFromDetail}
           />
         ) : (
           // Fallback if no contact is selected
@@ -114,17 +124,19 @@ export function Home() {
           </div>
         );
 
-      case "list":
-        return (
-          <ContactList searchFilters={filters} selectedContactId={selectedContactId} />
-        );
+      // FUTURE FEATURE: List view rendering - Currently hidden
+      // case "list":
+      //   return (
+      //     <ContactList searchFilters={filters} selectedContactId={selectedContactId} />
+      //   );
 
       case "graph":
       default:
         return (
-          <ContactFlowGraph 
-            contacts={contacts || []} 
-            onContactSelect={handleContactSelect} 
+          <ContactFlowGraph
+            contacts={contacts || []}
+            onContactSelect={handleContactSelect}
+            onAddRelation={handleAddRelation}
           />
         );
     }
@@ -133,109 +145,119 @@ export function Home() {
   return (
     <div className="min-h-screen bg-background">
       {/* Clean header with value proposition */}
-      <div className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 shadow-sm">
-        <div className="container mx-auto px-3 sm:px-6 py-2 sm:py-3">
-          <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+      {/* Apple-style Header & Navigation */}
+      <div className="sticky top-0 z-50 w-full border-b border-white/20 bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          {/* Brand */}
+          <div className="flex items-center gap-2">
+            <div className="h-10 w-10 rounded-xl bg-white/50 flex items-center justify-center shadow-sm overflow-hidden">
+              <img src="/logo.png" alt="Goldfish Logo" className="h-full w-full object-cover" />
+            </div>
             <div className="flex flex-col">
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
+              <h1 className="text-lg font-semibold tracking-tight text-foreground leading-none">
                 Goldfish
               </h1>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1 font-normal">
-                Your intelligent contact network
-              </p>
+              <span className="text-[10px] font-medium text-muted-foreground tracking-wide uppercase">Your External Memory</span>
             </div>
-            
-            {/* Simplified navigation - only show when not in detail view */}
+          </div>
+
+          {/* FUTURE FEATURE: Desktop View Mode Toggle - Currently only Network view is available */}
+          {/* {viewMode !== "detail" && (
+            <div className="hidden md:flex items-center bg-muted/50 p-1 rounded-lg border border-black/5">
+              <button
+                onClick={() => setViewMode("graph")}
+                className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${viewMode === "graph"
+                  ? "bg-white text-primary shadow-sm ring-1 ring-black/5"
+                  : "text-muted-foreground hover:text-foreground hover:bg-black/5"
+                  }`}
+              >
+                <Network className="h-4 w-4" />
+                Network
+              </button>
+            </div>
+          )} */}
+
+          {/* Right: Actions */}
+          <div className="flex items-center gap-2">
             {viewMode !== "detail" && (
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-2">
-                {/* Primary action button */}
-                <Dialog open={isAddingContact} onOpenChange={setIsAddingContact}>
+              <>
+                {/* FUTURE FEATURE: Mobile View Toggle - Currently only Network view is available */}
+                {/* <div className="md:hidden flex bg-muted/50 p-1 rounded-lg border border-black/5 mr-2">
+                  <button
+                    onClick={() => setViewMode("graph")}
+                    className={`p-1.5 rounded-md transition-all ${viewMode === "graph" ? "bg-white text-primary shadow-sm" : "text-muted-foreground"}`}
+                  >
+                    <Network className="h-4 w-4" />
+                  </button>
+                </div> */}
+
+                <Dialog open={isAddingContact} onOpenChange={(open) => {
+                  setIsAddingContact(open);
+                  if (!open) setRelationContext({ parentId: null });
+                }}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="h-7 sm:h-6 px-3 font-normal bg-muted-foreground/60 text-background hover:bg-muted-foreground/70 shadow-sm text-xs border-0">
-                      <Plus className="h-3 w-3 mr-1" />
+                    <MotionButton
+                      size="sm"
+                      className="h-9 px-4 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25 border-0 font-medium"
+                      whileTap={tapAnimation}
+                    >
+                      <Plus className="h-4 w-4 mr-1.5" />
                       Add Contact
-                    </Button>
+                    </MotionButton>
                   </DialogTrigger>
                   <DialogContent className="h-[90vh] sm:h-[80vh] max-w-[95vw] sm:max-w-3xl flex flex-col overflow-hidden m-2 sm:m-6">
                     <DialogHeader>
-                      <DialogTitle>Add New Contact</DialogTitle>
+                      <DialogTitle>
+                        {relationContext.parentId ? "Add Related Contact" : "Add New Contact"}
+                      </DialogTitle>
                     </DialogHeader>
                     <div className="flex flex-1 overflow-hidden">
-                      <ContactForm onSuccess={() => setIsAddingContact(false)} />
+                      <ContactForm
+                        onSuccess={() => setIsAddingContact(false)}
+                        parentId={relationContext.parentId || undefined}
+                      />
                     </div>
                   </DialogContent>
                 </Dialog>
 
-                {/* Secondary actions */}
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <Dialog open={isEditingPersonal} onOpenChange={setIsEditingPersonal}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-7 sm:h-6 px-2 font-normal border-muted-foreground/30 hover:bg-muted/20 flex-1 sm:flex-none text-xs">
-                        <User className="h-3 w-3 mr-1 sm:mr-1" />
-                        <span className="sm:inline">My Info</span>
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="h-[90vh] sm:h-[80vh] max-w-[95vw] sm:max-w-3xl flex flex-col overflow-hidden m-2 sm:m-6">
-                      <DialogHeader>
-                        <DialogTitle>Edit Personal Card</DialogTitle>
-                      </DialogHeader>
-                      <div className="flex flex-1 overflow-hidden">
-                        <ContactForm 
-                          onSuccess={() => setIsEditingPersonal(false)} 
-                          isPersonalCard={true}
-                          initialData={contacts?.find(c => c.isMe)}
-                        />
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 sm:h-6 px-2 font-normal border-muted-foreground/30 hover:bg-muted/20 flex-1 sm:flex-none text-xs"
-                    onClick={() => setIsSharing(true)}
-                  >
-                    <Share2 className="h-3 w-3 mr-1 sm:mr-1" />
-                    <span className="sm:inline">Share</span>
-                  </Button>
-                </div>
-              </div>
+                {/* Settings Menu */}
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full hover:bg-black/5 text-muted-foreground">
+                      <Settings2 className="h-5 w-5" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Manage Relationship Types</DialogTitle>
+                    </DialogHeader>
+                    <RelationshipManager />
+                  </DialogContent>
+                </Dialog>
+
+                {/* More Menu (My Info, Share, Help) */}
+                <Dialog open={isEditingPersonal} onOpenChange={setIsEditingPersonal}>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full hover:bg-black/5 text-muted-foreground">
+                      <User className="h-5 w-5" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="h-[90vh] sm:h-[80vh] max-w-[95vw] sm:max-w-3xl flex flex-col overflow-hidden m-2 sm:m-6">
+                    <DialogHeader>
+                      <DialogTitle>Edit Personal Card</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-1 overflow-hidden">
+                      <ContactForm
+                        onSuccess={() => setIsEditingPersonal(false)}
+                        isPersonalCard={true}
+                        initialData={contacts?.find(c => c.isMe)}
+                      />
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </>
             )}
           </div>
-
-          {/* View mode selector - refined tab bar */}
-          {viewMode !== "detail" && (
-            <div className="flex items-center justify-center mt-3 sm:mt-4">
-              <div className="flex items-center border rounded-lg p-1 bg-muted/20 backdrop-blur-sm w-full sm:w-auto">
-                <Button
-                  variant={viewMode === "graph" ? "default" : "ghost"}
-                  onClick={() => setViewMode("graph")}
-                  size="sm"
-                  className={`h-6 sm:h-5 px-2 sm:px-3 font-normal transition-all flex-1 sm:flex-none text-xs ${
-                    viewMode === "graph" 
-                      ? "bg-muted-foreground/60 text-background shadow-sm" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/20"
-                  }`}
-                >
-                  <Network className="h-3 w-3 mr-1" />
-                  Network
-                </Button>
-                <Button
-                  variant={viewMode === "list" ? "default" : "ghost"}
-                  onClick={() => setViewMode("list")}
-                  size="sm"
-                  className={`h-6 sm:h-5 px-2 sm:px-3 font-normal transition-all flex-1 sm:flex-none text-xs ${
-                    viewMode === "list" 
-                      ? "bg-muted-foreground/60 text-background shadow-sm" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/20"
-                  }`}
-                >
-                  <List className="h-3 w-3 mr-1" />
-                  List
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -275,6 +297,8 @@ export function Home() {
           )}
         </div>
       </div>
+      <WelcomeWalkthrough />
+      <HelpDialog open={isHelpOpen} onOpenChange={setIsHelpOpen} />
     </div>
   );
 }

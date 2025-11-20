@@ -9,8 +9,11 @@ export interface HierarchicalContact extends Contact {
 /**
  * Build a hierarchical tree from a flat array of contacts
  */
+/**
+ * Build a hierarchical tree from a flat array of contacts
+ */
 export function buildContactTree(contacts: Contact[]): HierarchicalContact[] {
-  const contactMap = new Map<number, HierarchicalContact>();
+  const contactMap = new Map<string, HierarchicalContact>();
   const roots: HierarchicalContact[] = [];
 
   // First pass: create all nodes
@@ -26,7 +29,7 @@ export function buildContactTree(contacts: Contact[]): HierarchicalContact[] {
   // Second pass: build parent-child relationships
   contacts.forEach(contact => {
     const node = contactMap.get(contact.id)!;
-    
+
     if (contact.parentId) {
       const parent = contactMap.get(contact.parentId);
       if (parent) {
@@ -47,7 +50,7 @@ export function buildContactTree(contacts: Contact[]): HierarchicalContact[] {
       // Prioritize "me" contact first
       if (a.isMe && !b.isMe) return -1;
       if (!a.isMe && b.isMe) return 1;
-      
+
       // Then sort by relationship type importance
       const relationshipOrder = {
         'spouse': 1,
@@ -60,14 +63,14 @@ export function buildContactTree(contacts: Contact[]): HierarchicalContact[] {
         'co-worker': 8,
         'boyfriend/girlfriend': 9
       };
-      
+
       const aOrder = relationshipOrder[a.relationshipType as keyof typeof relationshipOrder] || 10;
       const bOrder = relationshipOrder[b.relationshipType as keyof typeof relationshipOrder] || 10;
-      
+
       if (aOrder !== bOrder) {
         return aOrder - bOrder;
       }
-      
+
       // Finally sort by name
       return a.name.localeCompare(b.name);
     }).map(contact => ({
@@ -84,7 +87,7 @@ export function buildContactTree(contacts: Contact[]): HierarchicalContact[] {
  */
 export function flattenContactTree(tree: HierarchicalContact[]): HierarchicalContact[] {
   const result: HierarchicalContact[] = [];
-  
+
   const traverse = (nodes: HierarchicalContact[]) => {
     nodes.forEach(node => {
       result.push(node);
@@ -93,7 +96,7 @@ export function flattenContactTree(tree: HierarchicalContact[]): HierarchicalCon
       }
     });
   };
-  
+
   traverse(tree);
   return result;
 }
@@ -104,7 +107,7 @@ export function flattenContactTree(tree: HierarchicalContact[]): HierarchicalCon
 export function groupByFamilyTrees(contacts: Contact[]): HierarchicalContact[][] {
   const tree = buildContactTree(contacts);
   const familyTrees: HierarchicalContact[][] = [];
-  
+
   // Each root contact represents a family tree
   tree.forEach(root => {
     const familyMembers = flattenContactTree([root]);
@@ -112,15 +115,15 @@ export function groupByFamilyTrees(contacts: Contact[]): HierarchicalContact[][]
       familyTrees.push(familyMembers);
     }
   });
-  
+
   // Sort family trees by size (largest first) and then by "me" presence
   return familyTrees.sort((a, b) => {
     const aHasMe = a.some(contact => contact.isMe);
     const bHasMe = b.some(contact => contact.isMe);
-    
+
     if (aHasMe && !bHasMe) return -1;
     if (!aHasMe && bHasMe) return 1;
-    
+
     return b.length - a.length;
   });
 }
@@ -128,17 +131,17 @@ export function groupByFamilyTrees(contacts: Contact[]): HierarchicalContact[][]
 /**
  * Calculate relationship levels for proximity-based sorting
  */
-export function calculateRelationshipLevels(contacts: Contact[]): Map<number, number> {
-  const levelMap = new Map<number, number>();
+export function calculateRelationshipLevels(contacts: Contact[]): Map<string, number> {
+  const levelMap = new Map<string, number>();
   const tree = buildContactTree(contacts);
-  
+
   const assignLevels = (nodes: HierarchicalContact[], baseLevel: number = 0) => {
     nodes.forEach(node => {
       levelMap.set(node.id, baseLevel + node.level);
       assignLevels(node.children, baseLevel);
     });
   };
-  
+
   assignLevels(tree);
   return levelMap;
 }

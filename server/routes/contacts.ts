@@ -1,9 +1,9 @@
 
 import { Router } from "express";
-import { db } from "@db";
-import { contacts, locations } from "@db/schema";
+import { db } from "../../db";
+import { contacts, locations, relationshipDefinitions } from "../../db/schema";
 import { eq, inArray, like, or, and } from "drizzle-orm";
-import { insertContactSchema, type Contact, type Location } from "@db/schema";
+import { insertContactSchema, type Contact, type Location } from "../../db/schema";
 import { logJson } from "../logger";
 import { reparentSchema } from "../validation/reparentSchema";
 
@@ -17,33 +17,33 @@ interface SearchFilters {
 }
 
 // Helper function to get all descendants of a contact
-async function getDescendants(contactId: number): Promise<number[]> {
-  const descendants: number[] = [];
+async function getDescendants(contactId: string): Promise<string[]> {
+  const descendants: string[] = [];
   const queue = [contactId];
-  
+
   while (queue.length > 0) {
     const currentId = queue.shift()!;
     const children = await db
       .select({ id: contacts.id })
       .from(contacts)
       .where(eq(contacts.parentId, currentId));
-    
+
     for (const child of children) {
       descendants.push(child.id);
       queue.push(child.id);
     }
   }
-  
+
   return descendants;
 }
 
 // Helper function to check for circular relationships
-async function wouldCreateCycle(childId: number, newParentId: number | null): Promise<boolean> {
+async function wouldCreateCycle(childId: string, newParentId: string | null): Promise<boolean> {
   if (!newParentId) return false; // Setting parent to null can't create a cycle
-  
+
   // Get all descendants of the child
   const descendants = await getDescendants(childId);
-  
+
   // Check if the new parent is among the descendants
   return descendants.includes(newParentId);
 }
@@ -88,7 +88,7 @@ router.get("/", async (req, res) => {
         .where(inArray(locations.contactId, contactIds));
 
       // Group locations by contact ID
-      const locationsByContactId: Record<number, Location[]> = {};
+      const locationsByContactId: Record<string, Location[]> = {};
       allLocations.forEach(location => {
         if (!locationsByContactId[location.contactId]) {
           locationsByContactId[location.contactId] = [];
@@ -117,8 +117,8 @@ router.get("/", async (req, res) => {
 // GET /api/contacts/:id
 router.get("/:id", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
+    const id = req.params.id;
+    if (!id) {
       return res.status(400).json({ error: "Invalid contact ID" });
     }
 
@@ -159,16 +159,17 @@ router.post("/", async (req, res) => {
     }
 
     const data = result.data;
-    
+
     // Wrap in transaction with change tracking
     const rec = await db.transaction(async (tx) => {
-      const [newContact] = await tx.insert(contacts).values(data).returning();
-      
+      const insertedContacts = await tx.insert(contacts).values(data as any).returning();
+      const contact = insertedContacts[0];
+
       // Note: contactChanges table will be created by migration
       // For now, just log the change
-      console.log('Contact created:', { id: newContact.id, operation: 'insert' });
-      
-      return newContact;
+      console.log('Contact created:', { id: contact.id, operation: 'insert' });
+
+      return contact;
     });
 
     logJson(res, rec);
@@ -182,8 +183,8 @@ router.post("/", async (req, res) => {
 // PUT /api/contacts/:id
 router.put("/:id", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
+    const id = req.params.id;
+    if (!id) {
       return res.status(400).json({ error: "Invalid contact ID" });
     }
 
@@ -195,12 +196,15 @@ router.put("/:id", async (req, res) => {
       if (!parseResult.success) {
         return res.status(400).json({ error: 'Invalid payload for reparenting' });
       }
-      
+
       const { parentId } = parseResult.data;
-      
-      // Check for cycle creation
-      if (parentId && await wouldCreateCycle(id, parentId)) {
-        return res.status(400).json({ error: 'Cannot create cycle - a contact cannot be a descendant of itself' });
+
+      // Check if moving would create a cycle
+      if (parentId) {
+        const hasCycle = await wouldCreateCycle(req.params.id, parentId);
+        if (hasCycle) {
+          return res.status(400).json({ error: "Cannot move contact: would create a cycle" });
+        }
       }
     }
 
@@ -223,7 +227,7 @@ router.put("/:id", async (req, res) => {
 
       const newParentId = validation.data.parentId;
       console.log('Updating parentId for contact', id, 'to', newParentId);
-      
+
       // Cycle detection: ensure newParentId is not a descendant of id
       if (newParentId) {
         const descendants = await getDescendants(id);
@@ -231,12 +235,12 @@ router.put("/:id", async (req, res) => {
           return res.status(400).json({ error: "Cannot create cycle: target is a descendant of source" });
         }
       }
-      
+
       const [updatedContact] = await db
         .update(contacts)
-        .set({ 
+        .set({
           parentId: newParentId,
-          updatedAt: new Date().toISOString() 
+          updatedAt: new Date().toISOString()
         })
         .where(eq(contacts.id, id))
         .returning();
@@ -258,7 +262,7 @@ router.put("/:id", async (req, res) => {
     // Update the contact
     const [updatedContact] = await db
       .update(contacts)
-      .set({ ...data, updatedAt: new Date().toISOString() })
+      .set({ ...data, updatedAt: new Date().toISOString() } as any)
       .where(eq(contacts.id, id))
       .returning();
 
@@ -270,15 +274,15 @@ router.put("/:id", async (req, res) => {
   } catch (error) {
     console.error("Error updating contact:", error);
     console.error("Full error details:", error);
-    res.status(500).json({ error: "Failed to update contact", details: error.message });
+    res.status(500).json({ error: "Failed to update contact", details: (error as Error).message });
   }
 });
 
 // DELETE /api/contacts/:id
 router.delete("/:id", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
+    const id = req.params.id;
+    if (!id) {
       return res.status(400).json({ error: "Invalid contact ID" });
     }
 
@@ -300,7 +304,7 @@ router.delete("/:id", async (req, res) => {
     // Wrap in transaction with change tracking
     await db.transaction(async (tx) => {
       await tx.delete(contacts).where(eq(contacts.id, id));
-      
+
       // Note: contactChanges table will be created by migration
       // For now, just log the change
       console.log('Contact deleted:', { id, operation: 'delete' });
@@ -310,6 +314,114 @@ router.delete("/:id", async (req, res) => {
   } catch (error) {
     console.error("Error deleting contact:", error);
     res.status(500).json({ error: "Failed to delete contact" });
+  }
+});
+
+// POST /api/contacts/bulk-delete
+router.post("/bulk-delete", async (req, res) => {
+  try {
+    const { contactIds } = req.body;
+
+    if (!Array.isArray(contactIds) || contactIds.length === 0) {
+      return res.status(400).json({ error: "Invalid contact IDs array" });
+    }
+
+    // Check for 'isMe' contacts in the batch
+    const contactsToDelete = await db
+      .select()
+      .from(contacts)
+      .where(inArray(contacts.id, contactIds));
+
+    const selfContact = contactsToDelete.find(c => c.isMe);
+    if (selfContact) {
+      return res.status(400).json({ error: 'Cannot delete self contact' });
+    }
+
+    // Delete all in transaction
+    await db.transaction(async (tx) => {
+      await tx.delete(contacts).where(inArray(contacts.id, contactIds));
+      console.log('Bulk deleted contacts:', contactIds);
+    });
+
+    return res.json({ deletedCount: contactIds.length });
+  } catch (error) {
+    console.error("Error bulk deleting contacts:", error);
+    res.status(500).json({ error: "Failed to bulk delete contacts" });
+  }
+});
+
+// GET /api/contacts/relationships
+router.get("/relationships/definitions", async (req, res) => {
+  try {
+    const defs = await db.select().from(relationshipDefinitions);
+    res.json(defs);
+  } catch (error) {
+    console.error("Error fetching relationship definitions:", error);
+    res.status(500).json({ error: "Failed to fetch relationship definitions" });
+  }
+});
+
+// POST /api/contacts/relationships/definitions
+router.post("/relationships/definitions", async (req, res) => {
+  try {
+    const { name, category } = req.body;
+
+    if (!name || !category) {
+      return res.status(400).json({ error: "Name and category are required" });
+    }
+
+    // Check if already exists
+    const [existing] = await db
+      .select()
+      .from(relationshipDefinitions)
+      .where(eq(relationshipDefinitions.name, name));
+
+    if (existing) {
+      return res.status(400).json({ error: "Relationship type already exists" });
+    }
+
+    const [newDef] = await db
+      .insert(relationshipDefinitions)
+      .values({
+        name,
+        category,
+        isCore: false,
+      })
+      .returning();
+
+    res.status(201).json(newDef);
+  } catch (error) {
+    console.error("Error creating relationship definition:", error);
+    res.status(500).json({ error: "Failed to create relationship definition" });
+  }
+});
+
+// DELETE /api/contacts/relationships/definitions/:id
+router.delete("/relationships/definitions/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const [def] = await db
+      .select()
+      .from(relationshipDefinitions)
+      .where(eq(relationshipDefinitions.id, id));
+
+    if (!def) {
+      return res.status(404).json({ error: "Relationship definition not found" });
+    }
+
+    if (def.isCore) {
+      return res.status(403).json({ error: "Cannot delete core relationship types" });
+    }
+
+    await db
+      .delete(relationshipDefinitions)
+      .where(eq(relationshipDefinitions.id, id));
+
+    res.sendStatus(204);
+  } catch (error) {
+    console.error("Error deleting relationship definition:", error);
+    res.status(500).json({ error: "Failed to delete relationship definition" });
   }
 });
 

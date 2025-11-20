@@ -6,11 +6,17 @@ import { Toaster } from "@/components/ui/toaster";
 import App from './App';
 import "./index.css";
 
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ReloadPrompt } from "@/components/ui/ReloadPrompt";
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
       <Toaster />
+      <ReloadPrompt />
     </QueryClientProvider>
   </StrictMode>,
 );

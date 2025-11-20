@@ -1,6 +1,7 @@
 import { useState, useRef, ChangeEvent } from 'react';
 import { Camera, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PermissionPrimingDialog } from '@/components/ui/PermissionPrimingDialog';
 
 interface PhotoUploadProps {
   currentPhoto?: string;
@@ -10,6 +11,7 @@ interface PhotoUploadProps {
 
 export function PhotoUpload({ currentPhoto, onPhotoChange, className = "" }: PhotoUploadProps) {
   const [preview, setPreview] = useState<string | null>(currentPhoto || null);
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
@@ -46,6 +48,11 @@ export function PhotoUpload({ currentPhoto, onPhotoChange, className = "" }: Pho
   };
 
   const handleUploadClick = () => {
+    setShowPermissionDialog(true);
+  };
+
+  const handlePermissionContinue = () => {
+    setShowPermissionDialog(false);
     fileInputRef.current?.click();
   };
 
@@ -55,16 +62,16 @@ export function PhotoUpload({ currentPhoto, onPhotoChange, className = "" }: Pho
       <div className="relative">
         <div className="w-16 h-16 rounded-full border-2 border-blue-500 bg-blue-50 flex items-center justify-center overflow-hidden">
           {preview ? (
-            <img 
-              src={preview} 
-              alt="Profile" 
+            <img
+              src={preview}
+              alt="Profile"
               className="w-full h-full object-cover"
             />
           ) : (
             <Camera className="w-6 h-6 text-blue-500" />
           )}
         </div>
-        
+
         {/* Remove Button */}
         {preview && (
           <button
@@ -95,6 +102,14 @@ export function PhotoUpload({ currentPhoto, onPhotoChange, className = "" }: Pho
         accept="image/*"
         onChange={handleFileSelect}
         className="hidden"
+      />
+
+      <PermissionPrimingDialog
+        open={showPermissionDialog}
+        onOpenChange={setShowPermissionDialog}
+        permissionType="photo"
+        onContinue={handlePermissionContinue}
+        onCancel={() => setShowPermissionDialog(false)}
       />
     </div>
   );

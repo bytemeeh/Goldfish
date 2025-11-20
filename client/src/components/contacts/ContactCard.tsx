@@ -64,6 +64,7 @@ const relationshipIcons: Record<RelationshipType, React.ComponentType<any>> = {
   "co-worker": Briefcase,
   spouse: HeartHandshake,
   "boyfriend/girlfriend": Heart,
+  pet: Heart,
 };
 
 interface ContactCardProps {
@@ -105,7 +106,7 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
   const isMaxDepth = level >= 3;
 
   // Get relationship icon if available
-  const RelationshipIcon = contact.relationshipType ? relationshipIcons[contact.relationshipType] : null;
+  const RelationshipIcon = contact.relationshipType ? relationshipIcons[contact.relationshipType as RelationshipType] : null;
 
   // Relationship categories for styling
   const relationshipCategories = {
@@ -119,7 +120,7 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
 
   return (
     <div className={`relative ${indentClass} group`}>
-      
+
       {level > 0 && (
         <>
           {/* Connection line with level-based styling */}
@@ -137,7 +138,7 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
           />
         </>
       )}
-      
+
       {/* Grip handle for manual sort mode - ONLY shown in the main card, not in the header */}
       {manualSortMode && level === 0 && (
         <div className="absolute -left-6 top-10 transform opacity-40 hover:opacity-100 transition-opacity cursor-move">
@@ -157,19 +158,20 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
         <Card
           className={`
             relative
-            ${colorClasses.border}
             ${colorClasses.bg}
-            rounded-xl
-            border-2
-            ${level === 0 ? 'shadow-lg' : 'shadow-md'}
-            ${isSelected ? `ring-2 ${colorClasses.ring} ring-opacity-70 shadow-xl` : ''}
+            rounded-2xl
+            border
+            border-black/5
+            ${level === 0 ? 'shadow-sm' : 'shadow-none'}
+            ${isSelected ? `ring-2 ${colorClasses.ring} ring-offset-2 shadow-md` : ''}
             transition-all
             duration-300
-            ease-in-out
+            ease-out
             transform-gpu
             cursor-pointer
-            hover:shadow-xl
-            hover:border-border
+            hover:shadow-md
+            hover:bg-white
+            hover:scale-[1.01]
           `}
         >
           {/* Level indicator */}
@@ -188,29 +190,14 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
 
           <CardHeader className="flex flex-row items-start space-x-2 pb-1 pt-2 px-3 sm:px-3">
             <motion.div
-              className={`
-                h-7 w-7 mt-0.5 flex items-center justify-center
-                ${children.length > 0 ? 'text-primary/70' : 'text-muted-foreground/40'}
-                transition-all duration-200
-                rounded-full
-              `}
+              className="h-10 w-10 flex items-center justify-center rounded-full mr-3"
               animate={{ opacity: 1 }}
             >
-              {children.length > 0 ? (
-                isExpanded ? (
-                  <ChevronDown className="h-5 w-5" />
-                ) : (
-                  <ChevronRight className="h-5 w-5" />
-                )
-              ) : (
-                <div className="mr-1">
-                  <ProfilePhoto 
-                    photo={contact.photo}
-                    name={contact.name}
-                    size="sm"
-                  />
-                </div>
-              )}
+              <ProfilePhoto
+                photo={contact.photo}
+                name={contact.name}
+                size="md"
+              />
             </motion.div>
 
             <div className="flex-1 space-y-2">
@@ -261,10 +248,10 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
                             relationshipCategories.family.includes(contact.relationshipType)
                               ? "text-[hsl(var(--chart-1))]"
                               : relationshipCategories.friends.includes(contact.relationshipType)
-                              ? "text-[hsl(var(--chart-2))]"
-                              : relationshipCategories.professional.includes(contact.relationshipType)
-                              ? "text-[hsl(var(--chart-3))]"
-                              : "text-muted-foreground"
+                                ? "text-[hsl(var(--chart-2))]"
+                                : relationshipCategories.professional.includes(contact.relationshipType)
+                                  ? "text-[hsl(var(--chart-3))]"
+                                  : "text-muted-foreground"
                           )}
                         />
                       )}
@@ -275,10 +262,10 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
                           relationshipCategories.family.includes(contact.relationshipType)
                             ? "bg-[hsl(var(--chart-1)/0.1)] text-[hsl(var(--chart-1))]"
                             : relationshipCategories.friends.includes(contact.relationshipType)
-                            ? "bg-[hsl(var(--chart-2)/0.1)] text-[hsl(var(--chart-2))]"
-                            : relationshipCategories.professional.includes(contact.relationshipType)
-                            ? "bg-[hsl(var(--chart-3)/0.1)] text-[hsl(var(--chart-3))]"
-                            : "bg-muted/20 text-muted-foreground"
+                              ? "bg-[hsl(var(--chart-2)/0.1)] text-[hsl(var(--chart-2))]"
+                              : relationshipCategories.professional.includes(contact.relationshipType)
+                                ? "bg-[hsl(var(--chart-3)/0.1)] text-[hsl(var(--chart-3))]"
+                                : "bg-muted/20 text-muted-foreground"
                         )}
                       >
                         {contact.relationshipType.replace("-", " ")}
@@ -339,7 +326,7 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
                         {format(new Date(contact.birthday), "PPP")}
                       </motion.div>
                     )}
-                    
+
                     {/* Location information display */}
                     {/* Display multiple locations if available */}
                     {contact.locations && contact.locations.length > 0 ? (
@@ -369,7 +356,7 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
                                 <div className="text-xs opacity-90">
                                   {location.latitude && location.longitude && (
                                     <div className="text-muted-foreground/70">
-                                      GPS: {parseFloat(location.latitude as string).toFixed(4)}, 
+                                      GPS: {parseFloat(location.latitude as string).toFixed(4)},
                                       {parseFloat(location.longitude as string).toFixed(4)}
                                     </div>
                                   )}
@@ -379,27 +366,27 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
                           )}
                         </div>
                       </motion.div>
-                    ) : 
-                    /* Fallback to legacy location fields */
-                    (contact.street || contact.city || contact.state || contact.country) && (
-                      <motion.div
-                        className="flex items-start text-xs text-muted-foreground/90"
-                        initial={{ x: -20, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.35 }}
-                      >
-                        <MapPin className="mr-1.5 h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                        <div>
-                          {contact.street && <div>{contact.street}</div>}
+                    ) :
+                      /* Fallback to legacy location fields */
+                      (contact.street || contact.city || contact.state || contact.country) && (
+                        <motion.div
+                          className="flex items-start text-xs text-muted-foreground/90"
+                          initial={{ x: -20, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          transition={{ delay: 0.35 }}
+                        >
+                          <MapPin className="mr-1.5 h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
                           <div>
-                            {[contact.city, contact.state, contact.postalCode]
-                              .filter(Boolean)
-                              .join(", ")}
+                            {contact.street && <div>{contact.street}</div>}
+                            <div>
+                              {[contact.city, contact.state, contact.postalCode]
+                                .filter(Boolean)
+                                .join(", ")}
+                            </div>
+                            {contact.country && <div>{contact.country}</div>}
                           </div>
-                          {contact.country && <div>{contact.country}</div>}
-                        </div>
-                      </motion.div>
-                    )}
+                        </motion.div>
+                      )}
                     {contact.notes && (
                       <motion.p
                         className={`
@@ -440,7 +427,16 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
               </AnimatePresence>
             </div>
 
-            <div className="flex items-center">
+            <div className="flex items-center gap-1">
+              {children.length > 0 && (
+                <div className="text-muted-foreground/50 mr-1">
+                  {isExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </div>
+              )}
               {/* Contextual floating menu with smart placement */}
               <ContextualFloatingMenu
                 trigger={
@@ -525,28 +521,32 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
             )}
 
             <Dialog open={isEditing} onOpenChange={setIsEditing}>
-              <DialogContent>
-                <DialogHeader>
+              <DialogContent className="max-h-[90vh] flex flex-col overflow-hidden p-0 gap-0">
+                <DialogHeader className="p-6 pb-4">
                   <DialogTitle>Edit Contact</DialogTitle>
                   <DialogDescription>Update the contact information</DialogDescription>
                 </DialogHeader>
-                <ContactForm
-                  initialData={contact}
-                  onSuccess={() => setIsEditing(false)}
-                />
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <ContactForm
+                    initialData={contact}
+                    onSuccess={() => setIsEditing(false)}
+                  />
+                </div>
               </DialogContent>
             </Dialog>
 
             <Dialog open={isAddingChild} onOpenChange={setIsAddingChild}>
-              <DialogContent>
-                <DialogHeader>
+              <DialogContent className="max-h-[90vh] flex flex-col overflow-hidden p-0 gap-0">
+                <DialogHeader className="p-6 pb-4">
                   <DialogTitle>Add Related Contact</DialogTitle>
                   <DialogDescription>Create a new contact connected to {contact.name}</DialogDescription>
                 </DialogHeader>
-                <ContactForm
-                  parentId={contact.id}
-                  onSuccess={() => setIsAddingChild(false)}
-                />
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <ContactForm
+                    parentId={contact.id}
+                    onSuccess={() => setIsAddingChild(false)}
+                  />
+                </div>
               </DialogContent>
             </Dialog>
 
@@ -564,14 +564,14 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter className="gap-2 sm:gap-0">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => setShowDeleteConfirm(false)}
                   >
                     Cancel
                   </Button>
-                  <Button 
-                    variant="destructive" 
+                  <Button
+                    variant="destructive"
                     onClick={() => {
                       deleteContact.mutate();
                       setShowDeleteConfirm(false);
@@ -600,7 +600,7 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
               <Reorder.Group
                 axis="y"
                 values={children}
-                onReorder={onChildrenReorder || (() => {})}
+                onReorder={onChildrenReorder || (() => { })}
                 className="space-y-4"
               >
                 {children.map((child) => (
@@ -623,7 +623,7 @@ export function ContactCard({ contact, children = [], level = 0, relationshipLev
                         // Update this specific child's children
                         if (child.children) {
                           // Find the child in the children array and update its children
-                          const updatedChildren = children.map(c => 
+                          const updatedChildren = children.map(c =>
                             c.id === child.id ? { ...c, children: newChildren } : c
                           );
                           onChildrenReorder?.(updatedChildren);

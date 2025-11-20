@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MapPin, Search, Loader2 } from 'lucide-react';
+import { analytics } from '@/lib/analytics';
 
 interface Location {
   address?: string;
@@ -35,24 +36,24 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
   const [isLoading, setIsLoading] = useState(false);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-  
+
   const [mapCenter, setMapCenter] = useState<google.maps.LatLngLiteral>(
-    value.latitude && value.longitude 
-      ? { 
-          lat: parseFloat(value.latitude), 
-          lng: parseFloat(value.longitude) 
-        } 
+    value.latitude && value.longitude
+      ? {
+        lat: parseFloat(value.latitude),
+        lng: parseFloat(value.longitude)
+      }
       : defaultCenter
   );
   const [marker, setMarker] = useState<google.maps.LatLngLiteral | null>(
-    value.latitude && value.longitude 
-      ? { 
-          lat: parseFloat(value.latitude), 
-          lng: parseFloat(value.longitude) 
-        } 
+    value.latitude && value.longitude
+      ? {
+        lat: parseFloat(value.latitude),
+        lng: parseFloat(value.longitude)
+      }
       : null
   );
-  
+
   // Log environment variables for debugging (will be redacted in production)
   console.log('VITE_GOOGLE_MAPS_API_KEY available:', !!import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
 
@@ -61,29 +62,32 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDmk73iGX4BcnLkaPma14SXfhVZuMIAD4g',
     libraries: ['places']
   });
-  
+
   // Handle load errors
   // Initialize and handle autocomplete
   const onAutocompleteLoad = useCallback((autocomplete: google.maps.places.Autocomplete) => {
     autocompleteRef.current = autocomplete;
-    
+
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
-      
+
       if (!place.geometry || !place.geometry.location) {
         console.error('Place details not found');
+        analytics.track('location_autocomplete_error', { error: 'Place details not found' });
         return;
       }
-      
+
       const position = {
         lat: place.geometry.location.lat(),
         lng: place.geometry.location.lng()
       };
-      
+
       setMapCenter(position);
       setMarker(position);
       setSearchTerm(place.formatted_address || '');
-      
+
+      analytics.track('location_picked', { method: 'autocomplete', address: place.formatted_address });
+
       onChange({
         name: locationName,
         address: place.formatted_address || '',
@@ -92,14 +96,15 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
       });
     });
   }, [onChange, locationName]);
-  
+
   // Handle geolocation for personal card
   const detectCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) {
       console.error('Geolocation is not supported by your browser');
+      analytics.track('geolocation_error', { error: 'not_supported' });
       return;
     }
-    
+
     setIsLoading(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -107,15 +112,16 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
           lat: position.coords.latitude,
           lng: position.coords.longitude
         };
-        
+
         setMapCenter(pos);
         setMarker(pos);
-        
+
         // Get address from coordinates (reverse geocoding)
         const geocoder = new google.maps.Geocoder();
         geocoder.geocode({ location: pos }, (results, status) => {
           setIsLoading(false);
           if (status === 'OK' && results && results[0]) {
+            analytics.track('location_picked', { method: 'current_location', address: results[0].formatted_address });
             onChange({
               name: locationName,
               address: results[0].formatted_address,
@@ -125,12 +131,14 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
             setSearchTerm(results[0].formatted_address);
           } else {
             console.error('Geocoder failed: ' + status);
+            analytics.track('geocoding_error', { status });
           }
         });
       },
       (error) => {
         setIsLoading(false);
         console.error('Error getting location:', error);
+        analytics.track('geolocation_error', { error: error.message });
       }
     );
   }, [onChange, locationName]);
@@ -150,7 +158,7 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
     if (value.address) {
       setSearchTerm(value.address);
     }
-    
+
     // Update marker when value changes externally
     if (value.latitude && value.longitude) {
       const position = {
@@ -182,6 +190,7 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
         if (status === 'OK' && results && results[0]) {
           const address = results[0].formatted_address;
           setSearchTerm(address);
+          analytics.track('location_picked', { method: 'map_click', address });
           onChange({
             ...value,
             name: locationName,
@@ -206,12 +215,15 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
         };
         setMapCenter(position);
         setMarker(position);
+        analytics.track('location_picked', { method: 'manual_search', address: results[0].formatted_address });
         onChange({
           name: locationName,
           address: results[0].formatted_address,
           latitude: position.lat.toString(),
           longitude: position.lng.toString()
         });
+      } else {
+        analytics.track('geocoding_error', { status, searchTerm });
       }
     });
   };
@@ -234,9 +246,9 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
           <div className="flex flex-col gap-3 mb-4">
             <div className="flex gap-2">
               <div className="flex-1">
-                <Input 
-                  placeholder="Enter name for this location" 
-                  value={locationName} 
+                <Input
+                  placeholder="Enter name for this location"
+                  value={locationName}
                   onChange={(e) => setLocationName(e.target.value)}
                 />
               </div>
@@ -251,18 +263,18 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
                     types: ["address"]
                   }}
                 >
-                  <Input 
+                  <Input
                     ref={searchInputRef}
-                    placeholder="Enter an address" 
-                    value={searchTerm} 
+                    placeholder="Enter an address"
+                    value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     onKeyPress={handleKeyPress}
                   />
                 </Autocomplete>
               </div>
-              <Button 
-                type="button" 
-                onClick={detectCurrentLocation} 
+              <Button
+                type="button"
+                onClick={detectCurrentLocation}
                 variant="outline"
                 disabled={isLoading}
               >
@@ -275,7 +287,7 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
               </Button>
             </div>
           </div>
-          
+
           <GoogleMap
             mapContainerStyle={containerStyle}
             center={mapCenter}
