@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goldfish — Watercolor Disperse Options</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #0F0D1A;
+            color: #E0D8CF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px 80px;
+            min-height: 100vh;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 300;
+            letter-spacing: 0.02em;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: #8A8078;
+            margin-bottom: 36px;
+        }
+
+        .options-row {
+            display: flex;
+            gap: 28px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 28px;
+        }
+
+        .option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .option-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #C4A882;
+            letter-spacing: 0.05em;
+        }
+
+        .option-desc {
+            font-size: 11px;
+            color: #8A8078;
+            max-width: 200px;
+            text-align: center;
+            line-height: 1.5;
+            min-height: 42px;
+        }
+
+        .phone {
+            width: 200px;
+            height: 400px;
+            border-radius: 28px;
+            background: #F5F0EA;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 0 2.5px #2A2624;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .phone:hover {
+            transform: scale(1.03);
+        }
+
+        .phone:active {
+            transform: scale(0.97);
+        }
+
+        .phone-inner {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            position: relative;
+        }
+
+        .fish-img {
+            width: 120px;
+            height: auto;
+            object-fit: contain;
+            transition: opacity 1.2s ease-out;
+        }
+
+        .fish-title {
+            font-family: Georgia, serif;
+            font-size: 20px;
+            color: #1A1614;
+            margin-top: 8px;
+            transition: opacity 1.2s ease-out;
+        }
+
+        .fish-title em {
+            font-style: italic;
+            color: #B74F3A;
+        }
+
+        .click-hint {
+            position: absolute;
+            bottom: 18px;
+            font-size: 10px;
+            color: #A89F95;
+            letter-spacing: 0.05em;
+            transition: opacity 0.5s;
+        }
+
+        .anim-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .replay-btn {
+            margin-top: 6px;
+            padding: 6px 16px;
+            border: 1px solid #3A3530;
+            background: transparent;
+            color: #C4A882;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .replay-btn:hover {
+            background: #1A1614;
+            border-color: #C4A882;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Watercolor Disperse — Pick Your Style</h1>
+    <p class="subtitle">Click each phone to preview. Click "Replay" to re-watch.</p>
+
+    <!-- ROW 1: Options 1-3 -->
+    <div class="options-row">
+        <div class="option">
+            <span class="option-label">1 · Aurora Wash</span>
+            <div class="phone" id="phone1" onclick="play1()">
+                <div class="phone-inner">
+                    <img class="fish-img" id="fish1" src="assets/hero-goldfish.png" alt="Goldfish">
+                    <div class="fish-title" id="title1">Gold<em>fish</em></div>
+                    <canvas class="anim-canvas" id="canvas1"></canvas>
+                    <span class="click-hint" id="hint1">tap to preview</span>
+                </div>
+            </div>
+            <p class="option-desc">Sweeping color bands flow across the whole screen like a watercolor aurora</p>
+            <button class="replay-btn" onclick="resetPhone(1)">Replay</button>
+        </div>
+
+        <div class="option">
+            <span class="option-label">2 · Tidal Sweep</span>
+            <div class="phone" id="phone2" onclick="play2()">
+                <div class="phone-inner">
+                    <img class="fish-img" id="fish2" src="assets/hero-goldfish.png" alt="Goldfish">
+                    <div class="fish-title" id="title2">Gold<em>fish</em></div>
+                    <canvas class="anim-canvas" id="canvas2"></canvas>
+                    <span class="click-hint" id="hint2">tap to preview</span>
+                </div>
+            </div>
+            <p class="option-desc">A wave of pigment radiates from the fish and washes over the entire canvas</p>
+            <button class="replay-btn" onclick="resetPhone(2)">Replay</button>
+        </div>
+
+        <div class="option">
+            <span class="option-label">3 · Paint Rain</span>
+            <div class="phone" id="phone3" onclick="play3()">
+                <div class="phone-inner">
+                    <img class="fish-img" id="fish3" src="assets/hero-goldfish.png" alt="Goldfish">
+                    <div class="fish-title" id="title3">Gold<em>fish</em></div>
+                    <canvas class="anim-canvas" id="canvas3"></canvas>
+                    <span class="click-hint" id="hint3">tap to preview</span>
+                </div>
+            </div>
+            <p class="option-desc">The entire screen melts as paint drips down from top to bottom like rain on a
+                painting</p>
+            <button class="replay-btn" onclick="resetPhone(3)">Replay</button>
+        </div>
+    </div>
+
+    <!-- ROW 2: Options 4-5 -->
+    <div class="options-row">
+        <div class="option">
+            <span class="option-label">4 · Splatter Burst</span>
+            <div class="phone" id="phone4" onclick="play4()">
+                <div class="phone-inner">
+                    <img class="fish-img" id="fish4" src="assets/hero-goldfish.png" alt="Goldfish">
+                    <div class="fish-title" id="title4">Gold<em>fish</em></div>
+                    <canvas class="anim-canvas" id="canvas4"></canvas>
+                    <span class="click-hint" id="hint4">tap to preview</span>
+                </div>
+            </div>
+            <p class="option-desc">Energetic paint splatters explode from the fish and reach every corner of the canvas
+            </p>
+            <button class="replay-btn" onclick="resetPhone(4)">Replay</button>
+        </div>
+
+        <div class="option">
+            <span class="option-label">5 · Bloom Garden</span>
+            <div class="phone" id="phone5" onclick="play5()">
+                <div class="phone-inner">
+                    <img class="fish-img" id="fish5" src="assets/hero-goldfish.png" alt="Goldfish">
+                    <div class="fish-title" id="title5">Gold<em>fish</em></div>
+                    <canvas class="anim-canvas" id="canvas5"></canvas>
+                    <span class="click-hint" id="hint5">tap to preview</span>
+                </div>
+            </div>
+            <p class="option-desc">Large organic blooms grow from the fish and blossom across the full canvas</p>
+            <button class="replay-btn" onclick="resetPhone(5)">Replay</button>
+        </div>
+    </div>
+
+    <script>
+        // Warm fish painting palette
+        const palette = [
+            [199, 120, 88], [210, 155, 100], [183, 79, 58],
+            [180, 140, 90], [220, 170, 140], [160, 100, 70],
+            [195, 100, 75], [170, 120, 80], [215, 140, 110],
+            [230, 180, 150], [140, 80, 60], [200, 100, 60],
+        ];
+
+        function sc(id) {
+            const c = document.getElementById('canvas' + id);
+            const p = c.parentElement;
+            const dpr = 2;
+            c.width = p.offsetWidth * dpr; c.height = p.offsetHeight * dpr;
+            const ctx = c.getContext('2d'); ctx.scale(dpr, dpr);
+            return { c, ctx, w: p.offsetWidth, h: p.offsetHeight };
+        }
+
+        function fb(id) {
+            const f = document.getElementById('fish' + id);
+            const p = f.parentElement;
+            const fr = f.getBoundingClientRect(), pr = p.getBoundingClientRect();
+            return {
+                cx: fr.left - pr.left + fr.width / 2, cy: fr.top - pr.top + fr.height / 2,
+                w: fr.width, h: fr.height
+            };
+        }
+
+        function drawBlob(ctx, x, y, r, seed, pts) {
+            pts = pts || 8;
+            const ps = [];
+            for (let i = 0; i < pts; i++) {
+                const a = (i / pts) * Math.PI * 2;
+                const w = r + Math.sin(a * 2.3 + seed) * (r * 0.18) + Math.cos(a * 1.7 + seed * 0.6) * (r * 0.12);
+                ps.push({ x: x + w * Math.cos(a), y: y + w * Math.sin(a) });
+            }
+            ctx.beginPath();
+            ctx.moveTo((ps[pts - 1].x + ps[0].x) / 2, (ps[pts - 1].y + ps[0].y) / 2);
+            for (let i = 0; i < pts; i++) {
+                const n = ps[(i + 1) % pts];
+                ctx.quadraticCurveTo(ps[i].x, ps[i].y, (ps[i].x + n.x) / 2, (ps[i].y + n.y) / 2);
+            }
+            ctx.closePath();
+        }
+
+        function fade(id) {
+            document.getElementById('fish' + id).style.opacity = '0';
+            document.getElementById('title' + id).style.opacity = '0';
+            document.getElementById('hint' + id).style.opacity = '0';
+        }
+
+        function resetPhone(id) {
+            ['fish', 'title', 'hint'].forEach(p => {
+                const el = document.getElementById(p + id);
+                el.style.transition = 'none'; el.style.opacity = '1';
+                requestAnimationFrame(() => el.style.transition = 'opacity 1.2s ease-out');
+            });
+            const { ctx, w, h } = sc(id);
+            ctx.clearRect(0, 0, w, h);
+        }
+
+        function pc() { return palette[Math.floor(Math.random() * palette.length)]; }
+
+        // ========================================
+        //  1 · AURORA WASH
+        //  Flowing horizontal bands sweep across the full canvas
+        // ========================================
+        function play1() {
+            const { ctx, w, h } = sc(1);
+            const f = fb(1);
+            fade(1);
+
+            const bands = [];
+            for (let i = 0; i < 14; i++) {
+                const c = pc();
+                const yOrigin = f.cy + (Math.random() - 0.5) * f.h * 0.6;
+                bands.push({
+                    y: yOrigin,
+                    yTarget: Math.random() * h,
+                    xDir: Math.random() > 0.5 ? 1 : -1,
+                    speed: 0.3 + Math.random() * 0.7,
+                    thickness: 20 + Math.random() * 50,
+                    cr: c[0], cg: c[1], cb: c[2],
+                    alpha: 0.06 + Math.random() * 0.12,
+                    waveFreq: 0.5 + Math.random() * 2,
+                    waveAmp: 10 + Math.random() * 30,
+                    seed: Math.random() * 100,
+                    delay: Math.random() * 0.6,
+                });
+            }
+
+            let start = null;
+            function anim(ts) {
+                if (!start) start = ts;
+                const el = (ts - start) / 1000;
+                const prog = Math.min(el / 3, 1);
+                ctx.clearRect(0, 0, w, h);
+
+                bands.forEach(b => {
+                    const t = Math.max(0, (el - b.delay) / 2.4);
+                    if (t <= 0 || t > 1) return;
+                    const ease = 1 - Math.pow(1 - t, 2);
+                    const fadeOut = t > 0.55 ? 1 - Math.pow((t - 0.55) / 0.45, 1.3) : 1;
+                    const fadeIn = Math.min(t / 0.15, 1);
+
+                    // Sweep from fish center across canvas
+                    const sweep = ease * w * 1.2;
+                    const startX = f.cx;
+                    const by = b.y + (b.yTarget - b.y) * ease;
+
+                    ctx.save();
+                    ctx.globalAlpha = b.alpha * fadeIn * fadeOut;
+
+                    // Draw flowing band with wave shape
+                    for (let x = 0; x < sweep; x += 6) {
+                        const px = startX + x * b.xDir;
+                        if (px < -20 || px > w + 20) continue;
+                        const waveY = Math.sin(x * 0.02 * b.waveFreq + b.seed + el * 0.8) * b.waveAmp * ease;
+                        const thick = b.thickness * (1 - (x / (w * 1.2)) * 0.5) * Math.min(ease * 3, 1);
+                        const alpha = (1 - x / (w * 1.2)) * 0.8 + 0.2;
+
+                        ctx.beginPath();
+                        ctx.ellipse(px, by + waveY, 8 + Math.random() * 4, thick * 0.5, 0, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(${b.cr}, ${b.cg}, ${b.cb}, ${(alpha * 0.6).toFixed(3)})`;
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                });
+
+                if (prog < 1) requestAnimationFrame(anim);
+                else ctx.clearRect(0, 0, w, h);
+            }
+            requestAnimationFrame(anim);
+        }
+
+        // ========================================
+        //  2 · TIDAL SWEEP
+        //  Concentric wave of paint expanding from center to fill canvas
+        // ========================================
+        function play2() {
+            const { ctx, w, h } = sc(2);
+            const f = fb(2);
+            fade(2);
+
+            // Place blobs across the entire canvas, radiating from fish
+            const blobs = [];
+            for (let i = 0; i < 120; i++) {
+                const c = pc();
+                const angle = Math.random() * Math.PI * 2;
+                const maxDist = Math.sqrt(w * w + h * h) * 0.6;
+                const dist = 10 + Math.random() * maxDist;
+                blobs.push({
+                    angle,
+                    dist,
+                    r: 8 + Math.random() * 25,
+                    cr: c[0], cg: c[1], cb: c[2],
+                    alpha: 0.04 + Math.random() * 0.12,
+                    seed: Math.random() * 20,
+                    // Delay proportional to distance (wave effect)
+                    delay: (dist / maxDist) * 1.2,
+                });
+            }
+
+            let start = null;
+            function anim(ts) {
+                if (!start) start = ts;
+                const el = (ts - start) / 1000;
+                const prog = Math.min(el / 3.2, 1);
+                ctx.clearRect(0, 0, w, h);
+
+                blobs.forEach(b => {
+                    const t = Math.max(0, (el - b.delay) / 1.8);
+                    if (t <= 0 || t > 1) return;
+
+                    const ease = 1 - Math.pow(1 - Math.min(t * 1.5, 1), 2.5);
+                    const fadeIn = Math.min(t / 0.2, 1);
+                    const fadeOut = t > 0.5 ? 1 - Math.pow((t - 0.5) / 0.5, 1.5) : 1;
+
+                    const bx = f.cx + Math.cos(b.angle) * b.dist * ease;
+                    const by = f.cy + Math.sin(b.angle) * b.dist * ease;
+                    const br = b.r * (0.3 + ease * 0.9);
+                    const alpha = b.alpha * fadeIn * fadeOut;
+                    if (alpha < 0.003) return;
+
+                    ctx.save();
+                    drawBlob(ctx, bx, by, br, b.seed, 8);
+                    ctx.fillStyle = `rgba(${b.cr}, ${b.cg}, ${b.cb}, ${alpha.toFixed(3)})`;
+                    ctx.fill();
+                    ctx.restore();
+                });
+
+                if (prog < 1) requestAnimationFrame(anim);
+                else ctx.clearRect(0, 0, w, h);
+            }
+            requestAnimationFrame(anim);
+        }
+
+        // ========================================
+        //  3 · PAINT RAIN
+        //  Vertical streaks of color drip from top to bottom like a painting caught in rain
+        // ========================================
+        function play3() {
+            const { ctx, w, h } = sc(3);
+            fade(3);
+
+            const drips = [];
+            for (let i = 0; i < 50; i++) {
+                const c = pc();
+                drips.push({
+                    x: Math.random() * w,
+                    startY: -10 - Math.random() * 40,
+                    length: h * 0.4 + Math.random() * h * 0.7,
+                    width: 3 + Math.random() * 10,
+                    cr: c[0], cg: c[1], cb: c[2],
+                    alpha: 0.05 + Math.random() * 0.12,
+                    speed: 0.6 + Math.random() * 0.6,
+                    sway: (Math.random() - 0.5) * 15,
+                    seed: Math.random() * 100,
+                    delay: Math.random() * 1.0,
+                    segments: 12 + Math.floor(Math.random() * 10),
+                });
+            }
+
+            let start = null;
+            function anim(ts) {
+                if (!start) start = ts;
+                const el = (ts - start) / 1000;
+                const prog = Math.min(el / 3.5, 1);
+                ctx.clearRect(0, 0, w, h);
+
+                drips.forEach(d => {
+                    const t = Math.max(0, (el - d.delay) / (2.5 / d.speed));
+                    if (t <= 0 || t > 1) return;
+
+                    const ease = 1 - Math.pow(1 - Math.min(t * 1.3, 1), 2);
+                    const fadeOut = t > 0.6 ? 1 - Math.pow((t - 0.6) / 0.4, 1.2) : 1;
+                    const fadeIn = Math.min(t / 0.1, 1);
+                    const reach = ease * d.segments;
+
+                    for (let j = 0; j <= Math.floor(reach); j++) {
+                        const jt = j / d.segments;
+                        const px = d.x + Math.sin(jt * 4 + d.seed) * d.sway;
+                        const py = d.startY + d.length * jt;
+                        // Each drip blob gets progressively thinner
+                        const blobR = d.width * (1 - jt * 0.4);
+                        const a = d.alpha * fadeIn * fadeOut * (1 - jt * 0.3);
+                        if (a < 0.003) continue;
+
+                        ctx.save();
+                        drawBlob(ctx, px, py, blobR, d.seed + j * 0.5, 6);
+                        ctx.fillStyle = `rgba(${d.cr}, ${d.cg}, ${d.cb}, ${a.toFixed(3)})`;
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                });
+
+                if (prog < 1) requestAnimationFrame(anim);
+                else ctx.clearRect(0, 0, w, h);
+            }
+            requestAnimationFrame(anim);
+        }
+
+        // ========================================
+        //  4 · SPLATTER BURST
+        //  Explosive splatters from the fish that hit every corner
+        // ========================================
+        function play4() {
+            const { ctx, w, h } = sc(4);
+            const f = fb(4);
+            fade(4);
+
+            const maxDist = Math.sqrt(w * w + h * h) * 0.55;
+            const splatters = [];
+            for (let i = 0; i < 80; i++) {
+                const c = pc();
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 20 + Math.random() * maxDist;
+                // Splatter trail: each splatter has sub-dots along its path
+                const trailDots = 3 + Math.floor(Math.random() * 5);
+                splatters.push({
+                    angle, dist,
+                    cr: c[0], cg: c[1], cb: c[2],
+                    r: 4 + Math.random() * 14,
+                    alpha: 0.06 + Math.random() * 0.16,
+                    seed: Math.random() * 20,
+                    trailDots,
+                    delay: Math.random() * 0.3,
+                    // Faster, more energetic
+                    speed: 1.5 + Math.random() * 1.5,
+                });
+            }
+
+            let start = null;
+            function anim(ts) {
+                if (!start) start = ts;
+                const el = (ts - start) / 1000;
+                const prog = Math.min(el / 3, 1);
+                ctx.clearRect(0, 0, w, h);
+
+                splatters.forEach(s => {
+                    const t = Math.max(0, (el - s.delay) * s.speed / 2.5);
+                    if (t <= 0 || t > 1) return;
+
+                    // Fast out, then settle
+                    const ease = 1 - Math.pow(1 - Math.min(t * 2, 1), 4);
+                    const fadeIn = Math.min(t / 0.05, 1);
+                    const fadeOut = t > 0.4 ? 1 - Math.pow((t - 0.4) / 0.6, 1.8) : 1;
+
+                    // Main splatter
+                    const bx = f.cx + Math.cos(s.angle) * s.dist * ease;
+                    const by = f.cy + Math.sin(s.angle) * s.dist * ease;
+                    const alpha = s.alpha * fadeIn * fadeOut;
+                    if (alpha < 0.003) return;
+
+                    ctx.save();
+                    drawBlob(ctx, bx, by, s.r * (0.5 + ease * 0.7), s.seed, 7);
+                    ctx.fillStyle = `rgba(${s.cr}, ${s.cg}, ${s.cb}, ${alpha.toFixed(3)})`;
+                    ctx.fill();
+
+                    // Trail dots along the path (like paint spattering)
+                    for (let j = 1; j <= s.trailDots; j++) {
+                        const jt = j / (s.trailDots + 1);
+                        const tx = f.cx + Math.cos(s.angle) * s.dist * ease * jt + (Math.random() - 0.5) * 8;
+                        const ty = f.cy + Math.sin(s.angle) * s.dist * ease * jt + (Math.random() - 0.5) * 8;
+                        const tr = s.r * 0.3 * (1 - jt * 0.5);
+                        const ta = alpha * 0.5 * (1 - jt);
+                        if (ta < 0.003) continue;
+                        ctx.beginPath();
+                        ctx.arc(tx, ty, tr, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(${s.cr}, ${s.cg}, ${s.cb}, ${ta.toFixed(3)})`;
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                });
+
+                if (prog < 1) requestAnimationFrame(anim);
+                else ctx.clearRect(0, 0, w, h);
+            }
+            requestAnimationFrame(anim);
+        }
+
+        // ========================================
+        //  5 · BLOOM GARDEN
+        //  Large organic blooms grow from the fish and flower across the full canvas
+        // ========================================
+        function play5() {
+            const { ctx, w, h } = sc(5);
+            const f = fb(5);
+            fade(5);
+
+            const blooms = [];
+            for (let i = 0; i < 18; i++) {
+                const c = pc();
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 30 + Math.random() * Math.max(w, h) * 0.55;
+                blooms.push({
+                    // Final resting position spread across canvas
+                    tx: f.cx + Math.cos(angle) * dist,
+                    ty: f.cy + Math.sin(angle) * dist,
+                    maxR: 25 + Math.random() * 55,
+                    cr: c[0], cg: c[1], cb: c[2],
+                    alpha: 0.05 + Math.random() * 0.1,
+                    seed: Math.random() * 20,
+                    delay: (dist / (Math.max(w, h) * 0.55)) * 0.8 + Math.random() * 0.3,
+                    // Inner rings
+                    rings: 2 + Math.floor(Math.random() * 3),
+                    rotation: Math.random() * Math.PI,
+                });
+            }
+
+            let start = null;
+            function anim(ts) {
+                if (!start) start = ts;
+                const el = (ts - start) / 1000;
+                const prog = Math.min(el / 3.5, 1);
+                ctx.clearRect(0, 0, w, h);
+
+                blooms.forEach(b => {
+                    const t = Math.max(0, (el - b.delay) / 2.2);
+                    if (t <= 0 || t > 1) return;
+
+                    // Bloom grows from center outward
+                    const bloom = 1 - Math.pow(1 - Math.min(t * 1.5, 1), 3);
+                    const fadeIn = Math.min(t / 0.15, 1);
+                    const fadeOut = t > 0.55 ? 1 - Math.pow((t - 0.55) / 0.45, 1.5) : 1;
+                    const alpha = b.alpha * fadeIn * fadeOut;
+                    if (alpha < 0.003) return;
+
+                    // Position lerps from fish center to target
+                    const bx = f.cx + (b.tx - f.cx) * bloom;
+                    const by = f.cy + (b.ty - f.cy) * bloom;
+                    const r = b.maxR * bloom;
+
+                    ctx.save();
+                    // Outer bloom
+                    drawBlob(ctx, bx, by, r, b.seed, 10);
+                    ctx.fillStyle = `rgba(${b.cr}, ${b.cg}, ${b.cb}, ${(alpha * 0.6).toFixed(3)})`;
+                    ctx.fill();
+
+                    // Concentric inner rings for petal-like depth
+                    for (let ring = 1; ring <= b.rings; ring++) {
+                        const rr = r * (1 - ring / (b.rings + 1)) * 0.8;
+                        const ra = alpha * (0.4 + ring * 0.15);
+                        // Slightly offset each ring
+                        const ox = Math.cos(b.rotation + ring) * rr * 0.15;
+                        const oy = Math.sin(b.rotation + ring) * rr * 0.15;
+                        drawBlob(ctx, bx + ox, by + oy, rr, b.seed + ring * 3, 8);
+                        ctx.fillStyle = `rgba(${Math.min(255, b.cr + 20)}, ${Math.min(255, b.cg + 15)}, ${Math.min(255, b.cb + 10)}, ${ra.toFixed(3)})`;
+                        ctx.fill();
+                    }
+
+                    // Tiny satellite dots around the bloom
+                    for (let s = 0; s < 4; s++) {
+                        const sa = b.rotation + (s / 4) * Math.PI * 2 + el * 0.3;
+                        const sd = r * (1.1 + Math.random() * 0.5);
+                        const sx = bx + Math.cos(sa) * sd;
+                        const sy = by + Math.sin(sa) * sd;
+                        const sr = 2 + Math.random() * 4;
+                        ctx.beginPath();
+                        ctx.arc(sx, sy, sr * bloom, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(${b.cr}, ${b.cg}, ${b.cb}, ${(alpha * 0.4).toFixed(3)})`;
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                });
+
+                if (prog < 1) requestAnimationFrame(anim);
+                else ctx.clearRect(0, 0, w, h);
+            }
+            requestAnimationFrame(anim);
+        }
+    </script>
+</body>
+
+</html>

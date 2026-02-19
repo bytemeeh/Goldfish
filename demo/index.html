@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Goldfish — Interactive Demo</title>
+  <link rel="stylesheet" href="bauhaus.css">
+</head>
+
+<body>
+  <div class="page-bg"></div>
+  <div class="demo-container">
+
+    <!-- Info Panel -->
+    <div class="info-panel">
+      <div class="brand">
+        <svg viewBox="0 0 56 56" width="56" height="56" style="border-radius:14px;flex-shrink:0">
+          <defs>
+            <linearGradient id="gfBrand" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#7C3AED" />
+              <stop offset="100%" stop-color="#4C1D95" />
+            </linearGradient>
+          </defs>
+          <rect width="56" height="56" rx="14" fill="url(#gfBrand)" />
+          <!-- Stylized goldfish -->
+          <g transform="translate(28,28)" fill="#fff">
+            <ellipse cx="-4" cy="0" rx="10" ry="7" opacity=".95" />
+            <path d="M6,-5 Q14,-12 10,-2 Q14,8 6,5 Z" opacity=".85" />
+            <circle cx="-8" cy="-2" r="1.5" fill="#4C1D95" />
+            <circle cx="12" cy="12" r="3" opacity=".5" />
+            <circle cx="15" cy="7" r="2" opacity=".35" />
+          </g>
+        </svg>
+        <h1>Goldfish</h1>
+      </div>
+      <p class="tagline">Your personal relationship map — a native iOS app that visualizes your network as an
+        interactive force-directed graph.</p>
+      <ul class="feature-list">
+        <li><svg class="fi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="3" />
+            <circle cx="5" cy="5" r="2" />
+            <circle cx="19" cy="5" r="2" />
+            <circle cx="19" cy="19" r="2" />
+            <circle cx="5" cy="19" r="2" />
+            <path d="M7 6.5 9.5 10M14.5 10 17 6.5M14.5 14 17 17.5M9.5 14 7 17.5" />
+          </svg>Force-directed graph with SpriteKit</li>
+        <li><svg class="fi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10" />
+            <circle cx="12" cy="12" r="4" />
+          </svg>Ponds: Family, Friends, Professional</li>
+        <li><svg class="fi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path
+              d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+          </svg>Rich bidirectional relationship types</li>
+        <li><svg class="fi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <path d="M3 10h18M8 4v16" />
+          </svg>vCard 3.0 import/export</li>
+      </ul>
+      <div class="nav-hint">Click through the demo to explore every screen.</div>
+    </div>
+
+    <!-- iPhone Frame -->
+    <div class="iphone-frame">
+      <div class="iphone-notch"></div>
+      <div class="iphone-screen" id="iphoneScreen">
+
+        <!-- WELCOME / LOGIN SCREEN -->
+        <div class="screen active" id="onboarding1">
+          <div class="welcome-cover">
+            <img src="assets/hero-goldfish.png" alt="Goldfish" class="hero-img" id="heroFish">
+            <div class="hero-overlay"></div>
+            <div class="cover-content">
+              <h2 class="cover-title">Gold<em>fish</em></h2>
+              <p class="cover-sub">Remember everyone</p>
+              <div class="welcome-actions">
+                <button class="btn-apple" onclick="swimAndGo()">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="margin-right:8px">
+                    <path
+                      d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C4.24 16.67 4.89 10.52 8.76 10.3c1.22.06 2.08.7 2.8.72.97-.2 1.9-.87 3.07-.79 1.45.1 2.53.62 3.24 1.63-2.97 1.77-2.26 5.69.47 6.82-.55 1.56-1.08 2.61-2.08 3.6h.79zM12.05 10.22c-.14-2.54 1.92-4.72 4.28-4.92.33 2.78-2.53 5.02-4.28 4.92z" />
+                  </svg>
+                  Sign in with Apple
+                </button>
+                <button class="btn-email" onclick="swimAndGo()">Sign in with Email</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ONBOARDING 2 — Who are you (Concentric Ripples) -->
+        <div class="screen" id="onboarding2">
+          <div class="onboarding-dark">
+            <div class="ripple-container">
+              <svg viewBox="0 0 200 200" width="180" height="180">
+                <!-- Concentric ripple rings -->
+                <circle cx="100" cy="100" r="90" fill="none" stroke="#B74F3A" stroke-width=".4" opacity=".12" />
+                <circle cx="100" cy="100" r="72" fill="none" stroke="#B74F3A" stroke-width=".5" opacity=".15" />
+                <circle cx="100" cy="100" r="54" fill="none" stroke="#B74F3A" stroke-width=".6" opacity=".2" />
+                <circle cx="100" cy="100" r="36" fill="none" stroke="#B74F3A" stroke-width=".8" opacity=".3" />
+                <!-- Outer ring ghost nodes (future connections) -->
+                <circle cx="100" cy="10" r="4" fill="#3D6B8E" opacity=".2" />
+                <circle cx="170" cy="40" r="3.5" fill="#3D6B8E" opacity=".15" />
+                <circle cx="190" cy="100" r="4" fill="#8B7D3C" opacity=".18" />
+                <circle cx="160" cy="160" r="3" fill="#8B7D3C" opacity=".12" />
+                <circle cx="100" cy="185" r="3.5" fill="#B74F3A" opacity=".15" />
+                <circle cx="35" cy="155" r="3" fill="#B74F3A" opacity=".12" />
+                <circle cx="15" cy="100" r="4" fill="#3D6B8E" opacity=".15" />
+                <circle cx="40" cy="40" r="3.5" fill="#B74F3A" opacity=".2" />
+                <!-- Center glow -->
+                <circle cx="100" cy="100" r="18" fill="#B74F3A" opacity=".15" />
+                <circle cx="100" cy="100" r="12" fill="#B74F3A" opacity=".25" />
+                <text x="100" y="104" text-anchor="middle" font-size="14" fill="#F5F0EB" opacity=".9">🐠</text>
+              </svg>
+            </div>
+            <h2>You're the center of your ponds</h2>
+            <p>Everyone else ripples outward from you.<br>What should we call you?</p>
+            <div class="input-wrap">
+              <div class="input-label">Your Name</div>
+              <input class="name-input" type="text" value="Marcel" id="onbName">
+            </div>
+            <div class="dots">
+              <div class="dot"></div>
+              <div class="dot active"></div>
+              <div class="dot"></div>
+            </div>
+            <button class="btn-dark" onclick="goTo('onboarding3')">Continue</button>
+          </div>
+        </div>
+
+        <!-- ONBOARDING 3 — Your Ponds -->
+        <div class="screen" id="onboarding3">
+          <div class="onboarding-dark constellation-screen">
+
+            <div class="constellation-area">
+              <svg viewBox="0 0 320 360">
+                <!-- Starfield background dots -->
+                <circle cx="20" cy="30" r=".8" fill="#F5F0EB" opacity=".08" />
+                <circle cx="290" cy="50" r=".6" fill="#F5F0EB" opacity=".06" />
+                <circle cx="150" cy="20" r=".7" fill="#F5F0EB" opacity=".07" />
+                <circle cx="60" cy="310" r=".5" fill="#F5F0EB" opacity=".05" />
+                <circle cx="260" cy="340" r=".7" fill="#F5F0EB" opacity=".06" />
+                <circle cx="40" cy="180" r=".6" fill="#F5F0EB" opacity=".07" />
+                <circle cx="300" cy="200" r=".5" fill="#F5F0EB" opacity=".05" />
+
+                <!-- FAMILY constellation (top-left) -->
+                <line x1="85" y1="90" x2="110" y2="130" stroke="#B74F3A" stroke-width=".6" opacity=".25" />
+                <line x1="110" y1="130" x2="65" y2="145" stroke="#B74F3A" stroke-width=".6" opacity=".25" />
+                <line x1="85" y1="90" x2="65" y2="145" stroke="#B74F3A" stroke-width=".5" opacity=".15" />
+                <circle cx="85" cy="90" r="8" fill="#B74F3A" opacity=".2" />
+                <circle cx="85" cy="90" r="4.5" fill="#B74F3A" opacity=".6" />
+                <text x="85" y="93" text-anchor="middle" font-size="6" fill="#F5F0EB">👩‍🍳</text>
+                <circle cx="110" cy="130" r="7" fill="#B74F3A" opacity=".18" />
+                <circle cx="110" cy="130" r="4" fill="#B74F3A" opacity=".55" />
+                <text x="110" y="133" text-anchor="middle" font-size="6" fill="#F5F0EB">👨</text>
+                <circle cx="65" cy="145" r="6" fill="#B74F3A" opacity=".15" />
+                <circle cx="65" cy="145" r="3.5" fill="#B74F3A" opacity=".5" />
+                <text x="65" y="148" text-anchor="middle" font-size="5" fill="#F5F0EB">👧</text>
+                <text x="90" y="75" font-size="9" fill="#B74F3A" opacity=".5" font-weight="300">Family</text>
+
+                <!-- FRIENDS constellation (top-right) -->
+                <line x1="230" y1="80" x2="255" y2="120" stroke="#3D6B8E" stroke-width=".6" opacity=".25" />
+                <line x1="255" y1="120" x2="270" y2="85" stroke="#3D6B8E" stroke-width=".5" opacity=".18" />
+                <line x1="230" y1="80" x2="200" y2="110" stroke="#3D6B8E" stroke-width=".5" opacity=".15" />
+                <circle cx="230" cy="80" r="8" fill="#3D6B8E" opacity=".2" />
+                <circle cx="230" cy="80" r="4.5" fill="#3D6B8E" opacity=".6" />
+                <text x="230" y="83" text-anchor="middle" font-size="6" fill="#F5F0EB">🎨</text>
+                <circle cx="255" cy="120" r="7" fill="#3D6B8E" opacity=".18" />
+                <circle cx="255" cy="120" r="4" fill="#3D6B8E" opacity=".55" />
+                <text x="255" y="123" text-anchor="middle" font-size="6" fill="#F5F0EB">✈️</text>
+                <circle cx="270" cy="85" r="5" fill="#3D6B8E" opacity=".12" class="ghost-node" />
+                <circle cx="200" cy="110" r="5" fill="#3D6B8E" opacity=".12" class="ghost-node" />
+                <text x="235" y="65" font-size="9" fill="#3D6B8E" opacity=".5" font-weight="300">Friends</text>
+
+                <!-- WORK constellation (bottom-center) -->
+                <line x1="150" y1="250" x2="185" y2="270" stroke="#8B7D3C" stroke-width=".6" opacity=".25" />
+                <line x1="150" y1="250" x2="130" y2="280" stroke="#8B7D3C" stroke-width=".5" opacity=".18" />
+                <circle cx="150" cy="250" r="7" fill="#8B7D3C" opacity=".18" />
+                <circle cx="150" cy="250" r="4" fill="#8B7D3C" opacity=".55" />
+                <text x="150" y="253" text-anchor="middle" font-size="5.5" fill="#F5F0EB">MF</text>
+                <circle cx="185" cy="270" r="7" fill="#8B7D3C" opacity=".18" />
+                <circle cx="185" cy="270" r="4" fill="#8B7D3C" opacity=".55" />
+                <text x="185" y="273" text-anchor="middle" font-size="5.5" fill="#F5F0EB">NV</text>
+                <circle cx="130" cy="280" r="5" fill="#8B7D3C" opacity=".12" class="ghost-node" />
+                <text x="155" y="235" font-size="9" fill="#8B7D3C" opacity=".5" font-weight="300">Work</text>
+
+                <!-- CENTER — You (goldfish) with pulse -->
+                <circle cx="160" cy="180" r="10" fill="#B74F3A" opacity=".08">
+                  <animate attributeName="r" values="10;22;10" dur="3s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values=".08;.02;.08" dur="3s" repeatCount="indefinite" />
+                </circle>
+                <circle cx="160" cy="180" r="12" fill="#B74F3A" opacity=".15" />
+                <circle cx="160" cy="180" r="7" fill="#B74F3A" opacity=".35" />
+                <text x="160" y="183.5" text-anchor="middle" font-size="8" fill="#F5F0EB">🐠</text>
+
+                <!-- Faint connecting lines from center to constellations -->
+                <line x1="160" y1="180" x2="110" y2="130" stroke="#F5F0EB" stroke-width=".3" opacity=".08"
+                  stroke-dasharray="4 6" />
+                <line x1="160" y1="180" x2="240" y2="100" stroke="#F5F0EB" stroke-width=".3" opacity=".08"
+                  stroke-dasharray="4 6" />
+                <line x1="160" y1="180" x2="160" y2="255" stroke="#F5F0EB" stroke-width=".3" opacity=".08"
+                  stroke-dasharray="4 6" />
+              </svg>
+            </div>
+
+            <h2>Your ponds await</h2>
+            <p>Each group of people drifts in its own pond —<br>all flowing back to you.</p>
+            <div class="pond-legend">
+              <span><i class="legend-dot" style="background:#B74F3A"></i>Family</span>
+              <span><i class="legend-dot" style="background:#3D6B8E"></i>Friends</span>
+              <span><i class="legend-dot" style="background:#8B7D3C"></i>Work</span>
+            </div>
+
+            <div class="dark-bottom">
+              <div class="dots-dark">
+                <div class="dot-d"></div>
+                <div class="dot-d"></div>
+                <div class="dot-d active"></div>
+              </div>
+              <button class="btn-dark" onclick="finishOnboarding()">Let's go</button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- GRAPH VIEW -->
+        <div class="screen" id="graphView">
+          <div class="status-bar"><span class="time">22:24</span><span class="status-icons"><svg viewBox="0 0 24 24"
+                fill="currentColor">
+                <path
+                  d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.237 4.237 0 00-6 0zm-4-4l2 2a7.074 7.074 0 0110 0l2-2C15.14 9.14 8.87 9.14 5 13z" />
+              </svg><svg viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z" />
+              </svg></span></div>
+          <div class="nav-bar">
+            <div class="btn-group">
+              <button class="btn" onclick="goTo('settingsView')"><svg viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.5">
+                  <path
+                    d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg></button>
+              <button class="btn" onclick="document.querySelector('.search-bar')?.querySelector('input')?.focus()"><svg
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.35-4.35" />
+                </svg></button>
+            </div>
+            <span class="title">Ponds</span>
+            <div class="btn-group">
+              <button class="btn" onclick="goTo('listView')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.5">
+                  <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                </svg></button>
+              <button class="btn" onclick="goTo('addContactView')"><svg viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.5">
+                  <path d="M12 5v14M5 12h14" />
+                </svg></button>
+            </div>
+          </div>
+          <div class="graph-canvas">
+            <canvas id="graphCanvas"></canvas>
+            <div class="zoom-controls">
+              <button onclick="graphZoom(1.2)">+</button>
+              <button onclick="graphZoom(0.8)">−</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- LIST VIEW -->
+        <div class="screen" id="listView">
+          <div class="status-bar"><span class="time">22:24</span><span class="status-icons"><svg viewBox="0 0 24 24"
+                fill="currentColor">
+                <path
+                  d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.237 4.237 0 00-6 0zm-4-4l2 2a7.074 7.074 0 0110 0l2-2C15.14 9.14 8.87 9.14 5 13z" />
+              </svg><svg viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z" />
+              </svg></span></div>
+          <div class="nav-bar">
+            <button class="btn" onclick="goTo('settingsView')"><svg viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.5">
+                <path
+                  d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg></button>
+            <span class="title">Contacts</span>
+            <div class="btn-group">
+              <button class="btn" onclick="goTo('graphView')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.5">
+                  <circle cx="12" cy="12" r="3" />
+                  <circle cx="5" cy="5" r="2" />
+                  <circle cx="19" cy="5" r="2" />
+                  <circle cx="19" cy="19" r="2" />
+                  <circle cx="5" cy="19" r="2" />
+                  <path d="M7 6.5 9.5 10M14.5 10 17 6.5M14.5 14 17 17.5M9.5 14 7 17.5" />
+                </svg></button>
+              <button class="btn" onclick="goTo('addContactView')"><svg viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.5">
+                  <path d="M12 5v14M5 12h14" />
+                </svg></button>
+            </div>
+          </div>
+          <div class="search-bar"><input type="text" placeholder="Search contacts" id="searchInput"
+              oninput="filterList()"></div>
+          <div class="contact-list" id="contactList"></div>
+        </div>
+
+        <!-- ADD CONTACT VIEW -->
+        <div class="screen" id="addContactView">
+          <div class="status-bar"><span class="time">22:24</span><span class="status-icons"><svg viewBox="0 0 24 24"
+                fill="currentColor">
+                <path
+                  d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.237 4.237 0 00-6 0zm-4-4l2 2a7.074 7.074 0 0110 0l2-2C15.14 9.14 8.87 9.14 5 13z" />
+              </svg><svg viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z" />
+              </svg></span></div>
+          <div class="nav-bar">
+            <button class="btn-text" onclick="goBack()">← Back</button>
+            <span class="title">New Contact</span>
+            <button class="btn-text" style="color:var(--accent);font-weight:500"
+              onclick="goBack();showToast('Contact saved ✓')">Save</button>
+          </div>
+          <div class="detail-scroll">
+            <div style="padding:24px 20px">
+              <!-- Avatar / Emoji picker -->
+              <div style="text-align:center;margin-bottom:24px">
+                <div id="addContactEmoji"
+                  style="width:72px;height:72px;border-radius:50%;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:28px;cursor:pointer;transition:all .2s"
+                  onclick="cycleAddEmoji()">😊</div>
+                <div style="font-size:11px;color:var(--text-tertiary)">Tap to pick emoji · Long press for photo</div>
+              </div>
+              <!-- Name -->
+              <div class="form-field">
+                <label>First Name</label>
+                <input type="text" placeholder="e.g. Amy">
+              </div>
+              <div class="form-field">
+                <label>Last Name</label>
+                <input type="text" placeholder="e.g. Chen">
+              </div>
+              <!-- Pond -->
+              <div class="form-field">
+                <label>Pond</label>
+                <select
+                  style="width:100%;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;color:var(--text-primary);appearance:none">
+                  <option>None (Unassigned)</option>
+                  <option>Family</option>
+                  <option>Friends</option>
+                  <option>Professional</option>
+                  <option>+ Create new pond…</option>
+                </select>
+              </div>
+              <!-- Connection -->
+              <div class="form-field">
+                <label>Connected to</label>
+                <div
+                  style="padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;font-size:14px;color:var(--text-tertiary);cursor:pointer"
+                  onclick="showToast('Contact picker would open')">
+                  Tap to link to existing contact…
+                </div>
+              </div>
+              <!-- Relationship type -->
+              <div class="form-field">
+                <label>Relationship</label>
+                <select
+                  style="width:100%;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;color:var(--text-primary);appearance:none">
+                  <option>Friend</option>
+                  <option>Colleague</option>
+                  <option>Partner</option>
+                  <option>Sibling</option>
+                  <option>Parent</option>
+                  <option>Child</option>
+                  <option>Mentor</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <!-- Tags -->
+              <div class="form-field">
+                <label>Tags</label>
+                <input type="text" placeholder="e.g. uni, gym, music">
+              </div>
+              <!-- Quirky notes -->
+              <div class="form-field">
+                <label>Notes <span
+                    style="color:var(--text-tertiary);font-weight:400;text-transform:none;letter-spacing:0">— the
+                    weirder the better</span></label>
+                <textarea rows="3"
+                  placeholder="e.g. Reminds me of Gandalf but better dressed. Always brings homemade kimchi to parties."
+                  style="width:100%;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;color:var(--text-primary);resize:vertical"></textarea>
+              </div>
+              <!-- Birthday -->
+              <div class="form-field">
+                <label>Birthday</label>
+                <input type="date"
+                  style="width:100%;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;color:var(--text-primary)">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DETAIL VIEW -->
+        <div class="screen" id="detailView">
+          <div class="status-bar"><span class="time">22:24</span><span class="status-icons"><svg viewBox="0 0 24 24"
+                fill="currentColor">
+                <path
+                  d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.237 4.237 0 00-6 0zm-4-4l2 2a7.074 7.074 0 0110 0l2-2C15.14 9.14 8.87 9.14 5 13z" />
+              </svg><svg viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z" />
+              </svg></span></div>
+          <div class="nav-bar">
+            <button class="btn-text" onclick="goBack()">← Back</button>
+            <span class="title"></span>
+            <button class="btn-text" style="color:var(--accent)" onclick="showEditContact()">Edit</button>
+          </div>
+          <div class="screen-content" id="detailContent"></div>
+        </div>
+
+        <!-- EDIT CONTACT VIEW -->
+        <div class="screen" id="editContactView">
+          <div class="status-bar"><span class="time">22:24</span><span class="status-icons"><svg viewBox="0 0 24 24"
+                fill="currentColor">
+                <path
+                  d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.237 4.237 0 00-6 0zm-4-4l2 2a7.074 7.074 0 0110 0l2-2C15.14 9.14 8.87 9.14 5 13z" />
+              </svg><svg viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z" />
+              </svg></span></div>
+          <div class="nav-bar">
+            <button class="btn-text" onclick="goBack()">Cancel</button>
+            <span class="title">Edit Contact</span>
+            <button class="btn-text" style="color:var(--accent);font-weight:500"
+              onclick="goBack();showToast('Changes saved ✓')">Done</button>
+          </div>
+          <div class="detail-scroll" id="editContactContent"></div>
+        </div>
+
+        <!-- SETTINGS VIEW -->
+        <div class="screen" id="settingsView">
+          <div class="status-bar"><span class="time">22:24</span><span class="status-icons"><svg viewBox="0 0 24 24"
+                fill="currentColor">
+                <path
+                  d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.237 4.237 0 00-6 0zm-4-4l2 2a7.074 7.074 0 0110 0l2-2C15.14 9.14 8.87 9.14 5 13z" />
+              </svg><svg viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z" />
+              </svg></span></div>
+          <div class="nav-bar">
+            <button class="btn-text" onclick="goBack()">← Back</button>
+            <span class="title">Settings</span>
+            <span></span>
+          </div>
+          <div class="screen-content">
+            <div class="settings-list">
+              <div class="settings-group">
+                <div class="group-content">
+                  <div class="profile-card">
+                    <div class="p-avatar">MM</div>
+                    <div class="p-info">
+                      <div class="p-name">Marcel Meeh</div>
+                      <div class="p-sub">This is you</div>
+                    </div>
+                    <span class="sr-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5" width="14" height="14">
+                        <path d="m9 18 6-6-6-6" />
+                      </svg></span>
+                  </div>
+                </div>
+              </div>
+              <div class="settings-group">
+                <div class="group-header">Configuration</div>
+                <div class="group-content">
+                  <div class="settings-row" onclick="goTo('circlesView')"><span class="sr-label">Manage
+                      Ponds</span><span class="sr-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5" width="14" height="14">
+                        <path d="m9 18 6-6-6-6" />
+                      </svg></span></div>
+                </div>
+              </div>
+              <div class="settings-group">
+                <div class="group-header">Data</div>
+                <div class="group-content">
+                  <div class="settings-row" onclick="showToast('Export started…')"><span class="sr-label">Export
+                      Contacts</span><span class="sr-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5" width="14" height="14">
+                        <path d="m9 18 6-6-6-6" />
+                      </svg></span></div>
+                  <div class="settings-row" onclick="showToast('Import picker would open')"><span
+                      class="sr-label">Import Contacts</span><span class="sr-chevron"><svg viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
+                        <path d="m9 18 6-6-6-6" />
+                      </svg></span></div>
+                </div>
+              </div>
+              <div class="settings-group">
+                <div class="group-header">About</div>
+                <div class="group-content">
+                  <div class="settings-row"><span class="sr-label">Privacy Policy</span><span class="sr-chevron"><svg
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
+                        <path d="m9 18 6-6-6-6" />
+                      </svg></span></div>
+                  <div class="settings-row"><span class="sr-label">Version</span><span class="sr-value">1.0 (1)</span>
+                  </div>
+                </div>
+              </div>
+              <div class="settings-footer">Goldfish © 2026</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CIRCLES VIEW — Redesigned -->
+        <div class="screen" id="circlesView">
+          <div class="status-bar"><span class="time">22:24</span><span class="status-icons"><svg viewBox="0 0 24 24"
+                fill="currentColor">
+                <path
+                  d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.237 4.237 0 00-6 0zm-4-4l2 2a7.074 7.074 0 0110 0l2-2C15.14 9.14 8.87 9.14 5 13z" />
+              </svg><svg viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z" />
+              </svg></span></div>
+          <div class="nav-bar">
+            <button class="btn-text" onclick="goBack()">← Back</button>
+            <span class="title">Ponds</span>
+            <button class="btn" onclick="showToast('New Pond sheet would open')"><svg viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.5">
+                <path d="M12 5v14M5 12h14" />
+              </svg></button>
+          </div>
+          <div class="screen-content">
+            <div class="circles-grid">
+              <div class="pond-card" style="--pond-color:#B74F3A">
+                <div class="pond-visual">
+                  <svg viewBox="0 0 80 60" class="pond-shape">
+                    <path d="M10,30 Q20,5 40,10 Q65,2 72,25 Q78,50 50,55 Q25,60 10,45 Z" fill="currentColor"
+                      opacity="0.12" stroke="currentColor" stroke-width="1.5" />
+                  </svg>
+                  <div class="pond-avatars"><span>AS</span><span>TM</span><span>MM</span></div>
+                </div>
+                <div class="pond-info">
+                  <div class="pond-name">Family</div>
+                  <div class="pond-count">3 people</div>
+                </div>
+              </div>
+              <div class="pond-card" style="--pond-color:#3D6B8E">
+                <div class="pond-visual">
+                  <svg viewBox="0 0 80 60" class="pond-shape">
+                    <path d="M8,25 Q15,3 45,8 Q70,5 75,30 Q72,55 42,58 Q12,56 8,35 Z" fill="currentColor" opacity="0.12"
+                      stroke="currentColor" stroke-width="1.5" />
+                  </svg>
+                  <div class="pond-avatars"><span>JW</span><span>SL</span><span>LB</span><span>+3</span></div>
+                </div>
+                <div class="pond-info">
+                  <div class="pond-name">Friends</div>
+                  <div class="pond-count">6 people</div>
+                </div>
+              </div>
+              <div class="pond-card" style="--pond-color:#8B7D3C">
+                <div class="pond-visual">
+                  <svg viewBox="0 0 80 60" class="pond-shape">
+                    <path d="M12,28 Q18,8 42,12 Q68,6 74,28 Q70,52 45,56 Q18,54 12,38 Z" fill="currentColor"
+                      opacity="0.12" stroke="currentColor" stroke-width="1.5" />
+                  </svg>
+                  <div class="pond-avatars"><span>MF</span><span>DK</span><span>NV</span></div>
+                </div>
+                <div class="pond-info">
+                  <div class="pond-name">Professional</div>
+                  <div class="pond-count">3 people</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Toast -->
+        <div class="toast success" id="toast"></div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== DATA =====
+    const contacts = [
+      { id: 0, name: "Marcel Meeh", initials: "MM", emoji: "🐠", color: "#B74F3A", circle: "Me", isFav: false, isMe: true, tags: ["founder"], notes: "The goldfish himself. Terrible at remembering birthdays, hence this app.", rels: [] },
+      { id: 1, name: "Anna Schmidt", initials: "AS", emoji: "👩", color: "#B74F3A", circle: "Family", isFav: true, birthday: "Mar 22, 1996", tags: ["sister"], notes: "Has an uncanny ability to know when I haven't eaten. Sends memes at 3am.", rels: [{ type: "partner", to: 2 }] },
+      { id: 2, name: "Thomas Meeh", initials: "TM", emoji: "👨", color: "#B74F3A", circle: "Family", isFav: false, birthday: "Aug 10, 1965", tags: ["dad"], notes: "Explains every tech concept with car metaphors. Still prints emails.", rels: [{ type: "partner", to: 9 }] },
+      { id: 3, name: "Julia Weber", initials: "JW", emoji: "🎾", color: "#3D6B8E", circle: "Friends", isFav: true, birthday: "Jun 5, 2000", tags: ["uni", "gym"], notes: "Orders the same coffee everywhere and rates it. Competitive about everything, even board games with kids.", rels: [{ type: "friend", to: 5 }, { type: "friend", to: 7 }] },
+      { id: 4, name: "Max Fischer", initials: "MF", color: "#8B7D3C", circle: "Professional", isFav: false, tags: ["tech", "startup"], notes: "Looks like a German Steve Jobs. Has a standing desk made from IKEA hacks. Speaks in startup acronyms.", rels: [{ type: "colleague", to: 6 }, { type: "colleague", to: 11 }] },
+      { id: 5, name: "Sophie Lang", initials: "SL", emoji: "🎨", color: "#3D6B8E", circle: "Friends", isFav: false, birthday: "Nov 19, 1999", tags: ["design"], notes: "Notices fonts on restaurant menus. Once redesigned my CV without asking — it was actually great.", rels: [{ type: "friend", to: 7 }] },
+      { id: 6, name: "David Klein", initials: "DK", color: "#8B7D3C", circle: "Professional", isFav: false, tags: ["investor"], notes: "Wears the same grey hoodie to every meeting. Surprisingly good at karaoke — does a killer Bowie.", rels: [] },
+      { id: 7, name: "Lisa Braun", initials: "LB", emoji: "✈️", color: "#3D6B8E", circle: "Friends", isFav: true, tags: ["uni", "travel"], notes: "Has a passport more stamped than a library book. Brings back the weirdest souvenirs — I have a yak bell from Mongolia.", rels: [{ type: "friend", to: 8 }] },
+      { id: 8, name: "Lukas Hofmann", initials: "LH", color: "#3D6B8E", circle: "Friends", isFav: false, tags: ["gym"], notes: "Gym bro who secretly reads philosophy. Will deadlift and then quote Nietzsche.", rels: [] },
+      { id: 9, name: "Maria Meeh", initials: "MM", emoji: "👩‍🍳", color: "#B74F3A", circle: "Family", isFav: true, birthday: "Dec 1, 1968", tags: ["mom"], notes: "Weaponizes guilt through food. Her Schnitzel should be UNESCO protected.", rels: [] },
+      { id: 10, name: "Kai Richter", initials: "KR", emoji: "🥁", color: "#3D6B8E", circle: "Friends", isFav: false, tags: ["band"], notes: "Drums on every surface. Tables, dashboards, people's patience. But genuinely talented.", rels: [] },
+      { id: 11, name: "Nina Vogel", initials: "NV", color: "#8B7D3C", circle: "Professional", isFav: false, tags: ["mentor"], notes: "Scary-smart but warm. Once debugged my code by just staring at it for 30 seconds.", rels: [] },
+      { id: 12, name: "Amy Chen", initials: "AC", color: "#A89F95", circle: "Unassigned", isFav: false, tags: [], notes: "Met at Max's party. Laughs really loud. Lost a shoe by the end of the night.", rels: [] },
+      { id: 13, name: "Carlos Rivera", initials: "CR", emoji: "🎸", color: "#A89F95", circle: "Unassigned", isFav: false, tags: ["music"], notes: "Kai's bandmate. Has more guitar pedals than furniture. Smells faintly of sandalwood.", rels: [] },
+    ];
+    const circleColors = { "Me": "#B74F3A", "Family": "#B74F3A", "Friends": "#3D6B8E", "Professional": "#8B7D3C", "Unassigned": "#A89F95" };
+    const chevronSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="m9 18 6-6-6-6"/></svg>';
+    let navStack = [], currentScreen = 'onboarding1';
+
+    // ===== WATERCOLOR DISPERSE ANIMATION =====
+    function swimAndGo() {
+      const fish = document.getElementById('heroFish');
+      if (!fish) { goTo('onboarding2'); return; }
+
+      // --- Sample fish image pixels to create watercolor blobs ---
+      const cover = document.querySelector('.welcome-cover');
+      const pCanvas = document.createElement('canvas');
+      pCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:999;pointer-events:none';
+      cover.style.position = 'relative';
+      cover.appendChild(pCanvas);
+      const pCtx = pCanvas.getContext('2d');
+      const dpr = 2;
+      pCanvas.width = cover.offsetWidth * dpr; pCanvas.height = cover.offsetHeight * dpr;
+      pCtx.scale(dpr, dpr);
+      const cw = cover.offsetWidth, ch = cover.offsetHeight;
+      const fishRect = fish.getBoundingClientRect();
+      const coverRect = cover.getBoundingClientRect();
+      const fishX = fishRect.left - coverRect.left;
+      const fishY = fishRect.top - coverRect.top;
+      const fishW = fishRect.width;
+      const fishH = fishRect.height;
+
+      // Draw fish onto offscreen canvas to sample colors
+      const sampleCanvas = document.createElement('canvas');
+      sampleCanvas.width = fishW; sampleCanvas.height = fishH;
+      const sCtx = sampleCanvas.getContext('2d');
+      sCtx.drawImage(fish, 0, 0, fishW, fishH);
+      let imgData = null;
+      try { imgData = sCtx.getImageData(0, 0, fishW, fishH).data; } catch (e) { /* CORS on file:// */ }
+
+      // Fallback fish-painting colors when pixel sampling unavailable
+      const fallbackColors = [
+        [199, 120, 88], [210, 155, 100], [183, 79, 58],
+        [180, 140, 90], [220, 170, 140], [160, 100, 70],
+      ];
+
+      // Sample non-transparent pixels from the fish to get positions & colors
+      const blobs = [];
+      const attempts = 800;
+      for (let i = 0; i < attempts && blobs.length < 45; i++) {
+        const sx = Math.floor(Math.random() * fishW);
+        const sy = Math.floor(Math.random() * fishH);
+        let r, g, b;
+        if (imgData) {
+          const idx = (sy * fishW + sx) * 4;
+          r = imgData[idx]; g = imgData[idx + 1]; b = imgData[idx + 2];
+          const a = imgData[idx + 3];
+          if (a < 60) continue;
+          if (r > 240 && g > 235 && b > 230) continue;
+        } else {
+          // Check rough fish silhouette (ellipse centered in image)
+          const nx = (sx / fishW - 0.5) * 2, ny = (sy / fishH - 0.5) * 2;
+          if (nx * nx + ny * ny * 0.6 > 0.85) continue;
+          const fc = fallbackColors[Math.floor(Math.random() * fallbackColors.length)];
+          r = fc[0]; g = fc[1]; b = fc[2];
+        }
+        const angle = Math.random() * Math.PI * 2;
+        const drift = 20 + Math.random() * 60; // gentle drift, not fast
+        blobs.push({
+          startX: fishX + sx, startY: fishY + sy,
+          vx: Math.cos(angle) * drift,
+          vy: Math.sin(angle) * drift,
+          r: 8 + Math.random() * 22,
+          cr: r, cg: g, cb: b,
+          startAlpha: 0.18 + Math.random() * 0.12, // gentle starting opacity
+          seed: Math.random() * 20,
+        });
+      }
+
+      let pStart = null;
+      function animDisperse(ts) {
+        if (!pStart) pStart = ts;
+        const elapsed = (ts - pStart) / 1000;
+        const progress = Math.min(elapsed / 2.5, 1); // 2.5 second animation
+        pCtx.clearRect(0, 0, cw, ch);
+
+        // Soft fade curve — holds opacity early, thins out gradually
+        const thin = progress < 0.3 ? 1 : 1 - Math.pow((progress - 0.3) / 0.7, 1.5);
+
+        blobs.forEach(b => {
+          // Gentle ease-out drift
+          const drift = 1 - Math.pow(1 - progress, 2);
+          const bx = b.startX + b.vx * drift;
+          const by = b.startY + b.vy * drift;
+          // Blobs expand slowly like watercolor bleeding on wet paper
+          const br = b.r * (1 + drift * 0.6);
+          const alpha = b.startAlpha * thin;
+          if (alpha <= 0.005) return;
+
+          // Draw soft organic watercolor blob
+          pCtx.save();
+          const pts = 8;
+          const points = [];
+          for (let i = 0; i < pts; i++) {
+            const a = (i / pts) * Math.PI * 2;
+            const wobble = br + Math.sin(a * 2.3 + b.seed) * (br * 0.12) + Math.cos(a * 1.7 + b.seed * 0.6) * (br * 0.08);
+            points.push({ x: bx + wobble * Math.cos(a), y: by + wobble * Math.sin(a) });
+          }
+          pCtx.beginPath();
+          pCtx.moveTo((points[pts - 1].x + points[0].x) / 2, (points[pts - 1].y + points[0].y) / 2);
+          for (let i = 0; i < pts; i++) {
+            const next = points[(i + 1) % pts];
+            pCtx.quadraticCurveTo(points[i].x, points[i].y, (points[i].x + next.x) / 2, (points[i].y + next.y) / 2);
+          }
+          pCtx.closePath();
+          pCtx.fillStyle = `rgba(${b.cr}, ${b.cg}, ${b.cb}, ${alpha.toFixed(3)})`;
+          pCtx.fill();
+          pCtx.restore();
+        });
+        if (progress < 1) requestAnimationFrame(animDisperse);
+        else pCanvas.remove();
+      }
+      requestAnimationFrame(animDisperse);
+
+      // --- Fade out hero fish gently (dissolves into the watercolor) ---
+      fish.style.transition = 'opacity 1.2s ease-out';
+      fish.style.opacity = '0';
+      const actions = document.querySelector('.welcome-actions');
+      if (actions) { actions.style.transition = 'opacity 0.6s'; actions.style.opacity = '0'; }
+      const coverContent = document.querySelector('.cover-content');
+      if (coverContent) { coverContent.style.transition = 'opacity 1.2s ease-out'; coverContent.style.opacity = '0'; }
+      setTimeout(() => goTo('onboarding2'), 2500);
+    }
+
+    // ===== NAV =====
+    function goTo(id) { navStack.push(currentScreen); showScreen(id) }
+    function goBack() { const p = navStack.pop(); if (p) showScreen(p) }
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      const el = document.getElementById(id);
+      if (el) { el.classList.add('active'); el.classList.add('animate-in'); currentScreen = id }
+      if (id === 'graphView') initGraph();
+      if (id === 'listView') renderList();
+      if (id === 'onboarding3') startDemoAnim();
+    }
+    function finishOnboarding() { navStack = []; showScreen('graphView'); showToast('Welcome to Goldfish') }
+    const addEmojis = ['😊', '🐱', '🌸', '🎯', '🍕', '🦊', '🌊', '🎵', '🚀', '💡', '🧠', '🎭', '🌴', '☕', '🎪'];
+    let addEmojiIdx = 0;
+    function cycleAddEmoji() { addEmojiIdx = (addEmojiIdx + 1) % addEmojis.length; document.getElementById('addContactEmoji').textContent = addEmojis[addEmojiIdx] }
+    function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500) }
+
+    // ===== DEMO ANIMATION (onboarding 3) =====
+    let demoAnimRaf;
+    function startDemoAnim() {
+      const canvas = document.getElementById('demoAnimCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const W = 280, H = 280, cx = W / 2, cy = H / 2;
+      const demoNodes = [
+        { x: cx, y: cy, r: 14, color: '#B74F3A', label: '🐠', pond: null },
+        { x: cx - 72, y: cy - 58, r: 9, color: '#B74F3A', label: '👩‍🍳', pond: 'Family' },
+        { x: cx - 88, y: cy - 30, r: 9, color: '#B74F3A', label: '👨', pond: 'Family' },
+        { x: cx + 70, y: cy - 55, r: 9, color: '#3D6B8E', label: '🎨', pond: 'Friends' },
+        { x: cx + 90, y: cy - 30, r: 9, color: '#3D6B8E', label: '✈️', pond: 'Friends' },
+        { x: cx - 15, y: cy + 70, r: 9, color: '#8B7D3C', label: 'MF', pond: 'Work' },
+        { x: cx + 20, y: cy + 80, r: 9, color: '#8B7D3C', label: 'NV', pond: 'Work' },
+        { x: cx + 20, y: cy + 30, r: 9, color: '#A89F95', label: '🥁', pond: null, isLoose: true },
+      ];
+      const demoEdges = [[1, 2], [3, 4], [5, 6]];
+      const origins = demoNodes.map(n => ({ x: n.x, y: n.y }));
+      let t = 0;
+      const looseTarget = { x: cx + 80, y: cy - 15 };
+      const captions = ['Drag contacts into their pond', 'Connections ripple outward', 'Your ponds, your way'];
+      const captionEl = document.querySelector('#onboarding3 p');
+
+      function drawPondShape(ctx2, pcx, pcy, radius, seed) {
+        const pts = 8, points = [];
+        for (let i = 0; i < pts; i++) {
+          const a = (i / pts) * Math.PI * 2;
+          const w = radius + Math.sin(a * 2 + seed) * (radius * 0.1) + Math.cos(a * 3 + seed * 0.7) * (radius * 0.06);
+          points.push({ x: pcx + w * Math.cos(a), y: pcy + w * Math.sin(a) });
+        }
+        ctx2.beginPath();
+        ctx2.moveTo((points[pts - 1].x + points[0].x) / 2, (points[pts - 1].y + points[0].y) / 2);
+        for (let i = 0; i < pts; i++) {
+          const next = points[(i + 1) % pts];
+          ctx2.quadraticCurveTo(points[i].x, points[i].y, (points[i].x + next.x) / 2, (points[i].y + next.y) / 2);
+        }
+        ctx2.closePath();
+      }
+
+      function drawDemo() {
+        t += 0.014;
+        ctx.clearRect(0, 0, W, H);
+        const phase = t % 6;
+        const looseNode = demoNodes[7];
+        if (phase < 1) {
+          looseNode.x = origins[7].x + Math.sin(t * 1.2) * 3;
+          looseNode.y = origins[7].y + Math.cos(t * 0.9) * 3;
+          looseNode.color = '#A89F95'; looseNode.pond = null;
+          if (captionEl) captionEl.textContent = captions[0];
+        } else if (phase < 2.5) {
+          const p = (phase - 1) / 1.5;
+          const ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+          looseNode.x = origins[7].x + (looseTarget.x - origins[7].x) * ease;
+          looseNode.y = origins[7].y + (looseTarget.y - origins[7].y) * ease;
+          looseNode.color = '#3D6B8E'; looseNode.pond = 'Friends';
+          if (captionEl) captionEl.textContent = captions[0];
+        } else if (phase < 4) {
+          looseNode.x = looseTarget.x + Math.sin(t * 1.2) * 1;
+          looseNode.y = looseTarget.y + Math.cos(t * 0.9) * 1;
+          looseNode.color = '#3D6B8E'; looseNode.pond = 'Friends';
+          if (captionEl) captionEl.textContent = captions[1];
+        } else {
+          looseNode.x = looseTarget.x + Math.sin(t * 1.2) * 1;
+          looseNode.y = looseTarget.y + Math.cos(t * 0.9) * 1;
+          looseNode.color = '#3D6B8E'; looseNode.pond = 'Friends';
+          if (captionEl) captionEl.textContent = captions[2];
+        }
+        demoNodes.forEach((n, i) => {
+          if (i === 7) return;
+          if (n.pond) { n.x = origins[i].x + Math.sin(t + i * 1.7) * 1.2; n.y = origins[i].y + Math.cos(t * 0.8 + i * 2.1) * 1.2; }
+        });
+        // Pond regions
+        const ponds = {};
+        demoNodes.forEach(n => { if (n.pond) { if (!ponds[n.pond]) ponds[n.pond] = { members: [], color: n.color }; ponds[n.pond].members.push(n); } });
+        for (const [name, p] of Object.entries(ponds)) {
+          let ax = 0, ay = 0;
+          p.members.forEach(m => { ax += m.x; ay += m.y });
+          ax /= p.members.length; ay /= p.members.length;
+          let mr = 0;
+          p.members.forEach(m => { const d = Math.sqrt((m.x - ax) ** 2 + (m.y - ay) ** 2); if (d > mr) mr = d });
+          mr += 24;
+          const isDragTarget = name === 'Friends' && phase >= 1 && phase < 2.5;
+          ctx.save();
+          drawPondShape(ctx, ax, ay, mr, name.length * 2);
+          ctx.fillStyle = isDragTarget ? p.color + '18' : p.color + '0A';
+          ctx.fill();
+          ctx.strokeStyle = isDragTarget ? p.color + '40' : p.color + '22';
+          ctx.lineWidth = isDragTarget ? 1.5 : 1;
+          if (isDragTarget) ctx.setLineDash([4, 3]);
+          ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+          ctx.save(); ctx.fillStyle = p.color; ctx.globalAlpha = 0.65;
+          ctx.font = '600 9px Helvetica Neue, Helvetica, Arial';
+          ctx.textAlign = 'center'; ctx.fillText(name, ax, ay - mr - 4); ctx.restore();
+        }
+        // Edges
+        demoEdges.forEach(([a, b]) => { ctx.strokeStyle = '#4A423A'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(demoNodes[a].x, demoNodes[a].y); ctx.lineTo(demoNodes[b].x, demoNodes[b].y); ctx.stroke(); });
+        // Connection line forming (phase 2.5+)
+        if (phase >= 2.5) {
+          const lp = Math.min((phase - 2.5) / 0.5, 1);
+          const a = demoNodes[3], b = looseNode;
+          ctx.strokeStyle = '#3D6B8E60'; ctx.lineWidth = 0.8;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(a.x + (b.x - a.x) * lp, a.y + (b.y - a.y) * lp); ctx.stroke();
+        }
+        // Ghost hand during drag
+        if (phase >= 1 && phase < 2.5) {
+          ctx.save(); ctx.font = '14px serif'; ctx.textAlign = 'center';
+          ctx.globalAlpha = 0.6 + Math.sin(t * 4) * 0.15;
+          ctx.fillText('👆', looseNode.x + 12, looseNode.y + 14); ctx.restore();
+        }
+        // Dashed ring on loose unassigned node
+        if (!looseNode.pond) {
+          ctx.save(); ctx.setLineDash([3, 3]); ctx.strokeStyle = '#A89F9580'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(looseNode.x, looseNode.y, looseNode.r + 4, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+        }
+        // Nodes
+        demoNodes.forEach(n => {
+          ctx.fillStyle = '#2A2420'; ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = n.color; ctx.lineWidth = n.label === '🐠' ? 2 : 1.2;
+          ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2); ctx.stroke();
+          if (n.label) {
+            ctx.fillStyle = n.color;
+            const isEm = /\p{Emoji}/u.test(n.label);
+            ctx.font = isEm ? `${n.r > 10 ? 12 : 10}px serif` : '500 8px Helvetica Neue, Helvetica, Arial';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(n.label, n.x, n.y + (isEm ? 1 : 0));
+          }
+        });
+        demoAnimRaf = requestAnimationFrame(drawDemo);
+      }
+      if (demoAnimRaf) cancelAnimationFrame(demoAnimRaf);
+      drawDemo();
+    }
+
+    // ===== LIST =====
+    function renderList(filter = '') {
+      const list = document.getElementById('contactList'), q = filter.toLowerCase();
+      const filtered = contacts.filter(c => !c.isMe && (q === '' || c.name.toLowerCase().includes(q) || c.tags.some(t => t.includes(q)) || (c.notes && c.notes.toLowerCase().includes(q))));
+      const groups = {}; filtered.forEach(c => { if (!groups[c.circle]) groups[c.circle] = []; groups[c.circle].push(c) });
+      let html = '';
+      for (const [circle, members] of Object.entries(groups)) {
+        html += `<div class="list-section-header">${circle}</div>`;
+        members.forEach(c => {
+          const cc = circle === 'Family' ? 'circle-family' : circle === 'Friends' ? 'circle-friends' : 'circle-pro';
+          const sub = c.tags.length ? c.tags.join(', ') : c.circle;
+          const avatar = c.emoji ? `<div class="avatar ${cc}" style="font-size:18px">${c.emoji}</div>` : `<div class="avatar ${cc}">${c.initials}</div>`;
+          html += `<div class="contact-row" onclick="showDetail(${c.id})">${avatar}<div class="info"><div class="name">${c.name}</div><div class="sub">${sub}</div></div><div class="chevron">${chevronSVG}</div></div><div class="list-divider"></div>`;
+        });
+      }
+      if (!filtered.length) html = `<div style="text-align:center;padding:80px 32px;color:var(--text-secondary)"><div style="font-weight:400">No results</div><div style="font-size:13px;margin-top:4px;font-weight:300;color:var(--text-tertiary)">Try a different name or tag.</div></div>`;
+      list.innerHTML = html;
+    }
+    function filterList() { renderList(document.getElementById('searchInput').value) }
+
+    // ===== DETAIL (simplified) =====
+    function showDetail(id) {
+      editingId = id;
+      const c = contacts[id]; if (!c) return; goTo('detailView');
+      const rels = (c.rels || []).map(r => { const o = contacts[r.to]; return { type: r.type, name: o.name, initials: o.initials, emoji: o.emoji, color: o.color, id: o.id } });
+      const avatarDisplay = c.emoji ? c.emoji : c.initials;
+      const avatarStyle = c.emoji ? `border-color:${c.color};font-size:28px` : `border-color:${c.color};color:${c.color}`;
+      let h = `<div class="detail-header"><div class="big-avatar" style="${avatarStyle}">${avatarDisplay}</div><div class="detail-name">${c.name}</div><div class="circle-badge">${c.circle}</div></div>`;
+      // Info card — only notes, birthday, tags
+      const hasInfo = c.birthday || c.notes || c.tags.length;
+      if (hasInfo) {
+        h += `<div class="info-card">`;
+        if (c.birthday) h += `<div class="info-row"><div class="ir-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><div class="ir-content"><div class="ir-label">Birthday</div><div class="ir-value">${c.birthday}</div></div></div>`;
+        if (c.notes) h += `<div class="info-row"><div class="ir-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></div><div class="ir-content"><div class="ir-label">Notes</div><div class="ir-value">${c.notes}</div></div></div>`;
+        if (c.tags.length) h += `<div class="info-row"><div class="ir-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div><div class="ir-content"><div class="ir-label">Tags</div><div class="ir-value">${c.tags.join(', ')}</div></div></div>`;
+        h += `</div>`;
+      }
+      // Relationships
+      h += `<div class="section-header"><h3>Relationships</h3><button onclick="showToast('Drag a contact in the graph or tap + to add')">+</button></div>`;
+      if (rels.length) { const g = {}; rels.forEach(r => { if (!g[r.type]) g[r.type] = []; g[r.type].push(r) }); for (const [t, items] of Object.entries(g)) { h += `<div class="rel-badge">${t}</div>`; items.forEach(r => { const relAvatar = r.emoji ? r.emoji : r.initials; const relAvatarStyle = r.emoji ? `font-size:18px` : `border-color:${r.color};color:${r.color}`; h += `<div class="rel-row" onclick="showDetail(${r.id})"><div class="avatar" style="${relAvatarStyle}">${relAvatar}</div><div class="name">${r.name}</div></div>` }) } }
+      else h += `<div style="text-align:center;padding:32px;color:var(--text-tertiary)"><div style="font-weight:400;font-size:14px">No connections yet</div><div style="font-size:12px;margin-top:4px">Drag contacts together in the graph to connect them</div></div>`;
+      document.getElementById('detailContent').innerHTML = h;
+    }
+
+    // ===== EDIT CONTACT =====
+    let editingId = null;
+    function showEditContact() {
+      if (editingId === null) return;
+      const c = contacts[editingId]; if (!c) return;
+      goTo('editContactView');
+      const rels = (c.rels || []).map(r => { const o = contacts[r.to]; return { type: r.type, name: o.name, initials: o.initials, emoji: o.emoji, color: o.color, id: o.id } });
+      let h = `<div style="padding:24px 20px">`;
+      // Emoji picker
+      h += `<div style="text-align:center;margin-bottom:24px">`;
+      h += `<div style="width:72px;height:72px;border-radius:50%;border:2px solid ${c.color};display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:${c.emoji ? '32px' : '22px'};color:${c.color};cursor:pointer" onclick="showToast('Emoji picker / Photo library')">${c.emoji || c.initials}</div>`;
+      h += `<div style="font-size:11px;color:var(--text-tertiary)">Tap to change avatar</div></div>`;
+      // Name
+      h += `<div class="form-field"><label>Name</label><input type="text" value="${c.name}"></div>`;
+      // Emoji
+      h += `<div class="form-field"><label>Emoji</label><input type="text" value="${c.emoji || ''}" placeholder="Pick an emoji" style="font-size:20px"></div>`;
+      // Pond
+      h += `<div class="form-field"><label>Pond</label><select style="width:100%;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;color:var(--text-primary);appearance:none">`;
+      ['Family', 'Friends', 'Professional', 'Unassigned'].forEach(p => h += `<option ${p === c.circle ? 'selected' : ''}>${p}</option>`);
+      h += `<option>+ Create new pond…</option></select></div>`;
+      // Birthday
+      h += `<div class="form-field"><label>Birthday</label><input type="text" value="${c.birthday || ''}" placeholder="e.g. Mar 22, 1996"></div>`;
+      // Tags
+      h += `<div class="form-field"><label>Tags</label><input type="text" value="${c.tags.join(', ')}" placeholder="e.g. uni, gym"></div>`;
+      // Notes
+      h += `<div class="form-field"><label>Notes <span style="color:var(--text-tertiary);font-weight:400;text-transform:none;letter-spacing:0">— the weirder the better</span></label>`;
+      h += `<textarea rows="3" style="width:100%;padding:10px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;color:var(--text-primary);resize:vertical">${c.notes || ''}</textarea></div>`;
+      // Relationships section
+      h += `<div style="margin-top:20px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-size:12px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:var(--text-tertiary)">Relationships</span><button style="background:none;border:none;color:var(--accent);font-size:13px;font-weight:500;font-family:inherit;cursor:pointer" onclick="showToast('Contact picker would open')">+ Add</button></div>`;
+      if (rels.length) {
+        rels.forEach(r => {
+          const av = r.emoji || r.initials;
+          h += `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">`;
+          h += `<div style="width:32px;height:32px;border-radius:50%;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;font-size:${r.emoji ? '16px' : '11px'};color:${r.color}">${av}</div>`;
+          h += `<div style="flex:1"><div style="font-size:14px;font-weight:400">${r.name}</div><div style="font-size:11px;color:var(--text-tertiary)">${r.type}</div></div>`;
+          h += `<select style="padding:4px 8px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;color:var(--text-primary);appearance:none">`;
+          ['friend', 'colleague', 'partner', 'sibling', 'parent', 'child', 'mentor', 'other'].forEach(t => h += `<option ${t === r.type ? 'selected' : ''}>${t}</option>`);
+          h += `</select>`;
+          h += `<button style="background:none;border:none;color:#C85A4A;font-size:18px;cursor:pointer;padding:4px" onclick="showToast('Relationship removed')">&times;</button>`;
+          h += `</div>`;
+        });
+      } else {
+        h += `<div style="text-align:center;padding:20px;color:var(--text-tertiary);font-size:13px">No relationships yet</div>`;
+      }
+      h += `</div>`;
+      // Danger zone
+      h += `<div style="margin-top:32px;padding-top:20px;border-top:1px solid var(--border)">`;
+      h += `<button style="width:100%;padding:12px;background:none;border:1px solid rgba(200,90,74,.2);border-radius:10px;color:#C85A4A;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer" onclick="showToast('Contact would be deleted')">Delete Contact</button>`;
+      h += `</div>`;
+      h += `</div>`;
+      document.getElementById('editContactContent').innerHTML = h;
+    }
+
+    // ===== GRAPH — with Pond clusters =====
+    let graphScale = 1, graphOffX = 0, graphOffY = 0, nodes = [], edges = [], raf, dragging = null, dragOff = { x: 0, y: 0 };
+    function initGraph() {
+      const canvas = document.getElementById('graphCanvas'), ctx = canvas.getContext('2d');
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width * 2; canvas.height = rect.height * 2;
+      canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
+      ctx.scale(2, 2); const W = rect.width, H = rect.height, cx = W / 2, cy = H / 2;
+      if (!nodes.length) {
+        // Fixed pond home positions — well separated so they never overlap
+        const pondCenters = { Family: { x: cx - 120, y: cy - 100 }, Friends: { x: cx + 120, y: cy - 50 }, Professional: { x: cx - 40, y: cy + 120 }, Me: { x: cx, y: cy }, Unassigned: null };
+        contacts.forEach((c, i) => {
+          const pc = pondCenters[c.circle] || { x: cx + (Math.random() - 0.5) * 60, y: cy + 130 + (Math.random() - 0.5) * 30 };
+          const spread = c.isMe ? 0 : (c.circle === 'Unassigned' ? 0 : 30);
+          const angle = (i * 2.39996);
+          nodes.push({
+            id: c.id, x: pc.x + Math.cos(angle) * spread + (Math.random() - 0.5) * 15, y: pc.y + Math.sin(angle) * spread + (Math.random() - 0.5) * 15,
+            vx: 0, vy: 0, color: c.color, initials: c.initials, emoji: c.emoji, name: c.name, isMe: c.isMe, circle: c.circle,
+            homeX: pc.x, homeY: pc.y
+          });
+        });
+        contacts.forEach(c => (c.rels || []).forEach(r => edges.push({ from: c.id, to: r.to, type: r.type })));
+      }
+
+      function simulate() {
+        const k = 0.006, rep = 1800, damp = 0.85;
+        // Node repulsion
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            let dx = nodes[j].x - nodes[i].x, dy = nodes[j].y - nodes[i].y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+            const sameCircle = nodes[i].circle === nodes[j].circle;
+            const repF = sameCircle ? rep * 0.5 : rep * 2;
+            let f = repF / (d * d), fx = f * dx / d, fy = f * dy / d;
+            if (!nodes[i].isMe) { nodes[i].vx -= fx; nodes[i].vy -= fy; }
+            if (!nodes[j].isMe) { nodes[j].vx += fx; nodes[j].vy += fy; }
+          }
+        }
+        // Spring attraction for edges
+        edges.forEach(e => {
+          const a = nodes[e.from], b = nodes[e.to];
+          let dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+          const rest = a.circle === b.circle ? 50 : 130;
+          let f = k * (d - rest), fx = f * dx / d, fy = f * dy / d;
+          if (!a.isMe) { a.vx += fx; a.vy += fy; }
+          if (!b.isMe) { b.vx -= fx; b.vy -= fy; }
+        });
+        // Strong home-pull to keep ponds in their quadrants (prevents overlap)
+        nodes.forEach(n => {
+          if (n === dragging || n.isMe) return;
+          n.vx += (n.homeX - n.x) * 0.012;
+          n.vy += (n.homeY - n.y) * 0.012;
+          n.vx *= damp; n.vy *= damp;
+          n.x += n.vx; n.y += n.vy;
+        });
+        // Pin "Me" to center
+        const me = nodes.find(n => n.isMe);
+        if (me) { me.x = cx; me.y = cy; me.vx = 0; me.vy = 0; }
+      }
+
+      let selectedNode = null;
+      let animT = 0;
+
+      function drawPondPath(ctx, centerX, centerY, radius, seed) {
+        // Watercolor-like flowing shape using bezier curves
+        const pts = 8;
+        const points = [];
+        for (let i = 0; i < pts; i++) {
+          const a = (i / pts) * Math.PI * 2;
+          const wobble = radius + Math.sin(a * 2 + seed) * (radius * 0.1) + Math.cos(a * 3 + seed * 0.7) * (radius * 0.06);
+          points.push({ x: centerX + wobble * Math.cos(a), y: centerY + wobble * Math.sin(a) });
+        }
+        ctx.beginPath();
+        ctx.moveTo((points[pts - 1].x + points[0].x) / 2, (points[pts - 1].y + points[0].y) / 2);
+        for (let i = 0; i < pts; i++) {
+          const next = points[(i + 1) % pts];
+          const midX = (points[i].x + next.x) / 2;
+          const midY = (points[i].y + next.y) / 2;
+          ctx.quadraticCurveTo(points[i].x, points[i].y, midX, midY);
+        }
+        ctx.closePath();
+      }
+
+      function draw() {
+        animT += 0.003; // very slow
+        ctx.clearRect(0, 0, W, H); ctx.save(); ctx.translate(graphOffX, graphOffY); ctx.scale(graphScale, graphScale);
+
+        // Pond regions — "You" and "Unassigned" are never in a pond shape
+        const cg = {}; nodes.forEach(n => { if (n.isMe || n.circle === 'Unassigned') return; if (!cg[n.circle]) cg[n.circle] = []; cg[n.circle].push(n) });
+        window._pondRegions = []; // store for drag detection
+
+        // Collect all pond data first
+        const pondData = [];
+        const meNode = nodes.find(n => n.isMe);
+        for (const [name, members] of Object.entries(cg)) {
+          let ax = 0, ay = 0;
+          members.forEach(m => { ax += m.x; ay += m.y });
+          ax /= members.length; ay /= members.length;
+          let mr = 0;
+          members.forEach(m => { const d = Math.sqrt((m.x - ax) ** 2 + (m.y - ay) ** 2); if (d > mr) mr = d });
+          mr += 30;
+          // Clamp radius so it never reaches the Me node
+          if (meNode) {
+            const distToMe = Math.sqrt((ax - meNode.x) ** 2 + (ay - meNode.y) ** 2);
+            const maxR = distToMe - 28; // 28 = Me node radius + padding
+            if (mr > maxR && maxR > 20) mr = maxR;
+          }
+          const clr = circleColors[name] || '#A89F95';
+          window._pondRegions.push({ name, cx: ax, cy: ay, r: mr, color: clr });
+          pondData.push({ name, ax, ay, mr, clr, members });
+        }
+
+        // Draw each pond with fill + single outline
+        pondData.forEach(({ name, ax, ay, mr, clr }) => {
+          ctx.save();
+          drawPondPath(ctx, ax, ay, mr, name.length * 3);
+          ctx.fillStyle = clr + '0A';
+          ctx.fill();
+          ctx.strokeStyle = clr + '20';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.restore();
+        });
+
+        // Pond labels
+        pondData.forEach(({ name, ax, ay, mr, clr }) => {
+          ctx.save();
+          const labelY = ay - mr - 6;
+          const tw = ctx.measureText(name).width || name.length * 6;
+          // Draw watercolor blob prefix
+          const blobX = ax - tw / 2 - 12;
+          ctx.save();
+          drawPondPath(ctx, blobX, labelY - 2, 6, name.length * 5 + 3);
+          ctx.fillStyle = clr + '30';
+          ctx.fill();
+          ctx.restore();
+          // Second smaller overlapping blob for organic feel
+          ctx.save();
+          drawPondPath(ctx, blobX + 3, labelY - 1, 4, name.length * 7 + 1);
+          ctx.fillStyle = clr + '20';
+          ctx.fill();
+          ctx.restore();
+          // Label text
+          ctx.fillStyle = clr;
+          ctx.font = '600 11px Helvetica Neue, Helvetica, Arial';
+          ctx.textAlign = 'center';
+          ctx.globalAlpha = 0.75;
+          ctx.fillText(name, ax, labelY);
+          ctx.restore();
+        });
+
+        // Edges
+        edges.forEach(e => {
+          const a = nodes[e.from], b = nodes[e.to];
+          const isSel = selectedNode && (selectedNode.id === e.from || selectedNode.id === e.to);
+          ctx.strokeStyle = isSel ? '#B74F3A80' : '#4A423A';
+          ctx.lineWidth = isSel ? 1.5 : 0.75;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+          if (isSel) {
+            const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+            ctx.fillStyle = '#A89F95';
+            ctx.font = '400 7px Helvetica Neue, Helvetica, Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(e.type, mx, my - 5);
+          }
+        });
+
+        // Drag snap preview — dashed line to nearest node
+        let snapTarget = null;
+        let hoveredPond = null;
+        if (dragging && !dragging.isMe) {
+          // Check node snap
+          let closestDist = 50, closestNode = null;
+          nodes.forEach(n => {
+            if (n === dragging) return;
+            const d = Math.sqrt((n.x - dragging.x) ** 2 + (n.y - dragging.y) ** 2);
+            if (d < closestDist) { closestDist = d; closestNode = n; }
+          });
+          if (closestNode) {
+            snapTarget = closestNode;
+            ctx.save();
+            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = '#B74F3A90';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(dragging.x, dragging.y); ctx.lineTo(closestNode.x, closestNode.y); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = closestNode.color + '18';
+            ctx.beginPath(); ctx.arc(closestNode.x, closestNode.y, 26, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+          }
+          // Check pond region hover (for drag-to-pond)
+          if (!snapTarget && window._pondRegions) {
+            window._pondRegions.forEach(p => {
+              const d = Math.sqrt((dragging.x - p.cx) ** 2 + (dragging.y - p.cy) ** 2);
+              if (d < p.r + 15 && p.name !== dragging.circle) {
+                hoveredPond = p;
+              }
+            });
+            if (hoveredPond) {
+              ctx.save();
+              drawPondPath(ctx, hoveredPond.cx, hoveredPond.cy, hoveredPond.r, hoveredPond.name.length * 3);
+              ctx.fillStyle = hoveredPond.color + '15';
+              ctx.fill();
+              ctx.strokeStyle = hoveredPond.color + '50';
+              ctx.lineWidth = 2;
+              ctx.setLineDash([6, 3]);
+              ctx.stroke();
+              ctx.setLineDash([]);
+              ctx.restore();
+              // "Move to" label
+              ctx.save();
+              ctx.fillStyle = hoveredPond.color;
+              ctx.font = '500 10px Helvetica Neue, Helvetica, Arial';
+              ctx.textAlign = 'center';
+              ctx.globalAlpha = 0.8;
+              ctx.fillText('Move to ' + hoveredPond.name, hoveredPond.cx, hoveredPond.cy + hoveredPond.r + 14);
+              ctx.restore();
+            }
+          }
+        }
+
+        // Store snapTarget for mouseup
+        window._graphSnapTarget = snapTarget;
+        window._graphHoveredPond = hoveredPond;
+
+        // Nodes
+        nodes.forEach(n => {
+          const r = n.isMe ? 22 : 16;
+          const isUnassigned = n.circle === 'Unassigned';
+          if (selectedNode && selectedNode.id === n.id) {
+            ctx.fillStyle = n.color + '12';
+            ctx.beginPath(); ctx.arc(n.x, n.y, r + 10, 0, Math.PI * 2); ctx.fill();
+          }
+          ctx.fillStyle = isUnassigned ? '#2A2420' : '#2A2420';
+          ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = n.color;
+          ctx.lineWidth = n.isMe ? 2 : 1.5;
+          if (isUnassigned) ctx.setLineDash([3, 3]);
+          ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2); ctx.stroke();
+          if (isUnassigned) ctx.setLineDash([]);
+          ctx.fillStyle = n.color;
+          const label = n.emoji || n.initials;
+          const isEmoji = !!n.emoji;
+          ctx.font = isEmoji ? `${n.isMe ? 16 : 12}px serif` : `500 ${n.isMe ? 11 : 9}px Helvetica Neue, Helvetica, Arial`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(label, n.x, n.y + (isEmoji ? 1 : 0));
+          ctx.fillStyle = '#A89F95';
+          ctx.font = '400 7px Helvetica Neue, Helvetica, Arial';
+          ctx.textBaseline = 'top';
+          const dn = n.name.length > 12 ? n.name.slice(0, 11) + '…' : n.name;
+          ctx.fillText(dn, n.x, n.y + r + 3);
+          // "Unassigned" label below name
+          if (isUnassigned) {
+            ctx.fillStyle = '#A89F95';
+            ctx.font = '400 6px Helvetica Neue, Helvetica, Arial';
+            ctx.fillText('unassigned', n.x, n.y + r + 12);
+          }
+        });
+
+        // Store snapTarget for mouseup
+        window._graphSnapTarget = snapTarget;
+
+        ctx.restore(); simulate(); raf = requestAnimationFrame(draw);
+      }
+      if (raf) cancelAnimationFrame(raf); draw();
+
+      // --- Connection popup ---
+      function showConnectPopup(srcNode, tgtNode) {
+        const popup = document.createElement('div');
+        popup.className = 'connect-popup';
+        const tgtCircle = tgtNode.circle !== 'Me' && tgtNode.circle !== 'Unassigned' ? tgtNode.circle : null;
+        const isUnassigned = srcNode.circle === 'Unassigned';
+        popup.innerHTML = `
+          <div class="cp-title">Connect ${srcNode.name.split(' ')[0]} → ${tgtNode.name.split(' ')[0]}</div>
+          <div class="cp-field">
+            <label>Relationship</label>
+            <select id="cpRelType">
+              <option value="friend">Friend</option>
+              <option value="sibling">Sibling</option>
+              <option value="parent">Parent</option>
+              <option value="partner">Partner</option>
+              <option value="colleague">Colleague</option>
+              <option value="mentor">Mentor</option>
+            </select>
+          </div>
+          ${isUnassigned && tgtCircle ? `
+          <div class="cp-field">
+            <label>Move to pond</label>
+            <select id="cpPond">
+              <option value="">Keep unassigned</option>
+              <option value="${tgtCircle}" selected>${tgtCircle}</option>
+              <option value="Family">Family</option>
+              <option value="Friends">Friends</option>
+              <option value="Professional">Professional</option>
+            </select>
+          </div>` : ''}
+          <div class="cp-actions">
+            <button class="cp-cancel" onclick="this.closest('.connect-popup').remove()">Cancel</button>
+            <button class="cp-confirm" onclick="confirmConnect(${srcNode.id}, ${tgtNode.id})">Connect</button>
+          </div>
+        `;
+        document.getElementById('graphView').appendChild(popup);
+      }
+
+      window.confirmConnect = function (srcId, tgtId) {
+        const relType = document.getElementById('cpRelType').value;
+        const pondSelect = document.getElementById('cpPond');
+        const newPond = pondSelect ? pondSelect.value : '';
+        // Add edge
+        const existingEdge = edges.find(e => (e.from === srcId && e.to === tgtId) || (e.from === tgtId && e.to === srcId));
+        if (!existingEdge) {
+          edges.push({ from: srcId, to: tgtId, type: relType });
+          contacts[srcId].rels.push({ type: relType, to: tgtId });
+        }
+        // Reassign pond
+        if (newPond) {
+          const srcNode = nodes.find(n => n.id === srcId);
+          contacts[srcId].circle = newPond;
+          contacts[srcId].color = circleColors[newPond] || '#A89F95';
+          srcNode.circle = newPond;
+          srcNode.color = circleColors[newPond] || '#A89F95';
+          // Update home position
+          const cx = W / 2, cy = H / 2;
+          const pondCenters = { Family: { x: cx - 120, y: cy - 100 }, Friends: { x: cx + 120, y: cy - 50 }, Professional: { x: cx - 40, y: cy + 120 } };
+          const pc = pondCenters[newPond];
+          if (pc) { srcNode.homeX = pc.x; srcNode.homeY = pc.y; }
+        }
+        document.querySelector('.connect-popup')?.remove();
+        showToast(`Connected as ${relType}${newPond ? ' → ' + newPond : ''}`);
+      };
+
+      canvas.onclick = function (e) {
+        const br = canvas.getBoundingClientRect(), mx = (e.clientX - br.left - graphOffX) / graphScale, my = (e.clientY - br.top - graphOffY) / graphScale;
+        let hit = null;
+        nodes.forEach(n => { if (Math.sqrt((n.x - mx) ** 2 + (n.y - my) ** 2) < (n.isMe ? 22 : 16)) hit = n });
+        selectedNode = hit;
+      };
+      canvas.ondblclick = function (e) {
+        const br = canvas.getBoundingClientRect(), mx = (e.clientX - br.left - graphOffX) / graphScale, my = (e.clientY - br.top - graphOffY) / graphScale;
+        nodes.forEach(n => { if (Math.sqrt((n.x - mx) ** 2 + (n.y - my) ** 2) < (n.isMe ? 22 : 16)) showDetail(n.id) });
+      };
+      canvas.onmousedown = function (e) {
+        const br = canvas.getBoundingClientRect(), mx = (e.clientX - br.left - graphOffX) / graphScale, my = (e.clientY - br.top - graphOffY) / graphScale;
+        nodes.forEach(n => {
+          if (n.isMe) return; // Can't drag Me
+          if (Math.sqrt((n.x - mx) ** 2 + (n.y - my) ** 2) < 16) { dragging = n; dragOff = { x: n.x - mx, y: n.y - my }; }
+        });
+      };
+      canvas.onmousemove = function (e) {
+        if (!dragging) return;
+        const br = canvas.getBoundingClientRect();
+        dragging.x = (e.clientX - br.left - graphOffX) / graphScale + dragOff.x;
+        dragging.y = (e.clientY - br.top - graphOffY) / graphScale + dragOff.y;
+        dragging.vx = 0; dragging.vy = 0;
+      };
+      canvas.onmouseup = function () {
+        if (dragging) {
+          if (window._graphSnapTarget) {
+            showConnectPopup(dragging, window._graphSnapTarget);
+          } else if (window._graphHoveredPond && window._graphHoveredPond.name !== dragging.circle) {
+            showPondPopup(dragging, window._graphHoveredPond);
+          }
+        }
+        dragging = null;
+      };
+    }
+
+    function showPondPopup(node, pond) {
+      const popup = document.createElement('div');
+      popup.className = 'connect-popup';
+      popup.innerHTML = `
+        <div class="cp-title">Move ${node.name.split(' ')[0]} to ${pond.name}?</div>
+        <div class="cp-actions">
+          <button class="cp-cancel" onclick="this.closest('.connect-popup').remove()">Cancel</button>
+          <button class="cp-confirm" onclick="confirmPondMove(${node.id}, '${pond.name}')">Move</button>
+        </div>
+      `;
+      document.getElementById('graphView').appendChild(popup);
+    }
+
+    window.confirmPondMove = function (nodeId, pondName) {
+      const n = nodes.find(nd => nd.id === nodeId);
+      if (!n) return;
+      contacts[nodeId].circle = pondName;
+      contacts[nodeId].color = circleColors[pondName] || '#A89F95';
+      n.circle = pondName;
+      n.color = circleColors[pondName] || '#A89F95';
+      // Update home position
+      const canvas = document.getElementById('graphCanvas');
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const cx = rect.width / 2, cy = rect.height / 2;
+      const pondCenters = { Family: { x: cx - 120, y: cy - 100 }, Friends: { x: cx + 120, y: cy - 50 }, Professional: { x: cx - 40, y: cy + 120 } };
+      const pc = pondCenters[pondName];
+      if (pc) { n.homeX = pc.x; n.homeY = pc.y; }
+      document.querySelector('.connect-popup')?.remove();
+      showToast(`Moved to ${pondName} ✓`);
+    };
+
+    function graphZoom(f) { graphScale *= f }
+    function graphReset() { graphScale = 1; graphOffX = 0; graphOffY = 0 }
+  </script>
+</body>
+
+</html>

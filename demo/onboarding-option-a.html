@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goldfish Onboarding — Option A: Minimal Zen</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --accent: #B74F3A;
+            --blue: #3D6B8E;
+            --olive: #8B7D3C;
+            --bg: #F5F0EB;
+            --bg2: #EDE7E0;
+            --text: #1A1614;
+            --text2: #6B6259;
+            --text3: #A89F95;
+            --border: #DDD6CD;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif;
+            background: #0F172A;
+            color: #F9FAFB;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 32px;
+            padding: 40px;
+        }
+
+        .label {
+            text-align: center;
+        }
+
+        .label h1 {
+            font-size: 1.8rem;
+            font-weight: 300;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .label p {
+            font-size: 0.9rem;
+            color: #94A3B8;
+            font-weight: 300;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+
+        .phones {
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .phone-wrapper {
+            text-align: center;
+        }
+
+        .phone-label {
+            font-size: 11px;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            font-weight: 400;
+        }
+
+        .phone {
+            width: 280px;
+            height: 606px;
+            border-radius: 44px;
+            background: var(--text);
+            box-shadow: 0 0 0 8px #1a1a1a, 0 0 0 10px #333, 0 40px 80px rgba(0, 0, 0, .5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 160px;
+            height: 24px;
+            background: var(--text);
+            border-radius: 0 0 16px 16px;
+            z-index: 10;
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+            border-radius: 44px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* === SCREEN 1: WELCOME === */
+        .s1 {
+            position: relative;
+        }
+
+        .s1 .watercolor-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .s1 .watercolor-bg svg {
+            width: 240px;
+            height: 240px;
+        }
+
+        .s1 .gradient-fade {
+            position: absolute;
+            top: 40%;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom, transparent 0%, var(--bg) 60%);
+        }
+
+        .s1 .content {
+            position: relative;
+            z-index: 2;
+            margin-top: auto;
+            padding: 0 28px 36px;
+            text-align: center;
+        }
+
+        .s1 .app-title {
+            font-size: 36px;
+            font-weight: 300;
+            color: var(--text);
+            letter-spacing: -1px;
+            margin-bottom: 4px;
+        }
+
+        .s1 .app-title em {
+            font-style: italic;
+        }
+
+        .s1 .app-sub {
+            font-size: 13px;
+            color: var(--text2);
+            font-weight: 300;
+            margin-bottom: 28px;
+        }
+
+        .s1 .btn-apple {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 13px 20px;
+            background: var(--text);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            font-family: inherit;
+            margin-bottom: 10px;
+        }
+
+        .s1 .btn-email {
+            width: 100%;
+            padding: 12px 20px;
+            background: transparent;
+            color: var(--text);
+            border: 1.5px solid rgba(26, 22, 20, .15);
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 400;
+            font-family: inherit;
+        }
+
+        /* === SCREEN 2: ABOUT YOU === */
+        .s2 {
+            padding: 52px 28px 36px;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .s2 .network-illust {
+            margin: 8px 0 24px;
+        }
+
+        .s2 h2 {
+            font-size: 22px;
+            font-weight: 400;
+            color: var(--text);
+            letter-spacing: -.3px;
+            margin-bottom: 6px;
+        }
+
+        .s2 .sub {
+            font-size: 13px;
+            color: var(--text2);
+            font-weight: 300;
+            text-align: center;
+            line-height: 1.5;
+            margin-bottom: 28px;
+        }
+
+        .s2 .input-wrap {
+            width: 100%;
+            text-align: center;
+            margin-bottom: auto;
+        }
+
+        .s2 .input-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text3);
+            margin-bottom: 8px;
+        }
+
+        .s2 .name-input {
+            text-align: center;
+            font-size: 22px;
+            font-weight: 300;
+            color: var(--text);
+            border: none;
+            border-bottom: 2px solid var(--accent);
+            background: transparent;
+            padding: 10px 0 8px;
+            width: 80%;
+            font-family: inherit;
+            outline: none;
+            letter-spacing: -.3px;
+        }
+
+        .dots {
+            display: flex;
+            gap: 10px;
+            margin: 24px 0 16px;
+        }
+
+        .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            border: 1.5px solid var(--text3);
+            background: transparent;
+        }
+
+        .dot.active {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .btn-continue {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 100px;
+            background: #fff;
+            color: var(--text);
+            font-size: 15px;
+            font-weight: 400;
+            font-family: inherit;
+            box-shadow: 0 2px 8px rgba(26, 22, 20, .08);
+        }
+
+        /* === SCREEN 3: YOUR NETWORK === */
+        .s3 {
+            padding: 52px 28px 36px;
+            align-items: center;
+        }
+
+        .s3 .graph-preview {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .s3 h2 {
+            font-size: 22px;
+            font-weight: 400;
+            color: var(--text);
+            letter-spacing: -.3px;
+            margin-bottom: 6px;
+        }
+
+        .s3 .sub {
+            font-size: 13px;
+            color: var(--text2);
+            font-weight: 300;
+            text-align: center;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="label">
+        <h1>Option A — <em>Minimal Zen</em></h1>
+        <p>Serene and spacious. Generous whitespace, organic watercolor illustrations, ultra-thin typography. Every
+            screen breathes. The goldfish dissolves into warm watercolor splotches on the welcome screen.</p>
+    </div>
+
+    <div class="phones">
+
+        <!-- SCREEN 1: WELCOME -->
+        <div class="phone-wrapper">
+            <div class="phone-label">1 · Welcome</div>
+            <div class="phone">
+                <div class="notch"></div>
+                <div class="screen s1">
+                    <div class="watercolor-bg">
+                        <svg viewBox="0 0 240 240">
+                            <!-- Watercolor goldfish -->
+                            <defs>
+                                <radialGradient id="wc1" cx="50%" cy="50%">
+                                    <stop offset="0%" stop-color="#C77858" stop-opacity=".6" />
+                                    <stop offset="100%" stop-color="#C77858" stop-opacity="0" />
+                                </radialGradient>
+                                <radialGradient id="wc2" cx="50%" cy="50%">
+                                    <stop offset="0%" stop-color="#D29B64" stop-opacity=".45" />
+                                    <stop offset="100%" stop-color="#D29B64" stop-opacity="0" />
+                                </radialGradient>
+                                <radialGradient id="wc3" cx="50%" cy="50%">
+                                    <stop offset="0%" stop-color="#B74F3A" stop-opacity=".5" />
+                                    <stop offset="100%" stop-color="#B74F3A" stop-opacity="0" />
+                                </radialGradient>
+                            </defs>
+                            <!-- Large watercolor splotches -->
+                            <ellipse cx="100" cy="110" rx="65" ry="50" fill="url(#wc1)" />
+                            <ellipse cx="140" cy="100" rx="55" ry="60" fill="url(#wc2)" />
+                            <ellipse cx="120" cy="130" rx="45" ry="35" fill="url(#wc3)" />
+                            <!-- Goldfish body -->
+                            <ellipse cx="110" cy="115" rx="32" ry="22" fill="#C77858" opacity=".7" />
+                            <path d="M140,105 Q160,85 155,115 Q160,145 140,125 Z" fill="#D29B64" opacity=".6" />
+                            <!-- Eye -->
+                            <circle cx="98" cy="110" r="3.5" fill="#F5F0EB" />
+                            <circle cx="98" cy="110" r="2" fill="#1A1614" />
+                            <!-- Fin -->
+                            <path d="M115,130 Q120,150 105,140 Z" fill="#B74F3A" opacity=".4" />
+                            <!-- Bubbles -->
+                            <circle cx="85" cy="80" r="6" fill="none" stroke="#D29B64" stroke-width=".7" opacity=".4" />
+                            <circle cx="75" cy="65" r="3.5" fill="none" stroke="#D29B64" stroke-width=".5"
+                                opacity=".3" />
+                            <circle cx="92" cy="70" r="2" fill="none" stroke="#C77858" stroke-width=".5" opacity=".3" />
+                        </svg>
+                    </div>
+                    <div class="gradient-fade"></div>
+                    <div class="content">
+                        <div class="app-title">Gold<em>fish</em></div>
+                        <div class="app-sub">Your personal relationship map</div>
+                        <button class="btn-apple">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                <path
+                                    d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C4.24 16.67 4.89 10.52 8.76 10.3c1.22.06 2.08.7 2.8.72.97-.2 1.9-.87 3.07-.79 1.45.1 2.53.62 3.24 1.63-2.97 1.77-2.26 5.69.47 6.82-.55 1.56-1.08 2.61-2.08 3.6h.79zM12.05 10.22c-.14-2.54 1.92-4.72 4.28-4.92.33 2.78-2.53 5.02-4.28 4.92z" />
+                            </svg>
+                            Sign in with Apple
+                        </button>
+                        <button class="btn-email">Sign in with Email</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 2: ABOUT YOU -->
+        <div class="phone-wrapper">
+            <div class="phone-label">2 · About You</div>
+            <div class="phone">
+                <div class="notch"></div>
+                <div class="screen s2">
+                    <div class="network-illust">
+                        <svg viewBox="0 0 160 160" width="140" height="140">
+                            <!-- Hub and spoke — you at center -->
+                            <line x1="80" y1="80" x2="40" y2="35" stroke="#B74F3A" stroke-width=".8" opacity=".25" />
+                            <line x1="80" y1="80" x2="125" y2="40" stroke="#3D6B8E" stroke-width=".8" opacity=".25" />
+                            <line x1="80" y1="80" x2="135" y2="85" stroke="#3D6B8E" stroke-width=".8" opacity=".25" />
+                            <line x1="80" y1="80" x2="30" y2="90" stroke="#8B7D3C" stroke-width=".8" opacity=".25" />
+                            <line x1="80" y1="80" x2="55" y2="135" stroke="#8B7D3C" stroke-width=".8" opacity=".25" />
+                            <line x1="80" y1="80" x2="115" y2="130" stroke="#B74F3A" stroke-width=".8" opacity=".25" />
+                            <!-- Center -->
+                            <circle cx="80" cy="80" r="14" fill="#EDE7E0" stroke="#B74F3A" stroke-width="2" />
+                            <text x="80" y="84" text-anchor="middle" font-size="12" fill="#B74F3A">🐠</text>
+                            <!-- Outer nodes -->
+                            <circle cx="40" cy="35" r="9" fill="#EDE7E0" stroke="#B74F3A" stroke-width="1.2" />
+                            <text x="40" y="39" text-anchor="middle" font-size="8" fill="#B74F3A">👩</text>
+                            <circle cx="125" cy="40" r="9" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.2" />
+                            <text x="125" y="44" text-anchor="middle" font-size="8" fill="#3D6B8E">🎾</text>
+                            <circle cx="135" cy="85" r="9" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.2" />
+                            <text x="135" y="89" text-anchor="middle" font-size="8" fill="#3D6B8E">✈️</text>
+                            <circle cx="30" cy="90" r="9" fill="#EDE7E0" stroke="#8B7D3C" stroke-width="1.2" />
+                            <text x="30" y="93" text-anchor="middle" font-size="7" font-weight="500"
+                                fill="#8B7D3C">MF</text>
+                            <circle cx="55" cy="135" r="9" fill="#EDE7E0" stroke="#8B7D3C" stroke-width="1.2" />
+                            <text x="55" y="138" text-anchor="middle" font-size="7" font-weight="500"
+                                fill="#8B7D3C">NV</text>
+                            <circle cx="115" cy="130" r="9" fill="#EDE7E0" stroke="#B74F3A" stroke-width="1.2" />
+                            <text x="115" y="134" text-anchor="middle" font-size="8" fill="#B74F3A">👨</text>
+                        </svg>
+                    </div>
+                    <h2>It's about you</h2>
+                    <div class="sub">You're at the center of your circles.<br>What should we call you?</div>
+                    <div class="input-wrap">
+                        <div class="input-label">Your Name</div>
+                        <input class="name-input" type="text" value="Marcel" readonly>
+                    </div>
+                    <div class="dots">
+                        <div class="dot"></div>
+                        <div class="dot active"></div>
+                        <div class="dot"></div>
+                    </div>
+                    <button class="btn-continue">Continue</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 3: YOUR NETWORK -->
+        <div class="phone-wrapper">
+            <div class="phone-label">3 · Your Network</div>
+            <div class="phone">
+                <div class="notch"></div>
+                <div class="screen s3">
+                    <div class="graph-preview">
+                        <svg viewBox="0 0 260 260" width="260" height="260">
+                            <!-- Pond boundaries (watercolor blobs) -->
+                            <!-- Family pond -->
+                            <path d="M45,70 Q55,30 90,40 Q120,28 115,65 Q112,95 80,100 Q48,98 45,80 Z" fill="#B74F3A"
+                                fill-opacity=".08" stroke="#B74F3A" stroke-opacity=".15" stroke-width="1" />
+                            <text x="82" y="28" text-anchor="middle" font-size="9" font-weight="600" fill="#B74F3A"
+                                opacity=".6">Family</text>
+                            <!-- Friends pond -->
+                            <path d="M145,55 Q160,25 195,35 Q225,40 230,75 Q228,110 195,115 Q160,112 145,85 Z"
+                                fill="#3D6B8E" fill-opacity=".08" stroke="#3D6B8E" stroke-opacity=".15"
+                                stroke-width="1" />
+                            <text x="188" y="25" text-anchor="middle" font-size="9" font-weight="600" fill="#3D6B8E"
+                                opacity=".6">Friends</text>
+                            <!-- Professional pond -->
+                            <path d="M80,175 Q95,150 125,155 Q155,150 160,180 Q155,210 125,215 Q92,212 80,190 Z"
+                                fill="#8B7D3C" fill-opacity=".08" stroke="#8B7D3C" stroke-opacity=".15"
+                                stroke-width="1" />
+                            <text x="120" y="148" text-anchor="middle" font-size="9" font-weight="600" fill="#8B7D3C"
+                                opacity=".6">Professional</text>
+
+                            <!-- Edges -->
+                            <line x1="130" y1="120" x2="75" y2="60" stroke="#DDD6CD" stroke-width=".6" />
+                            <line x1="130" y1="120" x2="95" y2="75" stroke="#DDD6CD" stroke-width=".6" />
+                            <line x1="130" y1="120" x2="185" y2="65" stroke="#DDD6CD" stroke-width=".6" />
+                            <line x1="130" y1="120" x2="195" y2="85" stroke="#DDD6CD" stroke-width=".6" />
+                            <line x1="130" y1="120" x2="110" y2="180" stroke="#DDD6CD" stroke-width=".6" />
+                            <line x1="130" y1="120" x2="140" y2="190" stroke="#DDD6CD" stroke-width=".6" />
+                            <line x1="75" y1="60" x2="95" y2="75" stroke="#DDD6CD" stroke-width=".5" />
+                            <line x1="185" y1="65" x2="195" y2="85" stroke="#DDD6CD" stroke-width=".5" />
+                            <line x1="185" y1="65" x2="210" y2="75" stroke="#DDD6CD" stroke-width=".5" />
+                            <line x1="110" y1="180" x2="140" y2="190" stroke="#DDD6CD" stroke-width=".5" />
+
+                            <!-- Me node (center) -->
+                            <circle cx="130" cy="120" r="16" fill="#EDE7E0" stroke="#B74F3A" stroke-width="2" />
+                            <text x="130" y="124" text-anchor="middle" font-size="12">🐠</text>
+
+                            <!-- Family nodes -->
+                            <circle cx="75" cy="60" r="10" fill="#EDE7E0" stroke="#B74F3A" stroke-width="1.2" />
+                            <text x="75" y="64" text-anchor="middle" font-size="8">👩</text>
+                            <circle cx="95" cy="75" r="10" fill="#EDE7E0" stroke="#B74F3A" stroke-width="1.2" />
+                            <text x="95" y="79" text-anchor="middle" font-size="8">👨</text>
+                            <circle cx="65" cy="85" r="10" fill="#EDE7E0" stroke="#B74F3A" stroke-width="1.2" />
+                            <text x="65" y="89" text-anchor="middle" font-size="8">👩‍🍳</text>
+
+                            <!-- Friends nodes -->
+                            <circle cx="185" cy="65" r="10" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.2" />
+                            <text x="185" y="69" text-anchor="middle" font-size="8">🎾</text>
+                            <circle cx="195" cy="85" r="10" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.2" />
+                            <text x="195" y="89" text-anchor="middle" font-size="8">🎨</text>
+                            <circle cx="210" cy="75" r="10" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.2" />
+                            <text x="210" y="79" text-anchor="middle" font-size="8">✈️</text>
+                            <circle cx="175" cy="95" r="10" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.2" />
+                            <text x="175" y="99" text-anchor="middle" font-size="8">🥁</text>
+
+                            <!-- Professional nodes -->
+                            <circle cx="110" cy="180" r="10" fill="#EDE7E0" stroke="#8B7D3C" stroke-width="1.2" />
+                            <text x="110" y="183" text-anchor="middle" font-size="7" font-weight="500"
+                                fill="#8B7D3C">MF</text>
+                            <circle cx="140" cy="190" r="10" fill="#EDE7E0" stroke="#8B7D3C" stroke-width="1.2" />
+                            <text x="140" y="193" text-anchor="middle" font-size="7" font-weight="500"
+                                fill="#8B7D3C">DK</text>
+                            <circle cx="120" cy="200" r="10" fill="#EDE7E0" stroke="#8B7D3C" stroke-width="1.2" />
+                            <text x="120" y="203" text-anchor="middle" font-size="7" font-weight="500"
+                                fill="#8B7D3C">NV</text>
+
+                            <!-- Unassigned (loose) -->
+                            <circle cx="50" cy="170" r="9" fill="#F5F0EB" stroke="#A89F95" stroke-width="1"
+                                stroke-dasharray="3 3" />
+                            <text x="50" y="173" text-anchor="middle" font-size="7" font-weight="500"
+                                fill="#A89F95">AC</text>
+                        </svg>
+                    </div>
+                    <h2>Your living network</h2>
+                    <div class="sub">Drag, zoom, and explore your<br>relationships as an interactive map.</div>
+                    <div class="dots">
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot active"></div>
+                    </div>
+                    <button class="btn-continue">Let's go</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+
+</html>

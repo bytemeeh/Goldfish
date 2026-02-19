@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goldfish Onboarding — Option C: Bauhaus Geometric</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --accent: #B74F3A;
+            --blue: #3D6B8E;
+            --olive: #8B7D3C;
+            --bg: #F5F0EB;
+            --bg2: #EDE7E0;
+            --text: #1A1614;
+            --text2: #6B6259;
+            --text3: #A89F95;
+            --border: #DDD6CD;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif;
+            background: #0F172A;
+            color: #F9FAFB;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 32px;
+            padding: 40px;
+        }
+
+        .label {
+            text-align: center;
+        }
+
+        .label h1 {
+            font-size: 1.8rem;
+            font-weight: 300;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .label p {
+            font-size: 0.9rem;
+            color: #94A3B8;
+            font-weight: 300;
+            max-width: 620px;
+            line-height: 1.6;
+        }
+
+        .phones {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .phone-wrapper {
+            text-align: center;
+        }
+
+        .phone-label {
+            font-size: 11px;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            font-weight: 400;
+        }
+
+        .phone {
+            width: 280px;
+            height: 606px;
+            border-radius: 44px;
+            background: var(--text);
+            box-shadow: 0 0 0 8px #1a1a1a, 0 0 0 10px #333, 0 40px 80px rgba(0, 0, 0, .5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 160px;
+            height: 24px;
+            background: var(--text);
+            border-radius: 0 0 16px 16px;
+            z-index: 10;
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+            border-radius: 44px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .dots {
+            display: flex;
+            gap: 10px;
+            margin: 24px 0 16px;
+        }
+
+        .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            border: 1.5px solid var(--text3);
+            background: transparent;
+        }
+
+        .dot.active {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .btn-continue {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 100px;
+            background: #fff;
+            color: var(--text);
+            font-size: 15px;
+            font-weight: 400;
+            font-family: inherit;
+            box-shadow: 0 2px 8px rgba(26, 22, 20, .08);
+        }
+
+        /* === SCREEN 1: BAUHAUS WELCOME === */
+        .s1 {
+            padding: 48px 28px 36px;
+            align-items: center;
+        }
+
+        .s1 .geo-art {
+            flex: 0 0 auto;
+            margin: 16px 0;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .s1 .geo-art video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .s1 .app-title {
+            font-size: 36px;
+            font-weight: 300;
+            color: var(--text);
+            letter-spacing: -1px;
+            margin-bottom: 4px;
+        }
+
+        .s1 .app-sub {
+            font-size: 13px;
+            color: var(--text2);
+            font-weight: 300;
+            margin-bottom: auto;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .s1 .btn-apple {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 13px 20px;
+            background: var(--text);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            font-family: inherit;
+            margin-bottom: 10px;
+        }
+
+        .s1 .btn-email {
+            width: 100%;
+            padding: 12px 20px;
+            background: transparent;
+            color: var(--text);
+            border: 1.5px solid rgba(26, 22, 20, .15);
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 400;
+            font-family: inherit;
+        }
+
+        /* === SCREEN 2: ORBITAL === */
+        .s2 {
+            padding: 52px 28px 36px;
+            align-items: center;
+        }
+
+        .s2 .orbital-art {
+            flex: 0 0 auto;
+            margin: 12px 0 24px;
+        }
+
+        .s2 h2 {
+            font-size: 22px;
+            font-weight: 400;
+            color: var(--text);
+            letter-spacing: -.3px;
+            margin-bottom: 6px;
+        }
+
+        .s2 .sub {
+            font-size: 13px;
+            color: var(--text2);
+            font-weight: 300;
+            text-align: center;
+            line-height: 1.5;
+            margin-bottom: 28px;
+        }
+
+        .s2 .input-wrap {
+            width: 100%;
+            text-align: center;
+            margin-bottom: auto;
+        }
+
+        .s2 .input-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text3);
+            margin-bottom: 8px;
+        }
+
+        .s2 .name-input {
+            text-align: center;
+            font-size: 22px;
+            font-weight: 300;
+            color: var(--text);
+            border: none;
+            border-bottom: 2px solid var(--accent);
+            background: transparent;
+            padding: 10px 0 8px;
+            width: 70%;
+            font-family: inherit;
+            outline: none;
+            letter-spacing: -.3px;
+        }
+
+        /* === SCREEN 3: THREE PONDS === */
+        .s3 {
+            padding: 52px 28px 36px;
+            align-items: center;
+        }
+
+        .s3 .ponds-art {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .s3 h2 {
+            font-size: 22px;
+            font-weight: 400;
+            color: var(--text);
+            letter-spacing: -.3px;
+            margin-bottom: 6px;
+        }
+
+        .s3 .sub {
+            font-size: 13px;
+            color: var(--text2);
+            font-weight: 300;
+            text-align: center;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="label">
+        <h1>Option C — <em>Bauhaus Geometric</em></h1>
+        <p>Bold, graphic, and confident. Uses overlapping geometric circles, clean lines, and the Bauhaus-inspired
+            terracotta/blue/olive palette. A Venn-diagram-style welcome graphic, orbital rings for the "about you"
+            screen, and clean geometric pond clusters for the network preview.</p>
+    </div>
+
+    <div class="phones">
+
+        <!-- SCREEN 1: BAUHAUS WELCOME -->
+        <div class="phone-wrapper">
+            <div class="phone-label">1 · Welcome</div>
+            <div class="phone">
+                <div class="notch"></div>
+                <div class="screen s1">
+                    <div class="geo-art">
+                        <video autoplay loop muted playsinline>
+                            <source src="assets/Watercolor_Goldfish_Animation_Generation.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                    <div class="app-title" style="text-align:center">Goldfish</div>
+                    <div class="app-sub">Your relationships,<br>beautifully mapped</div>
+                    <button class="btn-apple">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                            <path
+                                d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C4.24 16.67 4.89 10.52 8.76 10.3c1.22.06 2.08.7 2.8.72.97-.2 1.9-.87 3.07-.79 1.45.1 2.53.62 3.24 1.63-2.97 1.77-2.26 5.69.47 6.82-.55 1.56-1.08 2.61-2.08 3.6h.79zM12.05 10.22c-.14-2.54 1.92-4.72 4.28-4.92.33 2.78-2.53 5.02-4.28 4.92z" />
+                        </svg>
+                        Sign in with Apple
+                    </button>
+                    <button class="btn-email">Sign in with Email</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 2: ORBITAL -->
+        <div class="phone-wrapper">
+            <div class="phone-label">2 · You're the Center</div>
+            <div class="phone">
+                <div class="notch"></div>
+                <div class="screen s2">
+                    <div class="orbital-art">
+                        <svg viewBox="0 0 200 200" width="180" height="180">
+                            <!-- Orbital rings -->
+                            <circle cx="100" cy="100" r="85" fill="none" stroke="#1A1614" stroke-width=".3"
+                                opacity=".08" />
+                            <circle cx="100" cy="100" r="62" fill="none" stroke="#1A1614" stroke-width=".4"
+                                opacity=".1" />
+                            <circle cx="100" cy="100" r="40" fill="none" stroke="#1A1614" stroke-width=".5"
+                                opacity=".12" />
+
+                            <!-- Orbiting circles on the rings — Family (inner ring) -->
+                            <circle cx="60" cy="100" r="9" fill="#EDE7E0" stroke="#B74F3A" stroke-width="1.4" />
+                            <text x="60" y="104" text-anchor="middle" font-size="8">👩</text>
+                            <circle cx="140" cy="100" r="9" fill="#EDE7E0" stroke="#B74F3A" stroke-width="1.4" />
+                            <text x="140" y="104" text-anchor="middle" font-size="8">👨</text>
+                            <circle cx="100" cy="60" r="9" fill="#EDE7E0" stroke="#B74F3A" stroke-width="1.4" />
+                            <text x="100" y="64" text-anchor="middle" font-size="8">👩‍🍳</text>
+
+                            <!-- Friends (middle ring) -->
+                            <circle cx="42" cy="68" r="8" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.2" />
+                            <text x="42" y="72" text-anchor="middle" font-size="7">🎾</text>
+                            <circle cx="160" cy="70" r="8" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.2" />
+                            <text x="160" y="74" text-anchor="middle" font-size="7">🎨</text>
+                            <circle cx="155" cy="135" r="8" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.2" />
+                            <text x="155" y="139" text-anchor="middle" font-size="7">✈️</text>
+                            <circle cx="40" cy="130" r="8" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.2" />
+                            <text x="40" y="134" text-anchor="middle" font-size="7">🥁</text>
+
+                            <!-- Professional (outer ring) -->
+                            <circle cx="100" cy="15" r="7" fill="#EDE7E0" stroke="#8B7D3C" stroke-width="1.2" />
+                            <text x="100" y="18" text-anchor="middle" font-size="6" font-weight="500"
+                                fill="#8B7D3C">MF</text>
+                            <circle cx="20" cy="100" r="7" fill="#EDE7E0" stroke="#8B7D3C" stroke-width="1.2" />
+                            <text x="20" y="103" text-anchor="middle" font-size="6" font-weight="500"
+                                fill="#8B7D3C">DK</text>
+                            <circle cx="100" cy="185" r="7" fill="#EDE7E0" stroke="#8B7D3C" stroke-width="1.2" />
+                            <text x="100" y="188" text-anchor="middle" font-size="6" font-weight="500"
+                                fill="#8B7D3C">NV</text>
+
+                            <!-- Center — You -->
+                            <circle cx="100" cy="100" r="16" fill="#EDE7E0" stroke="#B74F3A" stroke-width="2.5" />
+                            <text x="100" y="104" text-anchor="middle" font-size="13">🐠</text>
+                        </svg>
+                    </div>
+                    <h2>You're the center</h2>
+                    <div class="sub">Everyone else is a connection away.<br>What should we call you?</div>
+                    <div class="input-wrap">
+                        <div class="input-label">Your Name</div>
+                        <input class="name-input" type="text" value="Marcel" readonly>
+                    </div>
+                    <div class="dots">
+                        <div class="dot"></div>
+                        <div class="dot active"></div>
+                        <div class="dot"></div>
+                    </div>
+                    <button class="btn-continue">Continue</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 3: THREE PONDS -->
+        <div class="phone-wrapper">
+            <div class="phone-label">3 · Three Ponds, One Map</div>
+            <div class="phone">
+                <div class="notch"></div>
+                <div class="screen s3">
+                    <div class="ponds-art">
+                        <svg viewBox="0 0 260 280" width="260" height="280">
+                            <!-- Geometric Bauhaus-style: three large circle areas with people inside -->
+
+                            <!-- Family cluster — large terracotta circle -->
+                            <circle cx="80" cy="75" r="52" fill="#B74F3A" opacity=".07" stroke="#B74F3A"
+                                stroke-width="1.2" stroke-opacity=".2" />
+                            <text x="80" y="28" text-anchor="middle" font-size="10" font-weight="600" fill="#B74F3A"
+                                opacity=".5">Family</text>
+                            <!-- People inside -->
+                            <circle cx="65" cy="60" r="10" fill="#EDE7E0" stroke="#B74F3A" stroke-width="1.3" />
+                            <text x="65" y="64" text-anchor="middle" font-size="8">👩</text>
+                            <circle cx="95" cy="65" r="10" fill="#EDE7E0" stroke="#B74F3A" stroke-width="1.3" />
+                            <text x="95" y="69" text-anchor="middle" font-size="8">👨</text>
+                            <circle cx="75" cy="90" r="10" fill="#EDE7E0" stroke="#B74F3A" stroke-width="1.3" />
+                            <text x="75" y="94" text-anchor="middle" font-size="8">👩‍🍳</text>
+                            <line x1="65" y1="60" x2="95" y2="65" stroke="#B74F3A" stroke-width=".6" opacity=".2" />
+                            <line x1="65" y1="60" x2="75" y2="90" stroke="#B74F3A" stroke-width=".6" opacity=".2" />
+                            <line x1="95" y1="65" x2="75" y2="90" stroke="#B74F3A" stroke-width=".6" opacity=".2" />
+
+                            <!-- Friends cluster — large blue circle -->
+                            <circle cx="190" cy="90" r="58" fill="#3D6B8E" opacity=".07" stroke="#3D6B8E"
+                                stroke-width="1.2" stroke-opacity=".2" />
+                            <text x="190" y="36" text-anchor="middle" font-size="10" font-weight="600" fill="#3D6B8E"
+                                opacity=".5">Friends</text>
+                            <!-- People inside -->
+                            <circle cx="175" cy="70" r="10" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.3" />
+                            <text x="175" y="74" text-anchor="middle" font-size="8">🎾</text>
+                            <circle cx="205" cy="75" r="10" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.3" />
+                            <text x="205" y="79" text-anchor="middle" font-size="8">🎨</text>
+                            <circle cx="210" cy="100" r="10" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.3" />
+                            <text x="210" y="104" text-anchor="middle" font-size="8">✈️</text>
+                            <circle cx="180" cy="105" r="10" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.3" />
+                            <text x="180" y="109" text-anchor="middle" font-size="8">🥁</text>
+                            <line x1="175" y1="70" x2="205" y2="75" stroke="#3D6B8E" stroke-width=".6" opacity=".2" />
+                            <line x1="205" y1="75" x2="210" y2="100" stroke="#3D6B8E" stroke-width=".6" opacity=".2" />
+                            <line x1="210" y1="100" x2="180" y2="105" stroke="#3D6B8E" stroke-width=".6" opacity=".2" />
+                            <line x1="180" y1="105" x2="175" y2="70" stroke="#3D6B8E" stroke-width=".6" opacity=".2" />
+
+                            <!-- Professional cluster — large olive circle -->
+                            <circle cx="130" cy="210" r="48" fill="#8B7D3C" opacity=".07" stroke="#8B7D3C"
+                                stroke-width="1.2" stroke-opacity=".2" />
+                            <text x="130" y="168" text-anchor="middle" font-size="10" font-weight="600" fill="#8B7D3C"
+                                opacity=".5">Professional</text>
+                            <!-- People inside -->
+                            <circle cx="115" cy="200" r="10" fill="#EDE7E0" stroke="#8B7D3C" stroke-width="1.3" />
+                            <text x="115" y="203" text-anchor="middle" font-size="7" font-weight="500"
+                                fill="#8B7D3C">MF</text>
+                            <circle cx="145" cy="205" r="10" fill="#EDE7E0" stroke="#8B7D3C" stroke-width="1.3" />
+                            <text x="145" y="208" text-anchor="middle" font-size="7" font-weight="500"
+                                fill="#8B7D3C">DK</text>
+                            <circle cx="130" cy="228" r="10" fill="#EDE7E0" stroke="#8B7D3C" stroke-width="1.3" />
+                            <text x="130" y="231" text-anchor="middle" font-size="7" font-weight="500"
+                                fill="#8B7D3C">NV</text>
+                            <line x1="115" y1="200" x2="145" y2="205" stroke="#8B7D3C" stroke-width=".6" opacity=".2" />
+                            <line x1="145" y1="205" x2="130" y2="228" stroke="#8B7D3C" stroke-width=".6" opacity=".2" />
+
+                            <!-- Center connecting lines from Me to each cluster -->
+                            <line x1="130" y1="145" x2="80" y2="75" stroke="#DDD6CD" stroke-width=".8" />
+                            <line x1="130" y1="145" x2="190" y2="90" stroke="#DDD6CD" stroke-width=".8" />
+                            <line x1="130" y1="145" x2="130" y2="210" stroke="#DDD6CD" stroke-width=".8" />
+                            <!-- Me node -->
+                            <circle cx="130" cy="145" r="16" fill="#EDE7E0" stroke="#B74F3A" stroke-width="2.5" />
+                            <text x="130" y="149" text-anchor="middle" font-size="12">🐠</text>
+
+                            <!-- Unassigned floating -->
+                            <circle cx="40" cy="180" r="8" fill="#F5F0EB" stroke="#A89F95" stroke-width="1"
+                                stroke-dasharray="3 3" />
+                            <text x="40" y="183" text-anchor="middle" font-size="6" font-weight="500"
+                                fill="#A89F95">AC</text>
+                            <circle cx="240" cy="170" r="8" fill="#F5F0EB" stroke="#A89F95" stroke-width="1"
+                                stroke-dasharray="3 3" />
+                            <text x="240" y="173" text-anchor="middle" font-size="6" font-weight="500"
+                                fill="#A89F95">CR</text>
+                        </svg>
+                    </div>
+                    <h2>Three ponds. One map.</h2>
+                    <div class="sub">Organize your people, your way.<br>Drag anyone into a circle.</div>
+                    <div class="dots">
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot active"></div>
+                    </div>
+                    <button class="btn-continue">Let's go</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+
+</html>

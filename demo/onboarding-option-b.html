@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goldfish Onboarding — Option B: Immersive Storytelling</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --accent: #B74F3A;
+            --blue: #3D6B8E;
+            --olive: #8B7D3C;
+            --bg: #F5F0EB;
+            --bg2: #EDE7E0;
+            --text: #1A1614;
+            --text2: #6B6259;
+            --text3: #A89F95;
+            --border: #DDD6CD;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif;
+            background: #0F172A;
+            color: #F9FAFB;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 32px;
+            padding: 40px;
+        }
+
+        .label {
+            text-align: center;
+        }
+
+        .label h1 {
+            font-size: 1.8rem;
+            font-weight: 300;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .label p {
+            font-size: 0.9rem;
+            color: #94A3B8;
+            font-weight: 300;
+            max-width: 620px;
+            line-height: 1.6;
+        }
+
+        .phones {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .phone-wrapper {
+            text-align: center;
+        }
+
+        .phone-label {
+            font-size: 11px;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            font-weight: 400;
+        }
+
+        .phone {
+            width: 280px;
+            height: 606px;
+            border-radius: 44px;
+            background: var(--text);
+            box-shadow: 0 0 0 8px #1a1a1a, 0 0 0 10px #333, 0 40px 80px rgba(0, 0, 0, .5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 160px;
+            height: 24px;
+            background: var(--text);
+            border-radius: 0 0 16px 16px;
+            z-index: 10;
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            border-radius: 44px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* === SCREEN 1: IMMERSIVE WELCOME === */
+        .s1 {
+            background: #2A1E14;
+            position: relative;
+        }
+
+        .s1 .ambient {
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 70% 50% at 50% 30%, rgba(199, 120, 88, .35) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 40% at 30% 60%, rgba(183, 79, 58, .2) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 50% at 70% 50%, rgba(210, 155, 100, .15) 0%, transparent 60%),
+                linear-gradient(180deg, #2A1E14 0%, #1A1210 100%);
+        }
+
+        .s1 .fish-silhouette {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: .3;
+        }
+
+        .s1 .content {
+            position: relative;
+            z-index: 2;
+            margin-top: auto;
+            padding: 0 28px 36px;
+            text-align: center;
+        }
+
+        .s1 .app-title {
+            font-size: 40px;
+            font-weight: 200;
+            color: #F5F0EB;
+            letter-spacing: -1px;
+            margin-bottom: 6px;
+        }
+
+        .s1 .app-title em {
+            font-style: italic;
+        }
+
+        .s1 .app-sub {
+            font-size: 14px;
+            color: rgba(245, 240, 235, .5);
+            font-weight: 300;
+            margin-bottom: 32px;
+        }
+
+        .s1 .btn-apple {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 13px 20px;
+            background: rgba(255, 255, 255, .12);
+            backdrop-filter: blur(16px);
+            color: #F5F0EB;
+            border: 1px solid rgba(255, 255, 255, .15);
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 500;
+            font-family: inherit;
+            margin-bottom: 10px;
+        }
+
+        .s1 .btn-email {
+            width: 100%;
+            padding: 12px 20px;
+            background: transparent;
+            color: rgba(245, 240, 235, .6);
+            border: 1px solid rgba(255, 255, 255, .08);
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 400;
+            font-family: inherit;
+        }
+
+        /* === SCREEN 2: CENTER OF RIPPLES === */
+        .s2 {
+            background: #1E1815;
+            padding: 52px 28px 36px;
+            align-items: center;
+            position: relative;
+        }
+
+        .s2 .ripple-container {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px 0 28px;
+        }
+
+        .s2 h2 {
+            font-size: 22px;
+            font-weight: 300;
+            color: #F5F0EB;
+            letter-spacing: -.3px;
+            margin-bottom: 6px;
+        }
+
+        .s2 .sub {
+            font-size: 13px;
+            color: rgba(245, 240, 235, .45);
+            font-weight: 300;
+            text-align: center;
+            line-height: 1.5;
+            margin-bottom: 28px;
+        }
+
+        .s2 .input-wrap {
+            width: 100%;
+            text-align: center;
+            margin-bottom: auto;
+        }
+
+        .s2 .input-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: rgba(245, 240, 235, .3);
+            margin-bottom: 8px;
+        }
+
+        .s2 .name-input {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 200;
+            color: #F5F0EB;
+            border: none;
+            border-bottom: 1px solid rgba(183, 79, 58, .5);
+            background: transparent;
+            padding: 12px 0 8px;
+            width: 70%;
+            font-family: inherit;
+            outline: none;
+            letter-spacing: -.3px;
+        }
+
+        .dots-dark {
+            display: flex;
+            gap: 10px;
+            margin: 24px 0 16px;
+        }
+
+        .dots-dark .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(245, 240, 235, .2);
+            background: transparent;
+        }
+
+        .dots-dark .dot.active {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .btn-dark {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 100px;
+            background: rgba(255, 255, 255, .08);
+            color: #F5F0EB;
+            font-size: 15px;
+            font-weight: 400;
+            font-family: inherit;
+            border: 1px solid rgba(255, 255, 255, .1);
+        }
+
+        /* === SCREEN 3: TOPOGRAPHIC MAP === */
+        .s3 {
+            background: var(--bg);
+            padding: 52px 28px 36px;
+            align-items: center;
+        }
+
+        .s3 .topo {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .s3 h2 {
+            font-size: 22px;
+            font-weight: 400;
+            color: var(--text);
+            letter-spacing: -.3px;
+            margin-bottom: 6px;
+        }
+
+        .s3 .sub {
+            font-size: 13px;
+            color: var(--text2);
+            font-weight: 300;
+            text-align: center;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .dots {
+            display: flex;
+            gap: 10px;
+            margin: 24px 0 16px;
+        }
+
+        .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            border: 1.5px solid var(--text3);
+            background: transparent;
+        }
+
+        .dot.active {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .btn-continue {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 100px;
+            background: #fff;
+            color: var(--text);
+            font-size: 15px;
+            font-weight: 400;
+            font-family: inherit;
+            box-shadow: 0 2px 8px rgba(26, 22, 20, .08);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="label">
+        <h1>Option B — <em>Immersive Storytelling</em></h1>
+        <p>A cinematic dark entrance that transitions to the familiar light UI. The welcome screen is atmospheric and
+            moody. The second screen uses concentric ripples to symbolize "you at the center." The third screen snaps
+            back to the warm beige editorial style.</p>
+    </div>
+
+    <div class="phones">
+
+        <!-- SCREEN 1: IMMERSIVE WELCOME -->
+        <div class="phone-wrapper">
+            <div class="phone-label">1 · Welcome</div>
+            <div class="phone">
+                <div class="notch" style="background:#2A1E14"></div>
+                <div class="screen s1">
+                    <div class="ambient"></div>
+                    <div class="fish-silhouette">
+                        <svg viewBox="0 0 200 140" width="200" height="140">
+                            <defs>
+                                <radialGradient id="glow" cx="50%" cy="50%">
+                                    <stop offset="0%" stop-color="#C77858" stop-opacity=".4" />
+                                    <stop offset="100%" stop-color="#C77858" stop-opacity="0" />
+                                </radialGradient>
+                            </defs>
+                            <ellipse cx="100" cy="70" rx="80" ry="60" fill="url(#glow)" />
+                            <!-- Silhouette goldfish -->
+                            <ellipse cx="85" cy="70" rx="35" ry="24" fill="#C77858" opacity=".25" />
+                            <path d="M118,58 Q145,35 138,70 Q145,105 118,82 Z" fill="#D29B64" opacity=".2" />
+                            <circle cx="72" cy="65" r="3" fill="#F5F0EB" opacity=".15" />
+                            <!-- Subtle particles -->
+                            <circle cx="50" cy="40" r="2" fill="#D29B64" opacity=".15" />
+                            <circle cx="150" cy="50" r="1.5" fill="#C77858" opacity=".12" />
+                            <circle cx="40" cy="90" r="1" fill="#D29B64" opacity=".1" />
+                            <circle cx="160" cy="85" r="1.5" fill="#B74F3A" opacity=".08" />
+                        </svg>
+                    </div>
+                    <div class="content">
+                        <div class="app-title">Gold<em>fish</em></div>
+                        <div class="app-sub">Remember everyone</div>
+                        <button class="btn-apple">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                <path
+                                    d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C4.24 16.67 4.89 10.52 8.76 10.3c1.22.06 2.08.7 2.8.72.97-.2 1.9-.87 3.07-.79 1.45.1 2.53.62 3.24 1.63-2.97 1.77-2.26 5.69.47 6.82-.55 1.56-1.08 2.61-2.08 3.6h.79zM12.05 10.22c-.14-2.54 1.92-4.72 4.28-4.92.33 2.78-2.53 5.02-4.28 4.92z" />
+                            </svg>
+                            Sign in with Apple
+                        </button>
+                        <button class="btn-email">Sign in with Email</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 2: RIPPLES -->
+        <div class="phone-wrapper">
+            <div class="phone-label">2 · You at the Center</div>
+            <div class="phone">
+                <div class="notch" style="background:#1E1815"></div>
+                <div class="screen s2">
+                    <div class="ripple-container">
+                        <svg viewBox="0 0 200 200" width="180" height="180">
+                            <!-- Concentric ripple rings -->
+                            <circle cx="100" cy="100" r="90" fill="none" stroke="#B74F3A" stroke-width=".4"
+                                opacity=".12" />
+                            <circle cx="100" cy="100" r="72" fill="none" stroke="#B74F3A" stroke-width=".5"
+                                opacity=".15" />
+                            <circle cx="100" cy="100" r="54" fill="none" stroke="#B74F3A" stroke-width=".6"
+                                opacity=".2" />
+                            <circle cx="100" cy="100" r="36" fill="none" stroke="#B74F3A" stroke-width=".8"
+                                opacity=".3" />
+                            <!-- Outer ring tiny nodes (ghosts of future connections) -->
+                            <circle cx="100" cy="10" r="4" fill="#3D6B8E" opacity=".2" />
+                            <circle cx="170" cy="40" r="3.5" fill="#3D6B8E" opacity=".15" />
+                            <circle cx="190" cy="100" r="4" fill="#8B7D3C" opacity=".18" />
+                            <circle cx="160" cy="160" r="3" fill="#8B7D3C" opacity=".12" />
+                            <circle cx="100" cy="185" r="3.5" fill="#B74F3A" opacity=".15" />
+                            <circle cx="35" cy="155" r="3" fill="#B74F3A" opacity=".12" />
+                            <circle cx="15" cy="100" r="4" fill="#3D6B8E" opacity=".15" />
+                            <circle cx="40" cy="40" r="3.5" fill="#B74F3A" opacity=".2" />
+                            <!-- Center glow -->
+                            <circle cx="100" cy="100" r="18" fill="#B74F3A" opacity=".15" />
+                            <circle cx="100" cy="100" r="12" fill="#B74F3A" opacity=".25" />
+                            <text x="100" y="104" text-anchor="middle" font-size="14" fill="#F5F0EB"
+                                opacity=".9">🐠</text>
+                        </svg>
+                    </div>
+                    <h2>You're at the center</h2>
+                    <div class="sub">Everyone else orbits around you.<br>What should we call you?</div>
+                    <div class="input-wrap">
+                        <div class="input-label">Your Name</div>
+                        <input class="name-input" type="text" value="Marcel" readonly>
+                    </div>
+                    <div class="dots-dark">
+                        <div class="dot"></div>
+                        <div class="dot active"></div>
+                        <div class="dot"></div>
+                    </div>
+                    <button class="btn-dark">Continue</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 3: MAP REVEAL -->
+        <div class="phone-wrapper">
+            <div class="phone-label">3 · See Your World</div>
+            <div class="phone">
+                <div class="notch"></div>
+                <div class="screen s3">
+                    <div class="topo">
+                        <svg viewBox="0 0 260 270" width="260" height="270">
+                            <!-- Topographic contour layers — Family -->
+                            <path d="M30,60 Q50,15 95,25 Q130,15 125,55 Q130,100 85,105 Q35,110 30,75 Z" fill="none"
+                                stroke="#B74F3A" stroke-width=".5" opacity=".12" />
+                            <path d="M38,63 Q54,28 92,35 Q120,26 117,58 Q120,92 83,96 Q43,100 38,72 Z" fill="#B74F3A"
+                                fill-opacity=".06" />
+                            <text x="78" y="18" text-anchor="middle" font-size="9" font-weight="600" fill="#B74F3A"
+                                opacity=".55">Family</text>
+                            <!-- Family nodes -->
+                            <circle cx="65" cy="55" r="10" fill="#EDE7E0" stroke="#B74F3A" stroke-width="1.2" />
+                            <text x="65" y="59" text-anchor="middle" font-size="8">👩</text>
+                            <circle cx="85" cy="70" r="10" fill="#EDE7E0" stroke="#B74F3A" stroke-width="1.2" />
+                            <text x="85" y="74" text-anchor="middle" font-size="8">👨</text>
+                            <circle cx="100" cy="50" r="10" fill="#EDE7E0" stroke="#B74F3A" stroke-width="1.2" />
+                            <text x="100" y="54" text-anchor="middle" font-size="8">👩‍🍳</text>
+                            <line x1="65" y1="55" x2="85" y2="70" stroke="#DDD6CD" stroke-width=".6" />
+                            <line x1="85" y1="70" x2="100" y2="50" stroke="#DDD6CD" stroke-width=".6" />
+
+                            <!-- Topographic contour layers — Friends -->
+                            <path d="M150,45 Q175,10 215,25 Q245,40 240,80 Q235,120 200,125 Q165,118 150,80 Z"
+                                fill="none" stroke="#3D6B8E" stroke-width=".5" opacity=".12" />
+                            <path d="M158,50 Q178,22 210,34 Q234,45 230,78 Q226,110 196,114 Q170,108 158,76 Z"
+                                fill="#3D6B8E" fill-opacity=".06" />
+                            <text x="195" y="15" text-anchor="middle" font-size="9" font-weight="600" fill="#3D6B8E"
+                                opacity=".55">Friends</text>
+                            <!-- Friends nodes -->
+                            <circle cx="185" cy="60" r="10" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.2" />
+                            <text x="185" y="64" text-anchor="middle" font-size="8">🎾</text>
+                            <circle cx="205" cy="75" r="10" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.2" />
+                            <text x="205" y="79" text-anchor="middle" font-size="8">🎨</text>
+                            <circle cx="195" cy="95" r="10" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.2" />
+                            <text x="195" y="99" text-anchor="middle" font-size="8">✈️</text>
+                            <circle cx="175" cy="85" r="10" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.2" />
+                            <text x="175" y="89" text-anchor="middle" font-size="8">🥁</text>
+                            <line x1="185" y1="60" x2="205" y2="75" stroke="#DDD6CD" stroke-width=".6" />
+                            <line x1="205" y1="75" x2="195" y2="95" stroke="#DDD6CD" stroke-width=".6" />
+                            <line x1="195" y1="95" x2="175" y2="85" stroke="#DDD6CD" stroke-width=".6" />
+
+                            <!-- Topographic contour layers — Professional -->
+                            <path d="M85,180 Q110,150 145,160 Q175,155 178,185 Q172,220 140,225 Q100,222 85,200 Z"
+                                fill="none" stroke="#8B7D3C" stroke-width=".5" opacity=".12" />
+                            <path d="M93,183 Q112,158 142,167 Q168,162 170,187 Q166,213 138,217 Q106,214 93,197 Z"
+                                fill="#8B7D3C" fill-opacity=".06" />
+                            <text x="132" y="150" text-anchor="middle" font-size="9" font-weight="600" fill="#8B7D3C"
+                                opacity=".55">Professional</text>
+                            <!-- Professional nodes -->
+                            <circle cx="120" cy="185" r="10" fill="#EDE7E0" stroke="#8B7D3C" stroke-width="1.2" />
+                            <text x="120" y="188" text-anchor="middle" font-size="7" font-weight="500"
+                                fill="#8B7D3C">MF</text>
+                            <circle cx="148" cy="188" r="10" fill="#EDE7E0" stroke="#8B7D3C" stroke-width="1.2" />
+                            <text x="148" y="191" text-anchor="middle" font-size="7" font-weight="500"
+                                fill="#8B7D3C">DK</text>
+                            <circle cx="135" cy="205" r="10" fill="#EDE7E0" stroke="#8B7D3C" stroke-width="1.2" />
+                            <text x="135" y="208" text-anchor="middle" font-size="7" font-weight="500"
+                                fill="#8B7D3C">NV</text>
+                            <line x1="120" y1="185" x2="148" y2="188" stroke="#DDD6CD" stroke-width=".6" />
+                            <line x1="148" y1="188" x2="135" y2="205" stroke="#DDD6CD" stroke-width=".6" />
+
+                            <!-- Me node (center of everything) -->
+                            <line x1="130" y1="125" x2="85" y2="70" stroke="#DDD6CD" stroke-width=".5" />
+                            <line x1="130" y1="125" x2="185" y2="60" stroke="#DDD6CD" stroke-width=".5" />
+                            <line x1="130" y1="125" x2="120" y2="185" stroke="#DDD6CD" stroke-width=".5" />
+                            <circle cx="130" cy="125" r="16" fill="#EDE7E0" stroke="#B74F3A" stroke-width="2" />
+                            <text x="130" y="129" text-anchor="middle" font-size="12">🐠</text>
+
+                            <!-- Unassigned node -->
+                            <circle cx="40" cy="170" r="9" fill="#F5F0EB" stroke="#A89F95" stroke-width="1"
+                                stroke-dasharray="3 3" />
+                            <text x="40" y="173" text-anchor="middle" font-size="7" font-weight="500"
+                                fill="#A89F95">AC</text>
+                            <circle cx="55" cy="145" r="8" fill="#F5F0EB" stroke="#A89F95" stroke-width="1"
+                                stroke-dasharray="3 3" />
+                            <text x="55" y="148" text-anchor="middle" font-size="7" font-weight="500"
+                                fill="#A89F95">CR</text>
+                        </svg>
+                    </div>
+                    <h2>See your world at a glance</h2>
+                    <div class="sub">Pinch, pan, and explore your<br>relationships as a living map.</div>
+                    <div class="dots">
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot active"></div>
+                    </div>
+                    <button class="btn-continue">Let's go</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+
+</html>

@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goldfish Circles — Option B: Dark Orbital</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --accent: #B74F3A;
+            --blue: #3D6B8E;
+            --olive: #8B7D3C;
+            --bg: #1E1815;
+            --bg2: #2A2420;
+            --text: #F5F0EB;
+            --text2: rgba(245, 240, 235, .45);
+            --text3: rgba(245, 240, 235, .2);
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif;
+            background: #0F172A;
+            color: #F9FAFB;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 32px;
+            padding: 40px;
+        }
+
+        .label {
+            text-align: center;
+        }
+
+        .label h1 {
+            font-size: 1.8rem;
+            font-weight: 300;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .label p {
+            font-size: 0.9rem;
+            color: #94A3B8;
+            font-weight: 300;
+            max-width: 620px;
+            line-height: 1.6;
+        }
+
+        .phone {
+            width: 375px;
+            height: 812px;
+            border-radius: 55px;
+            background: #1A1614;
+            box-shadow: 0 0 0 12px #1a1a1a, 0 0 0 14px #333, 0 50px 100px rgba(0, 0, 0, .5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 210px;
+            height: 30px;
+            background: #1A1614;
+            border-radius: 0 0 20px 20px;
+            z-index: 10;
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+            border-radius: 55px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Status bar */
+        .status-bar {
+            height: 54px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            padding: 0 28px 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text);
+            position: relative;
+            z-index: 90;
+            flex-shrink: 0;
+        }
+
+        .status-bar .time {
+            font-weight: 700;
+        }
+
+        .status-icons {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .status-icons svg {
+            width: 14px;
+            height: 14px;
+            color: var(--text);
+        }
+
+        /* Nav bar */
+        .nav-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            height: 44px;
+            flex-shrink: 0;
+        }
+
+        .nav-bar .title {
+            font-size: 17px;
+            font-weight: 300;
+            color: var(--text);
+            letter-spacing: -.2px;
+        }
+
+        .nav-bar .btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: none;
+            color: var(--accent);
+            cursor: pointer;
+        }
+
+        .nav-bar .btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .nav-bar .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Orbital container */
+        .orbital-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Ring labels */
+        .ring-label {
+            position: absolute;
+            font-size: 9px;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: .45;
+        }
+
+        .ring-label.family {
+            color: var(--accent);
+        }
+
+        .ring-label.friends {
+            color: var(--blue);
+        }
+
+        .ring-label.pro {
+            color: var(--olive);
+        }
+
+        /* Floating + button */
+        .fab {
+            position: absolute;
+            bottom: 80px;
+            right: 20px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .08);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, .1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 5;
+            transition: all .2s;
+        }
+
+        .fab:hover {
+            background: rgba(255, 255, 255, .14);
+        }
+
+        .fab svg {
+            width: 20px;
+            height: 20px;
+            color: var(--text);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="label">
+        <h1>Option B — <em>Dark Orbital</em></h1>
+        <p>Mirrors the dark immersive aesthetic from onboarding screen 2. Concentric rings radiate from you outward —
+            Family → Friends → Professional. Moody, atmospheric, premium.</p>
+    </div>
+
+    <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <span class="time">22:24</span>
+                <span class="status-icons">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.237 4.237 0 00-6 0zm-4-4l2 2a7.074 7.074 0 0110 0l2-2C15.14 9.14 8.87 9.14 5 13z" />
+                    </svg>
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z" />
+                    </svg>
+                </span>
+            </div>
+
+            <!-- Nav Bar -->
+            <div class="nav-bar">
+                <div class="btn-group">
+                    <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path
+                                d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z" />
+                            <circle cx="12" cy="12" r="3" />
+                        </svg></button>
+                    <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="m21 21-4.35-4.35" />
+                        </svg></button>
+                </div>
+                <span class="title">Circles</span>
+                <div class="btn-group">
+                    <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                        </svg></button>
+                    <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 5v14M5 12h14" />
+                        </svg></button>
+                </div>
+            </div>
+
+            <!-- Orbital View -->
+            <div class="orbital-container">
+                <svg viewBox="0 0 375 660" width="375" height="660">
+                    <!-- Ambient glow -->
+                    <defs>
+                        <radialGradient id="centerGlow" cx="50%" cy="47%">
+                            <stop offset="0%" stop-color="#B74F3A" stop-opacity=".2" />
+                            <stop offset="30%" stop-color="#B74F3A" stop-opacity=".06" />
+                            <stop offset="100%" stop-color="#B74F3A" stop-opacity="0" />
+                        </radialGradient>
+                    </defs>
+                    <rect width="375" height="660" fill="url(#centerGlow)" />
+
+                    <!-- Outer ring (Professional) -->
+                    <circle cx="187" cy="310" r="260" fill="none" stroke="#8B7D3C" stroke-width=".4" opacity=".18" />
+                    <!-- Middle ring (Friends) -->
+                    <circle cx="187" cy="310" r="180" fill="none" stroke="#3D6B8E" stroke-width=".5" opacity=".2" />
+                    <!-- Inner ring (Family) -->
+                    <circle cx="187" cy="310" r="100" fill="none" stroke="#B74F3A" stroke-width=".6" opacity=".25" />
+
+                    <!-- Ring labels -->
+                    <text x="187" y="90" text-anchor="middle" font-size="9" font-weight="400" fill="#8B7D3C"
+                        opacity=".5" letter-spacing="2" font-family="Helvetica Neue, sans-serif">PROFESSIONAL</text>
+                    <text x="187" y="160" text-anchor="middle" font-size="9" font-weight="400" fill="#3D6B8E"
+                        opacity=".5" letter-spacing="2" font-family="Helvetica Neue, sans-serif">FRIENDS</text>
+                    <text x="187" y="235" text-anchor="middle" font-size="9" font-weight="400" fill="#B74F3A"
+                        opacity=".5" letter-spacing="2" font-family="Helvetica Neue, sans-serif">FAMILY</text>
+
+                    <!-- Connection lines (subtle) -->
+                    <line x1="128" y1="258" x2="187" y2="310" stroke="#B74F3A" stroke-width=".5" opacity=".2" />
+                    <line x1="248" y1="268" x2="187" y2="310" stroke="#B74F3A" stroke-width=".5" opacity=".2" />
+                    <line x1="187" y1="210" x2="187" y2="310" stroke="#B74F3A" stroke-width=".5" opacity=".2" />
+                    <line x1="128" y1="258" x2="248" y2="268" stroke="#B74F3A" stroke-width=".4" opacity=".12" />
+
+                    <line x1="72" y1="195" x2="187" y2="310" stroke="#3D6B8E" stroke-width=".4" opacity=".15" />
+                    <line x1="310" y1="210" x2="187" y2="310" stroke="#3D6B8E" stroke-width=".4" opacity=".15" />
+                    <line x1="300" y1="380" x2="187" y2="310" stroke="#3D6B8E" stroke-width=".4" opacity=".15" />
+                    <line x1="72" y1="400" x2="187" y2="310" stroke="#3D6B8E" stroke-width=".4" opacity=".15" />
+                    <line x1="72" y1="195" x2="310" y2="210" stroke="#3D6B8E" stroke-width=".3" opacity=".08" />
+                    <line x1="300" y1="380" x2="72" y2="400" stroke="#3D6B8E" stroke-width=".3" opacity=".08" />
+
+                    <!-- Family nodes (inner ring) -->
+                    <circle cx="128" cy="258" r="18" fill="#2A2420" stroke="#B74F3A" stroke-width="1.4" />
+                    <text x="128" y="263" text-anchor="middle" font-size="14">👩‍🍳</text>
+
+                    <circle cx="248" cy="268" r="18" fill="#2A2420" stroke="#B74F3A" stroke-width="1.4" />
+                    <text x="248" y="273" text-anchor="middle" font-size="14">👨</text>
+
+                    <circle cx="187" cy="210" r="18" fill="#2A2420" stroke="#B74F3A" stroke-width="1.4" />
+                    <text x="187" y="215" text-anchor="middle" font-size="14">👩</text>
+
+                    <!-- Name labels under family nodes -->
+                    <text x="128" y="285" text-anchor="middle" font-size="9" fill="#B74F3A" opacity=".6"
+                        font-family="Helvetica Neue, sans-serif" font-weight="300">Maria</text>
+                    <text x="248" y="295" text-anchor="middle" font-size="9" fill="#B74F3A" opacity=".6"
+                        font-family="Helvetica Neue, sans-serif" font-weight="300">Thomas</text>
+                    <text x="187" y="196" text-anchor="middle" font-size="9" fill="#B74F3A" opacity=".6"
+                        font-family="Helvetica Neue, sans-serif" font-weight="300">Anna</text>
+
+                    <!-- Friends nodes (middle ring) -->
+                    <circle cx="72" cy="195" r="16" fill="#2A2420" stroke="#3D6B8E" stroke-width="1.2" />
+                    <text x="72" y="200" text-anchor="middle" font-size="12">🎾</text>
+
+                    <circle cx="310" cy="210" r="16" fill="#2A2420" stroke="#3D6B8E" stroke-width="1.2" />
+                    <text x="310" y="215" text-anchor="middle" font-size="12">🎨</text>
+
+                    <circle cx="340" cy="310" r="16" fill="#2A2420" stroke="#3D6B8E" stroke-width="1.2" />
+                    <text x="340" y="315" text-anchor="middle" font-size="12">✈️</text>
+
+                    <circle cx="300" cy="380" r="16" fill="#2A2420" stroke="#3D6B8E" stroke-width="1.2" />
+                    <text x="300" y="385" text-anchor="middle" font-size="12">🥁</text>
+
+                    <circle cx="72" cy="400" r="16" fill="#2A2420" stroke="#3D6B8E" stroke-width="1.2" />
+                    <text x="72" y="404" text-anchor="middle" font-size="9" font-weight="500" fill="#3D6B8E"
+                        font-family="Helvetica Neue, sans-serif">LH</text>
+
+                    <circle cx="35" cy="310" r="16" fill="#2A2420" stroke="#3D6B8E" stroke-width="1.2" />
+                    <text x="35" y="314" text-anchor="middle" font-size="9" font-weight="500" fill="#3D6B8E"
+                        font-family="Helvetica Neue, sans-serif">JW</text>
+
+                    <!-- Professional nodes (outer ring) -->
+                    <circle cx="187" cy="65" r="14" fill="#2A2420" stroke="#8B7D3C" stroke-width="1.2" />
+                    <text x="187" y="69" text-anchor="middle" font-size="8" font-weight="500" fill="#8B7D3C"
+                        font-family="Helvetica Neue, sans-serif">MF</text>
+
+                    <circle cx="60" cy="100" r="14" fill="#2A2420" stroke="#8B7D3C" stroke-width="1.2" />
+                    <text x="60" y="104" text-anchor="middle" font-size="8" font-weight="500" fill="#8B7D3C"
+                        font-family="Helvetica Neue, sans-serif">DK</text>
+
+                    <circle cx="315" cy="100" r="14" fill="#2A2420" stroke="#8B7D3C" stroke-width="1.2" />
+                    <text x="315" y="104" text-anchor="middle" font-size="8" font-weight="500" fill="#8B7D3C"
+                        font-family="Helvetica Neue, sans-serif">NV</text>
+
+                    <!-- Unassigned ghost nodes -->
+                    <circle cx="50" cy="530" r="12" fill="none" stroke="#A89F95" stroke-width="1" stroke-dasharray="4 4"
+                        opacity=".35" />
+                    <text x="50" y="534" text-anchor="middle" font-size="8" font-weight="500" fill="#A89F95"
+                        opacity=".4" font-family="Helvetica Neue, sans-serif">AC</text>
+                    <text x="50" y="552" text-anchor="middle" font-size="8" fill="#A89F95" opacity=".3"
+                        font-family="Helvetica Neue, sans-serif" font-weight="300">Amy</text>
+
+                    <circle cx="325" cy="520" r="12" fill="none" stroke="#A89F95" stroke-width="1"
+                        stroke-dasharray="4 4" opacity=".35" />
+                    <text x="325" y="524" text-anchor="middle" font-size="8" font-weight="500" fill="#A89F95"
+                        opacity=".4" font-family="Helvetica Neue, sans-serif">🎸</text>
+                    <text x="325" y="542" text-anchor="middle" font-size="8" fill="#A89F95" opacity=".3"
+                        font-family="Helvetica Neue, sans-serif" font-weight="300">Carlos</text>
+
+                    <!-- Center — You -->
+                    <circle cx="187" cy="310" r="24" fill="#2A2420" stroke="#B74F3A" stroke-width="2.5" />
+                    <circle cx="187" cy="310" r="30" fill="#B74F3A" opacity=".08" />
+                    <text x="187" y="316" text-anchor="middle" font-size="20">🐠</text>
+
+                    <!-- Ghost dots for ambiance -->
+                    <circle cx="30" cy="140" r="3" fill="#3D6B8E" opacity=".12" />
+                    <circle cx="350" cy="450" r="3" fill="#8B7D3C" opacity=".1" />
+                    <circle cx="340" cy="160" r="2.5" fill="#B74F3A" opacity=".12" />
+                    <circle cx="30" cy="470" r="2.5" fill="#B74F3A" opacity=".08" />
+                    <circle cx="187" cy="580" r="3" fill="#3D6B8E" opacity=".08" />
+                </svg>
+
+                <!-- FAB -->
+                <div class="fab">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M12 5v14M5 12h14" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

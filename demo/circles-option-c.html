@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goldfish Circles — Option C: Venn Overlap</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --accent: #B74F3A;
+            --blue: #3D6B8E;
+            --olive: #8B7D3C;
+            --bg: #F5F0EB;
+            --bg2: #EDE7E0;
+            --text: #1A1614;
+            --text2: #6B6259;
+            --text3: #A89F95;
+            --border: #DDD6CD;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif;
+            background: #0F172A;
+            color: #F9FAFB;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 32px;
+            padding: 40px;
+        }
+
+        .label {
+            text-align: center;
+        }
+
+        .label h1 {
+            font-size: 1.8rem;
+            font-weight: 300;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .label p {
+            font-size: 0.9rem;
+            color: #94A3B8;
+            font-weight: 300;
+            max-width: 620px;
+            line-height: 1.6;
+        }
+
+        .phone {
+            width: 375px;
+            height: 812px;
+            border-radius: 55px;
+            background: var(--text);
+            box-shadow: 0 0 0 12px #1a1a1a, 0 0 0 14px #333, 0 50px 100px rgba(0, 0, 0, .5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 210px;
+            height: 30px;
+            background: var(--text);
+            border-radius: 0 0 20px 20px;
+            z-index: 10;
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+            border-radius: 55px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Status bar */
+        .status-bar {
+            height: 54px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            padding: 0 28px 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text);
+            position: relative;
+            z-index: 90;
+            flex-shrink: 0;
+        }
+
+        .status-bar .time {
+            font-weight: 700;
+        }
+
+        .status-icons {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .status-icons svg {
+            width: 14px;
+            height: 14px;
+            color: var(--text);
+        }
+
+        /* Nav bar */
+        .nav-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            height: 44px;
+            flex-shrink: 0;
+        }
+
+        .nav-bar .title {
+            font-size: 17px;
+            font-weight: 500;
+            color: var(--text);
+            letter-spacing: -.2px;
+        }
+
+        .nav-bar .btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: none;
+            color: var(--accent);
+            cursor: pointer;
+        }
+
+        .nav-bar .btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .nav-bar .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Venn container */
+        .venn-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Zoom controls */
+        .zoom-controls {
+            position: absolute;
+            bottom: 80px;
+            right: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 5;
+        }
+
+        .zoom-controls button {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, .85);
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            font-size: 16px;
+            color: var(--text2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 300;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="label">
+        <h1>Option C — <em>Venn Overlap</em></h1>
+        <p>Adopts the Bauhaus Venn diagram from the welcome screen. Three large semi-transparent circles fill the
+            viewport. Contacts are placed inside their respective zones. The goldfish sits at the center intersection.
+        </p>
+    </div>
+
+    <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <span class="time">22:24</span>
+                <span class="status-icons">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.237 4.237 0 00-6 0zm-4-4l2 2a7.074 7.074 0 0110 0l2-2C15.14 9.14 8.87 9.14 5 13z" />
+                    </svg>
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z" />
+                    </svg>
+                </span>
+            </div>
+
+            <!-- Nav Bar -->
+            <div class="nav-bar">
+                <div class="btn-group">
+                    <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path
+                                d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z" />
+                            <circle cx="12" cy="12" r="3" />
+                        </svg></button>
+                    <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="m21 21-4.35-4.35" />
+                        </svg></button>
+                </div>
+                <span class="title">Circles</span>
+                <div class="btn-group">
+                    <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                        </svg></button>
+                    <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 5v14M5 12h14" />
+                        </svg></button>
+                </div>
+            </div>
+
+            <!-- Venn Diagram -->
+            <div class="venn-container">
+                <svg viewBox="0 0 375 660" width="375" height="660">
+                    <!-- Three large Venn circles -->
+                    <!-- Family (top-left) -->
+                    <circle cx="150" cy="270" r="160" fill="#B74F3A" opacity=".07" stroke="#B74F3A" stroke-width="1"
+                        stroke-opacity=".15" />
+                    <!-- Friends (top-right) -->
+                    <circle cx="255" cy="260" r="170" fill="#3D6B8E" opacity=".07" stroke="#3D6B8E" stroke-width="1"
+                        stroke-opacity=".15" />
+                    <!-- Professional (bottom-center) -->
+                    <circle cx="190" cy="420" r="155" fill="#8B7D3C" opacity=".07" stroke="#8B7D3C" stroke-width="1"
+                        stroke-opacity=".15" />
+
+                    <!-- Intersection accent circle -->
+                    <circle cx="200" cy="320" r="32" fill="none" stroke="#B74F3A" stroke-width="1" opacity=".2" />
+
+                    <!-- Labels -->
+                    <text x="75" y="165" text-anchor="middle" font-size="14" font-weight="500" fill="#B74F3A"
+                        opacity=".5" font-family="Helvetica Neue, sans-serif">Family</text>
+                    <text x="330" y="145" text-anchor="middle" font-size="14" font-weight="500" fill="#3D6B8E"
+                        opacity=".5" font-family="Helvetica Neue, sans-serif">Friends</text>
+                    <text x="190" y="545" text-anchor="middle" font-size="14" font-weight="500" fill="#8B7D3C"
+                        opacity=".5" font-family="Helvetica Neue, sans-serif">Professional</text>
+
+                    <!-- Decorative dots -->
+                    <circle cx="50" cy="130" r="4" fill="#B74F3A" opacity=".2" />
+                    <circle cx="345" cy="120" r="4" fill="#3D6B8E" opacity=".2" />
+                    <circle cx="190" cy="580" r="4" fill="#8B7D3C" opacity=".2" />
+
+                    <!-- Connection lines -->
+                    <line x1="90" y1="230" x2="130" y2="280" stroke="#B74F3A" stroke-width=".6" opacity=".15" />
+                    <line x1="90" y1="230" x2="60" y2="310" stroke="#B74F3A" stroke-width=".6" opacity=".15" />
+                    <line x1="130" y1="280" x2="60" y2="310" stroke="#B74F3A" stroke-width=".6" opacity=".15" />
+
+                    <line x1="300" y1="200" x2="335" y2="260" stroke="#3D6B8E" stroke-width=".6" opacity=".15" />
+                    <line x1="335" y1="260" x2="350" y2="335" stroke="#3D6B8E" stroke-width=".6" opacity=".15" />
+                    <line x1="280" y1="330" x2="350" y2="335" stroke="#3D6B8E" stroke-width=".6" opacity=".15" />
+                    <line x1="300" y1="200" x2="280" y2="330" stroke="#3D6B8E" stroke-width=".6" opacity=".15" />
+
+                    <line x1="145" y1="440" x2="230" y2="450" stroke="#8B7D3C" stroke-width=".6" opacity=".15" />
+                    <line x1="230" y1="450" x2="185" y2="490" stroke="#8B7D3C" stroke-width=".6" opacity=".15" />
+
+                    <!-- Center lines from Me -->
+                    <line x1="200" y1="320" x2="90" y2="230" stroke="#DDD6CD" stroke-width=".6" />
+                    <line x1="200" y1="320" x2="300" y2="200" stroke="#DDD6CD" stroke-width=".6" />
+                    <line x1="200" y1="320" x2="185" y2="490" stroke="#DDD6CD" stroke-width=".6" />
+
+                    <!-- ===== Family nodes ===== -->
+                    <circle cx="90" cy="230" r="18" fill="#EDE7E0" stroke="#B74F3A" stroke-width="1.5" />
+                    <text x="90" y="235" text-anchor="middle" font-size="14">👩‍🍳</text>
+                    <text x="90" y="256" text-anchor="middle" font-size="9" fill="#B74F3A" opacity=".6"
+                        font-family="Helvetica Neue, sans-serif" font-weight="300">Maria</text>
+
+                    <circle cx="130" cy="280" r="18" fill="#EDE7E0" stroke="#B74F3A" stroke-width="1.5" />
+                    <text x="130" y="285" text-anchor="middle" font-size="14">👨</text>
+                    <text x="130" y="306" text-anchor="middle" font-size="9" fill="#B74F3A" opacity=".6"
+                        font-family="Helvetica Neue, sans-serif" font-weight="300">Thomas</text>
+
+                    <circle cx="60" cy="310" r="18" fill="#EDE7E0" stroke="#B74F3A" stroke-width="1.5" />
+                    <text x="60" y="315" text-anchor="middle" font-size="14">👩</text>
+                    <text x="60" y="336" text-anchor="middle" font-size="9" fill="#B74F3A" opacity=".6"
+                        font-family="Helvetica Neue, sans-serif" font-weight="300">Anna</text>
+
+                    <!-- ===== Friends nodes ===== -->
+                    <circle cx="300" cy="200" r="18" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.5" />
+                    <text x="300" y="205" text-anchor="middle" font-size="14">🎾</text>
+                    <text x="300" y="226" text-anchor="middle" font-size="9" fill="#3D6B8E" opacity=".6"
+                        font-family="Helvetica Neue, sans-serif" font-weight="300">Julia</text>
+
+                    <circle cx="335" cy="260" r="18" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.5" />
+                    <text x="335" y="265" text-anchor="middle" font-size="14">🎨</text>
+                    <text x="335" y="286" text-anchor="middle" font-size="9" fill="#3D6B8E" opacity=".6"
+                        font-family="Helvetica Neue, sans-serif" font-weight="300">Sophie</text>
+
+                    <circle cx="350" cy="335" r="18" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.5" />
+                    <text x="350" y="340" text-anchor="middle" font-size="14">✈️</text>
+                    <text x="350" y="361" text-anchor="middle" font-size="9" fill="#3D6B8E" opacity=".6"
+                        font-family="Helvetica Neue, sans-serif" font-weight="300">Lisa</text>
+
+                    <circle cx="280" cy="330" r="18" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.5" />
+                    <text x="280" y="335" text-anchor="middle" font-size="14">🥁</text>
+                    <text x="280" y="356" text-anchor="middle" font-size="9" fill="#3D6B8E" opacity=".6"
+                        font-family="Helvetica Neue, sans-serif" font-weight="300">Kai</text>
+
+                    <circle cx="310" cy="390" r="16" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.3" />
+                    <text x="310" y="394" text-anchor="middle" font-size="9" font-weight="500" fill="#3D6B8E"
+                        font-family="Helvetica Neue, sans-serif">LH</text>
+                    <text x="310" y="413" text-anchor="middle" font-size="8" fill="#3D6B8E" opacity=".5"
+                        font-family="Helvetica Neue, sans-serif" font-weight="300">Lukas</text>
+
+                    <!-- Julia Weber — friends/family overlap zone -->
+                    <circle cx="195" cy="230" r="16" fill="#EDE7E0" stroke="#3D6B8E" stroke-width="1.3" />
+                    <text x="195" y="234" text-anchor="middle" font-size="9" font-weight="500" fill="#3D6B8E"
+                        font-family="Helvetica Neue, sans-serif">JW</text>
+
+                    <!-- ===== Professional nodes ===== -->
+                    <circle cx="145" cy="440" r="18" fill="#EDE7E0" stroke="#8B7D3C" stroke-width="1.5" />
+                    <text x="145" y="444" text-anchor="middle" font-size="10" font-weight="500" fill="#8B7D3C"
+                        font-family="Helvetica Neue, sans-serif">MF</text>
+                    <text x="145" y="466" text-anchor="middle" font-size="9" fill="#8B7D3C" opacity=".6"
+                        font-family="Helvetica Neue, sans-serif" font-weight="300">Max</text>
+
+                    <circle cx="230" cy="450" r="18" fill="#EDE7E0" stroke="#8B7D3C" stroke-width="1.5" />
+                    <text x="230" y="454" text-anchor="middle" font-size="10" font-weight="500" fill="#8B7D3C"
+                        font-family="Helvetica Neue, sans-serif">DK</text>
+                    <text x="230" y="476" text-anchor="middle" font-size="9" fill="#8B7D3C" opacity=".6"
+                        font-family="Helvetica Neue, sans-serif" font-weight="300">David</text>
+
+                    <circle cx="185" cy="490" r="18" fill="#EDE7E0" stroke="#8B7D3C" stroke-width="1.5" />
+                    <text x="185" y="494" text-anchor="middle" font-size="10" font-weight="500" fill="#8B7D3C"
+                        font-family="Helvetica Neue, sans-serif">NV</text>
+                    <text x="185" y="516" text-anchor="middle" font-size="9" fill="#8B7D3C" opacity=".6"
+                        font-family="Helvetica Neue, sans-serif" font-weight="300">Nina</text>
+
+                    <!-- ===== Unassigned (floating outside) ===== -->
+                    <circle cx="40" cy="490" r="14" fill="#F5F0EB" stroke="#A89F95" stroke-width="1"
+                        stroke-dasharray="4 4" />
+                    <text x="40" y="494" text-anchor="middle" font-size="8" font-weight="500" fill="#A89F95"
+                        font-family="Helvetica Neue, sans-serif">AC</text>
+                    <text x="40" y="512" text-anchor="middle" font-size="8" fill="#A89F95" opacity=".5"
+                        font-family="Helvetica Neue, sans-serif" font-weight="300">Amy</text>
+
+                    <circle cx="340" cy="480" r="14" fill="#F5F0EB" stroke="#A89F95" stroke-width="1"
+                        stroke-dasharray="4 4" />
+                    <text x="340" y="484" text-anchor="middle" font-size="8" font-weight="500" fill="#A89F95"
+                        font-family="Helvetica Neue, sans-serif">🎸</text>
+                    <text x="340" y="502" text-anchor="middle" font-size="8" fill="#A89F95" opacity=".5"
+                        font-family="Helvetica Neue, sans-serif" font-weight="300">Carlos</text>
+
+                    <!-- ===== Center — Me ===== -->
+                    <circle cx="200" cy="320" r="22" fill="#EDE7E0" stroke="#B74F3A" stroke-width="2.5" />
+                    <text x="200" y="326" text-anchor="middle" font-size="18">🐠</text>
+                </svg>
+
+                <!-- Zoom controls -->
+                <div class="zoom-controls">
+                    <button>+</button>
+                    <button>−</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>
