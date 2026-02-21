@@ -1,6 +1,6 @@
 import XCTest
 import SwiftData
-@testable import Goldfish3
+@testable import Goldfish
 
 // MARK: - Test Helpers
 @MainActor
@@ -124,6 +124,75 @@ final class VCardTests: XCTestCase {
         XCTAssertEqual(parsed.count, 0)
     }
     
+    // MARK: - Goldfish Manifest Tests
+    
+    func testGoldfishManifestExport() throws {
+        // Export with manifest enabled
+        let p1 = Person(name: "Alice")
+        let p2 = Person(name: "Bob")
+        
+        let data = VCardExporter.export([p1, p2], includeManifest: true)
+        let vCardString = String(data: data, encoding: .utf8)!
+        
+        // Verify manifest is present
+        XCTAssertTrue(vCardString.contains("FN:_GOLDFISH_MANIFEST"))
+        XCTAssertTrue(vCardString.contains("X-GOLDFISH-EXPORT-VERSION:1.0"))
+        XCTAssertTrue(vCardString.contains("X-GOLDFISH-EXPORT-DATE:"))
+        XCTAssertTrue(vCardString.contains("X-GOLDFISH-EXPORT-COUNT:2"))
+        XCTAssertTrue(vCardString.contains("X-GOLDFISH-EXPORT-CONNECTIONS:0")) // No relationships
+    }
+    
+    func testGoldfishManifestDetection() throws {
+        // Export with manifest, then parse
+        let p1 = Person(name: "Alice")
+        let data = VCardExporter.export([p1], includeManifest: true)
+        
+        let result = VCardParser.parseWithManifest(data)
+        
+        // Manifest should be detected
+        XCTAssertTrue(result.isGoldfishFormat)
+        XCTAssertNotNil(result.manifest)
+        XCTAssertEqual(result.manifest?.version, "1.0")
+        XCTAssertEqual(result.manifest?.contactCount, 1)
+        XCTAssertEqual(result.manifest?.connectionCount, 0)
+        XCTAssertNotNil(result.manifest?.exportDate)
+        
+        // Manifest should NOT appear in contacts list
+        XCTAssertEqual(result.contacts.count, 1)
+        XCTAssertEqual(result.contacts.first?.name, "Alice")
+    }
+    
+    func testPlainVCardNoManifest() throws {
+        // A plain vCard without Goldfish extensions
+        let plain = """
+        BEGIN:VCARD
+        VERSION:3.0
+        FN:John Doe
+        TEL:+1234567890
+        END:VCARD
+        """
+        
+        let data = plain.data(using: .utf8)!
+        let result = VCardParser.parseWithManifest(data)
+        
+        // No manifest
+        XCTAssertFalse(result.isGoldfishFormat)
+        XCTAssertNil(result.manifest)
+        
+        // Contact still parsed
+        XCTAssertEqual(result.contacts.count, 1)
+        XCTAssertEqual(result.contacts.first?.name, "John Doe")
+    }
+    
+    func testExportWithoutManifest() throws {
+        // Default export (no manifest) should not contain manifest
+        let p1 = Person(name: "Alice")
+        let data = VCardExporter.export([p1]) // includeManifest defaults to false
+        let vCardString = String(data: data, encoding: .utf8)!
+        
+        XCTAssertFalse(vCardString.contains("_GOLDFISH_MANIFEST"))
+    }
+    
     // MARK: - Import Service Tests
     
     @MainActor
@@ -138,15 +207,7 @@ final class VCardTests: XCTestCase {
         try context.save()
         let originalID = existing.id
         
-        // 2. Import same person (same Name + Email)
-        // We simulate vCard data by creating a Person locally and exporting it
-        // We give it a NEW UUID to prove detection is by content, not just ID
-        let start = Person(name: "Alice", email: "alice@example.com")
-        // Overwrite ID to differ from DB
-        // But wait, VCardExporter uses person.id.
-        // We want to test logic: Name+Email match.
-        // The parser/importer will see a different UID in the file (if we generated a new one).
-        // Let's manually create vCard string with a random UID
+        // 2. Import same person (same Name + Email) with a different UUID
         let vCard = """
         BEGIN:VCARD
         VERSION:3.0
@@ -164,7 +225,7 @@ final class VCardTests: XCTestCase {
         XCTAssertEqual(result.skippedCount, 1)
         XCTAssertEqual(result.skippedDuplicates, ["Alice"])
         
-        // Verify DB still check has only 1 Alice
+        // Verify DB still has only 1 Alice
         let cnt = try context.fetchCount(FetchDescriptor<Person>())
         XCTAssertEqual(cnt, 1)
         
@@ -208,65 +269,57 @@ final class VCardTests: XCTestCase {
         
         XCTAssertEqual(result.importedCount, 2)
         
-        // Verify Relationship
+        // Verify Relationship — inverse deduplication should produce exactly 1 row
         let context = container.mainContext
         let relationships = try context.fetch(FetchDescriptor<Relationship>())
         
-        // Should have 1 relationship (deduplicated or created once)
-        // Wait, import logic iterates BOTH contacts.
+        // With the inverse dedup fix:
         // Mom says: I am mother of Son -> Creates Relationship(Mom, Son, mother)
-        // Son says: I am child of Mom -> Creates Relationship(Son, Mom, child)
-        // These are effectively duplicate logical relationships if we consider direction.
-        // But our model stores Directional types explicitly.
-        // Relationship(Mom, Son, mother) means Mom is mother of Son.
-        // Relationship(Son, Mom, child) means Son is child of Mom.
-        // These are distinct rows in DB?
-        // Let's check Relationship model.
-        // "Directional types (mother, father, child): Stored with explicit direction. The inverse is derived, not stored as a separate row."
-        // GraphService/DataManager typically enforce one direction storage?
-        // No, `createRelationship` just inserts what you ask.
-        // But `Platform_Integration_Spec`:
-        // "Both entries encode the same relationship from opposite perspectives. On import, Goldfish creates a single Relationship(from: Anna, to: Luca, type: .mother) and deduplicates the inverse."
-        //
-        // My implementation of `VCardImportService` check `relationshipExists`.
-        // `relationshipExists(from: person, to: targetPerson, type: type)`
-        // It checks if (A->B, type) AND does it check the inverse?
-        // Let's look at `VCardImportService.swift` again.
-        //
-        // `relationshipExists` only checks `from.outgoingRelationships.contains { ... }`
-        // So (Mom->Son, Mother) is created.
-        // (Son->Mom, Child) is created.
-        //
-        // If the model intends to store only ONE, then the import service logic I wrote creates TWO.
-        // Does `GraphService` or `Person` computed properties handle this?
-        // `Person.allRelationships` returns outgoing + incoming.
-        // `Relationship.effectiveType` handles inverses.
-        //
-        // If we have (Mom, Son, Mother) AND (Son, Mom, Child).
-        // For Mom:
-        //  - outgoing: (Mom, Son, Mother) -> effective: Mother
-        //  - incoming: (Son, Mom, Child) -> effective: Mother (inverse of Child)
-        // So she sees "Mother" twice for the same person?
-        //
-        // Yes, duplicate!
-        // The Spec said: "Deduplicates the inverse".
-        // My code does NOT seem to deduplicate the inverse explicitly.
-        //
-        // Fix required in `VCardImportService.swift`?
-        // I should check if the INVERSE exists before creating.
-        // `relationshipExists` should check both directions?
-        //
-        // Actually, let's verify if my test catches this.
-        // I expect 1 relationship if the logic was perfect, but my code might produce 2.
-        // I will assert count is 1 or 2 and see.
-        // Ideally it should be 1.
+        // Son says: I am child of Mom -> Detects inverse (mother<->child) already exists, skips
+        XCTAssertEqual(relationships.count, 1, "Inverse relationships should be deduplicated to a single row")
         
-        // But wait, if I fix `relationshipExists` to check inverse, I solve it.
-        // Logic:
-        // If type has inverse (Mother <-> Child):
-        // Check if `Relationship(from: target, to: source, type: inverse)` exists?
-        // If so, don't create.
+        // Verify the connection stats
+        XCTAssertEqual(result.connectionsRestored, 1)
+        XCTAssertEqual(result.connectionsSkipped, 1) // The inverse was skipped
+    }
+    
+    @MainActor
+    func testGoldfishFormatImportResult() async throws {
+        let container = try makeTestContainerForVCard()
+        let service = VCardImportService(modelContainer: container)
         
-        XCTAssertTrue(relationships.count >= 1)
+        // Create a Goldfish-format file with manifest
+        let p1 = Person(name: "Test Person")
+        let data = VCardExporter.export([p1], includeManifest: true)
+        
+        let result = try await service.importContacts(data) { _ in }
+        
+        // Should detect Goldfish format
+        XCTAssertTrue(result.isGoldfishFormat)
+        XCTAssertEqual(result.goldfishVersion, "1.0")
+        XCTAssertEqual(result.importedCount, 1)
+    }
+    
+    @MainActor
+    func testPlainVCardImportResult() async throws {
+        let container = try makeTestContainerForVCard()
+        let service = VCardImportService(modelContainer: container)
+        
+        // A plain vCard without Goldfish extensions
+        let plain = """
+        BEGIN:VCARD
+        VERSION:3.0
+        FN:Jane Plain
+        TEL:+9876543210
+        END:VCARD
+        """
+        
+        let result = try await service.importContacts(plain.data(using: .utf8)!) { _ in }
+        
+        // Should NOT detect Goldfish format
+        XCTAssertFalse(result.isGoldfishFormat)
+        XCTAssertNil(result.goldfishVersion)
+        XCTAssertEqual(result.importedCount, 1)
+        XCTAssertEqual(result.connectionsRestored, 0)
     }
 }

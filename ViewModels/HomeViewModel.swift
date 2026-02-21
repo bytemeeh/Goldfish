@@ -35,8 +35,15 @@ final class HomeViewModel: ObservableObject {
     @Published var showFavoritesOnly: Bool = false
     
     // MARK: - Data
+    struct ContactGroup: Identifiable {
+        let id = UUID()
+        let name: String
+        let contacts: [Person]
+    }
+    
     @Published var contacts: [Person] = []
     @Published var filteredContacts: [Person] = []
+    @Published var groupedContacts: [ContactGroup] = []
     @Published var circles: [GoldfishCircle] = []
     
     private var cancellables = Set<AnyCancellable>()
@@ -82,6 +89,9 @@ final class HomeViewModel: ObservableObject {
         
         var all = try dataManager.fetchAllPersons()
         
+        // Never show the "Me" contact in the contacts list
+        all = all.filter { !$0.isMe }
+        
         if showFavoritesOnly {
             all = all.filter { $0.isFavorite }
         }
@@ -104,6 +114,7 @@ final class HomeViewModel: ObservableObject {
         
         self.contacts = all
         self.filteredContacts = all // When not searching, filtered = all (or subset based on filters)
+        self.updateGroupedContacts(from: all)
     }
     
     // MARK: - Search
@@ -136,6 +147,7 @@ final class HomeViewModel: ObservableObject {
                 
                 await MainActor.run {
                     self.filteredContacts = finalResults
+                    self.updateGroupedContacts(from: finalResults)
                 }
             } catch {
                 print("Search failed: \(error)")
@@ -165,5 +177,23 @@ final class HomeViewModel: ObservableObject {
     func selectCircleFilter(_ circle: GoldfishCircle?) {
         selectedCircleID = circle?.id
         loadData()
+    }
+    
+    // MARK: - Grouping Helper
+    private func updateGroupedContacts(from list: [Person]) {
+        var groups: [String: [Person]] = [:]
+        for person in list {
+            let activeCircles = person.circleContacts.filter { !$0.manuallyExcluded }
+            let circleName = activeCircles.first?.circle.name ?? "Unassigned"
+            groups[circleName, default: []].append(person)
+        }
+        
+        let sortedKeys = groups.keys.sorted { a, b in
+            if a == "Unassigned" { return false }
+            if b == "Unassigned" { return true }
+            return a < b
+        }
+        
+        self.groupedContacts = sortedKeys.map { ContactGroup(name: $0, contacts: groups[$0]!) }
     }
 }

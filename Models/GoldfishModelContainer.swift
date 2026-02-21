@@ -21,17 +21,20 @@ enum GoldfishModelContainer {
         CircleContact.self
     ])
 
-    /// Creates the production container with CloudKit sync enabled.
+    /// Creates the production container with local-only storage.
     ///
-    /// - Parameter identifier: Your CloudKit container ID
-    ///   (e.g., "iCloud.com.yourname.goldfish").
+    /// **CloudKit is currently disabled for local development.**
+    /// To re-enable, uncomment the `cloudKitDatabase` line and restore
+    /// the iCloud entitlements in `Goldfish.entitlements`.
+    ///
     /// - Returns: A configured `ModelContainer`.
     static func production(
         cloudKitIdentifier: String = "iCloud.com.goldfish.app"
     ) throws -> ModelContainer {
         let config = ModelConfiguration(
-            schema: schema,
-            cloudKitDatabase: .private(cloudKitIdentifier)
+            schema: schema
+            // CloudKit sync (re-enable when signing is configured):
+            // cloudKitDatabase: .private(cloudKitIdentifier)
         )
         return try ModelContainer(for: schema, configurations: [config])
     }

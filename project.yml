@@ -3,8 +3,6 @@ options:
   bundleIdPrefix: com.goldfish
   deploymentTarget:
     iOS: "17.0"
-  xcodeVersion: "15.0"
-  generateEmptyDirectories: true
   createIntermediateGroups: true
 
 settings:
@@ -37,7 +35,7 @@ targets:
       - path: Goldfish/PrivacyInfo.xcprivacy
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.goldfish.app
+        PRODUCT_BUNDLE_IDENTIFIER: app.pond.goldfish
         PRODUCT_NAME: Goldfish
         INFOPLIST_FILE: Goldfish/Info.plist
         CODE_SIGN_ENTITLEMENTS: Goldfish/Goldfish.entitlements

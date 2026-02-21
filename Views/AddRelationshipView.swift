@@ -120,6 +120,7 @@ struct AddRelationshipView: View {
         isSaving = true
         do {
             try dataManager.createRelationship(from: person, to: target, type: selectedType)
+            ToastManager.shared.showToast(message: "Connected \(person.name) to \(target.name) 🤝")
             dismiss()
         } catch let error as GoldfishError {
             errorMessage = error.errorDescription ?? "An error occurred"

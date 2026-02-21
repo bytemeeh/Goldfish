@@ -6,15 +6,66 @@ import SwiftData
 /// Includes custom `X-GOLDFISH-*` extensions to preserve graph metadata.
 struct VCardExporter {
 
+    // MARK: - Manifest Constants
+    
+    /// The special FN used to identify the Goldfish manifest vCard.
+    static let manifestName = "_GOLDFISH_MANIFEST"
+    
+    /// Current export format version.
+    static let exportVersion = "1.0"
+
     /// Exports a list of contacts to vCard 3.0 data (UTF-8).
-    static func export(_ contacts: [Person]) -> Data {
+    /// - Parameters:
+    ///   - contacts: The contacts to export.
+    ///   - includeManifest: If true, prepends a Goldfish manifest vCard header.
+    /// - Returns: vCard data (UTF-8).
+    static func export(_ contacts: [Person], includeManifest: Bool = false) -> Data {
         var vcardString = ""
+
+        if includeManifest {
+            vcardString += generateManifest(contacts: contacts)
+        }
 
         for person in contacts {
             vcardString += formatContact(person)
         }
 
         return vcardString.data(using: .utf8) ?? Data()
+    }
+    
+    // MARK: - Manifest Generation
+    
+    /// Generates a Goldfish manifest vCard that encodes export metadata.
+    /// Non-Goldfish apps will see this as a harmless contact named `_GOLDFISH_MANIFEST`.
+    /// The Goldfish import parser detects and strips it.
+    static func generateManifest(contacts: [Person]) -> String {
+        var lines: [String] = []
+        
+        lines.append("BEGIN:VCARD")
+        lines.append("VERSION:3.0")
+        lines.append("FN:\(manifestName)")
+        lines.append("X-GOLDFISH-EXPORT-VERSION:\(exportVersion)")
+        
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        lines.append("X-GOLDFISH-EXPORT-DATE:\(formatter.string(from: Date()))")
+        
+        lines.append("X-GOLDFISH-EXPORT-COUNT:\(contacts.count)")
+        
+        // Count total relationship edges across all contacts
+        // Each relationship is stored once, but referenced from both sides.
+        // We count unique Relationship objects by collecting IDs.
+        var relationshipIDs: Set<UUID> = []
+        for person in contacts {
+            for rel in person.allRelationships {
+                relationshipIDs.insert(rel.id)
+            }
+        }
+        lines.append("X-GOLDFISH-EXPORT-CONNECTIONS:\(relationshipIDs.count)")
+        
+        lines.append("END:VCARD")
+        
+        return lines.joined(separator: "\r\n") + "\r\n"
     }
 
     private static func formatContact(_ person: Person) -> String {

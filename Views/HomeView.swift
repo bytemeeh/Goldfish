@@ -1,117 +1,196 @@
 import SwiftUI
 
+// MARK: - Home View
+/// The main view after onboarding. Shows contacts list or graph,
+/// with toolbar buttons for settings, view toggle, and add contact.
 struct HomeView: View {
     @EnvironmentObject var dataManager: GoldfishDataManager
+
+    var body: some View {
+        HomeContent(dataManager: dataManager)
+            .environmentObject(dataManager)
+    }
+}
+
+// MARK: - Home Content
+/// Separated so we can properly inject the real dataManager into ViewModels.
+private struct HomeContent: View {
+    @EnvironmentObject var dataManager: GoldfishDataManager
+    @EnvironmentObject var demoManager: DemoManager
     @StateObject private var viewModel: HomeViewModel
     @StateObject private var graphViewModel: GraphViewModel
-    
+
     @State private var showSettings = false
     @State private var showAddContact = false
-    
-    init() {
-        // We defer initialization to onAppear/init block pattern or use StateObject with auto-init
-        // But we need DataManager.
-        // Since we can't access EnvironmentObject in init, we rely on dependency injection via .environmentObject
-        // and init the ViewModels in a slightly different way or assuming DataManager is passed?
-        //
-        // Workaround: We use a wrapper or initialize them with a placeholder, then configure.
-        // Better: Use a loader view.
-        
-        // For this purpose, we'll initialize with placeholder and configure in onAppear/task
-        _viewModel = StateObject(wrappedValue: HomeViewModel(dataManager: .preview())) 
-        _graphViewModel = StateObject(wrappedValue: GraphViewModel(dataManager: .preview()))
-        // The above is slightly hacky because we want the REAL data manager.
+    @State private var isSearchActive = false
+
+    init(dataManager: GoldfishDataManager) {
+        _viewModel = StateObject(wrappedValue: HomeViewModel(dataManager: dataManager))
+        _graphViewModel = StateObject(wrappedValue: GraphViewModel(dataManager: dataManager))
     }
-    
-    // Better pattern for SwiftUI DI:
-    struct Content: View {
-        @EnvironmentObject var dataManager: GoldfishDataManager
-        @StateObject var viewModel: HomeViewModel
-        @StateObject var graphViewModel: GraphViewModel
-        
-        init(dataManager: GoldfishDataManager) {
-            _viewModel = StateObject(wrappedValue: HomeViewModel(dataManager: dataManager))
-            _graphViewModel = StateObject(wrappedValue: GraphViewModel(dataManager: dataManager))
-        }
-        
-        @State private var showSettings = false
-        @State private var showAddContact = false
-        
-        var body: some View {
-             NavigationStack {
-                ZStack {
-                    // MARK: - Main Content
-                    if viewModel.viewMode == .graph {
-                        GraphContainerView(viewModel: graphViewModel)
-                            .id("graph") // Force recreate on switch if needed, but keeping state is better
-                    } else {
-                        ContactListView(viewModel: viewModel)
-                            .id("list")
+
+    var body: some View {
+        ZStack {
+            NavigationStack {
+                VStack(spacing: 0) {
+                    if isSearchActive {
+                        HStack {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundColor(.secondary)
+                            TextField("Search...", text: $viewModel.searchText)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                            if !viewModel.searchText.isEmpty {
+                                Button(action: { viewModel.searchText = "" }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            Button("Cancel") {
+                                withAnimation {
+                                    isSearchActive = false
+                                    viewModel.searchText = ""
+                                }
+                            }
+                            .foregroundColor(.accentColor)
+                        }
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
+                        .background(Color(uiColor: .systemGroupedBackground))
+                        .transition(.move(edge: .top).combined(with: .opacity))
                     }
                     
-                    // MARK: - Search Overlay (Graph Mode)
-                    if viewModel.viewMode == .graph && viewModel.isSearching {
-                        VStack {
-                            Spacer()
-                            SearchOverlayView(viewModel: viewModel) { person in
-                                viewModel.isSearching = false
-                                viewModel.searchText = "" // Clear search logic
-                                graphViewModel.selectContact(person.id)
+                    if viewModel.viewMode == .graph {
+                        GraphContainerView(viewModel: graphViewModel)
+                            .onTapGesture {
+                                if isSearchActive {
+                                    withAnimation {
+                                        isSearchActive = false
+                                        viewModel.searchText = ""
+                                    }
+                                }
                             }
-                            .frame(maxHeight: 400)
-                        }
-                        .zIndex(2)
+                            .onChange(of: isSearchActive) { _, active in
+                                if active && !viewModel.searchText.isEmpty {
+                                    graphViewModel.searchMatchedIDs = Set(viewModel.filteredContacts.map(\.id))
+                                } else {
+                                    graphViewModel.searchMatchedIDs = nil
+                                }
+                            }
+                            .onChange(of: viewModel.filteredContacts) { _, contacts in
+                                if isSearchActive && !viewModel.searchText.isEmpty {
+                                    graphViewModel.searchMatchedIDs = Set(contacts.map(\.id))
+                                } else {
+                                    graphViewModel.searchMatchedIDs = nil
+                                }
+                            }
+                    } else {
+                        contactsList
                     }
                 }
-                .navigationTitle(viewModel.viewMode == .graph ? "Graph" : "Contacts")
+                .navigationTitle(viewModel.viewMode == .graph ? "Ponds" : "Contacts")
                 .navigationBarTitleDisplayMode(.inline)
-                .searchable(text: $viewModel.searchText, placement: .navigationBarDrawer(displayMode: .always))
                 .toolbar {
-                    // Leading: Settings
                     ToolbarItem(placement: .topBarLeading) {
-                        Button(action: { showSettings = true }) {
+                        Button { showSettings = true } label: {
                             Image(systemName: "gear")
                         }
                     }
-                    
-                    // Trailing: View Toggle + Add
-                    ToolbarItem(placement: .topBarTrailing) {
-                        HStack {
-                            Button(action: viewModel.toggleViewMode) {
-                                Image(systemName: viewModel.viewMode == .graph ? "list.bullet" : "network")
-                            }
-                            
-                            Button(action: { showAddContact = true }) {
-                                Image(systemName: "plus")
-                            }
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        Button { 
+                            withAnimation { isSearchActive.toggle() }
+                            if !isSearchActive { viewModel.searchText = "" }
+                        } label: {
+                            Image(systemName: "magnifyingglass")
+                        }
+                        
+                        Button { viewModel.toggleViewMode() } label: {
+                            Image(systemName: viewModel.viewMode == .graph ? "list.bullet" : "network")
+                        }
+                        Button { showAddContact = true } label: {
+                            Image(systemName: "plus")
                         }
                     }
                 }
-                .navigationDestination(isPresented: $showSettings) {
-                    SettingsView()
+                .sheet(isPresented: $showSettings) {
+                    NavigationStack {
+                        SettingsView()
+                            .environmentObject(dataManager)
+                    }
                 }
-                .sheet(isPresented: $showAddContact) {
-                    ContactFormView(viewModel: ContactFormViewModel(dataManager: dataManager))
+                .sheet(isPresented: $showAddContact, onDismiss: {
+                    viewModel.loadData()
+                    if viewModel.viewMode == .graph {
+                        graphViewModel.refreshGraph()
+                    }
+                }) {
+                    NavigationStack {
+                        ContactFormView(viewModel: ContactFormViewModel(dataManager: dataManager))
+                            .environmentObject(dataManager)
+                    }
                 }
                 .onAppear {
                     viewModel.loadData()
-                    graphViewModel.loadGraph()
+                    if viewModel.viewMode == .graph {
+                        graphViewModel.loadGraph()
+                    }
+                }
+            }
+            
+            // Overlays for Interactive Demo
+            if demoManager.isActive {
+                if demoManager.currentStep == .finished {
+                    DemoCompletionView()
+                        .transition(.opacity)
+                } else {
+                    DemoOverlayView()
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
         }
     }
-    
-    var body: some View {
-        // We need a way to pass the EnvironmentObject dataManager to the init of the StateObjects.
-        // Since we can't do that at the root of HomeView directly if HomeView is created without args.
-        // We use a middleware View.
-        DataManagerInjector()
-    }
-    
-    struct DataManagerInjector: View {
-        @EnvironmentObject var dataManager: GoldfishDataManager
-        var body: some View {
-            Content(dataManager: dataManager)
+
+    // MARK: - Contacts List
+    private var contactsList: some View {
+        Group {
+            if viewModel.filteredContacts.isEmpty && viewModel.searchText.isEmpty {
+                EmptyStateView(
+                    systemImage: "magnifyingglass",
+                    headline: "No results",
+                    subtext: "Try a different search term or add a contact."
+                )
+            } else if viewModel.filteredContacts.isEmpty {
+                EmptyStateView(
+                    systemImage: "magnifyingglass",
+                    headline: "No results",
+                    subtext: "Try a different search term."
+                )
+            } else {
+                List {
+                    ForEach(viewModel.groupedContacts) { group in
+                        Section(header: Text(group.name).font(.headline).foregroundColor(.white).textCase(nil)) {
+                            ForEach(group.contacts) { person in
+                                NavigationLink {
+                                    ContactDetailView(
+                                        viewModel: ContactDetailViewModel(
+                                            person: person,
+                                            dataManager: dataManager
+                                        )
+                                    )
+                                    .environmentObject(dataManager)
+                                } label: {
+                                    ContactRowView(person: person)
+                                }
+                            }
+                            .onDelete { _ in 
+                                // Deletion from grouped lists requires mapping offsets back to the flat array.
+                                // To keep it simple for now, we'll disable swipe-to-delete from the home view 
+                                // since edit/delete is supported inside the detail view.
+                            }
+                        }
+                    }
+                }
+                .listStyle(.plain)
+            }
         }
     }
 }

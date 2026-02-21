@@ -59,7 +59,7 @@ struct EmptyStateView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground)) // ensure it covers content
+        .background(Color.clear)
     }
 }
 

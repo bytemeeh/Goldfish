@@ -41,6 +41,7 @@ final class GraphNodeSprite: SKNode {
     private let initialsLabel = SKLabelNode()
     private let nameLabel = SKLabelNode()
     private let selectionGlow = SKShapeNode()
+    private let nudgeGlow = SKShapeNode()
     private var favoriteBadge: SKShapeNode?
     private var dotNode: SKShapeNode?
 
@@ -75,6 +76,7 @@ final class GraphNodeSprite: SKNode {
         setupPhoto(photoData: photoData, name: name, colorHex: colorHex)
         setupNameLabel(name: name)
         setupSelectionGlow()
+        setupNudgeGlow()
         if isFavorite { setupFavoriteBadge() }
         setupDotNode(colorHex: colorHex, name: name)
     }
@@ -88,14 +90,44 @@ final class GraphNodeSprite: SKNode {
 
     private func setupStrokeRing(circleColorHex: String?) {
         let radius = Self.nodeRadius + 2
-        strokeRing.path = CGPath(ellipseIn: CGRect(
-            x: -radius, y: -radius,
-            width: radius * 2, height: radius * 2
-        ), transform: nil)
-        strokeRing.fillColor = .clear
-        strokeRing.lineWidth = 2
-        strokeRing.strokeColor = circleColorHex.map { SKColor(hexString: $0) }
-            ?? SKColor.goldfishNodeStroke
+        
+        // Deterministic wobble based on node ID
+        let seed = CGFloat(abs(personID.uuidString.hashValue) % 100) / 100.0 * 2 * .pi
+        
+        let path = CGMutablePath()
+        let pts = 12
+        var points: [CGPoint] = []
+        for i in 0..<pts {
+            let a = (CGFloat(i) / CGFloat(pts)) * 2 * .pi
+            // Slight organic imperfection
+            let wobble = radius + sin(a * 3 + seed) * 1.5 + cos(a * 5 - seed) * 1.0
+            points.append(CGPoint(x: wobble * cos(a), y: wobble * sin(a)))
+        }
+        
+        let startX = (points[pts - 1].x + points[0].x) / 2
+        let startY = (points[pts - 1].y + points[0].y) / 2
+        path.move(to: CGPoint(x: startX, y: startY))
+
+        for i in 0..<pts {
+            let next = points[(i + 1) % pts]
+            let midX = (points[i].x + next.x) / 2
+            let midY = (points[i].y + next.y) / 2
+            path.addQuadCurve(to: CGPoint(x: midX, y: midY), control: points[i])
+        }
+        path.closeSubpath()
+        
+        strokeRing.path = path
+        // Watercolor fill and thicker stroke to look painted
+        if let hex = circleColorHex {
+            let color = SKColor(hexString: hex)
+            strokeRing.fillColor = color.withAlphaComponent(0.1)
+            strokeRing.strokeColor = color.withAlphaComponent(0.8)
+            strokeRing.lineWidth = 2.5
+        } else {
+            strokeRing.fillColor = .clear
+            strokeRing.strokeColor = SKColor.goldfishNodeStroke.withAlphaComponent(0.6)
+            strokeRing.lineWidth = 2.0
+        }
         strokeRing.zPosition = 0
         addChild(strokeRing)
     }
@@ -162,6 +194,41 @@ final class GraphNodeSprite: SKNode {
         addChild(selectionGlow)
     }
 
+    private func setupNudgeGlow() {
+        // Pseudo-randomly pick ~15% of contacts to demo the Smart Nudge (Interaction Decay)
+        let hash = abs(personID.uuidString.hashValue) % 100
+        let isNeglected = hash < 15
+        
+        let r = Self.nodeRadius + 4
+        nudgeGlow.path = CGPath(ellipseIn: CGRect(
+            x: -r, y: -r, width: r * 2, height: r * 2
+        ), transform: nil)
+        
+        nudgeGlow.fillColor = .clear
+        nudgeGlow.strokeColor = SKColor.orange
+        nudgeGlow.lineWidth = 1.5
+        nudgeGlow.glowWidth = 3.0
+        nudgeGlow.zPosition = -2
+        nudgeGlow.alpha = 0
+        addChild(nudgeGlow)
+        
+        if isNeglected {
+            let pulseIn = SKAction.fadeAlpha(to: 0.7, duration: 1.5)
+            pulseIn.timingMode = .easeInEaseOut
+            let pulseOut = SKAction.fadeAlpha(to: 0.1, duration: 1.5)
+            pulseOut.timingMode = .easeInEaseOut
+            let scaleUp = SKAction.scale(to: 1.15, duration: 1.5)
+            scaleUp.timingMode = .easeInEaseOut
+            let scaleDown = SKAction.scale(to: 1.0, duration: 1.5)
+            scaleDown.timingMode = .easeInEaseOut
+            
+            let g1 = SKAction.group([pulseIn, scaleUp])
+            let g2 = SKAction.group([pulseOut, scaleDown])
+            
+            nudgeGlow.run(SKAction.repeatForever(SKAction.sequence([g1, g2])))
+        }
+    }
+
     private func setupFavoriteBadge() {
         let badge = SKShapeNode(path: Self.starPath(size: Self.badgeSize))
         badge.fillColor = SKColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1.0) // gold
@@ -197,9 +264,9 @@ final class GraphNodeSprite: SKNode {
 
     func updateLOD(zoom: CGFloat) {
         let newLOD: LODLevel
-        if zoom < 0.3 {
+        if zoom < 0.35 {
             newLOD = .dot
-        } else if zoom < 0.5 {
+        } else if zoom < 0.75 { // Aggressive semantic zooming
             newLOD = .compact
         } else {
             newLOD = .full

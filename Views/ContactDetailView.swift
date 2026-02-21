@@ -39,22 +39,7 @@ struct ContactDetailView: View {
                 }
                 .padding(.top, 24)
                 
-                // MARK: - Quick Actions
-                if hasContactMethods {
-                    HStack(spacing: 24) {
-                        ActionButton(icon: "phone.fill", label: "Call", action: viewModel.callContact)
-                            .disabled(viewModel.person.phone == nil)
-                        
-                        ActionButton(icon: "message.fill", label: "Message", action: viewModel.messageContact)
-                            .disabled(viewModel.person.phone == nil)
-                        
-                        ActionButton(icon: "envelope.fill", label: "Email", action: viewModel.emailContact)
-                            .disabled(viewModel.person.email == nil)
-                        
-                        ActionButton(icon: "star.fill", label: "Favorite", isActive: viewModel.person.isFavorite, action: viewModel.toggleFavorite)
-                    }
-                    .padding(.horizontal)
-                }
+
                 
                 // MARK: - Info Section
                 VStack(alignment: .leading, spacing: 20) {
@@ -75,8 +60,9 @@ struct ContactDetailView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground))
+                .background(.regularMaterial)
                 .cornerRadius(16)
+                .shadow(color: Color.black.opacity(0.05), radius: 10, y: 5)
                 .padding(.horizontal)
                 
                 // MARK: - Relationships
@@ -86,11 +72,11 @@ struct ContactDetailView: View {
                             .font(.headline)
                         Spacer()
                         Button {
-                            showAddRelationship = true
+                            ToastManager.shared.showToast(message: "Drag contacts together in the graph to connect them")
                         } label: {
                             Image(systemName: "plus.circle.fill")
                                 .font(.title3)
-                                .foregroundStyle(.accentColor)
+                                .foregroundStyle(.tint)
                         }
                     }
                     .padding(.horizontal)
@@ -99,11 +85,7 @@ struct ContactDetailView: View {
                         EmptyStateView(
                             systemImage: "person.line.dotted.person",
                             headline: "No connections yet",
-                            subtext: "Add a relationship to see how you're connected.",
-                            actionLabel: "Add Relationship",
-                            action: {
-                                showAddRelationship = true
-                            }
+                            subtext: "Drag contacts together in the graph to connect them"
                         )
                         .frame(height: 200)
                         .cornerRadius(16)
@@ -140,7 +122,7 @@ struct ContactDetailView: View {
                             .font(.headline)
                             .padding(.horizontal)
                         
-                        Map(coordinateRegion: .constant(MKCoordinateRegion(
+                        Map(initialPosition: .region(MKCoordinateRegion(
                             center: CLLocationCoordinate2D(latitude: lat, longitude: lon),
                             span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
                         )))
@@ -160,8 +142,9 @@ struct ContactDetailView: View {
                          }
                          .padding()
                          .frame(maxWidth: .infinity, alignment: .leading)
-                         .background(Color(.secondarySystemBackground))
+                         .background(.regularMaterial)
                          .cornerRadius(16)
+                         .shadow(color: Color.black.opacity(0.05), radius: 10, y: 5)
                          .padding(.horizontal)
                      }
                 }
@@ -179,12 +162,15 @@ struct ContactDetailView: View {
             }
         }
         .sheet(isPresented: $viewModel.isEditing) {
-            ContactFormView(
-                viewModel: ContactFormViewModel(
-                    dataManager: dataManager,
-                    person: viewModel.person
+            NavigationStack {
+                ContactFormView(
+                    viewModel: ContactFormViewModel(
+                        dataManager: dataManager,
+                        person: viewModel.person
+                    )
                 )
-            )
+                .environmentObject(dataManager)
+            }
         }
         .sheet(isPresented: $showAddRelationship, onDismiss: {
             viewModel.refreshData()

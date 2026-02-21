@@ -69,22 +69,9 @@ final class GoldfishDataManager: ObservableObject {
         self.context = context
     }
 
-    // MARK: - Convenience Init for SwiftUI Previews
 
-    /// Creates a data manager with an in-memory store (no CloudKit, no persistence).
-    /// Useful for SwiftUI previews and unit tests.
-    static func preview() -> GoldfishDataManager {
-        let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let schema = Schema([
-            Person.self,
-            Relationship.self,
-            Location.self,
-            GoldfishCircle.self,
-            CircleContact.self
-        ])
-        let container = try! ModelContainer(for: schema, configurations: [config])
-        return GoldfishDataManager(context: container.mainContext)
-    }
+    // MARK: - Preview Init (see Extensions.swift)
+
 
     // MARK: ───────────────────────────────────────────────
     // MARK: Person CRUD
@@ -204,7 +191,7 @@ final class GoldfishDataManager: ObservableObject {
     func fetchAllPersons(
         sortBy: SortDescriptor<Person> = SortDescriptor(\Person.name)
     ) throws -> [Person] {
-        var descriptor = FetchDescriptor<Person>(sortBy: [sortBy])
+        let descriptor = FetchDescriptor<Person>(sortBy: [sortBy])
         return try context.fetch(descriptor)
     }
 
@@ -579,11 +566,63 @@ final class GoldfishDataManager: ObservableObject {
     func performOnboarding(name: String, color: String? = nil) throws -> Person {
         try createSystemCircles()
         let me = try createPerson(name: name, isMe: true, color: color)
+        try populateDemoData(me: me)
         return me
     }
 
     /// Whether onboarding has been completed (isMe contact exists).
     func isOnboardingComplete() throws -> Bool {
         try fetchMePerson() != nil
+    }
+    
+    // MARK: ───────────────────────────────────────────────
+    // MARK: Demo Data Population
+    // MARK: ───────────────────────────────────────────────
+    
+    private func populateDemoData(me: Person) throws {
+        let allCircles = try fetchAllCircles()
+        let family = allCircles.first { $0.name == "Family" }
+        let friends = allCircles.first { $0.name == "Friends" }
+        let professional = allCircles.first { $0.name == "Professional" }
+        let circles = [family, friends, professional].compactMap { $0 }
+        
+        let demoNames = [
+            "Emma", "Liam", "Olivia", "Noah", "Ava",
+            "Oliver", "Isabella", "Elijah", "Sophia", "Lucas",
+            "Mia", "Mason", "Charlotte", "Logan"
+        ]
+        
+        var demoPersons: [Person] = []
+        
+        // 1. Create Contacts
+        for name in demoNames {
+            let colorHex = ["#FF5E3A", "#FF9500", "#FFCC00", "#4CD964", "#5AC8FA", "#007AFF", "#5856D6", "#FF2D55"].randomElement()!
+            let p = try createPerson(name: name, isMe: false, color: colorHex)
+            demoPersons.append(p)
+            
+            // Assign to a random circle
+            if let randomCircle = circles.randomElement() {
+                try addToCircle(p, circle: randomCircle)
+            }
+        }
+        
+        // 2. Create connections to ME
+        for p in demoPersons.prefix(6) {
+            _ = try createRelationship(from: me, to: p, type: .friend)
+        }
+        
+        // 3. Create cross connections among demo contacts
+        for _ in 0..<10 {
+            if let p1 = demoPersons.randomElement(),
+               let p2 = demoPersons.randomElement(),
+               p1.id != p2.id {
+                // Avoid duplicating relations just for demo
+                let exists = p1.outgoingRelationships.contains { $0.toContact.id == p2.id } ||
+                             p1.incomingRelationships.contains { $0.fromContact.id == p2.id }
+                if !exists {
+                    _ = try createRelationship(from: p1, to: p2, type: .friend)
+                }
+            }
+        }
     }
 }

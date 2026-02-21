@@ -1,25 +1,21 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import Contacts
 
 struct SettingsView: View {
     @EnvironmentObject var dataManager: GoldfishDataManager
+    @EnvironmentObject var demoManager: DemoManager
+    @StateObject private var viewModel: SettingsViewModel
+    @Environment(\.dismiss) private var dismiss
 
-    var body: some View {
-        SettingsContent(dataManager: dataManager)
-    }
-}
-
-// MARK: - Settings Content
-private struct SettingsContent: View {
-    @StateObject var viewModel: SettingsViewModel
-    @EnvironmentObject var dataManager: GoldfishDataManager
-
-    @State private var showingExporter = false
     @State private var showingImporter = false
-    @State private var exportURL: URL?
+    @State private var showingImportOptions = false
+    @State private var showingPhonebookPicker = false
 
-    init(dataManager: GoldfishDataManager) {
-        _viewModel = StateObject(wrappedValue: SettingsViewModel(dataManager: dataManager))
+    init() {
+        // Placeholder — will be replaced in onAppear; needed because
+        // @EnvironmentObject isn't available in init.
+        _viewModel = StateObject(wrappedValue: SettingsViewModel())
     }
 
     var body: some View {
@@ -27,7 +23,10 @@ private struct SettingsContent: View {
             // MARK: - Profile
             Section {
                 if let me = viewModel.mePerson {
-                    NavigationLink(destination: ContactFormView(viewModel: ContactFormViewModel(dataManager: dataManager, person: me))) {
+                    NavigationLink {
+                        ContactFormView(viewModel: ContactFormViewModel(dataManager: dataManager, person: me))
+                            .environmentObject(dataManager)
+                    } label: {
                         HStack(spacing: 12) {
                             ContactPhotoView(
                                 photoData: me.photoData,
@@ -53,23 +52,36 @@ private struct SettingsContent: View {
 
             // MARK: - Configuration
             Section("Configuration") {
-                NavigationLink(destination: CircleManagerView()) {
-                    Label("Manage Circles", systemImage: "circle.grid.hex")
+                NavigationLink {
+                    CircleManagerView()
+                        .environmentObject(dataManager)
+                } label: {
+                    Label("Manage Ponds", systemImage: "circle.grid.hex")
+                }
+                
+                Button(action: {
+                    dismiss()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        demoManager.startDemo(with: dataManager)
+                    }
+                }) {
+                    Label("Replay Interactive Demo", systemImage: "sparkles")
+                        .foregroundColor(.primary)
                 }
             }
 
             // MARK: - Data
-            Section("Data") {
-                Button(action: {
-                    exportURL = viewModel.generateExportURL()
-                    if exportURL != nil {
-                        showingExporter = true
-                    }
-                }) {
+            Section {
+                NavigationLink {
+                    ContactExportSelectionView()
+                        .environmentObject(dataManager)
+                } label: {
                     Label("Export Contacts", systemImage: "square.and.arrow.up")
                 }
 
-                Button(action: { showingImporter = true }) {
+                Button {
+                    showingImportOptions = true
+                } label: {
                     Label("Import Contacts", systemImage: "square.and.arrow.down")
                 }
 
@@ -82,18 +94,20 @@ private struct SettingsContent: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+            } header: {
+                Text("Data")
+            } footer: {
+                Text("Exports include connections, ponds, and relationship types. Another Goldfish user can import this file to restore the full network.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
 
             // MARK: - App Info
             Section {
-                Link(destination: URL(string: "https://goldfish-app.com/privacy")!) {
+                NavigationLink(destination: PrivacyPolicyView()) {
                     Label("Privacy Policy", systemImage: "hand.raised.fill")
                 }
-
-                Link(destination: URL(string: "mailto:support@goldfish-app.com")!) {
-                    Label("Contact Support", systemImage: "envelope.fill")
-                }
-
+                
                 HStack {
                     Text("Version")
                     Spacer()
@@ -109,10 +123,15 @@ private struct SettingsContent: View {
             }
         }
         .navigationTitle("Settings")
-        .sheet(isPresented: $showingExporter) {
-            if let url = exportURL {
-                ShareSheet(activityItems: [url])
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("← Back") {
+                    dismiss()
+                }
             }
+        }
+        .onAppear {
+            viewModel.configure(dataManager: dataManager)
         }
         .fileImporter(
             isPresented: $showingImporter,
@@ -128,16 +147,26 @@ private struct SettingsContent: View {
                 print("File picker error: \(error)")
             }
         }
+        .confirmationDialog("Import Contacts", isPresented: $showingImportOptions, titleVisibility: .visible) {
+            Button("Import from File") {
+                showingImporter = true
+            }
+            Button("Import from Phonebook") {
+                showingPhonebookPicker = true
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Where would you like to import contacts from?")
+        }
+        .sheet(isPresented: $showingPhonebookPicker) {
+            ContactPicker(isPresented: $showingPhonebookPicker) { selectedContacts in
+                viewModel.importContacts(from: selectedContacts)
+            }
+        }
+        .alert(viewModel.importAlertTitle, isPresented: $viewModel.showImportCompletionAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(viewModel.importAlertMessage)
+        }
     }
-}
-
-// MARK: - UIKit Share Sheet Wrapper
-private struct ShareSheet: UIViewControllerRepresentable {
-    let activityItems: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

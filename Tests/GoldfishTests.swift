@@ -1,6 +1,6 @@
 import XCTest
 import SwiftData
-@testable import Goldfish3
+@testable import Goldfish
 
 // MARK: - Test Helpers
 

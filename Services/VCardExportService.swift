@@ -13,7 +13,16 @@ struct VCardExportService {
     static func exportAll(context: ModelContext) throws -> Data {
         let descriptor = FetchDescriptor<Person>(sortBy: [SortDescriptor(\.name)])
         let allContacts = try context.fetch(descriptor)
-        return VCardExporter.export(allContacts)
+        return VCardExporter.export(allContacts, includeManifest: true)
+    }
+
+    /// Exports the given contacts to vCard format.
+    ///
+    /// - Parameter contacts: The contacts to export.
+    /// - Returns: vCard data containing all provided contacts.
+    func exportAll(contacts: [Person]) -> Data {
+        let sorted = contacts.sorted { $0.name < $1.name }
+        return VCardExporter.export(sorted, includeManifest: true)
     }
 
     /// Exports selected contacts and their connections up to a specified depth.
@@ -66,6 +75,6 @@ struct VCardExportService {
         
         // Convert to Array and sort for deterministic output
         let sortedContacts = visited.sorted { $0.name < $1.name }
-        return VCardExporter.export(sortedContacts)
+        return VCardExporter.export(sortedContacts, includeManifest: true)
     }
 }

@@ -11,7 +11,7 @@ struct GraphLevel {
     let depth: Int
 
     /// Contacts at this level, grouped by their primary circle for visual clustering.
-    let circleGroups: [CircleGroup]
+    var circleGroups: [CircleGroup]
 
     /// All contacts at this level, flattened across circle groups.
     var allContacts: [Person] {
@@ -26,7 +26,7 @@ struct CircleGroup {
     let circle: GoldfishCircle?
 
     /// The contacts in this group at this level.
-    let contacts: [Person]
+    var contacts: [Person]
 
     /// Display name: circle name, or "Uncircled" for contacts not in any circle.
     var displayName: String {
@@ -179,6 +179,47 @@ struct GraphService {
             currentLevel = nextLevel
             depth += 1
         }
+        
+        // At this point we have connected levels. Let's record which circles already exist and at what depth.
+        var existingCircleDepth: [UUID: Int] = [:]
+        for (lvlIndex, level) in levels.enumerated() {
+            for group in level.circleGroups {
+                if let circleId = group.circle?.id {
+                    existingCircleDepth[circleId] = lvlIndex
+                }
+            }
+        }
+
+        // Include orphan contacts (not reachable via relationships) as the outermost level
+        // OR merge them into existing circles if they share a pond.
+        let allPersons = (try? context.fetch(FetchDescriptor<Person>())) ?? []
+        let orphans = allPersons.filter { !visited.contains($0.id) }
+        
+        var trueOrphans: [Person] = []
+        
+        for orphan in orphans {
+            // Check if this orphan belongs to any circle that already exists in the graph
+            let activeCircles = orphan.circleContacts.filter { !$0.manuallyExcluded }.map { $0.circle }
+            var merged = false
+            for circle in activeCircles {
+                if let existingDepth = existingCircleDepth[circle.id] {
+                    // Find the group in that level
+                    if let groupIndex = levels[existingDepth].circleGroups.firstIndex(where: { $0.circle?.id == circle.id }) {
+                        levels[existingDepth].circleGroups[groupIndex].contacts.append(orphan)
+                        merged = true
+                        break
+                    }
+                }
+            }
+            if !merged {
+                trueOrphans.append(orphan)
+            }
+        }
+
+        if !trueOrphans.isEmpty {
+            let orphanGroups = groupByCircle(trueOrphans)
+            levels.append(GraphLevel(depth: depth, circleGroups: orphanGroups))
+        }
 
         return levels
     }
@@ -201,8 +242,6 @@ struct GraphService {
     private func groupByCircle(_ contacts: [Person]) -> [CircleGroup] {
         var groups: [UUID: (circle: GoldfishCircle, contacts: [Person])] = [:]
         var uncircled: [Person] = []
-        // Sentinel UUID for uncircled group ordering
-        let uncircledKey = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
 
         for person in contacts {
             let activeCircles = person.circleContacts

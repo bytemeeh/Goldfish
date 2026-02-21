@@ -1,213 +1,510 @@
 import SwiftUI
+import Contacts
+import ContactsUI
+import SpriteKit
 
+// MARK: - Onboarding Flow
+/// A simple step-based onboarding that creates the "isMe" contact
+/// and optionally imports contacts from the address book.
 struct OnboardingFlow: View {
     @EnvironmentObject var dataManager: GoldfishDataManager
-    @StateObject private var viewModel: OnboardingViewModel
+    @EnvironmentObject var demoManager: DemoManager
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     
-    init() {
-        // Initialize with temporary placeholder, will receive enviroment object via middleware if needed
-        // but here we can just use the environment object if we pass it 
-        // Logic: Main View (GoldfishApp) creates this.
-        // We need to inject datamanager to VM.
-        // Best to use the same logic as HomeView or just default init and use onAppear?
-        // Actually, since this is a top level view in a fullScreenCover, we can use the same pattern.
-        _viewModel = StateObject(wrappedValue: OnboardingViewModel(dataManager: .preview())) // Placeholder
-    }
+    @State private var step = 0
+    @State private var name = "Marcel"
+    @State private var isImporting = false
+    @State private var showContactPicker = false
+    @FocusState private var nameFieldFocused: Bool
+    @State private var captionIndex = 0
+    let captionTimer = Timer.publish(every: 3.5, on: .main, in: .common).autoconnect()
     
     var body: some View {
-        DataManagerInjector()
-    }
-    
-    struct DataManagerInjector: View {
-        @EnvironmentObject var dataManager: GoldfishDataManager
-        var body: some View {
-            Content(dataManager: dataManager)
-        }
-    }
-    
-    struct Content: View {
-        @StateObject var viewModel: OnboardingViewModel
-        @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
-        
-        init(dataManager: GoldfishDataManager) {
-            _viewModel = StateObject(wrappedValue: OnboardingViewModel(dataManager: dataManager))
-        }
-        
-        var body: some View {
-            TabView(selection: $viewModel.currentTab) {
-                // MARK: Screen 1: Welcome
-                VStack(spacing: 32) {
-                    Spacer()
-                    Image(systemName: "network") // Placeholder for Goldfish logo
-                        .font(.system(size: 100))
-                        .foregroundStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .padding(.bottom, 20)
-                    
-                    Text("Goldfish")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                    
-                    Text("Your personal relationship map")
-                        .font(.title3)
-                        .foregroundColor(.secondary)
-                    
-                    Spacer()
-                    
-                    Button(action: { viewModel.currentTab = 1 }) {
-                        Text("Get Started")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.accentColor)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                    }
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 48)
-                }
-                .tag(0)
-                
-                // MARK: Screen 2: Create Your Card
-                VStack(spacing: 24) {
-                    Text("About You")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .padding(.top, 48)
-                    
-                    Image(systemName: "person.crop.circle.badge.plus")
-                        .font(.system(size: 80))
-                        .foregroundColor(.accentColor)
-                        .padding(.vertical)
-                    
-                    VStack(spacing: 16) {
-                        TextField("Name", text: $viewModel.name)
-                            .textFieldStyle(.roundedBorder)
-                            .textContentType(.name)
-                        
-                        TextField("Phone (Optional)", text: $viewModel.phone)
-                            .textFieldStyle(.roundedBorder)
-                            .keyboardType(.phonePad)
-                        
-                        TextField("Email (Optional)", text: $viewModel.email)
-                            .textFieldStyle(.roundedBorder)
-                            .keyboardType(.emailAddress)
-                            .autocapitalization(.none)
-                    }
-                    .padding(.horizontal, 32)
-                    
-                    Spacer()
-                    
-                    Button(action: { 
-                        viewModel.createMeCardAndContinue {
-                            withAnimation { viewModel.currentTab = 2 }
-                        }
-                    }) {
-                        Text("Continue")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(viewModel.name.isEmpty ? Color.gray : Color.accentColor)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                    }
-                    .disabled(viewModel.name.isEmpty)
-                    .padding(.horizontal, 32)
-                    
-                    Button("I'll set this up later") {
-                        // Skip logic
-                        viewModel.createMeCardAndContinue {
-                             withAnimation { viewModel.currentTab = 2 }
-                        }
-                    }
-                    .foregroundColor(.secondary)
-                    .padding(.bottom, 48)
-                }
-                .tag(1)
-                
-                // MARK: Screen 3: Quick Tour
-                VStack(spacing: 32) {
-                    Spacer()
-                    Image(systemName: "map.fill")
-                        .font(.system(size: 80))
-                        .foregroundStyle(.blue)
-                    
-                    Text("Visual Graph")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    
-                    Text("See your network at a glance. Pinch to zoom, drag to pan.")
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                    
-                    Spacer()
-                    
-                    Button(action: { 
-                        withAnimation { viewModel.currentTab = 3 }
-                    }) {
-                        Text("Next")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.accentColor)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                    }
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 48)
-                }
-                .tag(2)
-                
-                // MARK: Screen 4: Permissions
-                VStack(spacing: 32) {
-                    Spacer()
-                    Image(systemName: "person.crop.circle.badge.plus")
-                        .font(.system(size: 80))
-                        .foregroundStyle(.green)
-                    
-                    Text("Import from Contacts")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    
-                    Text("Goldfish can import names and contact info from your address book. Your data stays on your device.")
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                        .foregroundStyle(.secondary)
-                    
-                    if viewModel.isImporting {
-                        ProgressView("Importing contacts...")
-                    }
-                    
-                    Spacer()
-                    
-                    Button(action: {
-                        viewModel.requestContactsAccess { success in
-                            hasCompletedOnboarding = true
-                        }
-                    }) {
-                        Text("Allow Access")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.accentColor)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                    }
-                    .padding(.horizontal, 32)
-                    .disabled(viewModel.isImporting)
-                    
-                    Button("Not now") {
-                        hasCompletedOnboarding = true
-                    }
-                    .foregroundColor(.secondary)
-                    .disabled(viewModel.isImporting)
-                    .padding(.bottom, 48)
-                }
-                .tag(3)
+        ZStack {
+            Color(red: 0x1E/255, green: 0x18/255, blue: 0x15/255)
+                .ignoresSafeArea()
+            
+            switch step {
+            case 0:
+                welcomeScreen
+                    .transition(.opacity)
+            case 1:
+                nameScreen
+                    .transition(.opacity)
+            default:
+                EmptyView()
             }
-            .tabViewStyle(.page(indexDisplayMode: .always))
-            .indexViewStyle(.page(backgroundDisplayMode: .always))
+        }
+        .animation(.easeInOut(duration: 0.8), value: step)
+        // If demoManager becomes active, transition immediately to HomeView
+        // by pretending onboarding is "complete" for the app route, but retaining demo state.
+        .onChange(of: demoManager.isActive) { _, active in
+            if active {
+                hasCompletedOnboarding = true
+            }
+        }
+    }
+    
+    // MARK: - Screen 1: Welcome (Full-Bleed Hero)
+    private var welcomeScreen: some View {
+        ZStack {
+            // Full-bleed hero goldfish image
+            Image("HeroGoldfish")
+                .resizable()
+                .scaledToFill()
+                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                .clipped()
+                .ignoresSafeArea()
+            
+            // Watercolor disperse particle effect
+            SpriteView(scene: {
+                let scene = WatercolorDisperseScene(size: UIScreen.main.bounds.size)
+                scene.scaleMode = .aspectFill
+                return scene
+            }(), options: [.allowsTransparency])
             .ignoresSafeArea()
+            
+            // Gradient overlay — transparent at top to show fish, dark at bottom for text
+            LinearGradient(
+                stops: [
+                    .init(color: Color.clear, location: 0.0),
+                    .init(color: Color(red: 0x1E/255, green: 0x18/255, blue: 0x15/255).opacity(0.3), location: 0.4),
+                    .init(color: Color(red: 0x1E/255, green: 0x18/255, blue: 0x15/255).opacity(0.85), location: 0.65),
+                    .init(color: Color(red: 0x1E/255, green: 0x18/255, blue: 0x15/255).opacity(0.97), location: 1.0),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            
+            // Content pinned to bottom
+            VStack(spacing: 8) {
+                Spacer()
+                
+                Text("Goldfish")
+                    .font(.system(size: 48, weight: .light))
+                    .italic()
+                    .foregroundColor(Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255))
+                
+                Text("Remember everyone")
+                    .font(.system(size: 15, weight: .light))
+                    .foregroundColor(Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255).opacity(0.5))
+                    .padding(.bottom, 32)
+                
+                VStack(spacing: 12) {
+                    Button(action: { step = 1 }) {
+                        HStack {
+                            Image(systemName: "applelogo")
+                            Text("Sign in with Apple")
+                        }
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(.white)
+                        .foregroundColor(.black)
+                        .cornerRadius(12)
+                    }
+                    
+                    Button(action: { step = 1 }) {
+                        HStack {
+                            Image(systemName: "envelope.fill")
+                            Text("Sign in with Email")
+                        }
+                        .font(.system(size: 15, weight: .medium))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color(red: 0x1A/255, green: 0x16/255, blue: 0x14/255))
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                    }
+                }
+                .padding(.horizontal, 32)
+                .padding(.bottom, 48)
+            }
+        }
+    }
+    
+    // MARK: - Screen 2: Name Input
+    private var nameScreen: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            // Static constellation placeholder rings
+            ZStack {
+                // Static orbital placeholder nodes representing future connections
+                ForEach(0..<4) { i in
+                    // 45, 135, 225, 315 degrees
+                    let angle = (Double(i) * (.pi / 2.0)) + (.pi / 4.0)
+                    let radius: CGFloat = 114
+                    Circle()
+                        .stroke(Color.white.opacity(0.12), style: StrokeStyle(lineWidth: 1.5, dash: [4, 5]))
+                        .frame(width: 40, height: 40)
+                        .offset(x: radius * Foundation.cos(angle), y: radius * Foundation.sin(angle))
+                }
+                
+                // Central concentric rings
+                ForEach(0..<3) { i in
+                    Circle()
+                        .stroke(Color.goldfishAccent.opacity(0.15 - Double(i) * 0.04), lineWidth: 1.5)
+                        .frame(width: CGFloat(80 + i * 40), height: CGFloat(80 + i * 40))
+                }
+                Text("🐠")
+                    .font(.system(size: 40))
+            }
+            .frame(width: 300, height: 300)
+            .padding(.bottom, 16)
+            
+            Text("You're the center")
+                .font(.system(size: 22, weight: .light))
+                .foregroundColor(Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255))
+            
+            Text("Everything starts with you.\nWhat should we call you?")
+                .font(.system(size: 13, weight: .light))
+                .foregroundColor(Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255).opacity(0.45))
+                .multilineTextAlignment(.center)
+                .padding(.bottom, 16)
+            
+            VStack(spacing: 8) {
+                Text("YOUR NAME")
+                    .font(.system(size: 10, weight: .regular))
+                    .tracking(1.5)
+                    .foregroundColor(Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255).opacity(0.3))
+                
+                TextField("", text: $name)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 24, weight: .light))
+                    .foregroundColor(Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255))
+                    .multilineTextAlignment(.center)
+                    .padding(.vertical, 12)
+                    .overlay(
+                        Rectangle()
+                            .frame(height: 1)
+                            .foregroundColor(Color.goldfishAccent.opacity(nameFieldFocused ? 0.8 : 0.5)),
+                        alignment: .bottom
+                    )
+                    .focused($nameFieldFocused)
+                    .autocorrectionDisabled()
+                    .textContentType(.name)
+            }
+            .frame(width: 200)
+            
+            Spacer()
+            
+            // Dots
+            HStack(spacing: 10) {
+                ForEach(0..<3) { i in
+                    Circle()
+                        .fill(i == 1 ? Color.goldfishAccent : Color.clear)
+                        .overlay(
+                            Circle().stroke(i == 1 ? Color.goldfishAccent : Color.white.opacity(0.2), lineWidth: 1.5)
+                        )
+                        .frame(width: 7, height: 7)
+                }
+            }
+            .padding(.bottom, 16)
+            
+            Button(action: { createMeAndContinue() }) {
+                Text("Continue")
+                    .font(.system(size: 15, weight: .regular))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color.white.opacity(0.08))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 100)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
+                    .foregroundColor(Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255))
+                    .cornerRadius(100)
+            }
+            .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+            .opacity(name.trimmingCharacters(in: .whitespaces).isEmpty ? 0.4 : 1.0)
+            .padding(.horizontal, 32)
+            
+            Button("Skip for now") {
+                name = "Me"
+                createMeAndContinue()
+            }
+            .font(.system(size: 14, weight: .light))
+            .foregroundColor(Color(red: 0xA8/255, green: 0x9F/255, blue: 0x95/255))
+            .padding(.bottom, 48)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            nameFieldFocused = false
+        }
+    }
+    
+
+    
+    // MARK: - Helpers
+    
+    private func legendDot(color: Color, label: String) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(color.opacity(0.3))
+                .stroke(color, lineWidth: 1.5)
+                .frame(width: 10, height: 10)
+            Text(label)
+                .font(.system(size: 11, weight: .regular))
+                .foregroundColor(Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255).opacity(0.6))
+        }
+    }
+    
+    private func pondBubble(emoji: String, label: String, color: Color) -> some View {
+        VStack(spacing: 8) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.15))
+                    .frame(width: 72, height: 72)
+                Circle()
+                    .stroke(color.opacity(0.5), lineWidth: 2)
+                    .frame(width: 72, height: 72)
+                Text(emoji)
+                    .font(.system(size: 32))
+            }
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255).opacity(0.45))
+        }
+    }
+    
+    private func createMeAndContinue() {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        nameFieldFocused = false
+        
+        do {
+            if try dataManager.fetchMePerson() == nil {
+                try dataManager.performOnboarding(name: trimmed)
+            }
+            demoManager.startDemo(with: dataManager)
+        } catch {
+            print("Onboarding error: \(error)")
+        }
+    }
+    
+    private func doImport(contacts: [CNContact]) async {
+        isImporting = true
+        do {
+            for cn in contacts {
+                let fullName = [cn.givenName, cn.familyName]
+                    .filter { !$0.isEmpty }
+                    .joined(separator: " ")
+                guard !fullName.isEmpty else { continue }
+                
+                try dataManager.createPerson(
+                    name: fullName,
+                    phone: cn.phoneNumbers.first?.value.stringValue,
+                    email: cn.emailAddresses.first?.value as String?,
+                    birthday: cn.birthday.flatMap { Calendar.current.date(from: $0) },
+                    photoData: cn.imageData
+                )
+            }
+        } catch {
+            print("Import error: \(error)")
+        }
+        await MainActor.run {
+            isImporting = false
+            hasCompletedOnboarding = true
+        }
+    }
+}
+
+// MARK: - Constellation Demo Scene
+class ConstellationDemoScene: SKScene {
+    override func didMove(to view: SKView) {
+        backgroundColor = .clear
+        
+        let centerNode = createDot(at: CGPoint(x: 150, y: 150), color: .systemBlue)
+        let leftNode = createDot(at: CGPoint(x: 80, y: 100), color: .systemPurple)
+        let rightNode = createDot(at: CGPoint(x: 220, y: 120), color: .systemOrange)
+        
+        // Draw static connections
+        drawConnection(from: centerNode.position, to: leftNode.position)
+        drawConnection(from: centerNode.position, to: rightNode.position)
+        
+        // Node to be dragged
+        let dragNode = createDot(at: CGPoint(x: 150, y: 30), color: .systemTeal)
+        
+        // Ghost hand cursor
+        let hand = SKLabelNode(text: "👆")
+        hand.fontSize = 24
+        hand.position = CGPoint(x: 150, y: 10)
+        hand.zPosition = 10
+        addChild(hand)
+        
+        // Snap line preview
+        let dashLine = SKShapeNode()
+        dashLine.strokeColor = UIColor.white.withAlphaComponent(0.4)
+        dashLine.lineWidth = 2
+        let pattern: [CGFloat] = [4, 4]
+        dashLine.zPosition = -1
+        addChild(dashLine)
+        
+        // Animation sequence
+        let grabDuration = 0.5
+        let moveDuration = 1.2
+        let resetWait = 1.0
+        
+        let startPos = dragNode.position
+        let targetPos = leftNode.position
+        
+        let dragAndSnap = SKAction.sequence([
+            // Move hand to node
+            SKAction.run { hand.run(SKAction.move(to: CGPoint(x: startPos.x, y: startPos.y - 15), duration: grabDuration)) },
+            SKAction.wait(forDuration: grabDuration),
+            
+            // Hand "grabs" and moves node
+            SKAction.run {
+                let handMove = SKAction.move(to: CGPoint(x: targetPos.x + 30, y: targetPos.y - 15), duration: moveDuration)
+                let nodeMove = SKAction.move(to: CGPoint(x: targetPos.x + 30, y: targetPos.y), duration: moveDuration)
+                
+                handMove.timingMode = .easeInEaseOut
+                nodeMove.timingMode = .easeInEaseOut
+                
+                hand.run(handMove)
+                dragNode.run(nodeMove)
+                
+                // Animate dashed line while moving
+                dashLine.run(SKAction.customAction(withDuration: moveDuration) { node, time in
+                    let progress = time / CGFloat(moveDuration)
+                    let currentPos = CGPoint(
+                        x: startPos.x + (targetPos.x + 30 - startPos.x) * progress,
+                        y: startPos.y + (targetPos.y - startPos.y) * progress
+                    )
+                    
+                    if hypot(targetPos.x - currentPos.x, targetPos.y - currentPos.y) < 60 {
+                        let path = CGMutablePath()
+                        path.move(to: currentPos)
+                        path.addLine(to: targetPos)
+                        let dashed = path.copy(dashingWithPhase: 0, lengths: pattern)
+                        (node as? SKShapeNode)?.path = dashed
+                    }
+                })
+            },
+            SKAction.wait(forDuration: moveDuration),
+            
+            // Snap together
+            SKAction.run {
+                dashLine.path = nil
+                dragNode.run(SKAction.move(to: CGPoint(x: targetPos.x + 10, y: targetPos.y - 10), duration: 0.2))
+            },
+            SKAction.wait(forDuration: resetWait),
+            
+            // Reset
+            SKAction.run {
+                dragNode.position = startPos
+                hand.position = CGPoint(x: 150, y: 10)
+            },
+            SKAction.wait(forDuration: 0.5)
+        ])
+        
+        run(SKAction.repeatForever(dragAndSnap))
+    }
+    
+    private func createDot(at position: CGPoint, color: UIColor) -> SKShapeNode {
+        let node = SKShapeNode(circleOfRadius: 12)
+        node.fillColor = color.withAlphaComponent(0.3)
+        node.strokeColor = color
+        node.lineWidth = 1.5
+        node.position = position
+        node.zPosition = 2
+        addChild(node)
+        return node
+    }
+    
+    private func drawConnection(from: CGPoint, to: CGPoint) {
+        let line = SKShapeNode()
+        let path = CGMutablePath()
+        path.move(to: from)
+        path.addLine(to: to)
+        line.path = path
+        line.strokeColor = UIColor.white.withAlphaComponent(0.2)
+        line.lineWidth = 1.0
+        line.zPosition = 1
+        addChild(line)
+    }
+}
+
+// MARK: - Watercolor Disperse Scene
+class WatercolorDisperseScene: SKScene {
+    override func didMove(to view: SKView) {
+        backgroundColor = .clear
+        
+        // Spawn gentle watercolor blooms
+        let spawnAction = SKAction.repeatForever(SKAction.sequence([
+            SKAction.run { [weak self] in self?.spawnBlob() },
+            SKAction.wait(forDuration: 1.5, withRange: 1.0)
+        ]))
+        run(spawnAction)
+    }
+    
+    private func spawnBlob() {
+        let colors: [UIColor] = [
+            UIColor(red: 0.6, green: 0.2, blue: 0.8, alpha: 0.4), // Purple
+            UIColor(red: 0.9, green: 0.4, blue: 0.2, alpha: 0.4), // Orange
+            UIColor(red: 0.2, green: 0.6, blue: 0.8, alpha: 0.4)  // Blue
+        ]
+        
+        let radius = CGFloat.random(in: 40...100)
+        let blob = SKShapeNode(circleOfRadius: radius)
+        blob.fillColor = colors.randomElement()!
+        blob.strokeColor = .clear
+        blob.position = CGPoint(
+            x: CGFloat.random(in: 0...size.width),
+            y: CGFloat.random(in: 0...size.height)
+        )
+        blob.alpha = 0
+        blob.blendMode = .add
+        
+        addChild(blob)
+        
+        let duration = TimeInterval.random(in: 4...8)
+        let group = SKAction.group([
+            SKAction.scale(to: CGFloat.random(in: 1.5...3.0), duration: duration),
+            SKAction.sequence([
+                SKAction.fadeIn(withDuration: duration * 0.3),
+                SKAction.wait(forDuration: duration * 0.4),
+                SKAction.fadeOut(withDuration: duration * 0.3)
+            ])
+        ])
+        
+        blob.run(SKAction.sequence([group, SKAction.removeFromParent()]))
+    }
+}
+
+
+// MARK: - Contact Picker Wrapper
+struct ContactPicker: UIViewControllerRepresentable {
+    @Binding var isPresented: Bool
+    var onContactsSelected: ([CNContact]) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    func makeUIViewController(context: Context) -> CNContactPickerViewController {
+        let picker = CNContactPickerViewController()
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: CNContactPickerViewController, context: Context) {}
+
+    class Coordinator: NSObject, CNContactPickerDelegate {
+        var parent: ContactPicker
+
+        init(_ parent: ContactPicker) {
+            self.parent = parent
+        }
+
+        func contactPicker(_ picker: CNContactPickerViewController, didSelect contacts: [CNContact]) {
+            parent.onContactsSelected(contacts)
+            parent.isPresented = false
+        }
+
+        func contactPickerDidCancel(_ picker: CNContactPickerViewController) {
+            parent.isPresented = false
         }
     }
 }

@@ -11,6 +11,26 @@ struct ImportResult: Sendable {
     
     // Names of skipped duplicates for user reporting
     var skippedDuplicates: [String] = []
+    
+    // MARK: - Goldfish-Specific Analysis
+    
+    /// Whether the imported file was in Goldfish format (manifest detected).
+    var isGoldfishFormat: Bool = false
+    
+    /// Export version from the manifest (e.g., "1.0").
+    var goldfishVersion: String?
+    
+    /// Number of connections (relationships) successfully restored.
+    var connectionsRestored: Int = 0
+    
+    /// Number of connections skipped (duplicate or cycle).
+    var connectionsSkipped: Int = 0
+    
+    /// Number of new circles (ponds) created during import.
+    var circlesCreated: Int = 0
+    
+    /// Number of circles that already existed.
+    var circlesExisting: Int = 0
 }
 
 // MARK: - VCardImportService
@@ -32,7 +52,9 @@ actor VCardImportService {
         progressHandler: @Sendable (Double) -> Void
     ) async throws -> ImportResult {
         
-        let parsedContacts = VCardParser.parse(vcardData)
+        // Parse with manifest detection
+        let parseResult = VCardParser.parseWithManifest(vcardData)
+        let parsedContacts = parseResult.contacts
         let total = parsedContacts.count
         
         guard total > 0 else {
@@ -40,6 +62,13 @@ actor VCardImportService {
         }
         
         var result = ImportResult()
+        
+        // Goldfish format analysis
+        if let manifest = parseResult.manifest {
+            result.isGoldfishFormat = true
+            result.goldfishVersion = manifest.version
+            logger.info("Goldfish export detected: v\(manifest.version), \(manifest.contactCount) contacts, \(manifest.connectionCount) connections")
+        }
         
         // Map vCard UID -> Local Person (New or Existing)
         // Used for resolving relationships across the import batch
@@ -105,7 +134,9 @@ actor VCardImportService {
             }
             
             // A. Circles
-            try resolveCircles(for: person, circleNames: vContact.circles)
+            let circleResult = try resolveCircles(for: person, circleNames: vContact.circles)
+            result.circlesCreated += circleResult.created
+            result.circlesExisting += circleResult.existing
             
             // B. Relationships
             // vContact.relatedTo contains [(targetUUID, type)]
@@ -113,7 +144,6 @@ actor VCardImportService {
                 // Find target person
                 guard let targetPerson = uidMap[targetUid] else {
                     // Target might have been skipped/missing, or wasn't in the import file
-                    // We can try to look it up by ID in DB if it was a reference to an existing person outside this import?
                     // Spec says: "UUID references another contact's UID field within the SAME export bundle."
                     // So if not in map, it's a broken link.
                     continue
@@ -122,21 +152,25 @@ actor VCardImportService {
                 // Avoid self-relationships (unless specific logic allows, but GraphService blocks directional self-loops)
                 if person.id == targetPerson.id { continue }
                 
-                // Check if relationship already exists
+                // Check if relationship already exists (including inverse deduplication)
                 if !relationshipExists(from: person, to: targetPerson, type: type) {
                     // Create relationship
                     // Check cycle for directional types
                     if graphService.wouldCreateCycle(from: person, to: targetPerson, type: type, context: modelContext) {
                         logger.error("Skipping relationship \(person.name) -> \(targetPerson.name) (\(type.rawValue)): cycle detected")
+                        result.connectionsSkipped += 1
                         continue
                     }
                     
                     let rel = Relationship(from: person, to: targetPerson, type: type)
                     modelContext.insert(rel)
+                    result.connectionsRestored += 1
                     
                     // Auto-assign circles based on relationship
                     try autoAssignSystemCircle(for: person, relationshipType: type)
                     try autoAssignSystemCircle(for: targetPerson, relationshipType: type)
+                } else {
+                    result.connectionsSkipped += 1
                 }
             }
             
@@ -219,33 +253,26 @@ actor VCardImportService {
         return person
     }
     
-    private func resolveCircles(for person: Person, circleNames: [String]) throws {
+    /// Returns (created, existing) counts for circle resolution.
+    private func resolveCircles(for person: Person, circleNames: [String]) throws -> (created: Int, existing: Int) {
         let uniqueNames = Set(circleNames)
+        var created = 0
+        var existing = 0
         
         for name in uniqueNames {
-            // Check if circle exists
-            // Since we might be creating circles on the fly in the same transaction,
-            // we should fetch carefully.
-            
             var circle: GoldfishCircle?
-            
-            // Fetch by name (case insensitive)
-            // SwiftData predicate string comparison is reliable?
-            // "Family" vs "family" -> we should normalize.
-            // But efficient fetch might require exact match.
-            // Let's iterate all circles if we have to, or rely on fetching.
-            // Let's assume standard names.
             
             let allCircles = try modelContext.fetch(FetchDescriptor<GoldfishCircle>())
             // In-memory filter for case-insensitivity
-            if let existing = allCircles.first(where: { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }) {
-                circle = existing
+            if let existingCircle = allCircles.first(where: { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }) {
+                circle = existingCircle
+                existing += 1
             } else {
                 // Create new custom circle
                 let newCircle = GoldfishCircle(name: name, isSystem: false)
                 modelContext.insert(newCircle)
-                // We must save/re-fetch? No, context knows about inserted object.
                 circle = newCircle
+                created += 1
             }
             
             guard let targetCircle = circle else { continue }
@@ -256,24 +283,44 @@ actor VCardImportService {
                 modelContext.insert(membership)
             }
         }
+        
+        return (created, existing)
     }
     
+    /// Checks if a relationship (or its inverse) already exists between two contacts.
+    /// This prevents creating duplicate logical edges (e.g., Mom→Son as `mother`
+    /// AND Son→Mom as `child` when they represent the same real-world relationship).
     private func relationshipExists(from: Person, to: Person, type: RelationshipType) -> Bool {
-        // Direct Check
-        // We look through outgoing relationships of 'from'
+        // Direct Check: from -> to with this type
         let direct = from.outgoingRelationships.contains { rel in
             rel.toContact.id == to.id && rel.type == type
         }
         if direct { return true }
         
-        // Inverse Check
-        // If type has an inverse (e.g., mother -> child), check if that exists FROM the other side.
-        // Relationship(from: A, to: B, type: mother) <--> Relationship(from: B, to: A, type: child)
-        if let inverse = type.inverse {
-             let inverseExists = to.outgoingRelationships.contains { rel in
+        // Symmetric Check: for symmetric types, also check reverse direction
+        if type.isSymmetric {
+            let reverseSymmetric = to.outgoingRelationships.contains { rel in
+                rel.toContact.id == from.id && rel.type == type
+            }
+            if reverseSymmetric { return true }
+        }
+        
+        // Inverse Check: if type has an inverse, check if the inverse relationship
+        // exists from the other direction.
+        // e.g., if we're trying to create (Son, Mom, child),
+        // check if (Mom, Son, mother) already exists — because mother.inverse == child.
+        if let inverse = type.inverse, inverse != type {
+            // Check if (to -> from, inverse) exists
+            let inverseExists = to.outgoingRelationships.contains { rel in
                 rel.toContact.id == from.id && rel.type == inverse
             }
             if inverseExists { return true }
+            
+            // Also check if (from -> to, inverse) exists (shouldn't normally, but be safe)
+            let inverseReverse = from.outgoingRelationships.contains { rel in
+                rel.toContact.id == to.id && rel.type == inverse
+            }
+            if inverseReverse { return true }
         }
         
         return false

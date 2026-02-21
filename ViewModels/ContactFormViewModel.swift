@@ -10,10 +10,11 @@ final class ContactFormViewModel: ObservableObject {
     private let dataManager: GoldfishDataManager
     
     // MARK: - Target
-    private let existingPerson: Person?
+    let existingPerson: Person?
     
     // MARK: - Form State
-    @Published var name: String = ""
+    @Published var firstName: String = ""
+    @Published var lastName: String = ""
     @Published var phone: String = ""
     @Published var email: String = ""
     @Published var notes: String = ""
@@ -32,17 +33,14 @@ final class ContactFormViewModel: ObservableObject {
     @Published var tagsString: String = "" // Comma separated for editing
     @Published var colorHex: String = "#808080"
     
-    // Photo
-    @Published var selectedPhotoItem: PhotosPickerItem? {
-        didSet {
-            Task {
-                if let data = try? await selectedPhotoItem?.loadTransferable(type: Data.self) {
-                    self.photoData = data
-                }
-            }
-        }
-    }
+    // Photo / Emoji
+    @Published var emojiAvatar: String = ""
     @Published var photoData: Data?
+    
+    // Connections
+    @Published var selectedConnectionID: UUID?
+    @Published var selectedRelationshipType: RelationshipType = .friend
+    @Published var allPersons: [Person] = []
     
     // Circles
     @Published var allCircles: [GoldfishCircle] = []
@@ -50,7 +48,7 @@ final class ContactFormViewModel: ObservableObject {
     
     // MARK: - Validation
     var isValid: Bool {
-        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !firstName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     
     var pageTitle: String {
@@ -64,7 +62,10 @@ final class ContactFormViewModel: ObservableObject {
         
         if let person = person {
             // Edit Mode: Populate fields
-            self.name = person.name
+            let parts = person.name.split(separator: " ", maxSplits: 1)
+            self.firstName = String(parts.first ?? "")
+            self.lastName = parts.count > 1 ? String(parts.last ?? "") : ""
+            
             self.phone = person.phone ?? ""
             self.email = person.email ?? ""
             self.notes = person.notes ?? ""
@@ -91,11 +92,25 @@ final class ContactFormViewModel: ObservableObject {
         }
         
         loadCircles()
+        loadPersons()
+    }
+    
+    private func loadPersons() {
+        if let persons = try? dataManager.fetchAllPersons() {
+            // Exclude current person to prevent self-connection
+            self.allPersons = persons.filter { $0.id != self.existingPerson?.id && !$0.isMe }
+        }
     }
     
     func loadCircles() {
         do {
-            self.allCircles = try dataManager.fetchAllCircles()
+            var circles = try dataManager.fetchAllCircles()
+            // Safety net: create system circles if they don't exist
+            if circles.isEmpty {
+                try dataManager.createSystemCircles()
+                circles = try dataManager.fetchAllCircles()
+            }
+            self.allCircles = circles
         } catch {
             print("Error loading circles: \(error)")
         }
@@ -112,12 +127,24 @@ final class ContactFormViewModel: ObservableObject {
         
         let dob: Date? = includeBirthday ? birthday : nil
         
+        let fullName = [firstName, lastName]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+            
+        // Generate Emoji Image if provided
+        var finalPhotoData = photoData
+        if !emojiAvatar.isEmpty {
+            finalPhotoData = createEmojiImage(emoji: emojiAvatar)
+        }
+        
         do {
+            let savedPerson: Person
             if let person = existingPerson {
                 // Update
                 try dataManager.updatePerson(
                     person,
-                    name: name,
+                    name: fullName,
                     phone: phone.isEmpty ? nil : phone,
                     email: email.isEmpty ? nil : email,
                     birthday: dob,
@@ -125,7 +152,7 @@ final class ContactFormViewModel: ObservableObject {
                     isFavorite: isFavorite,
                     tags: tags,
                     color: colorHex,
-                    photoData: photoData,
+                    photoData: finalPhotoData,
                     street: street.isEmpty ? nil : street,
                     city: city.isEmpty ? nil : city,
                     state: state.isEmpty ? nil : state,
@@ -135,11 +162,11 @@ final class ContactFormViewModel: ObservableObject {
                 
                 // Update circles
                 try updateCircleMemberships(for: person)
-                
+                savedPerson = person
             } else {
                 // Create
                 let person = try dataManager.createPerson(
-                    name: name,
+                    name: fullName,
                     phone: phone.isEmpty ? nil : phone,
                     email: email.isEmpty ? nil : email,
                     birthday: dob,
@@ -147,7 +174,7 @@ final class ContactFormViewModel: ObservableObject {
                     isFavorite: isFavorite,
                     tags: tags,
                     color: colorHex,
-                    photoData: photoData,
+                    photoData: finalPhotoData,
                     street: street.isEmpty ? nil : street,
                     city: city.isEmpty ? nil : city,
                     state: state.isEmpty ? nil : state,
@@ -156,7 +183,20 @@ final class ContactFormViewModel: ObservableObject {
                 )
                 
                 try updateCircleMemberships(for: person)
+                savedPerson = person
             }
+            
+            // Create Connection if selected
+            if let connID = selectedConnectionID,
+               let target = try? dataManager.fetchAllPersons().first(where: { $0.id == connID }) {
+                let exists = savedPerson.outgoingRelationships.contains(where: { $0.toContact.id == target.id }) ||
+                             savedPerson.incomingRelationships.contains(where: { $0.fromContact.id == target.id })
+                if !exists {
+                    _ = try dataManager.createRelationship(from: savedPerson, to: target, type: selectedRelationshipType)
+                }
+            }
+            
+            ToastManager.shared.showToast(message: "Contact saved ✓")
             return true
         } catch {
             print("Error saving contact: \(error)")
@@ -179,7 +219,29 @@ final class ContactFormViewModel: ObservableObject {
         if selectedCircleIDs.contains(circle.id) {
             selectedCircleIDs.remove(circle.id)
         } else {
+            selectedCircleIDs.removeAll() // Enforce single selection
             selectedCircleIDs.insert(circle.id)
         }
+    }
+    
+    private func createEmojiImage(emoji: String) -> Data? {
+        let size = CGSize(width: 200, height: 200)
+        UIGraphicsBeginImageContextWithOptions(size, false, 0)
+        UIColor.clear.set()
+        let rect = CGRect(origin: .zero, size: size)
+        UIRectFill(rect)
+        let string = emoji as NSString
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 160)
+        ]
+        let stringSize = string.size(withAttributes: attributes)
+        string.draw(in: CGRect(x: (size.width - stringSize.width) / 2,
+                               y: (size.height - stringSize.height) / 2,
+                               width: stringSize.width,
+                               height: stringSize.height),
+                    withAttributes: attributes)
+        let image = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        return image?.jpegData(compressionQuality: 0.8)
     }
 }

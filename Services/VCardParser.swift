@@ -29,43 +29,106 @@ struct VCardContact {
     var relatedTo: [(uuid: UUID, type: RelationshipType)] = []
 }
 
+// MARK: - GoldfishManifest
+/// Metadata extracted from the `_GOLDFISH_MANIFEST` vCard header.
+/// Present only in files exported by Goldfish.
+struct GoldfishManifest {
+    /// Export format version (e.g., "1.0").
+    var version: String = "1.0"
+    /// ISO 8601 date when the export was created.
+    var exportDate: String?
+    /// Number of contacts in the export bundle.
+    var contactCount: Int = 0
+    /// Number of relationship edges in the export bundle.
+    var connectionCount: Int = 0
+}
+
+// MARK: - VCardParseResult
+/// The result of parsing a vCard file, containing an optional Goldfish manifest
+/// and the list of contacts.
+struct VCardParseResult {
+    /// Non-nil if the file was exported from Goldfish (manifest detected).
+    var manifest: GoldfishManifest?
+    /// Parsed contacts (manifest vCard is excluded).
+    var contacts: [VCardContact]
+    
+    /// Whether this file was exported from the Goldfish app.
+    var isGoldfishFormat: Bool { manifest != nil }
+}
+
 // MARK: - VCardParser
 /// Parses vCard 3.0 data (RFC 2426) into `VCardContact` objects.
-/// Handles custom `X-GOLDFISH-*` extensions.
+/// Handles custom `X-GOLDFISH-*` extensions and Goldfish manifest detection.
 struct VCardParser {
     
     private static let logger = Logger(subsystem: "com.goldfish.app", category: "VCardParser")
 
-    /// Parses vCard data into a list of contacts.
-    /// Gracefully skips malformed entries.
-    static func parse(_ data: Data) -> [VCardContact] {
+    /// Parses vCard data and returns a full result including manifest detection.
+    static func parseWithManifest(_ data: Data) -> VCardParseResult {
         guard let string = String(data: data, encoding: .utf8) else {
             logger.error("Failed to decode vCard data as UTF-8")
-            return []
+            return VCardParseResult(manifest: nil, contacts: [])
         }
 
         var contacts: [VCardContact] = []
-        let lines = unfoldLines(string)
+        var manifest: GoldfishManifest?
         
-        // Split by BEGIN:VCARD
-        // We find ranges of BEGIN:VCARD ... END:VCARD
-        // Simple approach: split by "BEGIN:VCARD", then look for "END:VCARD" in each chunk
         let chunks = string.components(separatedBy: "BEGIN:VCARD")
         
         for chunk in chunks {
             let trim = chunk.trimmingCharacters(in: .whitespacesAndNewlines)
             if trim.isEmpty { continue }
-            
-            // Check if chunk has END:VCARD
             guard trim.contains("END:VCARD") else { continue }
             
-            // Parse this individual vCard block
+            // Check if this is a manifest vCard
+            if trim.contains(VCardExporter.manifestName) {
+                manifest = parseManifest(block: trim)
+                continue
+            }
+            
             if let contact = parseSingleContact(block: trim) {
                 contacts.append(contact)
             }
         }
         
-        return contacts
+        return VCardParseResult(manifest: manifest, contacts: contacts)
+    }
+
+    /// Legacy parse method — returns contacts only (backward compatible).
+    /// Gracefully skips manifest and malformed entries.
+    static func parse(_ data: Data) -> [VCardContact] {
+        return parseWithManifest(data).contacts
+    }
+
+    // MARK: - Manifest Parsing
+    
+    /// Parses a Goldfish manifest vCard block.
+    private static func parseManifest(block: String) -> GoldfishManifest {
+        var manifest = GoldfishManifest()
+        let lines = unfoldLines(block)
+        
+        for line in lines {
+            let parts = line.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: true)
+            guard parts.count == 2 else { continue }
+            
+            let key = String(parts[0]).trimmingCharacters(in: .whitespaces).uppercased()
+            let rawValue = String(parts[1]).trimmingCharacters(in: .whitespaces)
+            
+            switch key {
+            case "X-GOLDFISH-EXPORT-VERSION":
+                manifest.version = rawValue
+            case "X-GOLDFISH-EXPORT-DATE":
+                manifest.exportDate = rawValue
+            case "X-GOLDFISH-EXPORT-COUNT":
+                manifest.contactCount = Int(rawValue) ?? 0
+            case "X-GOLDFISH-EXPORT-CONNECTIONS":
+                manifest.connectionCount = Int(rawValue) ?? 0
+            default:
+                break
+            }
+        }
+        
+        return manifest
     }
 
     // MARK: - Private Parsing Logic

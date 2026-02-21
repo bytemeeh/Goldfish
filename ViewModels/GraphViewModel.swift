@@ -10,6 +10,8 @@ protocol GraphSceneDelegate: AnyObject {
     func didUpdateZoom(_ zoom: CGFloat)
     func didUpdateCameraPosition(_ position: CGPoint)
     func centerOnContact(_ id: UUID)
+    func requestConnection(from: UUID, to: UUID)
+    func didUpdateSearchMatches(_ ids: Set<UUID>?)
 }
 
 // MARK: - GraphViewModel
@@ -26,6 +28,12 @@ final class GraphViewModel: ObservableObject {
     @Published var selectedContactID: UUID? {
         didSet {
             sceneDelegate?.didSelectContact(selectedContactID)
+        }
+    }
+    
+    @Published var searchMatchedIDs: Set<UUID>? {
+        didSet {
+            sceneDelegate?.didUpdateSearchMatches(searchMatchedIDs)
         }
     }
     
@@ -47,6 +55,14 @@ final class GraphViewModel: ObservableObject {
     
     @Published var graphLevels: [GraphLevel]?
     @Published var isLoading: Bool = false
+    @Published var hasNoData: Bool = false
+    
+    /// When set, triggers the Add Relationship sheet for drag-to-connect
+    @Published var pendingConnectionFrom: UUID?
+    @Published var pendingConnectionTo: UUID?
+    
+    @Published var pendingPondMovePerson: UUID?
+    @Published var pendingPondMoveTarget: String?
     
     private var levelsLoaded = false
     
@@ -62,14 +78,13 @@ final class GraphViewModel: ObservableObject {
         isLoading = true
         Task {
             do {
-                // Offload BFS to background actor if needed, but GraphService is structurally simple enough
-                // However, GoldfishDataManager is @MainActor, so we call it here.
                 if let levels = try dataManager.buildGraphLayout() {
                     self.graphLevels = levels
                     self.levelsLoaded = true
-                    
-                    // Notify scene
+                    self.hasNoData = false
                     sceneDelegate?.didUpdateGraphLevels(levels)
+                } else {
+                    self.hasNoData = true
                 }
             } catch {
                 print("Failed to build graph layout: \(error)")
@@ -112,13 +127,23 @@ final class GraphViewModel: ObservableObject {
     // MARK: - Scene Feedback
     /// Called by the scene when user drags camera
     func updateCameraFromScene(position: CGPoint, zoom: CGFloat) {
-        // We update properties without triggering didSet loops if possible
-        // or just accept the cycle (SwiftUI @Published usually dedupes equality)
         if self.cameraPosition != position {
             self.cameraPosition = position
         }
         if self.zoomLevel != zoom {
             self.zoomLevel = zoom
         }
+    }
+    
+    /// Called by the scene when user drags a node onto another node
+    func requestConnection(from sourceID: UUID, to targetID: UUID) {
+        pendingConnectionFrom = sourceID
+        pendingConnectionTo = targetID
+    }
+    
+    /// Called by the scene when user drags a node into empty space within a pond
+    func requestPondMove(for personID: UUID, to pondName: String) {
+        pendingPondMovePerson = personID
+        pendingPondMoveTarget = pondName
     }
 }

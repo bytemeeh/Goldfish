@@ -1,5 +1,5 @@
 import SwiftUI
-import Contacts
+@preconcurrency import Contacts
 
 // MARK: - OnboardingViewModel
 @MainActor
@@ -47,11 +47,11 @@ final class OnboardingViewModel: ObservableObject {
     }
     
     func requestContactsAccess(completion: @escaping (Bool) -> Void) {
-        let store = CNContactStore()
-        store.requestAccess(for: .contacts) { granted, error in
+        nonisolated(unsafe) let store = CNContactStore()
+        store.requestAccess(for: .contacts) { granted, _ in
             Task { @MainActor in
                 if granted {
-                    self.importContacts(store: store) {
+                    self.importContacts() {
                         completion(true)
                     }
                 } else {
@@ -61,7 +61,8 @@ final class OnboardingViewModel: ObservableObject {
         }
     }
     
-    private func importContacts(store: CNContactStore, completion: @escaping () -> Void) {
+    private func importContacts(completion: @escaping () -> Void) {
+        let store = CNContactStore()
         isImporting = true
         importStatus = "Preparing import..."
         

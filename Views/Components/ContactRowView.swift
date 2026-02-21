@@ -7,8 +7,13 @@ struct ContactRowView: View {
     let person: Person
     
     var subtitle: String {
-        // Preference: Phone -> Email -> nil
-        return person.phone ?? person.email ?? "No contact details"
+        let activeCircles = person.circleContacts.filter { !$0.manuallyExcluded }
+        if let firstCircle = activeCircles.first {
+            return firstCircle.circle.name
+        } else if !person.tags.isEmpty {
+            return person.tags.joined(separator: ", ")
+        }
+        return ""
     }
     
     var body: some View {
@@ -34,8 +39,8 @@ struct ContactRowView: View {
                     }
                 }
                 
-                if let sub = subtitle, !sub.isEmpty {
-                    Text(sub)
+                if !subtitle.isEmpty {
+                    Text(subtitle)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
