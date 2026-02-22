@@ -94,6 +94,7 @@ final class GoldfishDataManager: ObservableObject {
         birthday: Date? = nil,
         notes: String? = nil,
         isMe: Bool = false,
+        isDemo: Bool = false,
         isFavorite: Bool = false,
         tags: [String] = [],
         color: String? = nil,
@@ -122,6 +123,7 @@ final class GoldfishDataManager: ObservableObject {
             birthday: birthday,
             notes: notes,
             isMe: isMe,
+            isDemo: isDemo,
             isFavorite: isFavorite,
             tags: tags,
             color: color,
@@ -220,6 +222,13 @@ final class GoldfishDataManager: ObservableObject {
     /// without the overhead of loading every `Person` into memory.
     func fetchPersonCount() throws -> Int {
         let descriptor = FetchDescriptor<Person>()
+        return try context.fetchCount(descriptor)
+    }
+
+    /// Returns the number of manually created contacts (non-demo, non-self).
+    func fetchManualContactsCount() throws -> Int {
+        let predicate = #Predicate<Person> { !$0.isDemo && !$0.isMe }
+        let descriptor = FetchDescriptor<Person>(predicate: predicate)
         return try context.fetchCount(descriptor)
     }
 
@@ -501,6 +510,14 @@ final class GoldfishDataManager: ObservableObject {
         guard let me = try fetchMePerson() else { return nil }
         return graphService.buildGraphLevels(root: me, context: context)
     }
+    
+    /// Builds the BFS graph layout filtered by demo mode.
+    /// When `demoMode` is true, only demo contacts are included.
+    /// When `demoMode` is false, only real contacts are included.
+    func buildGraphLayout(demoMode: Bool) throws -> [GraphLevel]? {
+        guard let me = try fetchMePerson() else { return nil }
+        return graphService.buildGraphLevels(root: me, context: context, demoMode: demoMode)
+    }
 
     /// Returns all contacts reachable from the given contact through
     /// directional (parent → child) relationships.
@@ -566,7 +583,6 @@ final class GoldfishDataManager: ObservableObject {
     func performOnboarding(name: String, color: String? = nil) throws -> Person {
         try createSystemCircles()
         let me = try createPerson(name: name, isMe: true, color: color)
-        try populateDemoData(me: me)
         return me
     }
 
@@ -576,53 +592,18 @@ final class GoldfishDataManager: ObservableObject {
     }
     
     // MARK: ───────────────────────────────────────────────
-    // MARK: Demo Data Population
+    // MARK: Reset
     // MARK: ───────────────────────────────────────────────
-    
-    private func populateDemoData(me: Person) throws {
-        let allCircles = try fetchAllCircles()
-        let family = allCircles.first { $0.name == "Family" }
-        let friends = allCircles.first { $0.name == "Friends" }
-        let professional = allCircles.first { $0.name == "Professional" }
-        let circles = [family, friends, professional].compactMap { $0 }
-        
-        let demoNames = [
-            "Emma", "Liam", "Olivia", "Noah", "Ava",
-            "Oliver", "Isabella", "Elijah", "Sophia", "Lucas",
-            "Mia", "Mason", "Charlotte", "Logan"
-        ]
-        
-        var demoPersons: [Person] = []
-        
-        // 1. Create Contacts
-        for name in demoNames {
-            let colorHex = ["#FF5E3A", "#FF9500", "#FFCC00", "#4CD964", "#5AC8FA", "#007AFF", "#5856D6", "#FF2D55"].randomElement()!
-            let p = try createPerson(name: name, isMe: false, color: colorHex)
-            demoPersons.append(p)
-            
-            // Assign to a random circle
-            if let randomCircle = circles.randomElement() {
-                try addToCircle(p, circle: randomCircle)
-            }
-        }
-        
-        // 2. Create connections to ME
-        for p in demoPersons.prefix(6) {
-            _ = try createRelationship(from: me, to: p, type: .friend)
-        }
-        
-        // 3. Create cross connections among demo contacts
-        for _ in 0..<10 {
-            if let p1 = demoPersons.randomElement(),
-               let p2 = demoPersons.randomElement(),
-               p1.id != p2.id {
-                // Avoid duplicating relations just for demo
-                let exists = p1.outgoingRelationships.contains { $0.toContact.id == p2.id } ||
-                             p1.incomingRelationships.contains { $0.fromContact.id == p2.id }
-                if !exists {
-                    _ = try createRelationship(from: p1, to: p2, type: .friend)
-                }
-            }
-        }
+
+    /// Clears all data from the database.
+    func resetAllData() throws {
+        // Order of deletion to respect relationships if needed, 
+        // though cascade delete is configured on Person.
+        try context.delete(model: CircleContact.self)
+        try context.delete(model: Relationship.self)
+        try context.delete(model: Location.self)
+        try context.delete(model: GoldfishCircle.self)
+        try context.delete(model: Person.self)
+        try context.save()
     }
 }

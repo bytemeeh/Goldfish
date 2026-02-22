@@ -6,7 +6,6 @@ import os
 struct ImportResult: Sendable {
     var importedCount: Int = 0
     var skippedCount: Int = 0
-    var mergedCount: Int = 0 // Future use
     var errors: [String] = []
     
     // Names of skipped duplicates for user reporting
@@ -41,6 +40,9 @@ actor VCardImportService {
     private let logger = Logger(subsystem: "com.goldfish.app", category: "VCardImportService")
     private let graphService = GraphService()
     
+    // Circle cache used during a single import session to avoid O(N^2) fetches
+    private var circleCache: [String: GoldfishCircle] = [:]
+    
     /// Imports contacts from vCard data.
     ///
     /// - Parameters:
@@ -69,6 +71,9 @@ actor VCardImportService {
             result.goldfishVersion = manifest.version
             logger.info("Goldfish export detected: v\(manifest.version), \(manifest.contactCount) contacts, \(manifest.connectionCount) connections")
         }
+        
+        // Prepare Circle Cache
+        try populateCircleCache()
         
         // Map vCard UID -> Local Person (New or Existing)
         // Used for resolving relationships across the import batch
@@ -183,6 +188,9 @@ actor VCardImportService {
             }
         }
         
+        // Cleanup cache
+        circleCache.removeAll()
+        
         try modelContext.save()
         progressHandler(1.0)
         
@@ -262,15 +270,15 @@ actor VCardImportService {
         for name in uniqueNames {
             var circle: GoldfishCircle?
             
-            let allCircles = try modelContext.fetch(FetchDescriptor<GoldfishCircle>())
-            // In-memory filter for case-insensitivity
-            if let existingCircle = allCircles.first(where: { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }) {
-                circle = existingCircle
+            // 1. Check local session cache (populated in populateCircleCache or during this session)
+            if let cached = circleCache.values.first(where: { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }) {
+                circle = cached
                 existing += 1
             } else {
-                // Create new custom circle
+                // 2. Create new custom circle
                 let newCircle = GoldfishCircle(name: name, isSystem: false)
                 modelContext.insert(newCircle)
+                circleCache[name.lowercased()] = newCircle
                 circle = newCircle
                 created += 1
             }
@@ -285,6 +293,15 @@ actor VCardImportService {
         }
         
         return (created, existing)
+    }
+    
+    /// Pre-populates the cache with all existing circles to avoid fetching in the loop.
+    private func populateCircleCache() throws {
+        circleCache.removeAll()
+        let allCircles = try modelContext.fetch(FetchDescriptor<GoldfishCircle>())
+        for circle in allCircles {
+            circleCache[circle.name.lowercased()] = circle
+        }
     }
     
     /// Checks if a relationship (or its inverse) already exists between two contacts.

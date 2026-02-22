@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import os
 
 // MARK: - Add Relationship View
 /// Sheet for creating a relationship between a source contact and a target contact.
@@ -8,6 +9,7 @@ struct AddRelationshipView: View {
     let person: Person
     let dataManager: GoldfishDataManager
 
+    private let logger = Logger(subsystem: "com.goldfish.app", category: "AddRelationshipView")
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedType: RelationshipType = .friend
@@ -19,7 +21,7 @@ struct AddRelationshipView: View {
     @State private var isSaving = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 // MARK: - Relationship Type
                 Section("Relationship Type") {
@@ -89,16 +91,15 @@ struct AddRelationshipView: View {
     // MARK: - Computed
 
     private var filteredContacts: [Person] {
-        let existingRelatedIDs = Set(
-            person.allRelationships.flatMap { [$0.fromContact.id, $0.toContact.id] }
-        )
-        let base = allContacts.filter { contact in
-            contact.id != person.id && !existingRelatedIDs.contains(contact.id)
+        let existingRelatedIDs = Set(person.allRelationships.flatMap { [$0.fromContact.id, $0.toContact.id] })
+        
+        return allContacts.filter { contact in
+            guard contact.id != person.id && !existingRelatedIDs.contains(contact.id) else {
+                return false
+            }
+            if searchText.isEmpty { return true }
+            return contact.name.localizedCaseInsensitiveContains(searchText)
         }
-        if searchText.isEmpty {
-            return base
-        }
-        return base.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
     }
 
     private func directionLabel(target: Person) -> String {
@@ -111,7 +112,7 @@ struct AddRelationshipView: View {
         do {
             allContacts = try dataManager.fetchAllPersons()
         } catch {
-            print("Failed to load contacts: \(error)")
+            logger.error("Failed to load contacts: \(error.localizedDescription)")
         }
     }
 

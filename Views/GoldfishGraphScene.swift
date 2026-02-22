@@ -30,6 +30,13 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     }
     private var pondInfos: [PondInfo] = []
 
+    private struct PondMetrics {
+        let name: String
+        let center: CGPoint
+        let radius: CGFloat
+        let memberIDs: [UUID]
+    }
+
     // MARK: - Drag-Snap Connection
     private var snapPreviewLine: SKShapeNode?
     private var snapTargetID: UUID?
@@ -85,6 +92,10 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         let doubleTap = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap(_:)))
         doubleTap.numberOfTapsRequired = 2
         view.addGestureRecognizer(doubleTap)
+        
+        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+        longPress.minimumPressDuration = 0.5
+        view.addGestureRecognizer(longPress)
     }
 
     // MARK: - GraphSceneDelegate
@@ -119,6 +130,45 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         action.timingMode = .easeInEaseOut
         cameraNode.run(action)
     }
+    
+    func centerOnPond(name: String) {
+        // Find member nodes for this pond
+        let info = pondInfos.first(where: { $0.circleName == name })
+        let memberNodes = info?.memberIDs.compactMap { personNodes[$0] } ?? []
+        
+        guard !memberNodes.isEmpty else { return }
+        
+        // Calculate centroid
+        var cx: CGFloat = 0, cy: CGFloat = 0
+        for node in memberNodes { cx += node.position.x; cy += node.position.y }
+        cx /= CGFloat(memberNodes.count)
+        cy /= CGFloat(memberNodes.count)
+        
+        // Move camera
+        let target = CGPoint(x: cx, y: cy)
+        let moveAction = SKAction.move(to: target, duration: 0.5)
+        moveAction.timingMode = .easeInEaseOut
+        
+        // If pond is very small/tight, zoom in a bit. If large, zoom out.
+        var maxDist: CGFloat = 0
+        for node in memberNodes {
+            let d = hypot(node.position.x - cx, node.position.y - cy)
+            if d > maxDist { maxDist = d }
+        }
+        
+        // Target a zoom where the pond fills about 60% of the screen
+        let viewDim = min(size.width, size.height)
+        let targetZoom = min(max((viewDim * 0.6) / (max(maxDist, 50) * 2), 0.4), 1.5)
+        
+        let scaleAction = SKAction.scale(to: 1.0 / targetZoom, duration: 0.5)
+        scaleAction.timingMode = .easeInEaseOut
+        
+        cameraNode.run(SKAction.group([moveAction, scaleAction]))
+        
+        currentZoom = targetZoom
+        updateLOD()
+        graphDelegate?.updateCameraFromScene(position: target, zoom: targetZoom)
+    }
 
     func requestConnection(from: UUID, to: UUID) {
         // No-op: This is handled by GraphViewModel, not by the scene
@@ -128,63 +178,119 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         activeSearchIDs = ids
         applySearchDimming()
     }
+    
+    func didLongPressContact(_ id: UUID) {
+        // Handled by GraphViewModel
+    }
+    
+    func animateNewConnection(from: UUID, to: UUID) {
+        guard let nodeA = personNodes[from], let nodeB = personNodes[to] else { return }
+        
+        // 1. Visual pulse
+        let pulse = SKAction.sequence([
+            SKAction.scale(to: 1.15, duration: 0.1),
+            SKAction.scale(to: 1.0, duration: 0.2)
+        ])
+        nodeA.run(pulse)
+        nodeB.run(pulse)
+        
+        // 2. Physical "tug" impulse
+        let dx = nodeB.position.x - nodeA.position.x
+        let dy = nodeB.position.y - nodeA.position.y
+        let distance = max(hypot(dx, dy), 1)
+        let impulseMag: CGFloat = 800.0
+        
+        let impulseA = CGVector(dx: (dx / distance) * impulseMag, dy: (dy / distance) * impulseMag)
+        let impulseB = CGVector(dx: (-dx / distance) * impulseMag, dy: (-dy / distance) * impulseMag)
+        
+        nodeA.physicsBody?.applyImpulse(impulseA)
+        nodeB.physicsBody?.applyImpulse(impulseB)
+        
+        // 3. Temporarily speed up physics to settle the new connection
+        physicsWorld.speed = 1.0
+        physicsSettled = false
+        
+        settleTimer?.invalidate()
+        settleTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.physicsWorld.speed = 0.1
+                self?.physicsSettled = true
+                self?.applyIdleFloatingAnimation()
+            }
+        }
+    }
+
+    private var edgeSprings: [String: SKPhysicsJointSpring] = [:]
 
     // MARK: - Graph Building
 
     private func updateGraph(_ levels: [GraphLevel]) {
-        contentNode.removeAllChildren()
-        personNodes.removeAll()
-        edgeNodes.removeAll()
-        pondOutlines.removeAll()
-        pondLabels.removeAll()
-        pondInfos.removeAll()
         physicsSettled = false
         physicsWorld.speed = 1.0
+        
+        // Ensure gravity field exists
+        if contentNode.childNode(withName: "gravityField") == nil {
+            let gravity = SKFieldNode.radialGravityField()
+            gravity.name = "gravityField"
+            gravity.strength = 0.1
+            gravity.falloff = 0.5
+            gravity.position = .zero
+            contentNode.addChild(gravity)
+        }
 
-        // Re-add gravity field
-        let gravity = SKFieldNode.radialGravityField()
-        gravity.strength = 0.1
-        gravity.falloff = 0.5
-        gravity.position = .zero
-        contentNode.addChild(gravity)
-
-        // Build all person nodes
+        // 1. Identify current vs new persons
+        let currentPersonIDs = Set(personNodes.keys)
+        let allContacts = levels.flatMap(\.allContacts).filter { !$0.isMe }
+        let newPersonIDs = Set(allContacts.map(\.id))
+        
+        // Remove nodes for persons no longer in graph
+        for id in currentPersonIDs where !newPersonIDs.contains(id) {
+            personNodes[id]?.removeFromParent()
+            personNodes.removeValue(forKey: id)
+        }
+        
+        // Update or create person nodes
         for level in levels {
             let radius = CGFloat(level.depth * 140 + 20)
-            let allContacts = level.allContacts
-            let count = allContacts.count
+            let levelContacts = level.allContacts
+            let count = levelContacts.count
 
-            for (index, person) in allContacts.enumerated() {
-                let angle = (CGFloat(index) / CGFloat(max(count, 1))) * 2 * .pi
-                let x = level.depth > 0 ? radius * cos(angle) : 0
-                let y = level.depth > 0 ? radius * sin(angle) : 0
+            for (index, person) in levelContacts.enumerated() {
+                if person.isMe { continue }
 
-                let personNode = PersonNode(person: person, depth: level.depth)
-                personNode.position = CGPoint(x: x, y: y)
+                if let _ = personNodes[person.id] {
+                    // Update existing node if needed
+                } else {
+                    // Create new node
+                    let angle = (CGFloat(index) / CGFloat(max(count, 1))) * 2 * .pi
+                    let x = level.depth > 0 ? radius * cos(angle) : 0
+                    let y = level.depth > 0 ? radius * sin(angle) : 0
 
-                // Physics body
-                let body = SKPhysicsBody(circleOfRadius: 40) // Increased for better label spacing collision
-                body.mass = 1.0
-                body.linearDamping = 6.0 // Higher damping to settle efficiently
-                body.angularDamping = 8.0
-                body.isDynamic = !person.isMe
-                body.allowsRotation = false
-                body.categoryBitMask = 1
-                body.collisionBitMask = 1 // Enable physics collisions between nodes to push apart text
-                body.fieldBitMask = 1
-                personNode.physicsBody = body
+                    let personNode = PersonNode(person: person, depth: level.depth)
+                    personNode.position = CGPoint(x: x, y: y)
 
-                contentNode.addChild(personNode)
-                personNodes[person.id] = personNode
+                    let body = SKPhysicsBody(circleOfRadius: 40)
+                    body.mass = 1.0
+                    body.linearDamping = 6.0
+                    body.angularDamping = 8.0
+                    body.isDynamic = true
+                    body.allowsRotation = false
+                    body.categoryBitMask = 1
+                    body.collisionBitMask = 1
+                    body.fieldBitMask = 1
+                    personNode.physicsBody = body
+
+                    contentNode.addChild(personNode)
+                    personNodes[person.id] = personNode
+                }
             }
         }
 
-        // Build pond info from all unique contacts
-        // We use all active circles for each person so they can belong to multiple ponds.
+        // 2. Update Pond Info
+        pondInfos.removeAll()
         var pondMembers: [String: (color: String, ids: Set<UUID>)] = [:]
         for (_, personNode) in personNodes {
-            guard let person = levels.flatMap(\.allContacts).first(where: { $0.id == personNode.personID }) else { continue }
-            guard !person.isMe else { continue }
+            guard let person = allContacts.first(where: { $0.id == personNode.personID }) else { continue }
             
             let activeCircles = person.circleContacts.filter { !$0.manuallyExcluded }
             for membership in activeCircles {
@@ -197,111 +303,138 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             }
         }
 
-        // Create pond outline shapes and labels
+        // Update pond shapes/labels (Incremental)
+        let currentPondNames = Set(pondOutlines.keys)
+        let newPondNames = Set(pondMembers.keys)
+        
+        // Remove old ponds
+        for name in currentPondNames where !newPondNames.contains(name) {
+            pondOutlines[name]?.removeFromParent()
+            pondOutlines.removeValue(forKey: name)
+            pondLabels[name]?.removeFromParent()
+            pondLabels.removeValue(forKey: name)
+        }
+        
+        // Update or create ponds
         for (name, info) in pondMembers {
             let pondInfo = PondInfo(circleName: name, color: info.color, memberIDs: Array(info.ids))
             pondInfos.append(pondInfo)
 
-            // Outline shape
-            let outline = SKShapeNode()
-            outline.strokeColor = (GoldfishUIColor(hex: info.color) ?? UIColor.systemGray3).withAlphaComponent(0.20)
-            outline.fillColor = (GoldfishUIColor(hex: info.color) ?? UIColor.systemGray3).withAlphaComponent(0.08)
-            outline.lineWidth = 2.0
-            outline.zPosition = -2
-            contentNode.addChild(outline)
-            pondOutlines[name] = outline
+            if pondOutlines[name] == nil {
+                let outline = SKShapeNode()
+                outline.strokeColor = (GoldfishUIColor(hex: info.color) ?? UIColor.systemGray3).withAlphaComponent(0.20)
+                outline.fillColor = (GoldfishUIColor(hex: info.color) ?? UIColor.systemGray3).withAlphaComponent(0.08)
+                outline.lineWidth = 2.0
+                outline.zPosition = -2
+                contentNode.addChild(outline)
+                pondOutlines[name] = outline
 
-            // Label
-            let label = SKLabelNode(text: name)
-            label.fontName = "SFProText-Semibold"
-            label.fontSize = 11
-            label.fontColor = (GoldfishUIColor(hex: info.color) ?? UIColor.systemGray3).withAlphaComponent(0.7)
-            label.horizontalAlignmentMode = .center
-            label.verticalAlignmentMode = .bottom
-            label.zPosition = -1
-            
-            // Add watercolor blob decoration behind the label
-            let blob = SKShapeNode()
-            blob.fillColor = (GoldfishUIColor(hex: info.color) ?? UIColor.systemGray3).withAlphaComponent(0.25)
-            blob.strokeColor = .clear
-            blob.zPosition = -9
-            
-            // Generate a wavy path to simulate a organic drop of watercolor
-            let path = CGMutablePath()
-            let pts = 12
-            let center = CGPoint(x: 0, y: 8) // Shift slightly up to center behind the text
-            let blobRadius: CGFloat = 34
-            let startWobbleSeed = CGFloat(abs(name.hashValue))
-            for i in 0..<pts {
-                let a = CGFloat(i) * 2.0 * .pi / CGFloat(pts)
-                let noise = sin(a * 4 + startWobbleSeed) * 5 + cos(a * 3 - startWobbleSeed) * 4
-                let r = blobRadius + noise
-                let pt = CGPoint(x: center.x + r * cos(a), y: center.y + r * sin(a))
-                if i == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
+                let label = SKLabelNode(text: name)
+                label.fontName = "SFProText-Semibold"
+                label.fontSize = 11
+                label.fontColor = (GoldfishUIColor(hex: info.color) ?? UIColor.systemGray3).withAlphaComponent(0.7)
+                label.horizontalAlignmentMode = .center
+                label.verticalAlignmentMode = .bottom
+                label.zPosition = -1
+                
+                let blob = SKShapeNode()
+                blob.fillColor = (GoldfishUIColor(hex: info.color) ?? UIColor.systemGray3).withAlphaComponent(0.25)
+                blob.strokeColor = .clear
+                blob.zPosition = -9
+                
+                let path = CGMutablePath()
+                let pts = 12
+                let center = CGPoint(x: 0, y: 8)
+                let blobRadius: CGFloat = 34
+                let startWobbleSeed = CGFloat(abs(name.hashValue))
+                for i in 0..<pts {
+                    let a = CGFloat(i) * 2.0 * .pi / CGFloat(pts)
+                    let noise = sin(a * 4 + startWobbleSeed) * 5 + cos(a * 3 - startWobbleSeed) * 4
+                    let r = blobRadius + noise
+                    let pt = CGPoint(x: center.x + r * cos(a), y: center.y + r * sin(a))
+                    if i == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
+                }
+                path.closeSubpath()
+                blob.path = path
+                label.addChild(blob)
+                
+                contentNode.addChild(label)
+                pondLabels[name] = label
             }
-            path.closeSubpath()
-            blob.path = path
-            label.addChild(blob)
-            
-            contentNode.addChild(label)
-            pondLabels[name] = label
         }
 
-        // Build edges based on relationships
-        var drawnEdges: Set<String> = []
+        // 3. Update Edges and Springs (Incremental)
+        var desiredEdges: Set<String> = []
         for (personID, _) in personNodes {
-            guard let person = findPerson(id: personID, in: levels) else { continue }
+            guard let person = allContacts.first(where: { $0.id == personID }) else { continue }
             for rel in person.allRelationships {
                 let otherID = rel.fromContact.id == personID ? rel.toContact.id : rel.fromContact.id
                 let edgeKey = [personID.uuidString, otherID.uuidString].sorted().joined(separator: "-")
-                guard !drawnEdges.contains(edgeKey), personNodes[otherID] != nil else { continue }
-                drawnEdges.insert(edgeKey)
-
+                if personNodes[otherID] != nil {
+                    desiredEdges.insert(edgeKey)
+                }
+            }
+        }
+        
+        // Remove old edges and springs
+        for edgeKey in Array(edgeNodes.keys) where !desiredEdges.contains(edgeKey) {
+            edgeNodes[edgeKey]?.removeFromParent()
+            edgeNodes.removeValue(forKey: edgeKey)
+            if let spring = edgeSprings[edgeKey] {
+                physicsWorld.remove(spring)
+                edgeSprings.removeValue(forKey: edgeKey)
+            }
+        }
+        
+        // Create new edges and springs
+        for edgeKey in desiredEdges {
+            if edgeNodes[edgeKey] == nil {
                 let edgeNode = SKShapeNode()
-                edgeNode.strokeColor = UIColor.systemGray3
-                edgeNode.lineWidth = 1.0
+                // Warm highlight color (terracotta/goldfish theme)
+                edgeNode.strokeColor = UIColor(red: 212/255, green: 116/255, blue: 78/255, alpha: 0.5)
+                edgeNode.lineWidth = 2.0
                 edgeNode.alpha = 0.6
                 edgeNode.zPosition = -1
                 edgeNode.name = edgeKey
+                edgeNode.glowWidth = 1.0
                 contentNode.addChild(edgeNode)
                 edgeNodes[edgeKey] = edgeNode
+                
+                // Add spring joint
+                let ids = edgeKey.split(separator: "-")
+                guard ids.count == 2,
+                      let uuidA = UUID(uuidString: String(ids[0])),
+                      let uuidB = UUID(uuidString: String(ids[1])),
+                      let nodeA = personNodes[uuidA],
+                      let nodeB = personNodes[uuidB],
+                      let bodyA = nodeA.physicsBody,
+                      let bodyB = nodeB.physicsBody else { continue }
+
+                let spring = SKPhysicsJointSpring.joint(
+                    withBodyA: bodyA,
+                    bodyB: bodyB,
+                    anchorA: nodeA.position,
+                    anchorB: nodeB.position
+                )
+                spring.frequency = 0.4
+                spring.damping = 0.6
+                physicsWorld.add(spring)
+                edgeSprings[edgeKey] = spring
             }
         }
 
-        // Create the snap preview line (hidden by default)
-        let preview = SKShapeNode()
-        preview.strokeColor = UIColor(red: 183/255, green: 79/255, blue: 58/255, alpha: 0.55)
-        preview.lineWidth = 1.5
-        preview.isHidden = true
-        preview.zPosition = 10
-        // Dashed line pattern
-        preview.path = nil
-        contentNode.addChild(preview)
-        snapPreviewLine = preview
-
-        // Add spring joints between connected nodes
-        for (edgeKey, _) in edgeNodes {
-            let ids = edgeKey.split(separator: "-")
-            guard ids.count == 2,
-                  let uuidA = UUID(uuidString: String(ids[0])),
-                  let uuidB = UUID(uuidString: String(ids[1])),
-                  let nodeA = personNodes[uuidA],
-                  let nodeB = personNodes[uuidB],
-                  let bodyA = nodeA.physicsBody,
-                  let bodyB = nodeB.physicsBody else { continue }
-
-            let spring = SKPhysicsJointSpring.joint(
-                withBodyA: bodyA,
-                bodyB: bodyB,
-                anchorA: nodeA.position,
-                anchorB: nodeB.position
-            )
-            spring.frequency = 0.8
-            spring.damping = 0.4
-            physicsWorld.add(spring)
+        // Snap preview line (static)
+        if snapPreviewLine == nil {
+            let preview = SKShapeNode()
+            preview.strokeColor = UIColor(red: 183/255, green: 79/255, blue: 58/255, alpha: 0.55)
+            preview.lineWidth = 1.5
+            preview.isHidden = true
+            preview.zPosition = 10
+            contentNode.addChild(preview)
+            snapPreviewLine = preview
         }
 
-        // After 3 seconds, reduce physics speed to dampen jitter
+        // Settle logic
         settleTimer?.invalidate()
         settleTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in
             DispatchQueue.main.async {
@@ -313,6 +446,8 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         
         applySearchDimming()
     }
+
+
     
     private func applyIdleFloatingAnimation() {
         for (_, node) in personNodes {
@@ -332,15 +467,16 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     /// to organically separate groups visually.
     private func applyQuadrantForces() {
         // Define a few anchor points around the center to keep ponds separated
+        // Anchors are spread far apart so ponds never share the same region
         let anchors: [CGPoint] = [
-            CGPoint(x: -450, y: 450),  // Top-Left
-            CGPoint(x: 450, y: 450),   // Top-Right
-            CGPoint(x: -450, y: -450), // Bottom-Left
-            CGPoint(x: 450, y: -450),  // Bottom-Right
-            CGPoint(x: 0, y: 550),     // Top
-            CGPoint(x: 0, y: -550),    // Bottom
-            CGPoint(x: -550, y: 0),    // Left
-            CGPoint(x: 550, y: 0)      // Right
+            CGPoint(x: -600, y: 600),  // Top-Left
+            CGPoint(x: 600, y: 600),   // Top-Right
+            CGPoint(x: -600, y: -600), // Bottom-Left
+            CGPoint(x: 600, y: -600),  // Bottom-Right
+            CGPoint(x: 0, y: 700),     // Top
+            CGPoint(x: 0, y: -700),    // Bottom
+            CGPoint(x: -700, y: 0),    // Left
+            CGPoint(x: 700, y: 0)      // Right
         ]
 
         var assignedAnchors: [String: CGPoint] = [:]
@@ -364,18 +500,151 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             
             guard let target = assignedAnchors[circleName] else { continue }
             
-            // Apply a gentle force towards the assigned anchor
+            // Apply a strong force towards the assigned anchor to keep ponds well separated
             let dx = target.x - node.position.x
             let dy = target.y - node.position.y
             let distance = max(hypot(dx, dy), 1)
-            let forceMagnitude: CGFloat = 12.0 // Strong enough to keep ponds well away from center
+            let forceMagnitude: CGFloat = 40.0
             
             let force = CGVector(dx: (dx / distance) * forceMagnitude, dy: (dy / distance) * forceMagnitude)
             body.applyForce(force)
         }
     }
 
+    /// Prevents ponds from overlapping by applying repulsive forces between their member nodes
+    /// if their calculated boundaries are too close.
+    private func applyPondRepulsion(metrics: [PondMetrics]) {
+        guard metrics.count > 1 else { return }
+        
+        for i in 0..<metrics.count {
+            for j in i+1..<metrics.count {
+                let m1 = metrics[i]
+                let m2 = metrics[j]
+                
+                let dx = m1.center.x - m2.center.x
+                let dy = m1.center.y - m2.center.y
+                let distance = max(hypot(dx, dy), 1)
+                
+                // Minimum distance = sum of radii + generous safety margin
+                let minDistance = m1.radius + m2.radius + 160
+                
+                if distance < minDistance {
+                    // Ponds overlap or are too close
+                    let overlap = minDistance - distance
+                    let overlapRatio = overlap / minDistance
+                    // Very strong repulsion that scales sharply with overlap severity
+                    let repulsionStrength: CGFloat = 80.0 * overlapRatio * overlapRatio + 30.0
+                    
+                    let rx = (dx / distance) * repulsionStrength
+                    let ry = (dy / distance) * repulsionStrength
+                    
+                    let force1 = CGVector(dx: rx, dy: ry)
+                    let force2 = CGVector(dx: -rx, dy: -ry)
+                    
+                    // Apply to all nodes in pond 1
+                    for id in m1.memberIDs {
+                        personNodes[id]?.physicsBody?.applyForce(force1)
+                    }
+                    // Apply to all nodes in pond 2
+                    for id in m2.memberIDs {
+                        personNodes[id]?.physicsBody?.applyForce(force2)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Prevents non-members (e.g., unassigned nodes) from drifting inside ponds they don't belong to.
+    private func applyPondNodeRepulsion(metrics: [PondMetrics]) {
+        for metric in metrics {
+            let pondCenter = metric.center
+            // Add a safety buffer to the pond radius
+            let repulseRadius = metric.radius + 50
+            let memberSet = Set(metric.memberIDs)
+            
+            for (id, node) in personNodes {
+                // Ignore "Me" node and actual pond members
+                if node.isMe || memberSet.contains(id) { continue }
+                
+                let dx = node.position.x - pondCenter.x
+                let dy = node.position.y - pondCenter.y
+                let distance = max(hypot(dx, dy), 1)
+                
+                if distance < repulseRadius {
+                    let overlap = repulseRadius - distance
+                    let overlapRatio = overlap / repulseRadius
+                    
+                    // Repel the non-member node away from the pond center
+                    let repulsionStrength: CGFloat = 60.0 * overlapRatio * overlapRatio + 20.0
+                    
+                    let rx = (dx / distance) * repulsionStrength
+                    let ry = (dy / distance) * repulsionStrength
+                    
+                    node.physicsBody?.applyForce(CGVector(dx: rx, dy: ry))
+                }
+            }
+        }
+    }
+
     // MARK: - Path Logic
+    
+    /// Calculates a curved path (Bézier) from one point to another, 
+    /// attempting to avoid other nodes in the process.
+    private func calculateCurvedPath(from start: CGPoint, to end: CGPoint, avoiding personIDs: Set<UUID>) -> CGPath {
+        let midX = (start.x + end.x) / 2
+        let midY = (start.y + end.y) / 2
+        var controlPoint = CGPoint(x: midX, y: midY)
+        
+        let dx = end.x - start.x
+        let dy = end.y - start.y
+        let distance = max(hypot(dx, dy), 1.0)
+        
+        // Perpendicular vector for offset
+        let perpX = -dy / distance
+        let perpY = dx / distance
+        
+        // Find nodes that might be in the way
+        // Line segment is from start to end. Nodes within a certain distance of this segment push the mid-point.
+        var totalOffset: CGFloat = 0
+        let avoidanceRadius: CGFloat = 80.0
+        
+        for (id, node) in personNodes {
+            guard !personIDs.contains(id) else { continue }
+            
+            // Distance from node to line segment
+            let nodePos = node.position
+            let t = max(0, min(1, ((nodePos.x - start.x) * dx + (nodePos.y - start.y) * dy) / (distance * distance)))
+            let projection = CGPoint(x: start.x + t * dx, y: start.y + t * dy)
+            let distToLine = hypot(nodePos.x - projection.x, nodePos.y - projection.y)
+            
+            if distToLine < avoidanceRadius {
+                // Node is close to the line. Calculate repulsion.
+                // Which side of the line is the node on?
+                let crossProduct = (end.x - start.x) * (nodePos.y - start.y) - (end.y - start.y) * (nodePos.x - start.x)
+                let side: CGFloat = crossProduct >= 0 ? 1 : -1
+                
+                // Repel the curve to the opposite side
+                let force = (avoidanceRadius - distToLine) * 1.5
+                totalOffset -= side * force
+            }
+        }
+        
+        // Add a base organic curve even if no nodes are in the way
+        let baseCurvature: CGFloat = 15.0
+        totalOffset += (totalOffset == 0) ? baseCurvature : 0
+        
+        // Cap the offset to avoid extreme loops
+        let maxOffset = distance * 0.4
+        totalOffset = max(-maxOffset, min(maxOffset, totalOffset))
+        
+        controlPoint.x += perpX * totalOffset
+        controlPoint.y += perpY * totalOffset
+        
+        let path = CGMutablePath()
+        path.move(to: start)
+        path.addQuadCurve(to: end, control: controlPoint)
+        return path
+    }
 
     /// Creates an organic wobbly path around a center point, matching the demo's drawPondPath().
     private func pondShapePath(center: CGPoint, radius: CGFloat, seed: CGFloat) -> CGPath {
@@ -421,40 +690,14 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     // MARK: - Update Loop
 
     override func update(_ currentTime: TimeInterval) {
-        // Keep the 'Me' node strictly pinned to the center
-        let meNode = personNodes.values.first { $0.isMe }
-        if let me = meNode {
-            me.position = .zero
-            me.physicsBody?.velocity = .zero
-            me.physicsBody?.angularVelocity = 0
-            if draggedNode !== me {
-                me.physicsBody?.isDynamic = false
-            }
-        }
-
         applyQuadrantForces()
 
-        // Update edge line paths to follow node positions
-        for (edgeKey, edgeNode) in edgeNodes {
-            let ids = edgeKey.split(separator: "-")
-            guard ids.count == 2,
-                  let uuidA = UUID(uuidString: String(ids[0])),
-                  let uuidB = UUID(uuidString: String(ids[1])),
-                  let nodeA = personNodes[uuidA],
-                  let nodeB = personNodes[uuidB] else { continue }
-
-            let path = CGMutablePath()
-            path.move(to: nodeA.position)
-            path.addLine(to: nodeB.position)
-            edgeNode.path = path
-        }
-
-        // Update pond outlines to follow node positions
+        // 1. Calculate current metrics for all active ponds
+        var allMetrics: [PondMetrics] = []
         for info in pondInfos {
-            guard let outline = pondOutlines[info.circleName] else { continue }
             let memberNodes = info.memberIDs.compactMap { personNodes[$0] }
             guard !memberNodes.isEmpty else {
-                outline.isHidden = true
+                pondOutlines[info.circleName]?.isHidden = true
                 pondLabels[info.circleName]?.isHidden = true
                 continue
             }
@@ -471,8 +714,37 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
                 let d = hypot(node.position.x - cx, node.position.y - cy)
                 if d > maxDist { maxDist = d }
             }
-            let pondRadius = maxDist + 45 // Give some breathing room inside the pond
+            let pondRadius = maxDist + 45 
             
+            allMetrics.append(PondMetrics(name: info.circleName, center: CGPoint(x: cx, y: cy), radius: pondRadius, memberIDs: info.memberIDs))
+        }
+
+        // 2. Apply repulsion between ponds to prevent overlap
+        applyPondRepulsion(metrics: allMetrics)
+        
+        // 2.5 Apply repulsion for unassigned/non-member nodes so they don't sit inside ponds
+        applyPondNodeRepulsion(metrics: allMetrics)
+
+        // 3. Update edge line paths to follow node positions
+        for (edgeKey, edgeNode) in edgeNodes {
+            let ids = edgeKey.split(separator: "-")
+            guard ids.count == 2,
+                  let uuidA = UUID(uuidString: String(ids[0])),
+                  let uuidB = UUID(uuidString: String(ids[1])),
+                  let nodeA = personNodes[uuidA],
+                  let nodeB = personNodes[uuidB] else { continue }
+
+            edgeNode.path = calculateCurvedPath(from: nodeA.position, to: nodeB.position, avoiding: [uuidA, uuidB])
+        }
+
+        // 4. Update pond outlines to follow node positions (and use metrics)
+        for metric in allMetrics {
+            guard let outline = pondOutlines[metric.name] else { continue }
+            
+            var cx = metric.center.x
+            var cy = metric.center.y
+            let pondRadius = metric.radius
+
             // Push pond center away from origin so the "Me" node never appears inside a pond.
             let meClearance: CGFloat = 30 // minimum gap between pond edge and Me node
             let distFromOrigin = hypot(cx, cy)
@@ -483,18 +755,18 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
                 cy *= scale
             } else if distFromOrigin <= 0.1 {
                 // Pond centroid is right on top of Me – push it in a deterministic direction
-                let angle = CGFloat(info.circleName.hashValue % 360) * .pi / 180
+                let angle = CGFloat(metric.name.hashValue % 360) * .pi / 180
                 cx = minCenterDist * cos(angle)
                 cy = minCenterDist * sin(angle)
             }
             
             let center = CGPoint(x: cx, y: cy)
-            let seed = CGFloat(info.circleName.count * 3)
+            let seed = CGFloat(metric.name.count * 3)
             outline.path = pondShapePath(center: center, radius: pondRadius, seed: seed)
             outline.isHidden = false
 
             // Update label position (above pond)
-            if let label = pondLabels[info.circleName] {
+            if let label = pondLabels[metric.name] {
                 label.position = CGPoint(x: cx, y: cy + pondRadius + 8)
                 label.isHidden = false
             }
@@ -661,14 +933,12 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
                 targetNode.setHoverGlow(true)
 
                 // Show dashed preview line
-                let linePath = CGMutablePath()
-                linePath.move(to: node.position)
-                linePath.addLine(to: targetNode.position)
-                snapPreviewLine?.path = linePath
-                snapPreviewLine?.isHidden = false
+                let curvedPath = calculateCurvedPath(from: node.position, to: targetNode.position, avoiding: [node.personID, targetID])
+                
                 // Create a dashed pattern
                 let pattern: [CGFloat] = [6, 4]
-                snapPreviewLine?.path = linePath.copy(dashingWithPhase: 0, lengths: pattern)
+                snapPreviewLine?.path = curvedPath.copy(dashingWithPhase: 0, lengths: pattern)
+                snapPreviewLine?.isHidden = false
                 
                 // Clear pond hover if we just snapped back to a node
                 if let old = hoverPondName {
@@ -871,6 +1141,33 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             cameraNode.run(SKAction.group([moveAction, scaleAction]))
             updateLOD()
             graphDelegate?.updateCameraFromScene(position: .zero, zoom: 1.0)
+        }
+    }
+    
+    @objc private func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+        guard gesture.state == .began, let view = self.view else { return }
+        let screenLocation = gesture.location(in: view)
+        let sceneLocation = convertPoint(fromView: screenLocation)
+        let contentLocation = contentNode.convert(sceneLocation, from: self)
+        
+        // Check if we long-pressed a node
+        for (id, node) in personNodes {
+            let distance = hypot(contentLocation.x - node.position.x, contentLocation.y - node.position.y)
+            if distance < 35 {
+                // Prevent actions on the "Me" node
+                guard !node.isMe else { return }
+                
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                graphDelegate?.didLongPressContact(id)
+                highlightNode(id)
+                
+                // cancel drag if active
+                if draggedNode?.personID == id {
+                    touchesCancelled(Set(), with: nil)
+                }
+                
+                return
+            }
         }
     }
 

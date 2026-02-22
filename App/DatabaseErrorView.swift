@@ -25,7 +25,7 @@ struct DatabaseErrorView: View {
                     .fontWeight(.bold)
                     .multilineTextAlignment(.center)
                 
-                Text("Goldfish's data couldn't be loaded. You can export your data as a backup and reinstall the app to fix this.")
+                Text("Goldfish's data couldn't be loaded. You can export your data as a backup and reinstall the app to fix this.\n\nError Details:\n\(String(describing: error))")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -76,16 +76,7 @@ struct DatabaseErrorView: View {
     }
 }
 
-// MARK: - Helper: Share Sheet
-struct ShareSheet: UIViewControllerRepresentable {
-    let activityItems: [Any]
-    
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-    }
-    
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
+
 
 #Preview {
     DatabaseErrorView(error: nil, retryAction: {})

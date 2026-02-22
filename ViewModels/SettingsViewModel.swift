@@ -20,6 +20,11 @@ final class SettingsViewModel: ObservableObject {
     @Published var lastImportResult: ImportResult?
     private var isConfigured = false
     
+    var hasManualContacts: Bool {
+        guard let dataManager else { return false }
+        return (try? dataManager.fetchManualContactsCount()) ?? 0 > 0
+    }
+    
     // MARK: - Init
     init() {
         loadVersion()
@@ -46,6 +51,18 @@ final class SettingsViewModel: ObservableObject {
         let dictionary = Bundle.main.infoDictionary
         self.appVersion = dictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         self.buildNumber = dictionary?["CFBundleVersion"] as? String ?? "1"
+    }
+
+    // MARK: - Reset
+    func performReset() {
+        guard let dataManager else { return }
+        do {
+            try dataManager.resetAllData()
+            // Reset onboarding state in UserDefaults
+            UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
+        } catch {
+            print("Error resetting data: \(error)")
+        }
     }
     
     // MARK: - Export

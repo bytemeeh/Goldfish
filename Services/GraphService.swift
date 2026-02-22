@@ -223,6 +223,82 @@ struct GraphService {
 
         return levels
     }
+    
+    /// Demo-mode-aware variant of `buildGraphLevels`.
+    /// When `demoMode` is true, only traverses to demo contacts.
+    /// When `demoMode` is false, only traverses to real contacts.
+    /// The root (`isMe`) is always included as the graph anchor.
+    func buildGraphLevels(
+        root: Person,
+        context: ModelContext,
+        demoMode: Bool
+    ) -> [GraphLevel] {
+        var visited: Set<UUID> = [root.id]
+        var currentLevel: [Person] = [root]
+        var levels: [GraphLevel] = []
+        var depth = 0
+
+        while !currentLevel.isEmpty {
+            let grouped = groupByCircle(currentLevel)
+            levels.append(GraphLevel(depth: depth, circleGroups: grouped))
+
+            var nextLevel: [Person] = []
+            for person in currentLevel {
+                let neighbors = getNeighbors(of: person)
+                for neighbor in neighbors {
+                    // Only include neighbors matching the demo mode filter
+                    // (Me contact is always at root, never filtered here)
+                    guard neighbor.isDemo == demoMode else { continue }
+                    if !visited.contains(neighbor.id) {
+                        visited.insert(neighbor.id)
+                        nextLevel.append(neighbor)
+                    }
+                }
+            }
+
+            currentLevel = nextLevel
+            depth += 1
+        }
+        
+        var existingCircleDepth: [UUID: Int] = [:]
+        for (lvlIndex, level) in levels.enumerated() {
+            for group in level.circleGroups {
+                if let circleId = group.circle?.id {
+                    existingCircleDepth[circleId] = lvlIndex
+                }
+            }
+        }
+
+        // Only consider orphans matching the demo mode filter
+        let allPersons = (try? context.fetch(FetchDescriptor<Person>())) ?? []
+        let orphans = allPersons.filter { !visited.contains($0.id) && $0.isDemo == demoMode }
+        
+        var trueOrphans: [Person] = []
+        
+        for orphan in orphans {
+            let activeCircles = orphan.circleContacts.filter { !$0.manuallyExcluded }.map { $0.circle }
+            var merged = false
+            for circle in activeCircles {
+                if let existingDepth = existingCircleDepth[circle.id] {
+                    if let groupIndex = levels[existingDepth].circleGroups.firstIndex(where: { $0.circle?.id == circle.id }) {
+                        levels[existingDepth].circleGroups[groupIndex].contacts.append(orphan)
+                        merged = true
+                        break
+                    }
+                }
+            }
+            if !merged {
+                trueOrphans.append(orphan)
+            }
+        }
+
+        if !trueOrphans.isEmpty {
+            let orphanGroups = groupByCircle(trueOrphans)
+            levels.append(GraphLevel(depth: depth, circleGroups: orphanGroups))
+        }
+
+        return levels
+    }
 
     /// Returns all direct neighbors of a person (both directions, all types).
     private func getNeighbors(of person: Person) -> [Person] {
@@ -239,6 +315,9 @@ struct GraphService {
     /// Groups a set of contacts by their primary circle.
     /// Contacts in multiple circles are assigned to their first non-excluded circle.
     /// Contacts in no circle are grouped under "Uncircled" (nil circle).
+    ///
+    /// **Reordering logic**: Contacts within a group are sorted based on their mutual connectivity
+    /// to ensure connected people appear closer together in the graph's circular layout.
     private func groupByCircle(_ contacts: [Person]) -> [CircleGroup] {
         var groups: [UUID: (circle: GoldfishCircle, contacts: [Person])] = [:]
         var uncircled: [Person] = []
@@ -258,6 +337,13 @@ struct GraphService {
             }
         }
 
+        // Apply connection-aware sorting to each group
+        for (id, var group) in groups {
+            group.contacts = sortByConnectivity(group.contacts)
+            groups[id] = group
+        }
+        uncircled = sortByConnectivity(uncircled)
+
         // Sort groups by circle sortOrder
         var result = groups.values
             .sorted { $0.circle.sortOrder < $1.circle.sortOrder }
@@ -269,6 +355,48 @@ struct GraphService {
         }
 
         return result
+    }
+
+    /// Sorts a list of persons such that those with mutual connections are adjacent.
+    /// Uses a "Greedy Degree + Neighbor" heuristic.
+    private func sortByConnectivity(_ contacts: [Person]) -> [Person] {
+        guard contacts.count > 2 else { return contacts }
+        
+        var remaining = Set(contacts)
+        var sorted: [Person] = []
+        
+        // Helper to count connections within the set
+        func internalConnectionCount(_ p: Person) -> Int {
+            let neighbors = Set(getNeighbors(of: p).map(\.id))
+            return contacts.filter { neighbors.contains($0.id) }.count
+        }
+        
+        // 1. Start with the most connected person
+        if let first = remaining.max(by: { internalConnectionCount($0) < internalConnectionCount($1) }) {
+            sorted.append(first)
+            remaining.remove(first)
+        }
+        
+        // 2. Iteratively add the person most connected to the already-sorted set
+        while !remaining.isEmpty {
+            let sortedIDs = Set(sorted.map(\.id))
+            
+            if let next = remaining.max(by: { a, b in
+                let aConn = Set(getNeighbors(of: a).map(\.id)).intersection(sortedIDs).count
+                let bConn = Set(getNeighbors(of: b).map(\.id)).intersection(sortedIDs).count
+                if aConn != bConn { return aConn < bConn }
+                // Tie-breaker: overall internal degree
+                return internalConnectionCount(a) < internalConnectionCount(b)
+            }) {
+                sorted.append(next)
+                remaining.remove(next)
+            } else {
+                // Should not happen if contacts is non-empty
+                break
+            }
+        }
+        
+        return sorted
     }
 
     // MARK: - Descendants (Directional Traversal)

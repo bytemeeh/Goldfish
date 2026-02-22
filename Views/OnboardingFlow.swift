@@ -8,40 +8,20 @@ import SpriteKit
 /// and optionally imports contacts from the address book.
 struct OnboardingFlow: View {
     @EnvironmentObject var dataManager: GoldfishDataManager
-    @EnvironmentObject var demoManager: DemoManager
+
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     
-    @State private var step = 0
-    @State private var name = "Marcel"
+    @State private var name = "Me"
     @State private var isImporting = false
     @State private var showContactPicker = false
-    @FocusState private var nameFieldFocused: Bool
-    @State private var captionIndex = 0
-    let captionTimer = Timer.publish(every: 3.5, on: .main, in: .common).autoconnect()
     
     var body: some View {
         ZStack {
             Color(red: 0x1E/255, green: 0x18/255, blue: 0x15/255)
                 .ignoresSafeArea()
             
-            switch step {
-            case 0:
-                welcomeScreen
-                    .transition(.opacity)
-            case 1:
-                nameScreen
-                    .transition(.opacity)
-            default:
-                EmptyView()
-            }
-        }
-        .animation(.easeInOut(duration: 0.8), value: step)
-        // If demoManager becomes active, transition immediately to HomeView
-        // by pretending onboarding is "complete" for the app route, but retaining demo state.
-        .onChange(of: demoManager.isActive) { _, active in
-            if active {
-                hasCompletedOnboarding = true
-            }
+            welcomeScreen
+                .transition(.opacity)
         }
     }
     
@@ -92,7 +72,7 @@ struct OnboardingFlow: View {
                     .padding(.bottom, 32)
                 
                 VStack(spacing: 12) {
-                    Button(action: { step = 1 }) {
+                    Button(action: { createMeAndContinue() }) {
                         HStack {
                             Image(systemName: "applelogo")
                             Text("Sign in with Apple")
@@ -105,7 +85,7 @@ struct OnboardingFlow: View {
                         .cornerRadius(12)
                     }
                     
-                    Button(action: { step = 1 }) {
+                    Button(action: { createMeAndContinue() }) {
                         HStack {
                             Image(systemName: "envelope.fill")
                             Text("Sign in with Email")
@@ -124,115 +104,6 @@ struct OnboardingFlow: View {
         }
     }
     
-    // MARK: - Screen 2: Name Input
-    private var nameScreen: some View {
-        VStack(spacing: 24) {
-            Spacer()
-            
-            // Static constellation placeholder rings
-            ZStack {
-                // Static orbital placeholder nodes representing future connections
-                ForEach(0..<4) { i in
-                    // 45, 135, 225, 315 degrees
-                    let angle = (Double(i) * (.pi / 2.0)) + (.pi / 4.0)
-                    let radius: CGFloat = 114
-                    Circle()
-                        .stroke(Color.white.opacity(0.12), style: StrokeStyle(lineWidth: 1.5, dash: [4, 5]))
-                        .frame(width: 40, height: 40)
-                        .offset(x: radius * Foundation.cos(angle), y: radius * Foundation.sin(angle))
-                }
-                
-                // Central concentric rings
-                ForEach(0..<3) { i in
-                    Circle()
-                        .stroke(Color.goldfishAccent.opacity(0.15 - Double(i) * 0.04), lineWidth: 1.5)
-                        .frame(width: CGFloat(80 + i * 40), height: CGFloat(80 + i * 40))
-                }
-                Text("🐠")
-                    .font(.system(size: 40))
-            }
-            .frame(width: 300, height: 300)
-            .padding(.bottom, 16)
-            
-            Text("You're the center")
-                .font(.system(size: 22, weight: .light))
-                .foregroundColor(Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255))
-            
-            Text("Everything starts with you.\nWhat should we call you?")
-                .font(.system(size: 13, weight: .light))
-                .foregroundColor(Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255).opacity(0.45))
-                .multilineTextAlignment(.center)
-                .padding(.bottom, 16)
-            
-            VStack(spacing: 8) {
-                Text("YOUR NAME")
-                    .font(.system(size: 10, weight: .regular))
-                    .tracking(1.5)
-                    .foregroundColor(Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255).opacity(0.3))
-                
-                TextField("", text: $name)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 24, weight: .light))
-                    .foregroundColor(Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255))
-                    .multilineTextAlignment(.center)
-                    .padding(.vertical, 12)
-                    .overlay(
-                        Rectangle()
-                            .frame(height: 1)
-                            .foregroundColor(Color.goldfishAccent.opacity(nameFieldFocused ? 0.8 : 0.5)),
-                        alignment: .bottom
-                    )
-                    .focused($nameFieldFocused)
-                    .autocorrectionDisabled()
-                    .textContentType(.name)
-            }
-            .frame(width: 200)
-            
-            Spacer()
-            
-            // Dots
-            HStack(spacing: 10) {
-                ForEach(0..<3) { i in
-                    Circle()
-                        .fill(i == 1 ? Color.goldfishAccent : Color.clear)
-                        .overlay(
-                            Circle().stroke(i == 1 ? Color.goldfishAccent : Color.white.opacity(0.2), lineWidth: 1.5)
-                        )
-                        .frame(width: 7, height: 7)
-                }
-            }
-            .padding(.bottom, 16)
-            
-            Button(action: { createMeAndContinue() }) {
-                Text("Continue")
-                    .font(.system(size: 15, weight: .regular))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.white.opacity(0.08))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 100)
-                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
-                    )
-                    .foregroundColor(Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255))
-                    .cornerRadius(100)
-            }
-            .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
-            .opacity(name.trimmingCharacters(in: .whitespaces).isEmpty ? 0.4 : 1.0)
-            .padding(.horizontal, 32)
-            
-            Button("Skip for now") {
-                name = "Me"
-                createMeAndContinue()
-            }
-            .font(.system(size: 14, weight: .light))
-            .foregroundColor(Color(red: 0xA8/255, green: 0x9F/255, blue: 0x95/255))
-            .padding(.bottom, 48)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            nameFieldFocused = false
-        }
-    }
     
 
     
@@ -271,13 +142,12 @@ struct OnboardingFlow: View {
     private func createMeAndContinue() {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-        nameFieldFocused = false
         
         do {
             if try dataManager.fetchMePerson() == nil {
                 try dataManager.performOnboarding(name: trimmed)
             }
-            demoManager.startDemo(with: dataManager)
+            hasCompletedOnboarding = true
         } catch {
             print("Onboarding error: \(error)")
         }

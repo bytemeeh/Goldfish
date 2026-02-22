@@ -4,13 +4,19 @@ import Contacts
 
 struct SettingsView: View {
     @EnvironmentObject var dataManager: GoldfishDataManager
-    @EnvironmentObject var demoManager: DemoManager
+
+    @EnvironmentObject var walkthroughManager: FeatureWalkthroughManager
+    @EnvironmentObject var demoModeManager: DemoModeManager
     @StateObject private var viewModel: SettingsViewModel
     @Environment(\.dismiss) private var dismiss
 
     @State private var showingImporter = false
     @State private var showingImportOptions = false
     @State private var showingPhonebookPicker = false
+    @State private var showingLogoutAlert = false
+    @State private var showingExportPrompt = false
+    @State private var showingRemoveDemoAlert = false
+    @State private var exportURL: IdentifiableWrapper<URL>?
 
     init() {
         // Placeholder — will be replaced in onAppear; needed because
@@ -59,15 +65,47 @@ struct SettingsView: View {
                     Label("Manage Ponds", systemImage: "circle.grid.hex")
                 }
                 
+
+                
                 Button(action: {
                     dismiss()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        demoManager.startDemo(with: dataManager)
+                        walkthroughManager.startWalkthroughIfNeeded(dataManager: dataManager)
                     }
                 }) {
-                    Label("Replay Interactive Demo", systemImage: "sparkles")
+                    Label("Replay Feature Tour", systemImage: "hand.point.up.left.fill")
                         .foregroundColor(.primary)
                 }
+            }
+
+            // MARK: - Demo Mode
+            Section {
+                Toggle(isOn: Binding(
+                    get: { demoModeManager.isDemoModeActive },
+                    set: { newValue in
+                        if newValue {
+                            demoModeManager.activateDemoMode(dataManager: dataManager)
+                        } else {
+                            demoModeManager.deactivateDemoMode()
+                        }
+                    }
+                )) {
+                    Label("Show Demo Data", systemImage: "sparkles")
+                }
+                
+                if demoModeManager.isDemoModeActive {
+                    Button(role: .destructive) {
+                        showingRemoveDemoAlert = true
+                    } label: {
+                        Label("Remove Demo Data", systemImage: "trash")
+                    }
+                }
+            } header: {
+                Text("Demo Mode")
+            } footer: {
+                Text("Demo mode shows sample contacts and connections to showcase all features. Your real data is safely hidden while demo mode is active.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
 
             // MARK: - Data
@@ -117,9 +155,34 @@ struct SettingsView: View {
             } header: {
                 Text("About")
             } footer: {
-                Text("Goldfish © 2026")
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.top)
+                VStack(spacing: 8) {
+                    Text("Goldfish © 2026")
+                        .padding(.top)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+
+            // MARK: - Logout
+            Section {
+                Button(role: .destructive) {
+                    if viewModel.hasManualContacts {
+                        showingExportPrompt = true
+                    } else {
+                        showingLogoutAlert = true
+                    }
+                } label: {
+                    HStack {
+                        Spacer()
+                        Text("Logout and Reset Experience")
+                        Spacer()
+                    }
+                }
+            } footer: {
+                Text("Logout will permanently delete all your local data and reset the app to its initial state.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
             }
         }
         .navigationTitle("Settings")
@@ -168,5 +231,43 @@ struct SettingsView: View {
         } message: {
             Text(viewModel.importAlertMessage)
         }
+        .alert("Reset Experience", isPresented: $showingLogoutAlert) {
+            Button("Reset Anyway", role: .destructive) {
+                viewModel.performReset()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will permanently delete ALL your contacts and connections. This action cannot be undone.")
+        }
+        .alert("Export Contacts?", isPresented: $showingExportPrompt) {
+            Button("Export and Save") {
+                if let url = viewModel.generateExportURL() {
+                    self.exportURL = IdentifiableWrapper(url)
+                    // We can't easily trigger ShareSheet from here without a bit more boilerplate,
+                    // but we can provide the URL and then reset.
+                    // For now, let's just trigger the system share sheet if possible or reset.
+                    // A better way is to use a ShareLink in SwiftUI or a custom UIActivityViewController wrapper.
+                }
+            }
+            Button("Reset Anyway", role: .destructive) {
+                viewModel.performReset()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("You have manually created contacts. Would you like to export them before resetting everything?")
+        }
+        .sheet(item: $exportURL) { wrapper in
+            ShareSheet(activityItems: [wrapper.value])
+        }
+        .alert("Remove Demo Data?", isPresented: $showingRemoveDemoAlert) {
+            Button("Remove", role: .destructive) {
+                demoModeManager.removeDemoData(dataManager: dataManager)
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will permanently delete all demo contacts and connections. You can re-add them later by toggling demo mode on again.")
+        }
     }
 }
+
+

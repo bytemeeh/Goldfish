@@ -1,35 +1,35 @@
 import SwiftUI
 
 // MARK: - Goldfish Color System
-// Auto-generated from ColorSystem.md — keep in sync.
+// Warm terracotta / Bauhaus palette — matches the approved demo design.
 
 extension Color {
 
-    // MARK: Accent
+    // MARK: Accent (Terracotta)
 
-    static let goldfishAccent = Color(light: 0x7C3AED, dark: 0x8B5CF6)
-    static let goldfishAccentPressed = Color(light: 0x6D28D9, dark: 0x7C3AED)
-    static let goldfishAccentSurface = Color(light: 0xF5F0FF, dark: 0x1E1033)
+    static let goldfishAccent = Color(light: 0xB74F3A, dark: 0xC96A54)
+    static let goldfishAccentPressed = Color(light: 0x9E3F2E, dark: 0xB74F3A)
+    static let goldfishAccentSurface = Color(light: 0xF5F0EB, dark: 0x1E1815)
 
-    // MARK: Backgrounds
+    // MARK: Backgrounds (Warm Beige)
 
-    static let goldfishBgPrimary = Color(light: 0xFFFFFF, dark: 0x000000)
-    static let goldfishBgSecondary = Color(light: 0xF9FAFB, dark: 0x1C1C1E)
-    static let goldfishBgTertiary = Color(light: 0xF3F4F6, dark: 0x2C2C2E)
-    static let goldfishBgGrouped = Color(light: 0xF2F2F7, dark: 0x1C1C1E)
+    static let goldfishBgPrimary = Color(light: 0xF5F0EB, dark: 0x1A1614)
+    static let goldfishBgSecondary = Color(light: 0xEDE7E0, dark: 0x1E1815)
+    static let goldfishBgTertiary = Color(light: 0xE5DED5, dark: 0x2A2420)
+    static let goldfishBgGrouped = Color(light: 0xF0EAE3, dark: 0x1E1815)
 
     // MARK: Text
 
-    static let goldfishTextPrimary = Color(light: 0x111827, dark: 0xF9FAFB)
-    static let goldfishTextSecondary = Color(light: 0x4B5563, dark: 0x9CA3AF)
-    static let goldfishTextTertiary = Color(light: 0x6B7280, dark: 0x6B7280)
-    static let goldfishTextQuaternary = Color(light: 0x9CA3AF, dark: 0x4B5563)
+    static let goldfishTextPrimary = Color(light: 0x1A1614, dark: 0xF5F0EB)
+    static let goldfishTextSecondary = Color(light: 0x6B6259, dark: 0xA89F95)
+    static let goldfishTextTertiary = Color(light: 0xA89F95, dark: 0x6B6259)
+    static let goldfishTextQuaternary = Color(light: 0xDDD6CD, dark: 0x4B4540)
 
-    // MARK: Circle Categories
+    // MARK: Pond Categories (from demo)
 
-    static let goldfishCircleFamily = Color(light: 0xF43F5E, dark: 0xFB7185)
-    static let goldfishCircleFriends = Color(light: 0x14B8A6, dark: 0x2DD4BF)
-    static let goldfishCircleProfessional = Color(light: 0x64748B, dark: 0x94A3B8)
+    static let goldfishCircleFamily = Color(light: 0xB74F3A, dark: 0xC96A54)
+    static let goldfishCircleFriends = Color(light: 0x3D6B8E, dark: 0x5A8DB5)
+    static let goldfishCircleProfessional = Color(light: 0x8B7D3C, dark: 0xA89F60)
     static let goldfishCircleCustom1 = Color(light: 0xF59E0B, dark: 0xFBBF24)
     static let goldfishCircleCustom2 = Color(light: 0x6366F1, dark: 0x818CF8)
 
@@ -42,11 +42,11 @@ extension Color {
 
     // MARK: Graph
 
-    static let goldfishNodeFill = Color(light: 0xFFFFFF, dark: 0x2C2C2E)
-    static let goldfishNodeStroke = Color(light: 0xD1D5DB, dark: 0x4B5563)
-    static let goldfishEdgeLine = Color(light: 0xD1D5DB, dark: 0x374151)
+    static let goldfishNodeFill = Color(light: 0xF5F0EB, dark: 0x2A2420)
+    static let goldfishNodeStroke = Color(light: 0xDDD6CD, dark: 0x4B4540)
+    static let goldfishEdgeLine = Color(light: 0xDDD6CD, dark: 0x3A3430)
     static let goldfishSelectedGlow = Color.goldfishAccent.opacity(0.25)
-    static let goldfishOrphanNode = Color(light: 0x9CA3AF, dark: 0x6B7280).opacity(0.50)
+    static let goldfishOrphanNode = Color(light: 0xA89F95, dark: 0x6B6259).opacity(0.50)
 }
 
 // MARK: - Hex Initializer (Dynamic Light/Dark)

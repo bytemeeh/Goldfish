@@ -66,3 +66,92 @@ extension GoldfishDataManager {
         }
     }
 }
+
+// MARK: - Toast Manager
+/// Singleton manager to trigger toast messages across the app acting like the web demo's showToast(msg).
+@MainActor
+class ToastManager: ObservableObject {
+    static let shared = ToastManager()
+    
+    @Published var message: String?
+    @Published var isShowing: Bool = false
+    
+    private var dismissTask: Task<Void, Never>?
+    
+    func showToast(message: String) {
+        // Cancel any pending dismiss
+        dismissTask?.cancel()
+        
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            self.message = message
+            self.isShowing = true
+        }
+        
+        dismissTask = Task {
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.3)) {
+                self.isShowing = false
+            }
+        }
+    }
+}
+
+// MARK: - Toast Modifier
+struct ToastModifier: ViewModifier {
+    @EnvironmentObject var manager: ToastManager
+    
+    func body(content: Content) -> some View {
+        content
+            .overlay(alignment: .bottom) {
+                if manager.isShowing, let message = manager.message {
+                    Text(message)
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundColor(.primary)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                        .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 5)
+                        .padding(.bottom, 40)
+                        // Transition
+                        .transition(.move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.9)))
+                        .zIndex(9999)
+                }
+            }
+    }
+}
+
+// MARK: - View Extension
+public extension View {
+    /// Applies the global toast overlay
+    func toastOverlay() -> some View {
+        self.modifier(ToastModifier())
+    }
+}
+
+// MARK: - Identifiable Wrapper
+public struct IdentifiableWrapper<T: Equatable>: Identifiable, Equatable {
+    public let id: UUID
+    public let value: T
+    
+    public init(_ value: T) {
+        self.id = UUID()
+        self.value = value
+    }
+}
+
+
+// MARK: - Helper: Share Sheet
+struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+    var applicationActivities: [UIActivity]? = nil
+    
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: applicationActivities)
+    }
+    
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+// MARK: - UUID Identifiable

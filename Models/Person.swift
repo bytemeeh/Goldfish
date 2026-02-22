@@ -74,6 +74,9 @@ final class Person {
     var country: String?
     var postalCode: String?
 
+    /// Whether this contact was created as part of a demo or onboarding.
+    var isDemo: Bool
+
     // MARK: - Timestamps
 
     var createdAt: Date
@@ -109,6 +112,7 @@ final class Person {
         birthday: Date? = nil,
         notes: String? = nil,
         isMe: Bool = false,
+        isDemo: Bool = false,
         isFavorite: Bool = false,
         tags: [String] = [],
         color: String? = nil,
@@ -126,6 +130,7 @@ final class Person {
         self.birthday = birthday
         self.notes = notes
         self.isMe = isMe
+        self.isDemo = isDemo
         self.isFavorite = isFavorite
         self.tags = tags
         self.color = color

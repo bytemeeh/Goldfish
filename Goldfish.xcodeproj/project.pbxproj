@@ -1,0 +1,625 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 54;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1E1F04E4AE429CD72482FAC0 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92780B32B06F68332108E218 /* SettingsViewModel.swift */; };
+		209649AE0B756C2AD63AD7BD /* LocationType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F95A5912A5A6B0EB052DD9C /* LocationType.swift */; };
+		35F37B25A44EF4D8C10EF6D9 /* SearchOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23864C6595744BC03BF3C8F6 /* SearchOverlayView.swift */; };
+		3709447CEAC7995DDB63F338 /* CircleManagerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FC9BA7B2DF2B0D060699789 /* CircleManagerViewModel.swift */; };
+		3C32AC7FFFE8AEDDE2AFBD26 /* ContactDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84F89864057C05D5D83EF1D1 /* ContactDetailViewModel.swift */; };
+		3E7812D7337CD8B06E16EA69 /* CircleManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC459BB4CA97463F57C743CA /* CircleManagerView.swift */; };
+		428A259CD768E2AF8AAF8CD7 /* GoldfishApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B0D93096FA1C53C7456041 /* GoldfishApp.swift */; };
+		43E832C83A76AA8AC07FFE2A /* VCardExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A886EB6E13DD7F732B3B191 /* VCardExportService.swift */; };
+		4B610CD8A7A8B93670DB16FF /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99AF85323C2489A38837C910 /* Extensions.swift */; };
+		4D8BCFB37DF629DF16DF7D19 /* GraphService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49CD34AF5BA426B62604E12 /* GraphService.swift */; };
+		58B94D181ACB62212905B341 /* GoldfishGraphScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBBD93FA8F2D699FAB66621 /* GoldfishGraphScene.swift */; };
+		58F0B8A2CA118C06A0C4F4E5 /* VCardImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 491C7C7FB18B72D3012F8B74 /* VCardImportService.swift */; };
+		5ACC2D1E2542DC0142FECC1E /* GraphViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAB1639DB0E83F4C9EEB7341 /* GraphViewModel.swift */; };
+		5D47B4F36C3C1A396F572309 /* RelationshipType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A693BE57C6F9048C77F0398 /* RelationshipType.swift */; };
+		5DC98B3D12DEF8CF921CB133 /* DemoModeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9279A4A5D69E929F330DF2D1 /* DemoModeManager.swift */; };
+		6249248DF90C2E9D432A8197 /* ContactFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A079D195EFCFE4FD2B14B7DF /* ContactFormView.swift */; };
+		6825D808BE307DCC70CDC709 /* GoldfishModelContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB68F40C7CE83693EE0BA98F /* GoldfishModelContainer.swift */; };
+		75B3F8D5C2FFE3D74C802999 /* FeatureWalkthroughManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA985F3901E76C30189D18C /* FeatureWalkthroughManager.swift */; };
+		84A64E39C4878EB634727E64 /* DemoDataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6879CE14E7E8A6D7273F384D /* DemoDataService.swift */; };
+		8F8D1F7CB97E6243F69504B0 /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5778550682B283AF818B234 /* OnboardingFlow.swift */; };
+		954FB5F1ED0AE12478D76A66 /* ContactListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B39C8260E0ECAC74E25B14DE /* ContactListView.swift */; };
+		9A8C1106844C5AC2220547B0 /* Location.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FF9B59925D7B3326355A75 /* Location.swift */; };
+		9E423FD0273861F5FE73D8B6 /* ContactExportSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B513AB037FC67502BDE35E66 /* ContactExportSelectionView.swift */; };
+		A12178FE25EAC46313A6B449 /* GoldfishTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB7E247B3F4C3AF7C560516E /* GoldfishTests.swift */; };
+		A4D026AB7FDDC32C97590E53 /* DatabaseErrorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95A3B019259362813897CD33 /* DatabaseErrorView.swift */; };
+		A6A9AA43E6726AA1525CEDFC /* ContactRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D1A3C039925FC8835B046D7 /* ContactRowView.swift */; };
+		A73450712034383991FBE7E2 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07C06E74A48B5FB4A45AEFFE /* EmptyStateView.swift */; };
+		A998D6BAA823FC45E444C2EA /* GraphContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D60F686BD156E1DCC710F6C /* GraphContainerView.swift */; };
+		AB98461BD617F57896B4B397 /* GoldfishDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23CC945346F772BDBFB3766 /* GoldfishDataManager.swift */; };
+		B925C000EA36BA89C30C53E5 /* GraphNodeSprite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C4DFECA32CAF12FFB7DA2D2 /* GraphNodeSprite.swift */; };
+		BA2C786B2631E28600453399 /* Person.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E6B8425027EED98DE4A82A /* Person.swift */; };
+		C54BCB99ADE0858E76FE6551 /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8E3DED1AC41D0D95F88ED0B /* HomeViewModel.swift */; };
+		C73B91046EB0E4140EDA8996 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF0B908F1589B9D32449F5A3 /* SettingsView.swift */; };
+		C876F2B08F4FCD2B482087D0 /* ContactPhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D78BF7A723944E3DBB95E364 /* ContactPhotoView.swift */; };
+		CB8C6223524F67C1379D0F7B /* GoldfishColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84099033F26B00F9703BB69F /* GoldfishColors.swift */; };
+		D00193B89B1F4378A71B925B /* VCardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22FA52C98225A204657AE2D1 /* VCardTests.swift */; };
+		D47C868EB023692B7D1792FA /* ContactFormViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DC978DF10D6338667D1A78F /* ContactFormViewModel.swift */; };
+		D487187C9316C39FA7DA254A /* Relationship.swift in Sources */ = {isa = PBXBuildFile; fileRef = 373D944967C27ED34B060E94 /* Relationship.swift */; };
+		D54CEDF6AED40B4A376B8051 /* VCardParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 551C03B877AB16BAD7D978FF /* VCardParser.swift */; };
+		DBE61B49C7B95B7BD9273EDD /* ContactDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E23362045AC5C4ADADC9340E /* ContactDetailView.swift */; };
+		E0ABB2AA7E90577F0246A231 /* GoldfishCircle.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20EB7C0FDC13E039E24E3D6 /* GoldfishCircle.swift */; };
+		E6B472A0ACD08E369BBBBAEB /* OnboardingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1F5F173E53589083A80C83 /* OnboardingViewModel.swift */; };
+		E82DD4151C3447C7DCB412B2 /* VCardExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4013B831E17C1DAFD260E63 /* VCardExporter.swift */; };
+		ECFFC3D41412401DC6EF47D6 /* AddRelationshipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEADE301945C104F6ED28958 /* AddRelationshipView.swift */; };
+		EF70400F6299DAF29D47D401 /* PrivacyPolicyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7D6D567A57494FE76310713 /* PrivacyPolicyView.swift */; };
+		F295843930CD69E05B039F60 /* CircleContact.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79462C044D2EAD600E4E5A22 /* CircleContact.swift */; };
+		FA7438BD7011FE12A8223C31 /* WalkthroughAnchorKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D180B577A15626E75412A7B /* WalkthroughAnchorKey.swift */; };
+		FF153E8C06EE64AF9EE23E5C /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60B4485CDD5E2387715C6ED /* HomeView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D6626F3059BE93D58DACC48E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 805D447634D71A82F389DDF5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F5FC06D9263BC751D8B66158;
+			remoteInfo = Goldfish;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		07C06E74A48B5FB4A45AEFFE /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
+		0A1F5F173E53589083A80C83 /* OnboardingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingViewModel.swift; sourceTree = "<group>"; };
+		0FC9BA7B2DF2B0D060699789 /* CircleManagerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircleManagerViewModel.swift; sourceTree = "<group>"; };
+		18FF9B59925D7B3326355A75 /* Location.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Location.swift; sourceTree = "<group>"; };
+		1DA985F3901E76C30189D18C /* FeatureWalkthroughManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureWalkthroughManager.swift; sourceTree = "<group>"; };
+		1F95A5912A5A6B0EB052DD9C /* LocationType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationType.swift; sourceTree = "<group>"; };
+		22FA52C98225A204657AE2D1 /* VCardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCardTests.swift; sourceTree = "<group>"; };
+		23864C6595744BC03BF3C8F6 /* SearchOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchOverlayView.swift; sourceTree = "<group>"; };
+		26B0D93096FA1C53C7456041 /* GoldfishApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishApp.swift; sourceTree = "<group>"; };
+		2D180B577A15626E75412A7B /* WalkthroughAnchorKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkthroughAnchorKey.swift; sourceTree = "<group>"; };
+		2D1A3C039925FC8835B046D7 /* ContactRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactRowView.swift; sourceTree = "<group>"; };
+		373D944967C27ED34B060E94 /* Relationship.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Relationship.swift; sourceTree = "<group>"; };
+		491C7C7FB18B72D3012F8B74 /* VCardImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCardImportService.swift; sourceTree = "<group>"; };
+		551C03B877AB16BAD7D978FF /* VCardParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCardParser.swift; sourceTree = "<group>"; };
+		5A693BE57C6F9048C77F0398 /* RelationshipType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelationshipType.swift; sourceTree = "<group>"; };
+		5C4DFECA32CAF12FFB7DA2D2 /* GraphNodeSprite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphNodeSprite.swift; sourceTree = "<group>"; };
+		5DC978DF10D6338667D1A78F /* ContactFormViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactFormViewModel.swift; sourceTree = "<group>"; };
+		6879CE14E7E8A6D7273F384D /* DemoDataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoDataService.swift; sourceTree = "<group>"; };
+		79462C044D2EAD600E4E5A22 /* CircleContact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircleContact.swift; sourceTree = "<group>"; };
+		84099033F26B00F9703BB69F /* GoldfishColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishColors.swift; sourceTree = "<group>"; };
+		84F89864057C05D5D83EF1D1 /* ContactDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactDetailViewModel.swift; sourceTree = "<group>"; };
+		8C24F650B4D953E067477E61 /* GoldfishTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GoldfishTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8CBBD93FA8F2D699FAB66621 /* GoldfishGraphScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishGraphScene.swift; sourceTree = "<group>"; };
+		8D60F686BD156E1DCC710F6C /* GraphContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphContainerView.swift; sourceTree = "<group>"; };
+		92780B32B06F68332108E218 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
+		9279A4A5D69E929F330DF2D1 /* DemoModeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoModeManager.swift; sourceTree = "<group>"; };
+		95A3B019259362813897CD33 /* DatabaseErrorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseErrorView.swift; sourceTree = "<group>"; };
+		99AF85323C2489A38837C910 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
+		9A886EB6E13DD7F732B3B191 /* VCardExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCardExportService.swift; sourceTree = "<group>"; };
+		A079D195EFCFE4FD2B14B7DF /* ContactFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactFormView.swift; sourceTree = "<group>"; };
+		A4013B831E17C1DAFD260E63 /* VCardExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCardExporter.swift; sourceTree = "<group>"; };
+		A49CD34AF5BA426B62604E12 /* GraphService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphService.swift; sourceTree = "<group>"; };
+		AB7E247B3F4C3AF7C560516E /* GoldfishTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishTests.swift; sourceTree = "<group>"; };
+		B1E6B8425027EED98DE4A82A /* Person.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Person.swift; sourceTree = "<group>"; };
+		B39C8260E0ECAC74E25B14DE /* ContactListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactListView.swift; sourceTree = "<group>"; };
+		B513AB037FC67502BDE35E66 /* ContactExportSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactExportSelectionView.swift; sourceTree = "<group>"; };
+		B60B4485CDD5E2387715C6ED /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		BB68F40C7CE83693EE0BA98F /* GoldfishModelContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishModelContainer.swift; sourceTree = "<group>"; };
+		CAB1639DB0E83F4C9EEB7341 /* GraphViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphViewModel.swift; sourceTree = "<group>"; };
+		D23CC945346F772BDBFB3766 /* GoldfishDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishDataManager.swift; sourceTree = "<group>"; };
+		D3A49C20C5A36D698F6C0C28 /* Goldfish.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Goldfish.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D5778550682B283AF818B234 /* OnboardingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlow.swift; sourceTree = "<group>"; };
+		D78BF7A723944E3DBB95E364 /* ContactPhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactPhotoView.swift; sourceTree = "<group>"; };
+		D7D6D567A57494FE76310713 /* PrivacyPolicyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyPolicyView.swift; sourceTree = "<group>"; };
+		D8E3DED1AC41D0D95F88ED0B /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
+		E23362045AC5C4ADADC9340E /* ContactDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactDetailView.swift; sourceTree = "<group>"; };
+		EC459BB4CA97463F57C743CA /* CircleManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircleManagerView.swift; sourceTree = "<group>"; };
+		EF0B908F1589B9D32449F5A3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		F20EB7C0FDC13E039E24E3D6 /* GoldfishCircle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishCircle.swift; sourceTree = "<group>"; };
+		FEADE301945C104F6ED28958 /* AddRelationshipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRelationshipView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		16A968B51E37D91AA9CE549E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D3A49C20C5A36D698F6C0C28 /* Goldfish.app */,
+				8C24F650B4D953E067477E61 /* GoldfishTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4B90D2506C763D24CDAE8E3A /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				D78BF7A723944E3DBB95E364 /* ContactPhotoView.swift */,
+				2D1A3C039925FC8835B046D7 /* ContactRowView.swift */,
+				07C06E74A48B5FB4A45AEFFE /* EmptyStateView.swift */,
+				5C4DFECA32CAF12FFB7DA2D2 /* GraphNodeSprite.swift */,
+				2D180B577A15626E75412A7B /* WalkthroughAnchorKey.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		58A268D520058157B88BE0CF /* App */ = {
+			isa = PBXGroup;
+			children = (
+				95A3B019259362813897CD33 /* DatabaseErrorView.swift */,
+				99AF85323C2489A38837C910 /* Extensions.swift */,
+				26B0D93096FA1C53C7456041 /* GoldfishApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		5EFB2A558042BA37539AECB8 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				6879CE14E7E8A6D7273F384D /* DemoDataService.swift */,
+				D23CC945346F772BDBFB3766 /* GoldfishDataManager.swift */,
+				A49CD34AF5BA426B62604E12 /* GraphService.swift */,
+				A4013B831E17C1DAFD260E63 /* VCardExporter.swift */,
+				9A886EB6E13DD7F732B3B191 /* VCardExportService.swift */,
+				491C7C7FB18B72D3012F8B74 /* VCardImportService.swift */,
+				551C03B877AB16BAD7D978FF /* VCardParser.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		7F408F9B5F2BF287195A32F8 = {
+			isa = PBXGroup;
+			children = (
+				58A268D520058157B88BE0CF /* App */,
+				D41AC9AE2C56EDE078C65BF8 /* Assets */,
+				94DD597DEBD840FC58988EE8 /* Models */,
+				5EFB2A558042BA37539AECB8 /* Services */,
+				A7E2DD0661BEF6C241A21C0E /* Tests */,
+				ADB6A65E2D61192C1D033CD4 /* ViewModels */,
+				A83CFF25F0A81D31B33EDEE3 /* Views */,
+				16A968B51E37D91AA9CE549E /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		94DD597DEBD840FC58988EE8 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				79462C044D2EAD600E4E5A22 /* CircleContact.swift */,
+				F20EB7C0FDC13E039E24E3D6 /* GoldfishCircle.swift */,
+				BB68F40C7CE83693EE0BA98F /* GoldfishModelContainer.swift */,
+				18FF9B59925D7B3326355A75 /* Location.swift */,
+				1F95A5912A5A6B0EB052DD9C /* LocationType.swift */,
+				B1E6B8425027EED98DE4A82A /* Person.swift */,
+				373D944967C27ED34B060E94 /* Relationship.swift */,
+				5A693BE57C6F9048C77F0398 /* RelationshipType.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A7E2DD0661BEF6C241A21C0E /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				AB7E247B3F4C3AF7C560516E /* GoldfishTests.swift */,
+				22FA52C98225A204657AE2D1 /* VCardTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		A83CFF25F0A81D31B33EDEE3 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				FEADE301945C104F6ED28958 /* AddRelationshipView.swift */,
+				EC459BB4CA97463F57C743CA /* CircleManagerView.swift */,
+				E23362045AC5C4ADADC9340E /* ContactDetailView.swift */,
+				B513AB037FC67502BDE35E66 /* ContactExportSelectionView.swift */,
+				A079D195EFCFE4FD2B14B7DF /* ContactFormView.swift */,
+				B39C8260E0ECAC74E25B14DE /* ContactListView.swift */,
+				8CBBD93FA8F2D699FAB66621 /* GoldfishGraphScene.swift */,
+				8D60F686BD156E1DCC710F6C /* GraphContainerView.swift */,
+				B60B4485CDD5E2387715C6ED /* HomeView.swift */,
+				D5778550682B283AF818B234 /* OnboardingFlow.swift */,
+				D7D6D567A57494FE76310713 /* PrivacyPolicyView.swift */,
+				23864C6595744BC03BF3C8F6 /* SearchOverlayView.swift */,
+				EF0B908F1589B9D32449F5A3 /* SettingsView.swift */,
+				4B90D2506C763D24CDAE8E3A /* Components */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		ADB6A65E2D61192C1D033CD4 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				0FC9BA7B2DF2B0D060699789 /* CircleManagerViewModel.swift */,
+				84F89864057C05D5D83EF1D1 /* ContactDetailViewModel.swift */,
+				5DC978DF10D6338667D1A78F /* ContactFormViewModel.swift */,
+				9279A4A5D69E929F330DF2D1 /* DemoModeManager.swift */,
+				1DA985F3901E76C30189D18C /* FeatureWalkthroughManager.swift */,
+				CAB1639DB0E83F4C9EEB7341 /* GraphViewModel.swift */,
+				D8E3DED1AC41D0D95F88ED0B /* HomeViewModel.swift */,
+				0A1F5F173E53589083A80C83 /* OnboardingViewModel.swift */,
+				92780B32B06F68332108E218 /* SettingsViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		D41AC9AE2C56EDE078C65BF8 /* Assets */ = {
+			isa = PBXGroup;
+			children = (
+				84099033F26B00F9703BB69F /* GoldfishColors.swift */,
+			);
+			path = Assets;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		EC876F3A6763958310906D19 /* GoldfishTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EB086CB0FDDB78ACA08E632A /* Build configuration list for PBXNativeTarget "GoldfishTests" */;
+			buildPhases = (
+				75696B0A87B1B52FB728E089 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1890C96CD6E22492EEBF2CA1 /* PBXTargetDependency */,
+			);
+			name = GoldfishTests;
+			productName = GoldfishTests;
+			productReference = 8C24F650B4D953E067477E61 /* GoldfishTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		F5FC06D9263BC751D8B66158 /* Goldfish */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D2ECCCB2B91E427773380861 /* Build configuration list for PBXNativeTarget "Goldfish" */;
+			buildPhases = (
+				C2690517160494FE732F9BA1 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Goldfish;
+			productName = Goldfish;
+			productReference = D3A49C20C5A36D698F6C0C28 /* Goldfish.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		805D447634D71A82F389DDF5 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 9B22BB186E7740FB30B7520C /* Build configuration list for PBXProject "Goldfish" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 7F408F9B5F2BF287195A32F8;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F5FC06D9263BC751D8B66158 /* Goldfish */,
+				EC876F3A6763958310906D19 /* GoldfishTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		75696B0A87B1B52FB728E089 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A12178FE25EAC46313A6B449 /* GoldfishTests.swift in Sources */,
+				D00193B89B1F4378A71B925B /* VCardTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C2690517160494FE732F9BA1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ECFFC3D41412401DC6EF47D6 /* AddRelationshipView.swift in Sources */,
+				F295843930CD69E05B039F60 /* CircleContact.swift in Sources */,
+				3E7812D7337CD8B06E16EA69 /* CircleManagerView.swift in Sources */,
+				3709447CEAC7995DDB63F338 /* CircleManagerViewModel.swift in Sources */,
+				DBE61B49C7B95B7BD9273EDD /* ContactDetailView.swift in Sources */,
+				3C32AC7FFFE8AEDDE2AFBD26 /* ContactDetailViewModel.swift in Sources */,
+				9E423FD0273861F5FE73D8B6 /* ContactExportSelectionView.swift in Sources */,
+				6249248DF90C2E9D432A8197 /* ContactFormView.swift in Sources */,
+				D47C868EB023692B7D1792FA /* ContactFormViewModel.swift in Sources */,
+				954FB5F1ED0AE12478D76A66 /* ContactListView.swift in Sources */,
+				C876F2B08F4FCD2B482087D0 /* ContactPhotoView.swift in Sources */,
+				A6A9AA43E6726AA1525CEDFC /* ContactRowView.swift in Sources */,
+				A4D026AB7FDDC32C97590E53 /* DatabaseErrorView.swift in Sources */,
+				84A64E39C4878EB634727E64 /* DemoDataService.swift in Sources */,
+				5DC98B3D12DEF8CF921CB133 /* DemoModeManager.swift in Sources */,
+				A73450712034383991FBE7E2 /* EmptyStateView.swift in Sources */,
+				4B610CD8A7A8B93670DB16FF /* Extensions.swift in Sources */,
+				75B3F8D5C2FFE3D74C802999 /* FeatureWalkthroughManager.swift in Sources */,
+				428A259CD768E2AF8AAF8CD7 /* GoldfishApp.swift in Sources */,
+				E0ABB2AA7E90577F0246A231 /* GoldfishCircle.swift in Sources */,
+				CB8C6223524F67C1379D0F7B /* GoldfishColors.swift in Sources */,
+				AB98461BD617F57896B4B397 /* GoldfishDataManager.swift in Sources */,
+				58B94D181ACB62212905B341 /* GoldfishGraphScene.swift in Sources */,
+				6825D808BE307DCC70CDC709 /* GoldfishModelContainer.swift in Sources */,
+				A998D6BAA823FC45E444C2EA /* GraphContainerView.swift in Sources */,
+				B925C000EA36BA89C30C53E5 /* GraphNodeSprite.swift in Sources */,
+				4D8BCFB37DF629DF16DF7D19 /* GraphService.swift in Sources */,
+				5ACC2D1E2542DC0142FECC1E /* GraphViewModel.swift in Sources */,
+				FF153E8C06EE64AF9EE23E5C /* HomeView.swift in Sources */,
+				C54BCB99ADE0858E76FE6551 /* HomeViewModel.swift in Sources */,
+				9A8C1106844C5AC2220547B0 /* Location.swift in Sources */,
+				209649AE0B756C2AD63AD7BD /* LocationType.swift in Sources */,
+				8F8D1F7CB97E6243F69504B0 /* OnboardingFlow.swift in Sources */,
+				E6B472A0ACD08E369BBBBAEB /* OnboardingViewModel.swift in Sources */,
+				BA2C786B2631E28600453399 /* Person.swift in Sources */,
+				EF70400F6299DAF29D47D401 /* PrivacyPolicyView.swift in Sources */,
+				D487187C9316C39FA7DA254A /* Relationship.swift in Sources */,
+				5D47B4F36C3C1A396F572309 /* RelationshipType.swift in Sources */,
+				35F37B25A44EF4D8C10EF6D9 /* SearchOverlayView.swift in Sources */,
+				C73B91046EB0E4140EDA8996 /* SettingsView.swift in Sources */,
+				1E1F04E4AE429CD72482FAC0 /* SettingsViewModel.swift in Sources */,
+				43E832C83A76AA8AC07FFE2A /* VCardExportService.swift in Sources */,
+				E82DD4151C3447C7DCB412B2 /* VCardExporter.swift in Sources */,
+				58F0B8A2CA118C06A0C4F4E5 /* VCardImportService.swift in Sources */,
+				D54CEDF6AED40B4A376B8051 /* VCardParser.swift in Sources */,
+				FA7438BD7011FE12A8223C31 /* WalkthroughAnchorKey.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		1890C96CD6E22492EEBF2CA1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F5FC06D9263BC751D8B66158 /* Goldfish */;
+			targetProxy = D6626F3059BE93D58DACC48E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		6D2E8168A12D10B626262022 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		900BF0ECEC4F57662D2A3A93 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		B20670EA766A3945FE942F75 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.goldfish.app.tests;
+				PRODUCT_NAME = GoldfishTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Goldfish.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Goldfish";
+			};
+			name = Release;
+		};
+		D2726ABD263880DCE2BDA9B3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.goldfish.app.tests;
+				PRODUCT_NAME = GoldfishTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Goldfish.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Goldfish";
+			};
+			name = Debug;
+		};
+		DEEFCD4C7E42DF200EBE4D64 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Goldfish/Goldfish.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = Goldfish/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.pond.goldfish;
+				PRODUCT_NAME = Goldfish;
+				SDKROOT = iphoneos;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		EC39C4D108A8533A16654298 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Goldfish/Goldfish.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = Goldfish/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.pond.goldfish;
+				PRODUCT_NAME = Goldfish;
+				SDKROOT = iphoneos;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		9B22BB186E7740FB30B7520C /* Build configuration list for PBXProject "Goldfish" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6D2E8168A12D10B626262022 /* Debug */,
+				900BF0ECEC4F57662D2A3A93 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D2ECCCB2B91E427773380861 /* Build configuration list for PBXNativeTarget "Goldfish" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DEEFCD4C7E42DF200EBE4D64 /* Debug */,
+				EC39C4D108A8533A16654298 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		EB086CB0FDDB78ACA08E632A /* Build configuration list for PBXNativeTarget "GoldfishTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D2726ABD263880DCE2BDA9B3 /* Debug */,
+				B20670EA766A3945FE942F75 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 805D447634D71A82F389DDF5 /* Project object */;
+}

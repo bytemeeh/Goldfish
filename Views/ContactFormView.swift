@@ -1,13 +1,16 @@
 import SwiftUI
 import SwiftData
+import os
 
 struct ContactFormView: View {
+    private let logger = Logger(subsystem: "com.goldfish.app", category: "ContactFormView")
     @Environment(\.dismiss) private var dismiss
     @StateObject var viewModel: ContactFormViewModel
     @State private var showMoreDetails = false
     
     // Injected for circle picking
     @EnvironmentObject var dataManager: GoldfishDataManager
+
     
     var body: some View {
         Form {
@@ -109,33 +112,33 @@ struct ContactFormView: View {
                 }
 
                 // MARK: - More Details Toggle
-                Section {
-                    Button(action: {
-                        withAnimation { showMoreDetails.toggle() }
-                    }) {
-                        HStack {
-                            Text(showMoreDetails ? "Hide Details" : "Add More Details...")
-                            Spacer()
-                            Image(systemName: showMoreDetails ? "chevron.up" : "chevron.down")
+                    Section {
+                        Button(action: {
+                            withAnimation { showMoreDetails.toggle() }
+                        }) {
+                            HStack {
+                                Text(showMoreDetails ? "Hide Details" : "Add More Details...")
+                                Spacer()
+                                Image(systemName: showMoreDetails ? "chevron.up" : "chevron.down")
+                            }
+                            .foregroundColor(.accentColor)
                         }
-                        .foregroundColor(.accentColor)
-                    }
-                }
-                
-                if showMoreDetails {
-                    Section("Additional Info") {
-                        TextField("Email", text: $viewModel.email)
-                            .keyboardType(.emailAddress)
-                            .textContentType(.emailAddress)
-                            .autocapitalization(.none)
-                        
-                        Toggle("Favorite", isOn: $viewModel.isFavorite)
                     }
                     
-                    Section("Notes") {
-                        TextEditor(text: $viewModel.notes)
-                            .frame(minHeight: 100)
-                    }
+                    if showMoreDetails {
+                        Section("Additional Info") {
+                            TextField("Email", text: $viewModel.email)
+                                .keyboardType(.emailAddress)
+                                .textContentType(.emailAddress)
+                                .autocapitalization(.none)
+                            
+                            Toggle("Favorite", isOn: $viewModel.isFavorite)
+                        }
+                        
+                        Section("Notes") {
+                            TextEditor(text: $viewModel.notes)
+                                .frame(minHeight: 100)
+                        }
                     
                     Section("Appearance") {
                         ColorPicker("Node Color", selection: Binding(
@@ -173,7 +176,7 @@ struct ContactFormView: View {
                                     try dataManager.deletePerson(person)
                                     dismiss()
                                 } catch {
-                                    print("Failed to delete contact: \(error)")
+                                    logger.error("Failed to delete contact: \(error.localizedDescription)")
                                 }
                             }
                         } label: {

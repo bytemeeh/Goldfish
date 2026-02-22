@@ -16,7 +16,9 @@ struct HomeView: View {
 /// Separated so we can properly inject the real dataManager into ViewModels.
 private struct HomeContent: View {
     @EnvironmentObject var dataManager: GoldfishDataManager
-    @EnvironmentObject var demoManager: DemoManager
+
+
+    @EnvironmentObject var demoModeManager: DemoModeManager
     @StateObject private var viewModel: HomeViewModel
     @StateObject private var graphViewModel: GraphViewModel
 
@@ -106,6 +108,8 @@ private struct HomeContent: View {
                         Button { viewModel.toggleViewMode() } label: {
                             Image(systemName: viewModel.viewMode == .graph ? "list.bullet" : "network")
                         }
+
+
                         Button { showAddContact = true } label: {
                             Image(systemName: "plus")
                         }
@@ -129,24 +133,25 @@ private struct HomeContent: View {
                     }
                 }
                 .onAppear {
+                    viewModel.isDemoMode = demoModeManager.isDemoModeActive
+                    graphViewModel.isDemoMode = demoModeManager.isDemoModeActive
                     viewModel.loadData()
                     if viewModel.viewMode == .graph {
                         graphViewModel.loadGraph()
                     }
+                    
+
                 }
-            }
-            
-            // Overlays for Interactive Demo
-            if demoManager.isActive {
-                if demoManager.currentStep == .finished {
-                    DemoCompletionView()
-                        .transition(.opacity)
-                } else {
-                    DemoOverlayView()
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                .onChange(of: demoModeManager.isDemoModeActive) { _, isDemoActive in
+                    viewModel.isDemoMode = isDemoActive
+                    graphViewModel.isDemoMode = isDemoActive
+                    viewModel.loadData()
+                    graphViewModel.refreshGraph()
                 }
+
             }
         }
+
     }
 
     // MARK: - Contacts List

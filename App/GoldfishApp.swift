@@ -18,6 +18,16 @@ struct GoldfishApp: App {
     /// We keep it in @State so it survives view recycles, though in App it's stable.
     @State private var dataManager: GoldfishDataManager?
     
+
+    
+    /// The FeatureWalkthroughManager for the coach-mark tour.
+    @StateObject private var walkthroughManager = FeatureWalkthroughManager()
+    
+    /// The DemoModeManager for the demo data toggle.
+    @StateObject private var demoModeManager = DemoModeManager()
+    
+    @StateObject private var toastManager = ToastManager.shared
+    
     init() {
         // We delay container creation to `body` or `.task` to handle errors properly,
         // but `@main` structs are initialized before `body`.
@@ -35,27 +45,29 @@ struct GoldfishApp: App {
         WindowGroup {
             if let error = databaseError {
                 DatabaseErrorView(error: error) {
-                    // Retry logic: crash/restart or attempt re-init
-                    // For simplicity, we just try to re-init
                     retryDatabaseInit()
                 }
             } else if let container = modelContainer, let manager = dataManager {
-                // Happy path
-                // Note: We use a ZStack or Group to conditionalize Onboarding
-                // But .fullScreenCover on Root is better for onboarding per spec
-                HomeView()
-                    .environment(\.modelContext, container.mainContext)
-                    .environmentObject(manager)
-                    .fullScreenCover(isPresented: Binding(
-                        get: { !hasCompletedOnboarding },
-                        set: { _ in } // logic handles dismissal via state change
-                    )) {
+                Group {
+                    if !hasCompletedOnboarding {
+                        // Show ONLY onboarding — no HomeView underneath
                         OnboardingFlow()
-                            .environment(\.modelContext, container.mainContext)
-                            .environmentObject(manager)
+                            .transition(.opacity)
+                    } else {
+                        HomeView()
+                            .transition(.opacity)
                     }
+                }
+                .animation(.easeInOut, value: hasCompletedOnboarding)
+                .toastOverlay()
+                .environment(\.modelContext, container.mainContext)
+                .environmentObject(manager)
+                .environmentObject(walkthroughManager)
+                .environmentObject(demoModeManager)
+                .environmentObject(toastManager)
+                .preferredColorScheme(.dark)
+                .tint(Color.goldfishAccent)
             } else {
-                // Loading state (should be sub-millisecond unless something weird happens)
                 ProgressView()
             }
         }

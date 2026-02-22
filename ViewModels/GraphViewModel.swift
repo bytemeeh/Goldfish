@@ -10,8 +10,11 @@ protocol GraphSceneDelegate: AnyObject {
     func didUpdateZoom(_ zoom: CGFloat)
     func didUpdateCameraPosition(_ position: CGPoint)
     func centerOnContact(_ id: UUID)
+    func centerOnPond(name: String)
     func requestConnection(from: UUID, to: UUID)
     func didUpdateSearchMatches(_ ids: Set<UUID>?)
+    func animateNewConnection(from: UUID, to: UUID)
+    func didLongPressContact(_ id: UUID)
 }
 
 // MARK: - GraphViewModel
@@ -57,12 +60,17 @@ final class GraphViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var hasNoData: Bool = false
     
+    /// When `true`, only demo contacts are shown in the graph.
+    var isDemoMode: Bool = false
+    
     /// When set, triggers the Add Relationship sheet for drag-to-connect
     @Published var pendingConnectionFrom: UUID?
     @Published var pendingConnectionTo: UUID?
     
     @Published var pendingPondMovePerson: UUID?
     @Published var pendingPondMoveTarget: String?
+    
+    @Published var pendingActionContactID: UUID?
     
     private var levelsLoaded = false
     
@@ -78,7 +86,13 @@ final class GraphViewModel: ObservableObject {
         isLoading = true
         Task {
             do {
-                if let levels = try dataManager.buildGraphLayout() {
+                let levels: [GraphLevel]?
+                if isDemoMode {
+                    levels = try dataManager.buildGraphLayout(demoMode: true)
+                } else {
+                    levels = try dataManager.buildGraphLayout(demoMode: false)
+                }
+                if let levels {
                     self.graphLevels = levels
                     self.levelsLoaded = true
                     self.hasNoData = false
@@ -107,6 +121,10 @@ final class GraphViewModel: ObservableObject {
     
     func centerOnContact(_ id: UUID) {
         sceneDelegate?.centerOnContact(id)
+    }
+    
+    func centerOnPond(name: String) {
+        sceneDelegate?.centerOnPond(name: name)
     }
     
     func zoomIn() {
@@ -141,9 +159,21 @@ final class GraphViewModel: ObservableObject {
         pendingConnectionTo = targetID
     }
     
+    func confirmConnection() {
+        guard let fromID = pendingConnectionFrom, let toID = pendingConnectionTo else { return }
+        // The animation will be triggered by GraphContainerView after the data is updated
+        // But we can also trigger it directly if we want it to feel immediate
+        sceneDelegate?.animateNewConnection(from: fromID, to: toID)
+    }
+    
     /// Called by the scene when user drags a node into empty space within a pond
     func requestPondMove(for personID: UUID, to pondName: String) {
         pendingPondMovePerson = personID
         pendingPondMoveTarget = pondName
+    }
+    
+    /// Called by the scene when a user long presses a node
+    func didLongPressContact(_ id: UUID) {
+        pendingActionContactID = id
     }
 }

@@ -1,5 +1,6 @@
 import SwiftUI
 import SpriteKit
+import SwiftData
 
 // MARK: - Graph Container View
 /// SwiftUI wrapper hosting the SpriteKit graph scene.
@@ -7,9 +8,11 @@ struct GraphContainerView: View {
     @ObservedObject var viewModel: GraphViewModel
     @EnvironmentObject var dataManager: GoldfishDataManager
 
+
     @State private var scene: GoldfishGraphScene?
     @State private var connectRelType: RelationshipType = .friend
     @State private var connectPondName: String = "None"
+    @Query private var circles: [GoldfishCircle]
 
     var body: some View {
         ZStack {
@@ -21,6 +24,12 @@ struct GraphContainerView: View {
                         options: [.allowsTransparency]
                     )
                     .ignoresSafeArea(edges: .bottom)
+                }
+                
+                // MARK: - Pond Shortcut Bar
+                VStack {
+                    pondShortcutBar
+                    Spacer()
                 }
             }
 
@@ -96,14 +105,65 @@ struct GraphContainerView: View {
             // When graph data changes, push it to the scene
             pushLevelsToScene()
         }
-        .sheet(item: $viewModel.selectedContactID) { id in
-            if let person = try? dataManager.fetchAllPersons().first(where: { $0.id == id }) {
-                NavigationView {
+        .sheet(item: Binding<IdentifiableWrapper<UUID>?>(
+            get: { viewModel.selectedContactID.map { IdentifiableWrapper($0) } },
+            set: { viewModel.selectedContactID = $0?.value }
+        )) { wrapper in
+            if let person = try? dataManager.fetchAllPersons().first(where: { $0.id == wrapper.value }) {
+                NavigationStack {
                     ContactDetailView(
                         viewModel: ContactDetailViewModel(person: person, dataManager: dataManager)
                     )
                 }
             }
+        }
+        .confirmationDialog(
+            "Contact Actions",
+            isPresented: Binding(
+                get: { viewModel.pendingActionContactID != nil },
+                set: { if !$0 { viewModel.pendingActionContactID = nil } }
+            ),
+            presenting: viewModel.pendingActionContactID
+        ) { contactID in
+            Button("Edit Contact") {
+                viewModel.selectContact(contactID)
+                viewModel.pendingActionContactID = nil
+            }
+            
+            // Generate a button for each existing pond
+            ForEach(circles.sorted(by: { $0.sortOrder < $1.sortOrder })) { circle in
+                Button("Assign to \(circle.emoji) \(circle.name)") {
+                    assignContact(contactID, to: circle)
+                    viewModel.pendingActionContactID = nil
+                }
+            }
+            
+            Button("Cancel", role: .cancel) {
+                viewModel.pendingActionContactID = nil
+            }
+        } message: { contactID in
+            if let person = try? dataManager.fetchAllPersons().first(where: { $0.id == contactID }) {
+                Text("Actions for \(person.name)")
+            } else {
+                Text("Contact Actions")
+            }
+        }
+    }
+
+    /// Helper to assign a contact to a pond from the shortcut menu
+    private func assignContact(_ contactID: UUID, to circle: GoldfishCircle) {
+        guard let allPersons = try? dataManager.fetchAllPersons(),
+              let person = allPersons.first(where: { $0.id == contactID }) else { return }
+        
+        // Don't add if already in this circle
+        if !person.circleContacts.contains(where: { $0.circle.id == circle.id }) {
+            let cc = CircleContact(circle: circle, contact: person)
+            dataManager.context.insert(cc)
+            _ = try? dataManager.context.save()
+            ToastManager.shared.showToast(message: "Added \(person.name) to \(circle.name)")
+            viewModel.refreshGraph()
+        } else {
+            ToastManager.shared.showToast(message: "\(person.name) is already in \(circle.name)")
         }
     }
 
@@ -204,6 +264,10 @@ struct GraphContainerView: View {
                     
                     ToastManager.shared.showToast(message: "Connected \(fromPerson.name) & \(toPerson.name)")
                     
+                    viewModel.confirmConnection()
+                    
+
+                    
                     withAnimation {
                         viewModel.pendingConnectionFrom = nil
                         viewModel.pendingConnectionTo = nil
@@ -279,6 +343,8 @@ struct GraphContainerView: View {
                     
                     ToastManager.shared.showToast(message: "Moved \(person.name) to \(pondName)")
                     
+
+                    
                     withAnimation {
                         viewModel.pendingPondMovePerson = nil
                         viewModel.pendingPondMoveTarget = nil
@@ -305,9 +371,50 @@ struct GraphContainerView: View {
             .zIndex(100)
         }
     }
+    
+    private var pondShortcutBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                // Reset Button
+                Button(action: viewModel.resetCamera) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "house.fill")
+                        Text("Center")
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(20)
+                }
+                .foregroundColor(.primary)
+                
+                // Pond Buttons
+                ForEach(circles.sorted(by: { $0.sortOrder < $1.sortOrder })) { circle in
+                    Button(action: {
+                        viewModel.centerOnPond(name: circle.name)
+
+                    }) {
+                        HStack(spacing: 6) {
+                            Text(circle.emoji)
+                            Text(circle.name)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .fill(Color(hex: circle.color).opacity(0.2))
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(Color(hex: circle.color).opacity(0.3), lineWidth: 1)
+                        )
+                    }
+                    .foregroundColor(.primary)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.top, 12)
+        }
+    }
 }
 
-// MARK: - UUID + Identifiable (needed for .sheet(item:))
-extension UUID: @retroactive Identifiable {
-    public var id: UUID { self }
-}

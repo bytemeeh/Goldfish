@@ -24,6 +24,9 @@ final class HomeViewModel: ObservableObject {
     // MARK: - Dependencies
     private let dataManager: GoldfishDataManager
     
+    /// When `true`, only show demo contacts; when `false`, only show real contacts.
+    var isDemoMode: Bool = false
+    
     // MARK: - Persistent State
     @AppStorage("homeViewMode") var viewMode: HomeViewMode = .graph
     @AppStorage("contactSortOrder") var sortOrder: String = "name"
@@ -90,7 +93,8 @@ final class HomeViewModel: ObservableObject {
         var all = try dataManager.fetchAllPersons()
         
         // Never show the "Me" contact in the contacts list
-        all = all.filter { !$0.isMe }
+        // Filter by demo mode: show only demo or only real contacts
+        all = all.filter { !$0.isMe && $0.isDemo == isDemoMode }
         
         if showFavoritesOnly {
             all = all.filter { $0.isFavorite }

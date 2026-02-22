@@ -17,15 +17,10 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: App
-        group: App
       - path: Models
-        group: Models
       - path: Services
-        group: Services
       - path: Views
-        group: Views
       - path: ViewModels
-        group: ViewModels
       - path: Assets/GoldfishColors.swift
         group: Assets
     resources:
@@ -49,6 +44,8 @@ targets:
       path: Goldfish/Goldfish.entitlements
     info:
       path: Goldfish/Info.plist
+      properties:
+        UILaunchScreen: {}
     dependencies: []
     scheme:
       testTargets:
@@ -60,7 +57,9 @@ targets:
     platform: iOS
     deploymentTarget: "17.0"
     sources:
-      - path: Tests
+      - path: Tests/GoldfishTests.swift
+        group: Tests
+      - path: Tests/VCardTests.swift
         group: Tests
     settings:
       base:
@@ -68,5 +67,6 @@ targets:
         PRODUCT_NAME: GoldfishTests
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Goldfish.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Goldfish"
         BUNDLE_LOADER: "$(TEST_HOST)"
+        GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - target: Goldfish
