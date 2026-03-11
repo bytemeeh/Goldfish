@@ -106,7 +106,8 @@ export const contacts = pgTable("contacts", {
   // Direct relationship to the user (contextual)
   relationshipToUser: text("relationship_to_user"),
 
-  isMe: boolean("is_me").default(false),
+  isMe: boolean("is_me").default(false).notNull(),
+  isDemo: boolean("is_demo").default(false).notNull(),
   color: text("color"),
   photo: text("photo"), // Base64 encoded photo or URL
   shareToken: text("share_token").unique(),

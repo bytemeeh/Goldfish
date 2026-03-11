@@ -425,4 +425,16 @@ router.delete("/relationships/definitions/:id", async (req, res) => {
   }
 });
 
+// POST /api/contacts/reset
+router.post("/reset", async (_req, res) => {
+  try {
+    // Delete all contacts except the "Me" contact
+    await db.delete(contacts).where(eq(contacts.isMe, false));
+    res.json({ message: "Database reset successfully" });
+  } catch (error) {
+    console.error("Error resetting database:", error);
+    res.status(500).json({ error: "Failed to reset database" });
+  }
+});
+
 export default router;

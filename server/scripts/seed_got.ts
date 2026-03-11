@@ -88,7 +88,8 @@ async function seed() {
             type: char.type as "person" | "pet",
             notes: char.title,
             color: char.color,
-            isMe: char.name === "Eddard Stark", // Let's make Ned the 'user' for this demo
+            isMe: char.name === "Eddard Stark",
+            isDemo: true,
         } as any).returning();
         charMap[char.name] = inserted.id;
     }

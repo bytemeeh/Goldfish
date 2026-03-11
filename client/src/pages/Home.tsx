@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Plus, Network, User, Share2, Settings2, HelpCircle } from "lucide-react";
 // import { List } from "lucide-react"; // FUTURE FEATURE: List view - Currently hidden, may be added in future releases
@@ -39,6 +40,7 @@ export function Home() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>("graph");
   // const [voiceTranscription, setVoiceTranscription] = useState<string>(""); // Hidden for initial release
+  const { toast } = useToast();
   const [viewMode, setViewMode] = useState<ViewMode>("graph"); // FUTURE FEATURE: Always default to graph view (list view hidden for initial launch)
 
   const [relationContext, setRelationContext] = useState<{ parentId: string | null }>({ parentId: null });
@@ -81,24 +83,54 @@ export function Home() {
     console.log('🚨 Home.tsx - viewMode changed to:', viewMode);
   }, [viewMode]);
 
-  const { data: contacts } = useQuery<Contact[]>({
+  // Handle contact import event from walkthrough
+  useEffect(() => {
+    const handleImport = () => {
+      toast({
+        title: "Import Contacts",
+        description: "VCard import coming soon to web version. Use the mobile app for full import capabilities.",
+      });
+    };
+
+    window.addEventListener("goldfish:import-contacts", handleImport);
+    return () => window.removeEventListener("goldfish:import-contacts", handleImport);
+  }, [toast]);
+
+  const { data: contacts, refetch } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
   });
 
-  // Voice processing handlers
-  // Voice processing handlers - Hidden for initial release
-  /*
-  const handleVoiceTranscription = (text: string) => {
-    setVoiceTranscription(text);
-  };
+  // Filter contacts based on demo mode preference
+  const filteredContacts = useMemo(() => {
+    if (!contacts) return [];
+    const demoDataActive = localStorage.getItem('goldfish_demo_data_active') !== 'false'; // Default to true if not set
+    if (demoDataActive) return contacts;
+    return contacts.filter(c => !c.isDemo || c.isMe);
+  }, [contacts]);
 
-  const handleVoiceProcessingComplete = (result: any) => {
-    if (result.type === 'contact_created') {
-      // Contact was created successfully
-      setIsAddingContact(false); // Close any open dialogs
-    }
-  };
-  */
+  // Handle start from scratch (clear all non-me contacts)
+  useEffect(() => {
+    const checkReset = async () => {
+      const hasSeen = localStorage.getItem('goldfish_has_seen_welcome');
+      const demoDataActive = localStorage.getItem('goldfish_demo_data_active');
+
+      if (hasSeen === 'true' && demoDataActive === 'false' && contacts?.some(c => c.isDemo)) {
+        try {
+          const res = await fetch("/api/contacts/reset", { method: "POST" });
+          if (res.ok) {
+            toast({
+              title: "Started Fresh",
+              description: "Demo data has been removed. You can now start building your own network!",
+            });
+            refetch();
+          }
+        } catch (error) {
+          console.error("Failed to reset:", error);
+        }
+      }
+    };
+    checkReset();
+  }, [contacts, refetch, toast]);
 
   // FUTURE FEATURE: View mode persistence - Currently only graph mode is available
   // useEffect(() => {
@@ -134,7 +166,7 @@ export function Home() {
       default:
         return (
           <ContactFlowGraph
-            contacts={contacts || []}
+            contacts={filteredContacts}
             onContactSelect={handleContactSelect}
             onAddRelation={handleAddRelation}
           />

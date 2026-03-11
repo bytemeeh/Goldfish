@@ -23,8 +23,9 @@ targets:
       - path: ViewModels
       - path: Assets/GoldfishColors.swift
         group: Assets
-    resources:
       - path: Goldfish/Assets.xcassets
+        group: Assets
+    resources:
       - path: Assets/EmptyStates
         buildPhase: resources
       - path: Goldfish/PrivacyInfo.xcprivacy
