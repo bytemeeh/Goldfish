@@ -36,6 +36,7 @@
 		A73450712034383991FBE7E2 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07C06E74A48B5FB4A45AEFFE /* EmptyStateView.swift */; };
 		A998D6BAA823FC45E444C2EA /* GraphContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D60F686BD156E1DCC710F6C /* GraphContainerView.swift */; };
 		AB98461BD617F57896B4B397 /* GoldfishDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23CC945346F772BDBFB3766 /* GoldfishDataManager.swift */; };
+		B41998DE0FCD60649AB40520 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2D153727D39B6A0434CB9F2 /* Assets.xcassets */; };
 		B925C000EA36BA89C30C53E5 /* GraphNodeSprite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C4DFECA32CAF12FFB7DA2D2 /* GraphNodeSprite.swift */; };
 		BA2C786B2631E28600453399 /* Person.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E6B8425027EED98DE4A82A /* Person.swift */; };
 		C54BCB99ADE0858E76FE6551 /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8E3DED1AC41D0D95F88ED0B /* HomeViewModel.swift */; };
@@ -98,6 +99,7 @@
 		99AF85323C2489A38837C910 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		9A886EB6E13DD7F732B3B191 /* VCardExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCardExportService.swift; sourceTree = "<group>"; };
 		A079D195EFCFE4FD2B14B7DF /* ContactFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactFormView.swift; sourceTree = "<group>"; };
+		A2D153727D39B6A0434CB9F2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = ../Goldfish/Assets.xcassets; sourceTree = "<group>"; };
 		A4013B831E17C1DAFD260E63 /* VCardExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCardExporter.swift; sourceTree = "<group>"; };
 		A49CD34AF5BA426B62604E12 /* GraphService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphService.swift; sourceTree = "<group>"; };
 		AB7E247B3F4C3AF7C560516E /* GoldfishTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishTests.swift; sourceTree = "<group>"; };
@@ -244,6 +246,7 @@
 		D41AC9AE2C56EDE078C65BF8 /* Assets */ = {
 			isa = PBXGroup;
 			children = (
+				A2D153727D39B6A0434CB9F2 /* Assets.xcassets */,
 				84099033F26B00F9703BB69F /* GoldfishColors.swift */,
 			);
 			path = Assets;
@@ -273,6 +276,7 @@
 			buildConfigurationList = D2ECCCB2B91E427773380861 /* Build configuration list for PBXNativeTarget "Goldfish" */;
 			buildPhases = (
 				C2690517160494FE732F9BA1 /* Sources */,
+				731BEC06867232CABC1ECF27 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -311,6 +315,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		731BEC06867232CABC1ECF27 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B41998DE0FCD60649AB40520 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		75696B0A87B1B52FB728E089 /* Sources */ = {

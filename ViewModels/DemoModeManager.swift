@@ -42,4 +42,9 @@ final class DemoModeManager: ObservableObject {
         }
         isDemoModeActive = false
     }
+
+    /// Resets the demo mode state.
+    func reset() {
+        isDemoModeActive = false
+    }
 }

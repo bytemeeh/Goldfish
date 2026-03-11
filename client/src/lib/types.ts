@@ -30,6 +30,7 @@ export interface Contact {
   relationshipType: RelationshipType | string | null;
   relationshipToUser?: string | null;
   isMe: boolean;
+  isDemo: boolean;
   color?: string;
   photo?: string;
   shareToken?: string;

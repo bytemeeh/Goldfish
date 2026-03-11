@@ -15,7 +15,6 @@ struct SettingsView: View {
     @State private var showingPhonebookPicker = false
     @State private var showingLogoutAlert = false
     @State private var showingExportPrompt = false
-    @State private var showingRemoveDemoAlert = false
     @State private var exportURL: IdentifiableWrapper<URL>?
 
     init() {
@@ -70,7 +69,7 @@ struct SettingsView: View {
                 Button(action: {
                     dismiss()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        walkthroughManager.startWalkthroughIfNeeded(dataManager: dataManager)
+                        walkthroughManager.replayWalkthrough(dataManager: dataManager)
                     }
                 }) {
                     Label("Replay Feature Tour", systemImage: "hand.point.up.left.fill")
@@ -91,14 +90,6 @@ struct SettingsView: View {
                     }
                 )) {
                     Label("Show Demo Data", systemImage: "sparkles")
-                }
-                
-                if demoModeManager.isDemoModeActive {
-                    Button(role: .destructive) {
-                        showingRemoveDemoAlert = true
-                    } label: {
-                        Label("Remove Demo Data", systemImage: "trash")
-                    }
                 }
             } header: {
                 Text("Demo Mode")
@@ -233,7 +224,11 @@ struct SettingsView: View {
         }
         .alert("Reset Experience", isPresented: $showingLogoutAlert) {
             Button("Reset Anyway", role: .destructive) {
-                viewModel.performReset()
+                viewModel.performReset(
+                    walkthroughManager: walkthroughManager,
+                    demoModeManager: demoModeManager
+                )
+                dismiss()
             }
             Button("Cancel", role: .cancel) { }
         } message: {
@@ -250,7 +245,11 @@ struct SettingsView: View {
                 }
             }
             Button("Reset Anyway", role: .destructive) {
-                viewModel.performReset()
+                viewModel.performReset(
+                    walkthroughManager: walkthroughManager,
+                    demoModeManager: demoModeManager
+                )
+                dismiss()
             }
             Button("Cancel", role: .cancel) { }
         } message: {
@@ -258,14 +257,6 @@ struct SettingsView: View {
         }
         .sheet(item: $exportURL) { wrapper in
             ShareSheet(activityItems: [wrapper.value])
-        }
-        .alert("Remove Demo Data?", isPresented: $showingRemoveDemoAlert) {
-            Button("Remove", role: .destructive) {
-                demoModeManager.removeDemoData(dataManager: dataManager)
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("This will permanently delete all demo contacts and connections. You can re-add them later by toggling demo mode on again.")
         }
     }
 }

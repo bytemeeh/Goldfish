@@ -3,9 +3,11 @@ import SwiftUI
 // MARK: - Walkthrough Steps
 enum WalkthroughStep: Int, CaseIterable, Identifiable {
     case welcome = 0
+    case search
     case contactList
     case graphView
     case relationships
+    case shortcuts
     case ponds
     case privacy
     case complete
@@ -14,34 +16,40 @@ enum WalkthroughStep: Int, CaseIterable, Identifiable {
     
     var title: String {
         switch self {
-        case .welcome: return "Welcome to Goldfish"
-        case .contactList: return "Your Roster"
-        case .graphView: return "Visualize Connections"
-        case .relationships: return "Connect the Dots"
-        case .ponds: return "Organize into Ponds"
-        case .privacy: return "Private by Design"
-        case .complete: return "You're Ready!"
+        case .welcome: return "Welcome to the Pond"
+        case .search: return "Fish for Anyone Instantly"
+        case .contactList: return "Your School of Fish"
+        case .graphView: return "See the Whole Bowl"
+        case .relationships: return "Make a Splash Together"
+        case .shortcuts: return "Navigate the Waters"
+        case .ponds: return "Stock Your Ponds"
+        case .privacy: return "A Secure Aquarium"
+        case .complete: return "Ready to Dive In!"
         }
     }
     
     var description: String {
         switch self {
-        case .welcome: return "A new kind of address book designed to help you remember everyone and how they fit into your life."
-        case .contactList: return "Keep track of all your people in one unified list. Add rich details like birthdays and custom notes so you never forget the important things."
-        case .graphView: return "Toggle to the Graph View to see your entire network come alive. Watch relationships branch out from you as the center of your universe."
-        case .relationships: return "Tap any two people in the graph to connect them, or add relationships on their profile. Map out families, coworkers, and friend groups."
-        case .ponds: return "Group your contacts into Ponds like Family, Friends, or Work. Ponds cluster together in the graph so you can see different areas of your life at a glance."
-        case .privacy: return "Your data is yours. Goldfish stores everything securely on your device and syncs via your personal iCloud. No external servers involved."
-        case .complete: return "You've seen the highlights. Dive in, add your first contacts, and start building your network."
+        case .welcome: return "A new kind of address book designed to cure that goldfish memory. Keep track of everyone and how they fit into your life."
+        case .search: return "Cast a net in the search bar to instantly find any person, organization, or pond."
+        case .contactList: return "Keep all your contacts swimming in one unified list. Add rich details so you never forget a face (or a fin)."
+        case .graphView: return "Toggle to the Graph View to watch your network swim to life. See relationships ripple out dynamically across the screen."
+        case .relationships: return "Link people by dragging one onto another, or add relationships on their profile. Map out who swims with who seamlessly."
+        case .shortcuts: return "Use the shortcut bar above the graph to quickly swim over to specific ponds or reset your view."
+        case .ponds: return "Group your contacts into Ponds like Family or Work. Watch them cluster together like schools of fish in the graph."
+        case .privacy: return "Your data is watertight. Goldfish stores everything securely on your device and syncs via encrypted iCloud."
+        case .complete: return "The water's fine! Dive in, add your first contacts, and start growing your network."
         }
     }
     
     var icon: String {
         switch self {
         case .welcome: return "fish.fill"
+        case .search: return "magnifyingglass"
         case .contactList: return "person.text.rectangle.fill"
         case .graphView: return "network"
         case .relationships: return "link"
+        case .shortcuts: return "bolt.fill"
         case .ponds: return "circle.grid.cross.fill"
         case .privacy: return "lock.shield.fill"
         case .complete: return "checkmark.seal.fill"
@@ -81,6 +89,11 @@ class FeatureWalkthroughManager: ObservableObject {
         startWalkthrough()
     }
     
+    func replayWalkthrough(dataManager: GoldfishDataManager) {
+        seedDemoDataIfNeeded(dataManager: dataManager)
+        startWalkthrough()
+    }
+    
     func startWalkthrough() {
         currentStep = .welcome
         withAnimation(.easeOut(duration: 0.4)) {
@@ -103,6 +116,11 @@ class FeatureWalkthroughManager: ObservableObject {
     
     func nextStep() {
         triggerHaptic()
+        
+        if currentStep == .complete {
+            skip() // this accomplishes finishing the tour and keeping demo data
+            return
+        }
         
         if let next = WalkthroughStep(rawValue: currentStep.rawValue + 1) {
             // Pre-switch views for the upcoming step
@@ -164,9 +182,9 @@ class FeatureWalkthroughManager: ObservableObject {
         // However, we still switch the background view so it looks nice
         // behind the translucent modal
         switch step {
-        case .graphView, .relationships, .ponds:
+        case .graphView, .relationships, .ponds, .shortcuts:
             onRequestGraphView?()
-        case .contactList:
+        case .contactList, .search:
             onRequestListView?()
         default:
             break
@@ -178,5 +196,13 @@ class FeatureWalkthroughManager: ObservableObject {
     private func triggerHaptic() {
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.impactOccurred()
+    }
+
+    /// Resets the walkthrough state completely.
+    func reset() {
+        hasSeenWalkthrough = false
+        isActive = false
+        currentStep = .welcome
+        isDemoDataSeeded = false
     }
 }

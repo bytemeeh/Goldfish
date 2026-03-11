@@ -18,6 +18,7 @@ private struct HomeContent: View {
     @EnvironmentObject var dataManager: GoldfishDataManager
 
 
+    @EnvironmentObject var walkthroughManager: FeatureWalkthroughManager
     @EnvironmentObject var demoModeManager: DemoModeManager
     @StateObject private var viewModel: HomeViewModel
     @StateObject private var graphViewModel: GraphViewModel
@@ -92,19 +93,18 @@ private struct HomeContent: View {
                 .navigationTitle(viewModel.viewMode == .graph ? "Ponds" : "Contacts")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
+                    ToolbarItemGroup(placement: .topBarLeading) {
                         Button { showSettings = true } label: {
                             Image(systemName: "gear")
                         }
-                    }
-                    ToolbarItemGroup(placement: .topBarTrailing) {
                         Button { 
                             withAnimation { isSearchActive.toggle() }
                             if !isSearchActive { viewModel.searchText = "" }
                         } label: {
                             Image(systemName: "magnifyingglass")
                         }
-                        
+                    }
+                    ToolbarItemGroup(placement: .topBarTrailing) {
                         Button { viewModel.toggleViewMode() } label: {
                             Image(systemName: viewModel.viewMode == .graph ? "list.bullet" : "network")
                         }
@@ -150,8 +150,32 @@ private struct HomeContent: View {
                 }
 
             }
+            .walkthroughOverlay()
+            .onAppear {
+                setupWalkthroughCallbacks()
+                walkthroughManager.startWalkthroughIfNeeded(dataManager: dataManager)
+                // Refresh graph after demo data seeding so new contacts appear
+                graphViewModel.refreshGraph()
+            }
+            .onChange(of: walkthroughManager.isActive) { wasActive, isActive in
+                // When walkthrough completes (goes from active to inactive)
+                if wasActive && !isActive {
+                    // Turn on demo mode automatically at the end of the walkthrough
+                    // This sets isDemoModeActive = true, which the Settings toggle reads
+                    demoModeManager.activateDemoMode(dataManager: dataManager)
+                }
+            }
         }
 
+    }
+    
+    private func setupWalkthroughCallbacks() {
+        walkthroughManager.onRequestGraphView = {
+            withAnimation { viewModel.viewMode = .graph }
+        }
+        walkthroughManager.onRequestListView = {
+            withAnimation { viewModel.viewMode = .list }
+        }
     }
 
     // MARK: - Contacts List

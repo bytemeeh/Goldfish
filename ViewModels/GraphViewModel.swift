@@ -73,6 +73,7 @@ final class GraphViewModel: ObservableObject {
     @Published var pendingActionContactID: UUID?
     
     private var levelsLoaded = false
+    private var isLoadingInProgress = false
     
     // MARK: - Init
     init(dataManager: GoldfishDataManager) {
@@ -81,34 +82,54 @@ final class GraphViewModel: ObservableObject {
     
     // MARK: - Methods
     func loadGraph() {
-        guard !levelsLoaded else { return } // Avoid re-calc loop if not needed
+        guard !levelsLoaded else {
+            print("[GraphVM] loadGraph skipped — already loaded")
+            return
+        }
+        guard !isLoadingInProgress else {
+            print("[GraphVM] loadGraph skipped — already in progress")
+            return
+        }
         
+        print("[GraphVM] loadGraph started, isDemoMode=\(isDemoMode)")
+        isLoadingInProgress = true
         isLoading = true
         Task {
+            defer {
+                isLoading = false
+                isLoadingInProgress = false
+                print("[GraphVM] isLoading = false")
+            }
             do {
+                print("[GraphVM] Task started, calling buildGraphLayout...")
                 let levels: [GraphLevel]?
                 if isDemoMode {
                     levels = try dataManager.buildGraphLayout(demoMode: true)
                 } else {
                     levels = try dataManager.buildGraphLayout(demoMode: false)
                 }
+                print("[GraphVM] buildGraphLayout returned: \(levels?.count ?? -1) levels")
                 if let levels {
                     self.graphLevels = levels
                     self.levelsLoaded = true
-                    self.hasNoData = false
+                    self.hasNoData = levels.flatMap(\.allContacts).isEmpty
                     sceneDelegate?.didUpdateGraphLevels(levels)
+                    print("[GraphVM] Graph loaded with \(levels.flatMap(\.allContacts).count) contacts")
                 } else {
                     self.hasNoData = true
+                    print("[GraphVM] No Me contact found — hasNoData = true")
                 }
             } catch {
-                print("Failed to build graph layout: \(error)")
+                print("[GraphVM] Failed to build graph layout: \(error)")
+                self.hasNoData = true
             }
-            isLoading = false
         }
     }
     
     func refreshGraph() {
+        print("[GraphVM] refreshGraph called")
         levelsLoaded = false
+        isLoadingInProgress = false  // Allow new load
         loadGraph()
     }
     

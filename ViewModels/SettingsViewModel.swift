@@ -54,12 +54,25 @@ final class SettingsViewModel: ObservableObject {
     }
 
     // MARK: - Reset
-    func performReset() {
+    func performReset(
+        walkthroughManager: FeatureWalkthroughManager,
+        demoModeManager: DemoModeManager
+    ) {
         guard let dataManager else { return }
+        
+        // 1. Reset managers (handles their specific UserDefaults and @Published flags)
+        walkthroughManager.reset()
+        demoModeManager.reset()
+
+        // 2. Clear application-level flags
+        let defaults = UserDefaults.standard
+        defaults.set(false, forKey: "hasCompletedOnboarding")
+        defaults.set("graph", forKey: "homeViewMode")
+        defaults.set("name", forKey: "contactSortOrder")
+
+        // 3. Clear the database
         do {
             try dataManager.resetAllData()
-            // Reset onboarding state in UserDefaults
-            UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
         } catch {
             print("Error resetting data: \(error)")
         }

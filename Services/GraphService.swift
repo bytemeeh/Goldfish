@@ -164,11 +164,12 @@ struct GraphService {
             let grouped = groupByCircle(currentLevel)
             levels.append(GraphLevel(depth: depth, circleGroups: grouped))
 
-            // Find next level: all unvisited neighbors
+            // Find next level: all unvisited neighbors (exclude demo contacts)
             var nextLevel: [Person] = []
             for person in currentLevel {
                 let neighbors = getNeighbors(of: person)
                 for neighbor in neighbors {
+                    guard !neighbor.isDemo else { continue }
                     if !visited.contains(neighbor.id) {
                         visited.insert(neighbor.id)
                         nextLevel.append(neighbor)
@@ -192,8 +193,9 @@ struct GraphService {
 
         // Include orphan contacts (not reachable via relationships) as the outermost level
         // OR merge them into existing circles if they share a pond.
+        // Exclude demo contacts.
         let allPersons = (try? context.fetch(FetchDescriptor<Person>())) ?? []
-        let orphans = allPersons.filter { !visited.contains($0.id) }
+        let orphans = allPersons.filter { !visited.contains($0.id) && !$0.isDemo }
         
         var trueOrphans: [Person] = []
         
@@ -221,7 +223,11 @@ struct GraphService {
             levels.append(GraphLevel(depth: depth, circleGroups: orphanGroups))
         }
 
-        return levels
+        // Exclude level 0 (ME node only) and re-index depths from 0
+        let visibleLevels = Array(levels.dropFirst())
+        return visibleLevels.enumerated().map { index, level in
+            GraphLevel(depth: index, circleGroups: level.circleGroups)
+        }
     }
     
     /// Demo-mode-aware variant of `buildGraphLevels`.
@@ -297,7 +303,11 @@ struct GraphService {
             levels.append(GraphLevel(depth: depth, circleGroups: orphanGroups))
         }
 
-        return levels
+        // Exclude level 0 (ME node only) and re-index depths from 0
+        let visibleLevels = Array(levels.dropFirst())
+        return visibleLevels.enumerated().map { index, level in
+            GraphLevel(depth: index, circleGroups: level.circleGroups)
+        }
     }
 
     /// Returns all direct neighbors of a person (both directions, all types).

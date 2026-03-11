@@ -132,7 +132,7 @@ struct GraphContainerView: View {
             
             // Generate a button for each existing pond
             ForEach(circles.sorted(by: { $0.sortOrder < $1.sortOrder })) { circle in
-                Button("Assign to \(circle.emoji) \(circle.name)") {
+                Button("Assign to \(circle.name)") {
                     assignContact(contactID, to: circle)
                     viewModel.pendingActionContactID = nil
                 }
@@ -203,92 +203,146 @@ struct GraphContainerView: View {
            let fromPerson = allPersons.first(where: { $0.id == fromID }),
            let toPerson = allPersons.first(where: { $0.id == toID }) {
             
+            let existingRelationship = fromPerson.allRelationships.first(where: {
+                ($0.fromContact.id == toID || $0.toContact.id == toID)
+            })
+            
             VStack(spacing: 16) {
-                Text("Connect \(fromPerson.name) → \(toPerson.name)")
-                    .font(.headline)
-                
-                HStack(spacing: 20) {
-                    ContactPhotoView(photoData: fromPerson.photoData, name: fromPerson.name, colorHex: fromPerson.color, size: 50)
-                        .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                if let existing = existingRelationship {
+                    // ── Already Connected: Edit/Remove ──
+                    Text("Already Connected")
+                        .font(.headline)
                     
-                    Image(systemName: "arrow.left.and.right")
-                        .font(.title2)
-                        .foregroundColor(.secondary)
-                    
-                    ContactPhotoView(photoData: toPerson.photoData, name: toPerson.name, colorHex: toPerson.color, size: 50)
-                        .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
-                }
-                
-                VStack(spacing: 12) {
-                    HStack {
-                        Text("Relationship type")
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Picker("Relationship type", selection: $connectRelType) {
-                            ForEach(RelationshipType.allCases) { type in
-                                Text(type.displayName).tag(type)
-                            }
+                    HStack(spacing: 20) {
+                        ContactPhotoView(photoData: fromPerson.photoData, name: fromPerson.name, colorHex: fromPerson.color, size: 50)
+                            .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                        
+                        VStack(spacing: 2) {
+                            Image(systemName: "link")
+                                .font(.title2)
+                                .foregroundColor(.goldfishAccent)
+                            Text(existing.type.displayName)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
+                        
+                        ContactPhotoView(photoData: toPerson.photoData, name: toPerson.name, colorHex: toPerson.color, size: 50)
+                            .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
                     }
                     
-                    HStack {
-                        Text("Move to pond")
+                    Text("\(fromPerson.name) and \(toPerson.name) are already connected.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    
+                    Button("Remove Connection", role: .destructive) {
+                        dataManager.context.delete(existing)
+                        try? dataManager.context.save()
+                        
+                        ToastManager.shared.showToast(message: "Removed connection")
+                        
+                        withAnimation {
+                            viewModel.pendingConnectionFrom = nil
+                            viewModel.pendingConnectionTo = nil
+                        }
+                        viewModel.refreshGraph()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.red)
+                    
+                    Button("Cancel") {
+                        withAnimation {
+                            viewModel.pendingConnectionFrom = nil
+                            viewModel.pendingConnectionTo = nil
+                        }
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                } else {
+                    // ── New Connection ──
+                    Text("Connect \(fromPerson.name) → \(toPerson.name)")
+                        .font(.headline)
+                    
+                    HStack(spacing: 20) {
+                        ContactPhotoView(photoData: fromPerson.photoData, name: fromPerson.name, colorHex: fromPerson.color, size: 50)
+                            .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                        
+                        Image(systemName: "arrow.left.and.right")
+                            .font(.title2)
                             .foregroundColor(.secondary)
-                        Spacer()
-                        Picker("Move to pond", selection: $connectPondName) {
-                            Text("None").tag("None")
-                            if let circles = try? dataManager.fetchAllCircles() {
-                                ForEach(circles) { circle in
-                                    Text(circle.name).tag(circle.name)
+                        
+                        ContactPhotoView(photoData: toPerson.photoData, name: toPerson.name, colorHex: toPerson.color, size: 50)
+                            .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                    }
+                    
+                    VStack(spacing: 12) {
+                        HStack {
+                            Text("Relationship type")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Picker("Relationship type", selection: $connectRelType) {
+                                ForEach(RelationshipType.allCases) { type in
+                                    Text(type.displayName).tag(type)
+                                }
+                            }
+                        }
+                        
+                        HStack {
+                            Text("Move to pond")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Picker("Move to pond", selection: $connectPondName) {
+                                Text("None").tag("None")
+                                if let circles = try? dataManager.fetchAllCircles() {
+                                    ForEach(circles) { circle in
+                                        Text(circle.name).tag(circle.name)
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 4)
-                
-                Button("Confirm Connection") {
-                    let rel = Relationship(from: fromPerson, to: toPerson, type: connectRelType)
-                    dataManager.context.insert(rel)
-                    fromPerson.outgoingRelationships.append(rel)
-                    toPerson.incomingRelationships.append(rel)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 4)
                     
-                    if connectPondName != "None",
-                       let circle = try? dataManager.fetchAllCircles().first(where: { $0.name == connectPondName }) {
-                        let _ = try? dataManager.addToCircle(fromPerson, circle: circle)
-                        let _ = try? dataManager.addToCircle(toPerson, circle: circle)
+                    Button("Confirm Connection") {
+                        let rel = Relationship(from: fromPerson, to: toPerson, type: connectRelType)
+                        dataManager.context.insert(rel)
+                        fromPerson.outgoingRelationships.append(rel)
+                        toPerson.incomingRelationships.append(rel)
+                        
+                        if connectPondName != "None",
+                           let circle = try? dataManager.fetchAllCircles().first(where: { $0.name == connectPondName }) {
+                            let _ = try? dataManager.addToCircle(fromPerson, circle: circle)
+                            let _ = try? dataManager.addToCircle(toPerson, circle: circle)
+                        }
+                        
+                        try? dataManager.context.save()
+                        
+                        ToastManager.shared.showToast(message: "Connected \(fromPerson.name) & \(toPerson.name)")
+                        
+                        viewModel.confirmConnection()
+                        
+                        withAnimation {
+                            viewModel.pendingConnectionFrom = nil
+                            viewModel.pendingConnectionTo = nil
+                        }
+                        viewModel.refreshGraph()
+                        
+                        connectRelType = .friend
+                        connectPondName = "None"
                     }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.goldfishAccent)
                     
-                    try? dataManager.context.save()
-                    
-                    ToastManager.shared.showToast(message: "Connected \(fromPerson.name) & \(toPerson.name)")
-                    
-                    viewModel.confirmConnection()
-                    
-
-                    
-                    withAnimation {
-                        viewModel.pendingConnectionFrom = nil
-                        viewModel.pendingConnectionTo = nil
+                    Button("Cancel") {
+                        withAnimation {
+                            viewModel.pendingConnectionFrom = nil
+                            viewModel.pendingConnectionTo = nil
+                        }
                     }
-                    viewModel.refreshGraph()
-                    
-                    // Reset popups
-                    connectRelType = .friend
-                    connectPondName = "None"
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.goldfishAccent)
-                
-                Button("Cancel") {
-                    withAnimation {
-                        viewModel.pendingConnectionFrom = nil
-                        viewModel.pendingConnectionTo = nil
-                    }
-                }
-                .font(.subheadline)
-                .foregroundColor(.secondary)
             }
             .padding(24)
             .background(.regularMaterial)
@@ -333,17 +387,20 @@ struct GraphContainerView: View {
                     .padding(.horizontal)
                 
                 Button("Move") {
+                    // Remove from all current ponds first
+                    for cc in person.circleContacts {
+                        dataManager.context.delete(cc)
+                    }
+                    try? dataManager.context.save()
+                    
+                    // Add to the target pond
                     if let circle = try? dataManager.fetchAllCircles().first(where: { $0.name == pondName }) {
-                        if !person.circleContacts.contains(where: { $0.circle.id == circle.id }) {
-                            let cc = CircleContact(circle: circle, contact: person)
-                            dataManager.context.insert(cc)
-                            _ = try? dataManager.context.save()
-                        }
+                        let cc = CircleContact(circle: circle, contact: person)
+                        dataManager.context.insert(cc)
+                        _ = try? dataManager.context.save()
                     }
                     
                     ToastManager.shared.showToast(message: "Moved \(person.name) to \(pondName)")
-                    
-
                     
                     withAnimation {
                         viewModel.pendingPondMovePerson = nil
@@ -378,7 +435,6 @@ struct GraphContainerView: View {
                 // Reset Button
                 Button(action: viewModel.resetCamera) {
                     HStack(spacing: 6) {
-                        Image(systemName: "house.fill")
                         Text("Center")
                     }
                     .padding(.horizontal, 12)
@@ -395,7 +451,6 @@ struct GraphContainerView: View {
 
                     }) {
                         HStack(spacing: 6) {
-                            Text(circle.emoji)
                             Text(circle.name)
                         }
                         .padding(.horizontal, 12)

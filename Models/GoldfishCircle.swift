@@ -100,7 +100,7 @@ final class GoldfishCircle {
             GoldfishCircle(
                 name: "Family",
                 color: "#FF6B6B",
-                emoji: "👨‍👩‍👧‍👦",
+                emoji: "",
                 desc: "Your family members",
                 isSystem: true,
                 autoRelationshipTypes: [
@@ -116,7 +116,7 @@ final class GoldfishCircle {
             GoldfishCircle(
                 name: "Friends",
                 color: "#4ECDC4",
-                emoji: "🤝",
+                emoji: "",
                 desc: "Your friends",
                 isSystem: true,
                 autoRelationshipTypes: [
@@ -127,7 +127,7 @@ final class GoldfishCircle {
             GoldfishCircle(
                 name: "Professional",
                 color: "#45B7D1",
-                emoji: "💼",
+                emoji: "",
                 desc: "Professional contacts and coworkers",
                 isSystem: true,
                 autoRelationshipTypes: [

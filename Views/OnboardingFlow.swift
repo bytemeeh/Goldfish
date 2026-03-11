@@ -35,14 +35,17 @@ struct OnboardingFlow: View {
                 .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                 .clipped()
                 .ignoresSafeArea()
-            
-            // Watercolor disperse particle effect
+                .allowsHitTesting(false)
+                .zIndex(0)
+
             SpriteView(scene: {
                 let scene = WatercolorDisperseScene(size: UIScreen.main.bounds.size)
+                scene.backgroundColor = .clear
                 scene.scaleMode = .aspectFill
                 return scene
             }(), options: [.allowsTransparency])
             .ignoresSafeArea()
+            .zIndex(1)
             
             // Gradient overlay — transparent at top to show fish, dark at bottom for text
             LinearGradient(
@@ -56,6 +59,7 @@ struct OnboardingFlow: View {
                 endPoint: .bottom
             )
             .ignoresSafeArea()
+            .zIndex(2)
             
             // Content pinned to bottom
             VStack(spacing: 8) {
@@ -101,6 +105,7 @@ struct OnboardingFlow: View {
                 .padding(.horizontal, 32)
                 .padding(.bottom, 48)
             }
+            .zIndex(3)
         }
     }
     
@@ -150,6 +155,7 @@ struct OnboardingFlow: View {
             hasCompletedOnboarding = true
         } catch {
             print("Onboarding error: \(error)")
+            ToastManager.shared.showToast(message: "Failed: \(error.localizedDescription)")
         }
     }
     
@@ -172,6 +178,9 @@ struct OnboardingFlow: View {
             }
         } catch {
             print("Import error: \(error)")
+            await MainActor.run {
+                ToastManager.shared.showToast(message: "Import failed: \(error.localizedDescription)")
+            }
         }
         await MainActor.run {
             isImporting = false

@@ -104,7 +104,7 @@ struct ContactFormView: View {
                         )) {
                             Text("None").tag(UUID?(nil))
                             ForEach(viewModel.allCircles) { circle in
-                                Text("\(circle.emoji) \(circle.name)").tag(UUID?(circle.id))
+                                Text(circle.name).tag(UUID?(circle.id))
                             }
                         }
                         .pickerStyle(.menu)

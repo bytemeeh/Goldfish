@@ -167,6 +167,38 @@ final class DemoDataService {
             color: "#8E44AD"
         )
         
+        // Depth 2 contacts
+        let chris = try dataManager.createPerson(
+            name: "Chris Evans",
+            phone: "+1 (650) 555-0811",
+            email: "chris.e@company.com",
+            birthday: makeDate(month: 8, day: 22, year: 1988),
+            notes: "David's manager.",
+            isDemo: true,
+            color: "#3498DB"
+        )
+        
+        let sam = try dataManager.createPerson(
+            name: "Sam Taylor",
+            phone: "+1 (628) 555-0922",
+            email: "sam.taylor@email.com",
+            birthday: makeDate(month: 10, day: 5, year: 1995),
+            notes: "Jake's teammate.",
+            isDemo: true,
+            color: "#2ECC71"
+        )
+
+        // Depth 3 contact
+        let alex = try dataManager.createPerson(
+            name: "Alex Jordan",
+            phone: "+1 (415) 555-0344",
+            email: "alex.j@email.com",
+            birthday: makeDate(month: 2, day: 14, year: 1994),
+            notes: "Sam's partner.",
+            isDemo: true,
+            color: "#F1C40F"
+        )
+        
         // Partner relationship (Jake & Emma)
         try dataManager.createRelationship(from: jake, to: sarah, type: .partner)
         
@@ -180,6 +212,11 @@ final class DemoDataService {
         // Emma and Mia are friends (cross-pond connection)
         try dataManager.createRelationship(from: emma, to: mia, type: .friend)
         
+        // Multi-level connections (Depth 2 & 3)
+        try dataManager.createRelationship(from: david, to: chris, type: .coworker)
+        try dataManager.createRelationship(from: jake, to: sam, type: .friend)
+        try dataManager.createRelationship(from: sam, to: alex, type: .partner)
+        
         // ── Explicit Circle Assignments (for contacts not auto-assigned) ──
         
         if let familyCircle {
@@ -192,6 +229,7 @@ final class DemoDataService {
         if let proCircle {
             try dataManager.addToCircle(david, circle: proCircle)
             try dataManager.addToCircle(lisa, circle: proCircle)
+            try dataManager.addToCircle(chris, circle: proCircle)
         }
         
         // ── Custom "Book Club" Pond ──
@@ -204,6 +242,17 @@ final class DemoDataService {
         try dataManager.addToCircle(mia, circle: bookClub)
         try dataManager.addToCircle(ryan, circle: bookClub)
         try dataManager.addToCircle(emma, circle: bookClub)
+        
+        // ── Custom "Volleyball" Pond ──
+        let sportsTeam = try dataManager.createCircle(
+            name: "Volley Team",
+            color: "#E67E22",
+            emoji: "🏐",
+            desc: "Weekend recreation"
+        )
+        try dataManager.addToCircle(jake, circle: sportsTeam)
+        try dataManager.addToCircle(sam, circle: sportsTeam)
+        try dataManager.addToCircle(alex, circle: sportsTeam)
     }
     
     // MARK: - Remove Demo Data

@@ -24,7 +24,6 @@ private struct CircleManagerContent: View {
         List {
             ForEach(viewModel.circles) { circle in
                 HStack {
-                    Text(circle.emoji)
                     Text(circle.name)
                         .font(.headline)
                     Spacer()
@@ -60,7 +59,6 @@ private struct CircleManagerContent: View {
                 Form {
                     Section("Details") {
                         TextField("Name", text: $newCircleName)
-                        TextField("Emoji", text: $newCircleEmoji)
                         ColorPicker("Color", selection: $newCircleColor)
                     }
                 }
@@ -73,7 +71,7 @@ private struct CircleManagerContent: View {
                         Button("Create") {
                             viewModel.createCircle(
                                 name: newCircleName,
-                                emoji: newCircleEmoji,
+                                emoji: "",
                                 color: newCircleColor.toHex() ?? "#808080"
                             )
                             showCreateSheet = false

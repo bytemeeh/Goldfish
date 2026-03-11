@@ -128,6 +128,167 @@ public extension View {
     func toastOverlay() -> some View {
         self.modifier(ToastModifier())
     }
+    
+    /// Applies the feature walkthrough overlay
+    func walkthroughOverlay() -> some View {
+        self.modifier(WalkthroughOverlayModifier())
+    }
+}
+
+// MARK: - Walkthrough Overlay Modifier
+struct WalkthroughOverlayModifier: ViewModifier {
+    @EnvironmentObject var walkthroughManager: FeatureWalkthroughManager
+    
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                if walkthroughManager.isActive {
+                    WalkthroughOverlayView()
+                        .transition(AnyTransition.opacity.combined(with: AnyTransition.scale(scale: 0.95)))
+                        .zIndex(10000)
+                }
+            }
+    }
+}
+
+// MARK: - Walkthrough Overlay View
+struct WalkthroughOverlayView: View {
+    @EnvironmentObject var walkthroughManager: FeatureWalkthroughManager
+    
+    @State private var dragOffset: CGFloat = 0
+    
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture { }
+            
+            VStack {
+                Spacer()
+                
+                VStack(spacing: 20) {
+                    // Header: Icon + Skip
+                    HStack {
+                        Image(systemName: walkthroughManager.currentStep.icon)
+                            .font(.title2)
+                            .foregroundColor(.goldfishAccent)
+                        
+                        Spacer()
+                        
+                        if walkthroughManager.currentStep != .complete {
+                            Button(action: { walkthroughManager.skip() }) {
+                                Text("Skip")
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(.white.opacity(0.4))
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                    
+                    // Title + Description
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(walkthroughManager.currentStep.title)
+                            .font(.title3.bold())
+                            .foregroundColor(.white)
+                        
+                        Text(walkthroughManager.currentStep.description)
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.8))
+                            .lineLimit(4)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    // Navigation Buttons
+                    HStack(spacing: 0) {
+                        // Left Button Container (Back)
+                        if walkthroughManager.currentStep != .welcome {
+                            Button(action: { walkthroughManager.previousStep() }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "chevron.left")
+                                    Text("Back")
+                                }
+                                .font(.subheadline.bold())
+                                .foregroundColor(.white)
+                                .frame(width: 110, height: 44)
+                                .background(Color.white.opacity(0.1))
+                                .cornerRadius(12)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                            }
+                        } else {
+                            // Invisible placeholder to maintain exact symmetry
+                            Color.clear.frame(width: 110, height: 44)
+                        }
+                        
+                        Spacer(minLength: 8)
+                        
+                        // Center Dots
+                        HStack(spacing: 6) {
+                            ForEach(WalkthroughStep.displayableSteps) { step in
+                                Circle()
+                                    .fill(walkthroughManager.currentStep == step ? Color.goldfishAccent : Color.white.opacity(0.2))
+                                    .frame(width: 6, height: 6)
+                            }
+                        }
+                        
+                        Spacer(minLength: 8)
+                        
+                        // Right Button Container (Next / Get Started)
+                        Button(action: { walkthroughManager.nextStep() }) {
+                            HStack(spacing: 4) {
+                                if walkthroughManager.currentStep == .complete {
+                                    Text("Get Started")
+                                } else {
+                                    Text("Next")
+                                    Image(systemName: "chevron.right")
+                                }
+                            }
+                            .font(.subheadline.bold())
+                            .foregroundColor(.black)
+                            .frame(width: 110, height: 44)
+                            .background(Color.goldfishAccent)
+                            .cornerRadius(12)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        }
+                    }
+                }
+                .padding(24)
+                .background(
+                    RoundedRectangle(cornerRadius: 24)
+                        .fill(Color(red: 0x2A/255, green: 0x24/255, blue: 0x20/255))
+                        .shadow(color: .black.opacity(0.35), radius: 20, y: 10)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+                .padding(.horizontal, 20)
+                .padding(.bottom, 30)
+                .offset(x: dragOffset)
+                .gesture(
+                    DragGesture()
+                        .onChanged { gesture in
+                            dragOffset = gesture.translation.width
+                        }
+                        .onEnded { gesture in
+                            if gesture.translation.width < -100 {
+                                if walkthroughManager.currentStep != WalkthroughStep.displayableSteps.last {
+                                    walkthroughManager.nextStep()
+                                }
+                            } else if gesture.translation.width > 100 {
+                                walkthroughManager.previousStep()
+                            }
+                            withAnimation(.spring()) {
+                                dragOffset = 0
+                            }
+                        }
+                )
+            }
+        }
+        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: walkthroughManager.currentStep)
+    }
 }
 
 // MARK: - Identifiable Wrapper

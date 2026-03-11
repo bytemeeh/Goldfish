@@ -289,11 +289,11 @@ final class GraphLayoutTests: XCTestCase {
         try manager.createRelationship(from: friend, to: friendOfFriend, type: .friend)
 
         let levels = try manager.buildGraphLayout()!
-        XCTAssertEqual(levels.count, 3)
+        // ME is excluded from visible levels: depth 0 = Friend, depth 1 = Friend of Friend
+        XCTAssertEqual(levels.count, 2)
         XCTAssertEqual(levels[0].depth, 0)
-        XCTAssertEqual(levels[0].allContacts.count, 1) // Me
-        XCTAssertEqual(levels[1].allContacts.count, 1) // Friend
-        XCTAssertEqual(levels[2].allContacts.count, 1) // Friend of Friend
+        XCTAssertEqual(levels[0].allContacts.count, 1) // Friend
+        XCTAssertEqual(levels[1].allContacts.count, 1) // Friend of Friend
     }
 
     /// Orphans are excluded from graph layout.

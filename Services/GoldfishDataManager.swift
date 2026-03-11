@@ -278,6 +278,10 @@ final class GoldfishDataManager: ObservableObject {
 
         let relationship = Relationship(from: from, to: to, type: type, isPrimary: isPrimary)
         context.insert(relationship)
+        
+        // Explicitly maintain in-memory arrays to workaround SwiftData caching
+        from.outgoingRelationships.append(relationship)
+        to.incomingRelationships.append(relationship)
 
         // Auto-assign circles
         try autoAssignCircle(for: from, relationshipType: type)
@@ -289,6 +293,10 @@ final class GoldfishDataManager: ObservableObject {
 
     /// Deletes a relationship.
     func deleteRelationship(_ relationship: Relationship) throws {
+        // Explicitly maintain in-memory arrays
+        relationship.fromContact.outgoingRelationships.removeAll { $0.id == relationship.id }
+        relationship.toContact.incomingRelationships.removeAll { $0.id == relationship.id }
+        
         context.delete(relationship)
         try context.save()
     }
@@ -597,13 +605,23 @@ final class GoldfishDataManager: ObservableObject {
 
     /// Clears all data from the database.
     func resetAllData() throws {
-        // Order of deletion to respect relationships if needed, 
-        // though cascade delete is configured on Person.
-        try context.delete(model: CircleContact.self)
-        try context.delete(model: Relationship.self)
-        try context.delete(model: Location.self)
-        try context.delete(model: GoldfishCircle.self)
-        try context.delete(model: Person.self)
+        // Fetch and delete all models manually to ensure reliable deletion
+        // order matters to avoid constraint issues during bulk operations
+        let circleContacts = try context.fetch(FetchDescriptor<CircleContact>())
+        for cc in circleContacts { context.delete(cc) }
+        
+        let relationships = try context.fetch(FetchDescriptor<Relationship>())
+        for rel in relationships { context.delete(rel) }
+        
+        let locations = try context.fetch(FetchDescriptor<Location>())
+        for loc in locations { context.delete(loc) }
+        
+        let circles = try context.fetch(FetchDescriptor<GoldfishCircle>())
+        for circle in circles { context.delete(circle) }
+        
+        let persons = try context.fetch(FetchDescriptor<Person>())
+        for person in persons { context.delete(person) }
+        
         try context.save()
     }
 }
