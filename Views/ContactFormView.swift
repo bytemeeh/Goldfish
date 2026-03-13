@@ -6,7 +6,6 @@ struct ContactFormView: View {
     private let logger = Logger(subsystem: "com.goldfish.app", category: "ContactFormView")
     @Environment(\.dismiss) private var dismiss
     @StateObject var viewModel: ContactFormViewModel
-    @State private var showMoreDetails = false
     
     // Injected for circle picking
     @EnvironmentObject var dataManager: GoldfishDataManager
@@ -111,60 +110,45 @@ struct ContactFormView: View {
                     }
                 }
 
-                // MARK: - More Details Toggle
-                    Section {
-                        Button(action: {
-                            withAnimation { showMoreDetails.toggle() }
-                        }) {
-                            HStack {
-                                Text(showMoreDetails ? "Hide Details" : "Add More Details...")
-                                Spacer()
-                                Image(systemName: showMoreDetails ? "chevron.up" : "chevron.down")
-                            }
-                            .foregroundColor(.accentColor)
-                        }
-                    }
+                // MARK: - Additional Info
+                Section("Additional Info") {
+                    TextField("Email", text: $viewModel.email)
+                        .keyboardType(.emailAddress)
+                        .textContentType(.emailAddress)
+                        .autocapitalization(.none)
                     
-                    if showMoreDetails {
-                        Section("Additional Info") {
-                            TextField("Email", text: $viewModel.email)
-                                .keyboardType(.emailAddress)
-                                .textContentType(.emailAddress)
-                                .autocapitalization(.none)
-                            
-                            Toggle("Favorite", isOn: $viewModel.isFavorite)
-                        }
-                        
-                        Section("Notes") {
-                            TextEditor(text: $viewModel.notes)
-                                .frame(minHeight: 100)
-                        }
-                    
-                    Section("Appearance") {
-                        ColorPicker("Node Color", selection: Binding(
-                            get: { Color(hex: viewModel.colorHex) },
-                            set: { viewModel.colorHex = $0.toHex() ?? "#808080" }
-                        ))
+                    Toggle("Favorite", isOn: $viewModel.isFavorite)
+                }
+                
+                Section("Notes") {
+                    TextEditor(text: $viewModel.notes)
+                        .frame(minHeight: 100)
+                }
+            
+                Section("Appearance") {
+                    ColorPicker("Node Color", selection: Binding(
+                        get: { Color(hex: viewModel.colorHex) },
+                        set: { viewModel.colorHex = $0.toHex() ?? "#808080" }
+                    ))
+                }
+                
+                Section("Birthday") {
+                    Toggle("Include Birthday", isOn: $viewModel.includeBirthday)
+                    if viewModel.includeBirthday {
+                        DatePicker("Date", selection: $viewModel.birthday, displayedComponents: .date)
                     }
-                    
-                    Section("Birthday") {
-                        Toggle("Include Birthday", isOn: $viewModel.includeBirthday)
-                        if viewModel.includeBirthday {
-                            DatePicker("Date", selection: $viewModel.birthday, displayedComponents: .date)
-                        }
-                    }
-                    
-                    Section("Location") {
-                        TextField("Street", text: $viewModel.street)
-                        TextField("City", text: $viewModel.city)
-                        TextField("State", text: $viewModel.state)
-                        TextField("ZIP/Postal", text: $viewModel.postalCode)
-                        TextField("Country", text: $viewModel.country)
-                    }
-                    
-                    Section("Tags") {
-                        TextField("Comma separated (e.g. gym, work)", text: $viewModel.tagsString)
-                    }
+                }
+                
+                Section("Location") {
+                    TextField("Street", text: $viewModel.street)
+                    TextField("City", text: $viewModel.city)
+                    TextField("State", text: $viewModel.state)
+                    TextField("ZIP/Postal", text: $viewModel.postalCode)
+                    TextField("Country", text: $viewModel.country)
+                }
+                
+                Section("Tags") {
+                    TextField("Comma separated (e.g. gym, work)", text: $viewModel.tagsString)
                 }
                 
                 // MARK: - Danger Zone
@@ -194,7 +178,7 @@ struct ContactFormView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("← Back") {
+                    Button("Cancel") {
                         dismiss()
                     }
                 }

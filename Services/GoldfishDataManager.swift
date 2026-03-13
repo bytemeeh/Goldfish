@@ -2,6 +2,15 @@ import Foundation
 import SwiftData
 import UIKit
 
+// MARK: - OptionalUpdate Helper
+
+/// An explicit opt-in for updating optional fields. It distinguishes between
+/// "retain the current value" (`.ignore`) and "set a new value, including nil" (`.set`).
+public enum OptionalUpdate<T> {
+    case ignore
+    case set(T?)
+}
+
 // MARK: - DataManager Errors
 
 /// Errors thrown by `GoldfishDataManager` for business rule violations.
@@ -68,10 +77,7 @@ final class GoldfishDataManager: ObservableObject {
     init(context: ModelContext) {
         self.context = context
     }
-
-
     // MARK: - Preview Init (see Extensions.swift)
-
 
     // MARK: ───────────────────────────────────────────────
     // MARK: Person CRUD
@@ -114,7 +120,7 @@ final class GoldfishDataManager: ObservableObject {
         }
 
         // Compress photo if provided
-        let compressed = photoData.flatMap { compressPhoto($0) }
+        let compressed: Data? = photoData.flatMap { compressPhoto($0) }
 
         let person = Person(
             name: name,
@@ -145,34 +151,34 @@ final class GoldfishDataManager: ObservableObject {
     func updatePerson(
         _ person: Person,
         name: String? = nil,
-        phone: String? = nil,
-        email: String? = nil,
-        birthday: Date? = nil,
-        notes: String? = nil,
+        phone: OptionalUpdate<String> = .ignore,
+        email: OptionalUpdate<String> = .ignore,
+        birthday: OptionalUpdate<Date> = .ignore,
+        notes: OptionalUpdate<String> = .ignore,
         isFavorite: Bool? = nil,
         tags: [String]? = nil,
         color: String? = nil,
-        photoData: Data? = nil,
-        street: String? = nil,
-        city: String? = nil,
-        state: String? = nil,
-        country: String? = nil,
-        postalCode: String? = nil
+        photoData: OptionalUpdate<Data> = .ignore,
+        street: OptionalUpdate<String> = .ignore,
+        city: OptionalUpdate<String> = .ignore,
+        state: OptionalUpdate<String> = .ignore,
+        country: OptionalUpdate<String> = .ignore,
+        postalCode: OptionalUpdate<String> = .ignore
     ) throws {
         if let name { person.name = name }
-        if let phone { person.phone = phone }
-        if let email { person.email = email }
-        if let birthday { person.birthday = birthday }
-        if let notes { person.notes = notes }
+        if case .set(let v) = phone { person.phone = v }
+        if case .set(let v) = email { person.email = v }
+        if case .set(let v) = birthday { person.birthday = v }
+        if case .set(let v) = notes { person.notes = v }
         if let isFavorite { person.isFavorite = isFavorite }
         if let tags { person.tags = tags }
         if let color { person.color = color }
-        if let photoData { person.photoData = compressPhoto(photoData) }
-        if let street { person.street = street }
-        if let city { person.city = city }
-        if let state { person.state = state }
-        if let country { person.country = country }
-        if let postalCode { person.postalCode = postalCode }
+        if case .set(let v) = photoData { person.photoData = v.flatMap { compressPhoto($0) } }
+        if case .set(let v) = street { person.street = v }
+        if case .set(let v) = city { person.city = v }
+        if case .set(let v) = state { person.state = v }
+        if case .set(let v) = country { person.country = v }
+        if case .set(let v) = postalCode { person.postalCode = v }
 
         person.updatedAt = Date()
         try context.save()
@@ -193,7 +199,7 @@ final class GoldfishDataManager: ObservableObject {
     func fetchAllPersons(
         sortBy: SortDescriptor<Person> = SortDescriptor(\Person.name)
     ) throws -> [Person] {
-        let descriptor = FetchDescriptor<Person>(sortBy: [sortBy])
+        let descriptor: FetchDescriptor<Person> = FetchDescriptor<Person>(sortBy: [sortBy])
         return try context.fetch(descriptor)
     }
 
@@ -534,8 +540,8 @@ final class GoldfishDataManager: ObservableObject {
     }
 
     /// Searches contacts with ranked results.
-    func search(query: String) throws -> [Person] {
-        try graphService.search(query: query, context: context)
+    func search(query: String, demoMode: Bool = false) throws -> [Person] {
+        try graphService.search(query: query, context: context, demoMode: demoMode)
     }
 
     // MARK: ───────────────────────────────────────────────

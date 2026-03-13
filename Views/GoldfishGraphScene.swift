@@ -131,60 +131,168 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         currentZoom = clamped
         let action = SKAction.scale(to: 1.0 / clamped, duration: 0.25)
         action.timingMode = .easeInEaseOut
-        cameraNode.run(action)
+        cameraNode.run(action, withKey: "cameraScale")
         updateLOD()
     }
 
     func didUpdateCameraPosition(_ position: CGPoint) {
         let action = SKAction.move(to: position, duration: 0.25)
         action.timingMode = .easeInEaseOut
-        cameraNode.run(action)
+        cameraNode.run(action, withKey: "cameraMove")
+    }
+
+    override func didChangeSize(_ oldSize: CGSize) {
+        super.didChangeSize(oldSize)
+        // Ensure camera and content are still aligned if size changes
+        // P0-3 Fix: Prevent catastrophic zoom bugs by ignoring invalid sizes
+        guard size.width >= 50 && size.height >= 50 else { return }
+        
+        if oldSize == .zero && size != .zero {
+            graphDelegate?.resetCamera()
+        }
     }
 
     func centerOnContact(_ id: UUID) {
         guard let node = personNodes[id] else { return }
-        let action = SKAction.move(to: node.position, duration: 0.4)
-        action.timingMode = .easeInEaseOut
-        cameraNode.run(action)
-    }
-    
-    func centerOnPond(name: String) {
-        // Find member nodes for this pond
-        let info = pondInfos.first(where: { $0.circleName == name })
-        let memberNodes = info?.memberIDs.compactMap { personNodes[$0] } ?? []
         
-        guard !memberNodes.isEmpty else { return }
-        
-        // Calculate centroid
-        var cx: CGFloat = 0, cy: CGFloat = 0
-        for node in memberNodes { cx += node.position.x; cy += node.position.y }
-        cx /= CGFloat(memberNodes.count)
-        cy /= CGFloat(memberNodes.count)
-        
-        // Move camera
-        let target = CGPoint(x: cx, y: cy)
-        let moveAction = SKAction.move(to: target, duration: 0.5)
+        // Always zoom to a comfortable level when centering on a contact
+        let targetZoom: CGFloat = 1.0
+        let moveAction = SKAction.move(to: node.position, duration: 0.5)
         moveAction.timingMode = .easeInEaseOut
-        
-        // If pond is very small/tight, zoom in a bit. If large, zoom out.
-        var maxDist: CGFloat = 0
-        for node in memberNodes {
-            let d = hypot(node.position.x - cx, node.position.y - cy)
-            if d > maxDist { maxDist = d }
-        }
-        
-        // Target a zoom where the pond fills about 60% of the screen
-        let viewDim = min(size.width, size.height)
-        let targetZoom = min(max((viewDim * 0.6) / (max(maxDist, 50) * 2), 0.4), 1.5)
         
         let scaleAction = SKAction.scale(to: 1.0 / targetZoom, duration: 0.5)
         scaleAction.timingMode = .easeInEaseOut
         
-        cameraNode.run(SKAction.group([moveAction, scaleAction]))
+        cameraNode.run(moveAction, withKey: "cameraMove")
+        cameraNode.run(scaleAction, withKey: "cameraScale")
+        
+        currentZoom = targetZoom
+        updateLOD()
+        graphDelegate?.updateCameraFromScene(position: node.position, zoom: targetZoom)
+    }
+    
+    func centerOnMe() {
+        // Find the user's ("Me") node
+        for (id, node) in personNodes {
+            if node.isMe {
+                centerOnContact(id)
+                return
+            }
+        }
+        
+        // Fallback: If no "Me" node, center on the very first node found instead of zooming all the way out.
+        if let firstID = personNodes.keys.first {
+            centerOnContact(firstID)
+            return
+        }
+        
+        // Fallback to fitting the whole graph if literally no nodes
+        fitToGraph()
+    }
+    
+    func centerOnPond(name: String) {
+        let info = pondInfos.first(where: { $0.circleName == name })
+        let memberIDs = info?.memberIDs ?? []
+        fitToNodes(memberIDs, minZoom: 0.3, maxZoom: 1.0, padding: 80.0)
+    }
+    
+    func fitToGraph() {
+        let allIDs = Array(personNodes.keys)
+        fitToNodes(allIDs, minZoom: 0.1, maxZoom: 2.0, padding: 120.0)
+    }
+    
+    private func fitToNodes(_ ids: [UUID], minZoom: CGFloat, maxZoom: CGFloat, padding: CGFloat) {
+        let nodes = ids.compactMap { personNodes[$0] }
+        guard !nodes.isEmpty else { return }
+        
+        var minX: CGFloat = .greatestFiniteMagnitude
+        var maxX: CGFloat = -.greatestFiniteMagnitude
+        var minY: CGFloat = .greatestFiniteMagnitude
+        var maxY: CGFloat = -.greatestFiniteMagnitude
+        
+        for node in nodes {
+            minX = min(minX, node.position.x)
+            maxX = max(maxX, node.position.x)
+            minY = min(minY, node.position.y)
+            maxY = max(maxY, node.position.y)
+        }
+        
+        let width = max(maxX - minX, 100) + (padding * 2)
+        let height = max(maxY - minY, 100) + (padding * 2)
+        
+        let cx = (minX + maxX) / 2
+        let cy = (minY + maxY) / 2
+        let target = CGPoint(x: cx, y: cy)
+        
+        let viewDimWidth = size.width
+        let viewDimHeight = size.height
+        guard viewDimWidth > 0 && viewDimHeight > 0 else { return }
+        
+        let zoomX = viewDimWidth / width
+        let zoomY = viewDimHeight / height
+        var targetZoom = min(zoomX, zoomY)
+        
+        targetZoom = min(max(targetZoom, minZoom), maxZoom)
+        
+        let moveAction = SKAction.move(to: target, duration: 0.5)
+        moveAction.timingMode = .easeInEaseOut
+        
+        let scaleAction = SKAction.scale(to: 1.0 / targetZoom, duration: 0.5)
+        scaleAction.timingMode = .easeInEaseOut
+        
+        cameraNode.run(moveAction, withKey: "cameraMove")
+        cameraNode.run(scaleAction, withKey: "cameraScale")
         
         currentZoom = targetZoom
         updateLOD()
         graphDelegate?.updateCameraFromScene(position: target, zoom: targetZoom)
+    }
+
+    func didUpdatePondFilter(_ name: String?) {
+        soloedPondName = name
+        guard let name = name else {
+            // Restore normal appearance
+            let restoreAction = SKAction.fadeAlpha(to: 1.0, duration: 0.3)
+            for (_, node) in personNodes { node.run(restoreAction) }
+            for (_, outline) in pondOutlines { outline.run(restoreAction) }
+            for (_, edge) in edgeNodes { edge.run(SKAction.fadeAlpha(to: 0.6, duration: 0.3)) }
+            return
+        }
+        
+        // Find member IDs
+        let memberIDs = pondInfos.first(where: { $0.circleName == name })?.memberIDs ?? []
+        let memberSet = Set(memberIDs)
+        
+        let dimAction = SKAction.fadeAlpha(to: 0.15, duration: 0.3)
+        let highlightAction = SKAction.fadeAlpha(to: 1.0, duration: 0.3)
+        
+        for (id, node) in personNodes {
+            if memberSet.contains(id) || node.isMe {
+                node.run(highlightAction)
+            } else {
+                node.run(dimAction)
+            }
+        }
+        
+        for (pondName, outline) in pondOutlines {
+            outline.run(pondName == name ? highlightAction : dimAction)
+        }
+        
+        for (key, edge) in edgeNodes {
+            let parts = key.split(separator: "-")
+            if parts.count == 2,
+               let u1 = UUID(uuidString: String(parts[0])),
+               let u2 = UUID(uuidString: String(parts[1])) {
+                let p1InPond = memberSet.contains(u1)
+                let p2InPond = memberSet.contains(u2)
+                let p1IsMe = personNodes[u1]?.isMe == true
+                let p2IsMe = personNodes[u2]?.isMe == true
+                
+                let isRelevant = (p1InPond && p2InPond) || (p1InPond && p2IsMe) || (p2InPond && p1IsMe)
+                
+                edge.run(isRelevant ? SKAction.fadeAlpha(to: 0.6, duration: 0.3) : dimAction)
+            }
+        }
     }
 
     func requestConnection(from: UUID, to: UUID) {
@@ -193,7 +301,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     
     func didUpdateSearchMatches(_ ids: Set<UUID>?) {
         activeSearchIDs = ids
-        applySearchDimming()
+        evaluateNodeVisibility(animated: false)
     }
     
     func didLongPressContact(_ id: UUID) {
@@ -230,7 +338,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         settleTimer?.invalidate()
         settleTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
             DispatchQueue.main.async {
-                self?.physicsWorld.speed = 0.1
+                self?.physicsWorld.speed = 0.0  // Fully freeze physics on settle
                 self?.physicsSettled = true
                 self?.applyIdleFloatingAnimation()
             }
@@ -238,10 +346,24 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     }
 
     private var edgeSprings: [String: SKPhysicsJointSpring] = [:]
+    private var initialFitCompleted = false
 
     // MARK: - Graph Building
 
     private func updateGraph(_ levels: [GraphLevel]) {
+        updateNodesAndEdges(levels: levels)
+        evaluateNodeVisibility(animated: false)
+
+        if !initialFitCompleted {
+            // Use fitToGraph after physics has had time to spread nodes out
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+                self?.fitToGraph()
+                self?.initialFitCompleted = true
+            }
+        }
+    }
+
+    private func updateNodesAndEdges(levels: [GraphLevel]) {
         physicsSettled = false
         physicsWorld.speed = 1.0
         
@@ -268,9 +390,11 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         
         // Update or create person nodes
         for level in levels {
-            let radius = CGFloat(level.depth * 140 + 20)
             let levelContacts = level.allContacts
             let count = levelContacts.count
+            
+            // P0-1 Fix: Dynamically scale radius based on contact count to prevent physics explosion
+            let radius = CGFloat(level.depth * 140) + max(40.0, CGFloat(count) * 18.0)
 
             for (index, person) in levelContacts.enumerated() {
                 if let node = personNodes[person.id] {
@@ -281,9 +405,9 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
                     let personNode = PersonNode(person: person, depth: level.depth)
                     
                     let angle = (CGFloat(index) / CGFloat(max(count, 1))) * 2 * .pi
-                    // Add a tiny random jitter to ensure they never start at exactly the same point
-                    let jitterX = CGFloat.random(in: -5...5)
-                    let jitterY = CGFloat.random(in: -5...5)
+                    // Add more random jitter to ensure they never start at exactly the same point
+                    let jitterX = CGFloat.random(in: -30...30)
+                    let jitterY = CGFloat.random(in: -30...30)
                     
                     // All levels (including 0) should use the radius for initial circular placement
                     let x = radius * cos(angle) + jitterX
@@ -293,12 +417,12 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
 
                     let body = SKPhysicsBody(circleOfRadius: 70)
                     body.mass = 1.0
-                    body.linearDamping = 1.5
+                    body.linearDamping = 4.0 // Increased to prevent orbital spinning
                     body.angularDamping = 2.0
                     body.isDynamic = true
                     body.allowsRotation = false
                     body.categoryBitMask = 1
-                    body.collisionBitMask = 1
+                    body.collisionBitMask = 0 // Disabled physical collision to allow radial repulsion exclusively
                     body.fieldBitMask = 1
                     personNode.physicsBody = body
 
@@ -443,16 +567,18 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         }
 
         // Settle logic
+        physicsWorld.speed = 2.0
+        physicsSettled = false
         settleTimer?.invalidate()
         settleTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
             DispatchQueue.main.async {
-                self?.physicsWorld.speed = 0.1
+                self?.physicsWorld.speed = 0.0  // Fully freeze physics on settle
                 self?.physicsSettled = true
                 self?.applyIdleFloatingAnimation()
             }
         }
         
-        applySearchDimming()
+        evaluateNodeVisibility()
     }
 
 
@@ -473,8 +599,8 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     /// Pulls nodes toward vertical column positions so ponds stack top-to-bottom
     /// with clear separation, allowing smooth vertical scrolling between them.
     private func applyQuadrantForces() {
-        // Vertical spacing between pond centers
-        let verticalSpacing: CGFloat = 600
+        // Reduced vertical spacing for better visibility on mobile
+        let verticalSpacing: CGFloat = 450 
 
         // Assign each pond a vertical slot centered around y=0
         var assignedAnchors: [String: CGPoint] = [:]
@@ -501,8 +627,9 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             pondOrder.append(unassignedKey)
         }
 
-        // Center the column: first pond at top, last at bottom
-        let totalHeight = CGFloat(max(pondOrder.count - 1, 0)) * verticalSpacing
+        // Center the column so it straddles y=0 or starts at y=0 if few ponds
+        let count = pondOrder.count
+        let totalHeight = CGFloat(max(count - 1, 0)) * verticalSpacing
         let startY = totalHeight / 2
 
         for name in pondOrder {
@@ -514,11 +641,21 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         for (_, node) in personNodes {
             guard let body = node.physicsBody else { continue }
             
+            // Special handling for "Me" - always keep centered
+            if node.isMe {
+                let dx = -node.position.x
+                let dy = -node.position.y
+                let dist = max(hypot(dx, dy), 1)
+                let forceMag: CGFloat = 60.0
+                body.applyForce(CGVector(dx: (dx/dist)*forceMag, dy: (dy/dist)*forceMag))
+                continue
+            }
+            
             // Find which pond this node belongs to
             let circleName = pondInfos.first(where: { $0.memberIDs.contains(node.personID) })?.circleName ?? unassignedKey
             guard let target = assignedAnchors[circleName] else { continue }
             
-            // Apply a strong force towards the assigned vertical slot
+            // Apply a force towards the assigned vertical slot
             let dx = target.x - node.position.x
             let dy = target.y - node.position.y
             let distance = max(hypot(dx, dy), 1)
@@ -708,10 +845,12 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     // MARK: - Update Loop
 
     override func update(_ currentTime: TimeInterval) {
-        // Prevent exact overlaps by giving a tiny nudge if nodes are too close
         let nodesArray = Array(personNodes.values)
-        if nodesArray.count > 1 {
-            for i in 0..<nodesArray.count {
+        
+        if !physicsSettled {
+            // Prevent exact overlaps by giving a tiny nudge if nodes are too close
+            if nodesArray.count > 1 {
+                for i in 0..<nodesArray.count {
                 for j in i+1..<nodesArray.count {
                     let n1 = nodesArray[i]
                     let n2 = nodesArray[j]
@@ -726,8 +865,21 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
                 }
             }
         }
+        
+        // P0-5 Fix: Limit maximum velocity to prevent nodes from flying off uncontrollably
+        for node in nodesArray {
+            if let body = node.physicsBody {
+                let maxSpeed: CGFloat = 800.0
+                let speedStr = hypot(body.velocity.dx, body.velocity.dy)
+                if speedStr > maxSpeed {
+                    body.velocity = CGVector(dx: body.velocity.dx / speedStr * maxSpeed, dy: body.velocity.dy / speedStr * maxSpeed)
+                }
+            }
+        }
 
-        applyQuadrantForces()
+        if !physicsSettled {
+            applyQuadrantForces()
+        }
 
         // 1. Calculate current metrics for all active ponds
         var allMetrics: [PondMetrics] = []
@@ -756,11 +908,13 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             allMetrics.append(PondMetrics(name: info.circleName, center: CGPoint(x: cx, y: cy), radius: pondRadius, memberIDs: info.memberIDs))
         }
 
-        // 2. Apply repulsion between ponds to prevent overlap
-        applyPondRepulsion(metrics: allMetrics)
-        
-        // 2.5 Apply repulsion for unassigned/non-member nodes so they don't sit inside ponds
-        applyPondNodeRepulsion(metrics: allMetrics)
+        if !physicsSettled {
+            // 2. Apply repulsion between ponds to prevent overlap
+            applyPondRepulsion(metrics: allMetrics)
+            
+            // 2.5 Apply repulsion for unassigned/non-member nodes so they don't sit inside ponds
+            applyPondNodeRepulsion(metrics: allMetrics)
+        }
 
         // 3. Update edge line paths to follow node positions
         for (edgeKey, edgeNode) in edgeNodes {
@@ -838,42 +992,64 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     
     // MARK: - Search Filtering
     
-    private func applySearchDimming() {
-        let duration: TimeInterval = 0.3
+    private func evaluateNodeVisibility(animated: Bool = true) {
+        let duration: TimeInterval = animated ? 0.3 : 0.0
+        let isSearchActive = activeSearchIDs != nil
+        let isSoloActive = soloedPondName != nil
         
-        let targetAlphaNode: CGFloat = activeSearchIDs == nil ? 1.0 : 0.2
-        let targetAlphaEdge: CGFloat = activeSearchIDs == nil ? 0.6 : 0.05
-        let targetAlphaPond: CGFloat = activeSearchIDs == nil ? 0.20 : 0.05
-        let targetAlphaPondFill: CGFloat = activeSearchIDs == nil ? 0.08 : 0.02
-        let targetAlphaText: CGFloat = activeSearchIDs == nil ? 0.7 : 0.1
+        let soloedPondInfo = soloedPondName.flatMap { name in pondInfos.first { $0.circleName == name } }
+        let soloedNodeIDs = Set(soloedPondInfo?.memberIDs ?? [])
         
         for (id, node) in personNodes {
-            let isMatched = activeSearchIDs?.contains(id) ?? true
-            let alpha = isMatched ? 1.0 : targetAlphaNode
-            // Matched nodes pop to front
-            node.zPosition = isMatched ? 5 : 0
+            var alpha: CGFloat = 1.0
+            var popToFront = false
+            
+            if isSearchActive {
+                if activeSearchIDs?.contains(id) == true {
+                    alpha = 1.0
+                    popToFront = true
+                } else {
+                    alpha = 0.2
+                }
+            }
+            
+            if isSoloActive {
+                if soloedNodeIDs.contains(id) {
+                    // keep alpha
+                } else {
+                    alpha = min(alpha, 0.15)
+                }
+            }
             
             let action = SKAction.fadeAlpha(to: alpha, duration: duration)
             action.timingMode = .easeInEaseOut
             node.run(action)
+            node.zPosition = popToFront ? 5 : 0
         }
         
+        let edgeAlpha: CGFloat = isSearchActive ? 0.05 : (isSoloActive ? 0.05 : 0.6)
         for (_, edge) in edgeNodes {
-            let action = SKAction.fadeAlpha(to: targetAlphaEdge, duration: duration)
+            let action = SKAction.fadeAlpha(to: edgeAlpha, duration: duration)
             action.timingMode = .easeInEaseOut
             edge.run(action)
         }
         
         for (name, outline) in pondOutlines {
-            // Outlines stroke
-            let oldStroke = (GoldfishUIColor(hex: pondInfos.first(where: { $0.circleName == name })?.color ?? "") ?? UIColor.systemGray3).withAlphaComponent(targetAlphaPond)
-            let oldFill = (GoldfishUIColor(hex: pondInfos.first(where: { $0.circleName == name })?.color ?? "") ?? UIColor.systemGray3).withAlphaComponent(targetAlphaPondFill)
-            outline.strokeColor = oldStroke
-            outline.fillColor = oldFill
+            let isThisSolo = (name == soloedPondName)
+            let pondAlpha: CGFloat = isSearchActive ? 0.05 : (isSoloActive ? (isThisSolo ? 1.0 : 0.1) : 0.20)
+            let fillAlpha: CGFloat = isSearchActive ? 0.02 : (isSoloActive ? (isThisSolo ? 0.08 : 0.02) : 0.08)
+            
+            let colorHex = pondInfos.first(where: { $0.circleName == name })?.color ?? ""
+            let baseColor = GoldfishUIColor(hex: colorHex) ?? UIColor.systemGray3
+            
+            outline.strokeColor = baseColor.withAlphaComponent(pondAlpha)
+            outline.fillColor = baseColor.withAlphaComponent(fillAlpha)
         }
         
-        for (_, label) in pondLabels {
-            let action = SKAction.fadeAlpha(to: targetAlphaText, duration: duration)
+        for (name, label) in pondLabels {
+            let isThisSolo = (name == soloedPondName)
+            let labelAlpha: CGFloat = isSearchActive ? 0.1 : (isSoloActive ? (isThisSolo ? 1.0 : 0.1) : 0.7)
+            let action = SKAction.fadeAlpha(to: labelAlpha, duration: duration)
             action.timingMode = .easeInEaseOut
             label.run(action)
         }
@@ -908,6 +1084,10 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
                 
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 
+                if physicsSettled {
+                    physicsWorld.speed = 1.0
+                }
+                
                 let scaleUp = SKAction.scale(to: 1.2, duration: 0.15)
                 scaleUp.timingMode = .easeOut
                 node.run(scaleUp)
@@ -927,8 +1107,6 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             let movedDistance = hypot(location.x - dragStartLocation.x, location.y - dragStartLocation.y)
             if movedDistance > 8 { 
                 touchHasMoved = true 
-                // longPressTimer?.invalidate()
-                // longPressTimer = nil
             }
             
             // Fat finger offset: apply +40 to Y only if we've moved
@@ -1027,7 +1205,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         
         node.physicsBody?.isDynamic = true
         node.physicsBody?.categoryBitMask = 1  // Re-enable category
-        node.physicsBody?.collisionBitMask = 1 // Re-enable collision
+        node.physicsBody?.collisionBitMask = 0 // Keep collision disabled
         node.physicsBody?.velocity = .zero
         if physicsSettled {
             applyIdleFloatingAnimation() // restart floating
@@ -1062,6 +1240,19 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         snapTargetID = nil
         draggedNode = nil
         touchHasMoved = false
+        
+        if physicsSettled {
+            physicsWorld.speed = 1.0
+            physicsSettled = false
+            settleTimer?.invalidate()
+            settleTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { [weak self] _ in
+                DispatchQueue.main.async {
+                    self?.physicsWorld.speed = 0.0  // Fully freeze physics on settle
+                    self?.physicsSettled = true
+                    self?.applyIdleFloatingAnimation()
+                }
+            }
+        }
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -1071,7 +1262,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         guard let node = draggedNode else { return }
         node.physicsBody?.isDynamic = true
         node.physicsBody?.categoryBitMask = 1  // Re-enable category
-        node.physicsBody?.collisionBitMask = 1 // Re-enable collision
+        node.physicsBody?.collisionBitMask = 0 // Keep collision disabled
         if let targetID = snapTargetID { personNodes[targetID]?.setHoverGlow(false) }
         if let old = hoverPondName {
             pondOutlines[old]?.strokeColor = UIColor.white.withAlphaComponent(0.2)
@@ -1083,19 +1274,44 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         snapTargetID = nil
         draggedNode = nil
         touchHasMoved = false
+        
+        if physicsSettled {
+            physicsWorld.speed = 1.0
+            physicsSettled = false
+            settleTimer?.invalidate()
+            settleTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { [weak self] _ in
+                DispatchQueue.main.async {
+                    self?.physicsWorld.speed = 0.0  // Fully freeze physics on settle
+                    self?.physicsSettled = true
+                    self?.applyIdleFloatingAnimation()
+                }
+            }
+        }
     }
 
     // MARK: - Gesture Handlers
 
-    @objc private func handlePinch(_ gesture: UIPinchGestureRecognizer) {
-        switch gesture.state {
+    @objc private func handlePinch(_ sender: UIPinchGestureRecognizer) {
+        guard self.view != nil else { return }
+        
+        switch sender.state {
         case .began:
-            lastPinchScale = currentZoom
+            lastPinchScale = sender.scale
         case .changed:
-            let newZoom = min(max(lastPinchScale * gesture.scale, 0.1), 4.0)
-            currentZoom = newZoom
-            cameraNode.setScale(1.0 / newZoom)
+            let delta = sender.scale / lastPinchScale
+            let newZoom = currentZoom * delta
+            
+            // Clamp magnification
+            if newZoom >= 0.1 && newZoom <= 4.0 {
+                currentZoom = newZoom
+                cameraNode.setScale(1.0 / currentZoom)
+            }
+            lastPinchScale = sender.scale
             updateLOD()
+            
+            // P0-6 Fix: Ensure ViewModel knows the exact zoom so +/- buttons calculate correctly
+            graphDelegate?.updateCameraFromScene(position: cameraNode.position, zoom: currentZoom)
+            
         case .ended:
             graphDelegate?.updateCameraFromScene(position: cameraNode.position, zoom: currentZoom)
         default:
@@ -1148,7 +1364,8 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             let scaleAction = SKAction.scale(to: 1.0, duration: 0.3)
             moveAction.timingMode = .easeInEaseOut
             scaleAction.timingMode = .easeInEaseOut
-            cameraNode.run(SKAction.group([moveAction, scaleAction]))
+            cameraNode.run(moveAction, withKey: "cameraMove")
+            cameraNode.run(scaleAction, withKey: "cameraScale")
             updateLOD()
             graphDelegate?.updateCameraFromScene(position: .zero, zoom: 1.0)
         }
@@ -1187,32 +1404,10 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             return
         }
         soloedPondName = name
-        // Dim other ponds and nodes not in this pond
-        let info = pondInfos.first { $0.circleName == name }
-        let validIDs = info?.memberIDs ?? []
-        let validIDSet = Set(validIDs)
-        
-        let fadeAction = SKAction.fadeAlpha(to: 0.15, duration: 0.3)
-        let restoreAction = SKAction.fadeAlpha(to: 1.0, duration: 0.3)
-        
-        for (id, node) in personNodes {
-            if validIDSet.contains(id) {
-                node.run(restoreAction)
-            } else {
-                node.run(fadeAction)
-            }
-        }
-        for (pondName, outline) in pondOutlines {
-            outline.run(pondName == name ? restoreAction : SKAction.fadeAlpha(to: 0.1, duration: 0.3))
-        }
-        for (pondName, label) in pondLabels {
-            label.run(pondName == name ? restoreAction : SKAction.fadeAlpha(to: 0.1, duration: 0.3))
-        }
-        for (_, edge) in edgeNodes {
-            edge.run(SKAction.fadeAlpha(to: 0.05, duration: 0.3))
-        }
+        evaluateNodeVisibility()
         
         // Zoom to centroid of pond
+        let info = pondInfos.first { $0.circleName == name }
         guard let pInfo = info else { return }
         let memberNodes = pInfo.memberIDs.compactMap { personNodes[$0] }
         guard !memberNodes.isEmpty else { return }
@@ -1224,16 +1419,12 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         
         let moveAction = SKAction.move(to: CGPoint(x: cx, y: cy), duration: 0.4)
         moveAction.timingMode = .easeInEaseOut
-        cameraNode.run(moveAction)
+        cameraNode.run(moveAction, withKey: "cameraMove")
     }
 
     private func unsoloAll() {
         soloedPondName = nil
-        let restoreAction = SKAction.fadeAlpha(to: 1.0, duration: 0.3)
-        for (_, node) in personNodes { node.run(restoreAction) }
-        for (_, outline) in pondOutlines { outline.run(restoreAction) }
-        for (_, label) in pondLabels { label.run(restoreAction) }
-        for (_, edge) in edgeNodes { edge.run(SKAction.fadeAlpha(to: 0.6, duration: 0.3)) }
+        evaluateNodeVisibility()
     }
 }
 
@@ -1263,10 +1454,6 @@ final class PersonNode: SKNode {
         let radius: CGFloat = 22
 
         // Circle shape (ring)
-        let activeCircles = person.circleContacts.filter { !$0.manuallyExcluded }
-        let hasCircle = !activeCircles.isEmpty
-        // let isAssigned = hasCircle || !person.isOrphan // Removed unused variable
-
         // Always create unassignedLabel
         let uLabel = SKLabelNode(text: "unassigned")
         uLabel.fontName = "SFProText-Italic"

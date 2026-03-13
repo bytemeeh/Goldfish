@@ -22,7 +22,7 @@ struct ContactRowView: View {
                 photoData: person.photoData,
                 name: person.name,
                 colorHex: person.color,
-                size: 40
+                size: .small
             )
             
             VStack(alignment: .leading, spacing: 2) {
@@ -30,6 +30,17 @@ struct ContactRowView: View {
                     Text(person.name)
                         .font(.body)
                         .foregroundColor(.primary)
+                    if person.isMe {
+                        Text("Me")
+                            .font(.caption2)
+                            .fontWeight(.bold)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.accentColor.opacity(0.15))
+                            .foregroundColor(.accentColor)
+                            .clipShape(Capsule())
+                            .alignmentGuide(.firstTextBaseline) { d in d[.bottom] }
+                    }
                     
                     if person.isFavorite {
                         Image(systemName: "star.fill")

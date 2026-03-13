@@ -1,0 +1,21 @@
+# Strict Static Analysis & Linting Rules
+
+Always adhere to these guidelines when making modifications to this codebase to ensure algorithmic complexity and code structures remain robust.
+
+## Primary Objective
+- Enforce stylistic consistency.
+- Optimize code structure.
+- Eliminate anti-patterns.
+- **Absolute Constraint:** Zero functional degradation. Business logic, runtime execution, algorithmic complexity, and state management must remain strictly identical to the original source.
+
+## Execution Directives
+- **AST Preservation:** Modifications must not alter the underlying Abstract Syntax Tree logic. Refactoring is fundamentally restricted to variable nomenclature, indentation, bracket placement, and deterministic syntactic sugar.
+
+## Scope of Analysis
+- **Styling:** Enforce strict, language-specific styling conventions (e.g., standard swift-lint properties). Prevent trailing spaces, double blank lines, and unused imports.
+- **Cleanup:** Purge unused variables, unreachable code, and redundant imports automatically.
+- **Type Hinting:** Enforce explicit type hinting locally and globally. Standardize documentation blocks without modifying interface boundaries.
+- **Deprecations:** Replace deprecated methods exclusively when the target replacement operates as a 1:1 functional map with an identical execution context and return type.
+
+## Risk Isolation
+If a proposed modification carries a >0% probability of altering runtime behavior (e.g., modifying loop execution order, altering implicit type coercion, changing evaluation mechanisms), abandon the code mutation. Instead, generate a diagnostic flag specifying the line number, the detected code smell, and the technical justification for preserving the original state.

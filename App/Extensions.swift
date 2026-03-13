@@ -133,6 +133,8 @@ public extension View {
     func walkthroughOverlay() -> some View {
         self.modifier(WalkthroughOverlayModifier())
     }
+    
+
 }
 
 // MARK: - Walkthrough Overlay Modifier
@@ -154,20 +156,28 @@ struct WalkthroughOverlayModifier: ViewModifier {
 // MARK: - Walkthrough Overlay View
 struct WalkthroughOverlayView: View {
     @EnvironmentObject var walkthroughManager: FeatureWalkthroughManager
+    @EnvironmentObject var demoModeManager: DemoModeManager
+    @EnvironmentObject var dataManager: GoldfishDataManager
     
     @State private var dragOffset: CGFloat = 0
+    // P0-5 Fix: State to show post-onboarding prompt
+    @State private var showDemoDataPrompt = false
     
     var body: some View {
         ZStack {
-            Color.black.opacity(0.4)
+            // Transparent background — passes touches through to navigation bar
+            Color.clear
                 .ignoresSafeArea()
-                .onTapGesture { }
+                .allowsHitTesting(false)
             
             VStack {
+                // Spacer fills the top area — passes touches through
                 Spacer()
+                    .allowsHitTesting(false)
                 
+                // The actual "Tile" card
                 VStack(spacing: 20) {
-                    // Header: Icon + Skip
+                    // Header: Icon + Close Button
                     HStack {
                         Image(systemName: walkthroughManager.currentStep.icon)
                             .font(.title2)
@@ -175,29 +185,33 @@ struct WalkthroughOverlayView: View {
                         
                         Spacer()
                         
-                        if walkthroughManager.currentStep != .complete {
-                            Button(action: { walkthroughManager.skip() }) {
-                                Text("Skip")
-                                    .font(.subheadline.bold())
-                                    .foregroundColor(.white.opacity(0.4))
-                            }
+                        // P1-6 Fix: Use X icon instead of ambiguous Skip text
+                        Button(action: { showDemoDataPrompt = true }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title3)
+                                .foregroundColor(.white.opacity(0.4))
                         }
                     }
                     .padding(.horizontal, 4)
                     
                     // Title + Description
+                    // P0-4 Fix: Uniform height for the text container
                     VStack(alignment: .leading, spacing: 8) {
                         Text(walkthroughManager.currentStep.title)
                             .font(.title3.bold())
                             .foregroundColor(.white)
                         
-                        Text(walkthroughManager.currentStep.description)
-                            .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.8))
-                            .lineLimit(4)
-                            .fixedSize(horizontal: false, vertical: true)
+                        // P1-3 Fix: Use ScrollView for fluid typography
+                        ScrollView(.vertical, showsIndicators: false) {
+                            Text(walkthroughManager.currentStep.description)
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.8))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    // Lock the height so cards don't change size
+                    .frame(height: 90, alignment: .top)
                     
                     // Navigation Buttons
                     HStack(spacing: 0) {
@@ -235,7 +249,13 @@ struct WalkthroughOverlayView: View {
                         Spacer(minLength: 8)
                         
                         // Right Button Container (Next / Get Started)
-                        Button(action: { walkthroughManager.nextStep() }) {
+                        Button(action: { 
+                            if walkthroughManager.currentStep == .complete {
+                                showDemoDataPrompt = true
+                            } else {
+                                walkthroughManager.nextStep() 
+                            }
+                        }) {
                             HStack(spacing: 4) {
                                 if walkthroughManager.currentStep == .complete {
                                     Text("Get Started")
@@ -288,6 +308,20 @@ struct WalkthroughOverlayView: View {
             }
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: walkthroughManager.currentStep)
+        .alert("Complete Setup", isPresented: $showDemoDataPrompt) {
+            Button("Keep Demo Data") {
+                walkthroughManager.finishTour(keepDemoData: true)
+                walkthroughManager.currentStep = .complete
+            }
+            Button("Start Fresh (Empty)", role: .destructive) {
+                // Remove demo data and transition out
+                demoModeManager.removeDemoData(dataManager: dataManager)
+                walkthroughManager.finishTour(keepDemoData: false)
+                walkthroughManager.currentStep = .complete
+            }
+        } message: {
+            Text("The walkthrough uses sample contacts, relationships, and ponds to demonstrate features. Do you want to keep them to explore, or start with a blank slate?")
+        }
     }
 }
 

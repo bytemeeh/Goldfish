@@ -1,6 +1,5 @@
 import SwiftUI
 import UniformTypeIdentifiers
-import Contacts
 
 struct SettingsView: View {
     @EnvironmentObject var dataManager: GoldfishDataManager
@@ -37,7 +36,7 @@ struct SettingsView: View {
                                 photoData: me.photoData,
                                 name: me.name,
                                 colorHex: me.color,
-                                size: 50
+                                size: .medium
                             )
                             VStack(alignment: .leading) {
                                 Text(me.name)
@@ -63,8 +62,6 @@ struct SettingsView: View {
                 } label: {
                     Label("Manage Ponds", systemImage: "circle.grid.hex")
                 }
-                
-
                 
                 Button(action: {
                     dismiss()
@@ -179,7 +176,7 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("← Back") {
+                Button("Cancel") {
                     dismiss()
                 }
             }
@@ -260,5 +257,3 @@ struct SettingsView: View {
         }
     }
 }
-
-

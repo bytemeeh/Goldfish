@@ -73,7 +73,7 @@ struct VCardParser {
         var contacts: [VCardContact] = []
         var manifest: GoldfishManifest?
         
-        let chunks = string.components(separatedBy: "BEGIN:VCARD")
+        let chunks: [String] = string.components(separatedBy: "BEGIN:VCARD")
         
         for chunk in chunks {
             let trim = chunk.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -108,7 +108,7 @@ struct VCardParser {
         let lines = unfoldLines(block)
         
         for line in lines {
-            let parts = line.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: true)
+            let parts: [String.SubSequence] = line.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: true)
             guard parts.count == 2 else { continue }
             
             let key = String(parts[0]).trimmingCharacters(in: .whitespaces).uppercased()
@@ -142,7 +142,7 @@ struct VCardParser {
             // FN:Marcel Meeh -> Key: FN, Value: Marcel Meeh
             // ADR;TYPE=HOME:;;Street... -> Key: ADR;TYPE=HOME, Value: ;;Street...
             
-            let parts = line.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: true)
+            let parts: [String.SubSequence] = line.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: true)
             guard parts.count == 2 else { continue }
             
             let keyPart = String(parts[0]).trimmingCharacters(in: .whitespaces)

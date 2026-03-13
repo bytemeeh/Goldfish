@@ -1,190 +1,109 @@
 import SwiftUI
+import SpriteKit
 import Contacts
 import ContactsUI
-import SpriteKit
 
-// MARK: - Onboarding Flow
-/// A simple step-based onboarding that creates the "isMe" contact
-/// and optionally imports contacts from the address book.
-struct OnboardingFlow: View {
+// MARK: - Onboarding Sign-In Overlay
+/// Full-screen cover displayed over the live ponds graph during onboarding.
+/// The top portion is transparent (graph shows through); the bottom portion
+/// is a dark card with Goldfish branding and sign-in buttons.
+struct OnboardingSignInOverlay: View {
     @EnvironmentObject var dataManager: GoldfishDataManager
 
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
-    
-    @State private var name = "Me"
-    @State private var isImporting = false
-    @State private var showContactPicker = false
-    
-    var body: some View {
-        ZStack {
-            Color(red: 0x1E/255, green: 0x18/255, blue: 0x15/255)
-                .ignoresSafeArea()
-            
-            welcomeScreen
-                .transition(.opacity)
-        }
-    }
-    
-    // MARK: - Screen 1: Welcome (Full-Bleed Hero)
-    private var welcomeScreen: some View {
-        ZStack {
-            // Full-bleed hero goldfish image
-            Image("HeroGoldfish")
-                .resizable()
-                .scaledToFill()
-                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
-                .clipped()
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-                .zIndex(0)
 
-            SpriteView(scene: {
-                let scene = WatercolorDisperseScene(size: UIScreen.main.bounds.size)
-                scene.backgroundColor = .clear
-                scene.scaleMode = .aspectFill
-                return scene
-            }(), options: [.allowsTransparency])
-            .ignoresSafeArea()
-            .zIndex(1)
-            
-            // Gradient overlay — transparent at top to show fish, dark at bottom for text
+    private let bgColor   = Color(red: 0x1E/255, green: 0x18/255, blue: 0x15/255)
+    private let cardColor = Color(red: 0x28/255, green: 0x20/255, blue: 0x1C/255)
+    private let cream     = Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255)
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            // Top: transparent gradient so graph shows through behind the overlay
             LinearGradient(
                 stops: [
-                    .init(color: Color.clear, location: 0.0),
-                    .init(color: Color(red: 0x1E/255, green: 0x18/255, blue: 0x15/255).opacity(0.3), location: 0.4),
-                    .init(color: Color(red: 0x1E/255, green: 0x18/255, blue: 0x15/255).opacity(0.85), location: 0.65),
-                    .init(color: Color(red: 0x1E/255, green: 0x18/255, blue: 0x15/255).opacity(0.97), location: 1.0),
+                    .init(color: .clear, location: 0.0),
+                    .init(color: bgColor.opacity(0.55), location: 0.55),
+                    .init(color: bgColor.opacity(0.97), location: 0.78),
+                    .init(color: bgColor, location: 1.0)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
             )
             .ignoresSafeArea()
-            .zIndex(2)
-            
-            // Content pinned to bottom
-            VStack(spacing: 8) {
-                Spacer()
-                
-                Text("Goldfish")
-                    .font(.system(size: 48, weight: .light))
-                    .italic()
-                    .foregroundColor(Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255))
-                
-                Text("Remember everyone")
-                    .font(.system(size: 15, weight: .light))
-                    .foregroundColor(Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255).opacity(0.5))
-                    .padding(.bottom, 32)
-                
+            .allowsHitTesting(false)
+
+            // Bottom: branding + sign-in card
+            VStack(spacing: 0) {
+                VStack(spacing: 6) {
+                    Text("Goldfish")
+                        .font(.system(size: 44, weight: .light))
+                        .italic()
+                        .foregroundColor(cream)
+
+                    Text("Remember everyone")
+                        .font(.system(size: 15, weight: .light))
+                        .foregroundColor(cream.opacity(0.5))
+                }
+                .padding(.bottom, 32)
+
                 VStack(spacing: 12) {
-                    Button(action: { createMeAndContinue() }) {
-                        HStack {
+                    Button(action: createMeAndContinue) {
+                        HStack(spacing: 8) {
                             Image(systemName: "applelogo")
-                            Text("Sign in with Apple")
+                                .font(.system(size: 15, weight: .semibold))
+                            Text("Continue with Apple")
+                                .font(.system(size: 15, weight: .semibold))
                         }
-                        .font(.system(size: 15, weight: .semibold))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                        .padding(.vertical, 15)
                         .background(.white)
                         .foregroundColor(.black)
-                        .cornerRadius(12)
+                        .cornerRadius(14)
                     }
-                    
-                    Button(action: { createMeAndContinue() }) {
-                        HStack {
+
+                    Button(action: createMeAndContinue) {
+                        HStack(spacing: 8) {
                             Image(systemName: "envelope.fill")
-                            Text("Sign in with Email")
+                                .font(.system(size: 14, weight: .medium))
+                            Text("Continue with Email")
+                                .font(.system(size: 15, weight: .medium))
                         }
-                        .font(.system(size: 15, weight: .medium))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color(red: 0x1A/255, green: 0x16/255, blue: 0x14/255))
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
+                        .padding(.vertical, 15)
+                        .background(cardColor)
+                        .foregroundColor(cream.opacity(0.9))
+                        .cornerRadius(14)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(cream.opacity(0.1), lineWidth: 1)
+                        )
                     }
                 }
-                .padding(.horizontal, 32)
-                .padding(.bottom, 48)
-            }
-            .zIndex(3)
-        }
-    }
-    
-    
+                .padding(.horizontal, 28)
+                .padding(.bottom, 16)
 
-    
-    // MARK: - Helpers
-    
-    private func legendDot(color: Color, label: String) -> some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(color.opacity(0.3))
-                .stroke(color, lineWidth: 1.5)
-                .frame(width: 10, height: 10)
-            Text(label)
-                .font(.system(size: 11, weight: .regular))
-                .foregroundColor(Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255).opacity(0.6))
-        }
-    }
-    
-    private func pondBubble(emoji: String, label: String, color: Color) -> some View {
-        VStack(spacing: 8) {
-            ZStack {
-                Circle()
-                    .fill(color.opacity(0.15))
-                    .frame(width: 72, height: 72)
-                Circle()
-                    .stroke(color.opacity(0.5), lineWidth: 2)
-                    .frame(width: 72, height: 72)
-                Text(emoji)
-                    .font(.system(size: 32))
+                Text("By continuing you agree to our Terms & Privacy Policy.")
+                    .font(.system(size: 11))
+                    .foregroundColor(cream.opacity(0.25))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 28)
+                    .padding(.bottom, 48)
             }
-            Text(label)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(Color(red: 0xF5/255, green: 0xF0/255, blue: 0xEB/255).opacity(0.45))
         }
+        .background(.clear)
+        .ignoresSafeArea()
+        .preferredColorScheme(.dark)
     }
-    
+
     private func createMeAndContinue() {
-        let trimmed = name.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        
         do {
             if try dataManager.fetchMePerson() == nil {
-                try dataManager.performOnboarding(name: trimmed)
+                try dataManager.performOnboarding(name: "Me")
             }
             hasCompletedOnboarding = true
         } catch {
-            print("Onboarding error: \(error)")
+            print("Onboarding sign-in error: \(error)")
             ToastManager.shared.showToast(message: "Failed: \(error.localizedDescription)")
-        }
-    }
-    
-    private func doImport(contacts: [CNContact]) async {
-        isImporting = true
-        do {
-            for cn in contacts {
-                let fullName = [cn.givenName, cn.familyName]
-                    .filter { !$0.isEmpty }
-                    .joined(separator: " ")
-                guard !fullName.isEmpty else { continue }
-                
-                try dataManager.createPerson(
-                    name: fullName,
-                    phone: cn.phoneNumbers.first?.value.stringValue,
-                    email: cn.emailAddresses.first?.value as String?,
-                    birthday: cn.birthday.flatMap { Calendar.current.date(from: $0) },
-                    photoData: cn.imageData
-                )
-            }
-        } catch {
-            print("Import error: \(error)")
-            await MainActor.run {
-                ToastManager.shared.showToast(message: "Import failed: \(error.localizedDescription)")
-            }
-        }
-        await MainActor.run {
-            isImporting = false
-            hasCompletedOnboarding = true
         }
     }
 }

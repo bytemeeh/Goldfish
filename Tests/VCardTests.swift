@@ -40,8 +40,8 @@ final class VCardTests: XCTestCase {
         )
         
         // 2. Export
-        let vCardData = VCardExporter.export([source])
-        let vCardString = String(data: vCardData, encoding: .utf8)!
+        let vCardData: Data = VCardExporter.export([source])
+        let vCardString: String = String(data: vCardData, encoding: .utf8)!
         
         // Verify some raw string properties
         XCTAssertTrue(vCardString.contains("FN:Marcel Meeh"))
@@ -83,8 +83,8 @@ final class VCardTests: XCTestCase {
         let longNote = String(repeating: "A", count: 200)
         let person = Person(name: "Long Note", notes: longNote)
         
-        let vCardData = VCardExporter.export([person])
-        let vCardString = String(data: vCardData, encoding: .utf8)!
+        let vCardData: Data = VCardExporter.export([person])
+        let vCardString: String = String(data: vCardData, encoding: .utf8)!
         
         // Verify folding (CRLF space)
         XCTAssertTrue(vCardString.contains("\r\n "))

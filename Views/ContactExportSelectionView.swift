@@ -38,7 +38,7 @@ struct ContactExportSelectionView: View {
                             photoData: contact.photoData,
                             name: contact.name,
                             colorHex: contact.color,
-                            size: 40
+                            size: .small
                         )
                         
                         VStack(alignment: .leading) {

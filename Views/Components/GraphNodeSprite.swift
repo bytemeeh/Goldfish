@@ -312,26 +312,26 @@ final class GraphNodeSprite: SKNode {
 
     /// Deterministic pastel color matching ContactPhotoView.swift
     static func pastelColor(for name: String, colorHex: String?) -> SKColor {
-        if let hex = colorHex, !hex.isEmpty {
+        if let hex: String = colorHex, !hex.isEmpty {
             return SKColor(hexString: hex)
         }
-        var hash = 0
+        var hash: Int = 0
         for char in name {
             hash = (hash &* 31) &+ Int(char.asciiValue ?? 0)
         }
         hash = abs(hash)
-        let hue = CGFloat(hash % 360) / 360.0
+        let hue: CGFloat = CGFloat(hash % 360) / 360.0
         return SKColor(hue: hue, saturation: 0.4, brightness: 0.85, alpha: 1.0)
     }
 
     static func computeInitials(_ name: String) -> String {
-        let components = name.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: " ")
+        let components: [String.SubSequence] = name.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: " ")
         guard !components.isEmpty else { return "?" }
         if components.count == 1 {
             return String(components[0].prefix(2)).uppercased()
         }
-        let first = components.first?.prefix(1) ?? ""
-        let last = components.last?.prefix(1) ?? ""
+        let first: String.SubSequence = components.first?.prefix(1) ?? ""
+        let last: String.SubSequence = components.last?.prefix(1) ?? ""
         return "\(first)\(last)".uppercased()
     }
 

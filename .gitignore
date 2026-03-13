@@ -57,3 +57,7 @@ playground.xcworkspace
 *.swp
 *.lock
 *~
+*.log
+*.png
+temp_diff.patch
+test_script.swift

@@ -156,15 +156,15 @@ final class Person {
     /// - "Madonna" → "MA"
     /// - "" → "?"
     var initials: String {
-        let components = name
+        let components: [String.SubSequence] = name
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .split(separator: " ")
         guard !components.isEmpty else { return "?" }
         if components.count == 1 {
             return String(components[0].prefix(2)).uppercased()
         }
-        let first = components.first?.prefix(1) ?? ""
-        let last = components.last?.prefix(1) ?? ""
+        let first: String.SubSequence = components.first?.prefix(1) ?? ""
+        let last: String.SubSequence = components.last?.prefix(1) ?? ""
         return "\(first)\(last)".uppercased()
     }
 
@@ -177,7 +177,7 @@ final class Person {
 
     /// Full formatted address string, or nil if no address fields are set.
     var fullAddress: String? {
-        let parts = [street, city, state, postalCode, country].compactMap { $0 }
+        let parts: [String] = [street, city, state, postalCode, country].compactMap { $0 }
         return parts.isEmpty ? nil : parts.joined(separator: ", ")
     }
 

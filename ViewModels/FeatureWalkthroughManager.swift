@@ -17,14 +17,14 @@ enum WalkthroughStep: Int, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .welcome: return "Welcome to the Pond"
-        case .search: return "Fish for Anyone Instantly"
-        case .contactList: return "Your School of Fish"
-        case .graphView: return "See the Whole Bowl"
-        case .relationships: return "Make a Splash Together"
-        case .shortcuts: return "Navigate the Waters"
-        case .ponds: return "Stock Your Ponds"
-        case .privacy: return "A Secure Aquarium"
-        case .complete: return "Ready to Dive In!"
+        case .search: return "Cast a Net"
+        case .contactList: return "Your Personal Pond"
+        case .graphView: return "Survey the Waters"
+        case .relationships: return "The Ripple Effect"
+        case .shortcuts: return "Navigate the Current"
+        case .ponds: return "School Your Fish"
+        case .privacy: return "A Private Oasis"
+        case .complete: return "Into the Deep!"
         }
     }
     
@@ -178,16 +178,15 @@ class FeatureWalkthroughManager: ObservableObject {
     // MARK: - View Preparation
     
     private func prepareView(for step: WalkthroughStep) {
-        // Now optional since the carousel is a full screen overlay
-        // However, we still switch the background view so it looks nice
-        // behind the translucent modal
-        switch step {
-        case .graphView, .relationships, .ponds, .shortcuts:
+        // Option A implemented: Disabling automatic view switching
+        // to stabilize the background view during the walkthrough.
+        // We ensure HomeView is locked to the graph view.
+        
+        // Only trigger these if we actually want the background to bounce around,
+        // but per P0.2 requirements we want to stabilize the background.
+        // So we will trigger graph view once at the very beginning to lock it there.
+        if step == .welcome {
             onRequestGraphView?()
-        case .contactList, .search:
-            onRequestListView?()
-        default:
-            break
         }
     }
     

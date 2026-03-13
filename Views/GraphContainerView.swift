@@ -12,6 +12,7 @@ struct GraphContainerView: View {
     @State private var scene: GoldfishGraphScene?
     @State private var connectRelType: RelationshipType = .friend
     @State private var connectPondName: String = "None"
+    @State private var isAddContactPresented = false
     @Query private var circles: [GoldfishCircle]
 
     var body: some View {
@@ -20,17 +21,17 @@ struct GraphContainerView: View {
             if viewModel.graphLevels != nil {
                 GeometryReader { proxy in
                     SpriteView(
-                        scene: getOrCreateScene(size: proxy.size),
+                        scene: getOrCreateScene(size: CGSize(width: max(proxy.size.width, 100), height: max(proxy.size.height, 100))),
                         options: [.allowsTransparency]
                     )
                     .ignoresSafeArea(edges: .bottom)
+                    .onChange(of: proxy.size) { _, newSize in
+                        // Ensure scene sticks to the view size if it changes, avoiding zero sizes
+                        scene?.size = CGSize(width: max(newSize.width, 100), height: max(newSize.height, 100))
+                    }
                 }
                 
-                // MARK: - Pond Shortcut Bar
-                VStack {
-                    pondShortcutBar
-                    Spacer()
-                }
+                // Pond Shortcut Bar removed in favor of bottom carousel
             }
 
             // MARK: - Zoom Controls Overlay
@@ -67,6 +68,13 @@ struct GraphContainerView: View {
                         .padding()
                     }
                 }
+                
+                // MARK: - Floating Pond Carousel
+                VStack {
+                    Spacer()
+                    floatingPondCarousel
+                        .padding(.bottom, 24)
+                }
             }
 
             // MARK: - Loading
@@ -83,8 +91,10 @@ struct GraphContainerView: View {
                     systemImage: "network",
                     headline: "No connections yet",
                     subtext: "Add contacts and relationships to see your network graph.",
-                    actionLabel: nil,
-                    action: nil
+                    actionLabel: "Add Contact",
+                    action: {
+                        isAddContactPresented = true
+                    }
                 )
             }
             
@@ -101,14 +111,18 @@ struct GraphContainerView: View {
         .onAppear {
             viewModel.loadGraph()
         }
-        .onChange(of: viewModel.graphLevels?.flatMap(\.allContacts).count) { _, _ in
-            // When graph data changes, push it to the scene
-            pushLevelsToScene()
+        .onChange(of: viewModel.levelsLoaded) { _, loaded in
+            // When graph data changes and finishes loading, push it to the scene
+            if loaded {
+                pushLevelsToScene()
+            }
         }
         .sheet(item: Binding<IdentifiableWrapper<UUID>?>(
             get: { viewModel.selectedContactID.map { IdentifiableWrapper($0) } },
             set: { viewModel.selectedContactID = $0?.value }
-        )) { wrapper in
+        ), onDismiss: {
+            viewModel.refreshGraph()
+        }) { wrapper in
             if let person = try? dataManager.fetchAllPersons().first(where: { $0.id == wrapper.value }) {
                 NavigationStack {
                     ContactDetailView(
@@ -146,6 +160,14 @@ struct GraphContainerView: View {
                 Text("Actions for \(person.name)")
             } else {
                 Text("Contact Actions")
+            }
+        }
+        .sheet(isPresented: $isAddContactPresented, onDismiss: {
+            viewModel.refreshGraph()
+        }) {
+            NavigationStack {
+                ContactFormView(viewModel: ContactFormViewModel(dataManager: dataManager))
+                    .environmentObject(dataManager)
             }
         }
     }
@@ -214,7 +236,7 @@ struct GraphContainerView: View {
                         .font(.headline)
                     
                     HStack(spacing: 20) {
-                        ContactPhotoView(photoData: fromPerson.photoData, name: fromPerson.name, colorHex: fromPerson.color, size: 50)
+                        ContactPhotoView(photoData: fromPerson.photoData, name: fromPerson.name, colorHex: fromPerson.color, size: .medium)
                             .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
                         
                         VStack(spacing: 2) {
@@ -226,7 +248,7 @@ struct GraphContainerView: View {
                                 .foregroundColor(.secondary)
                         }
                         
-                        ContactPhotoView(photoData: toPerson.photoData, name: toPerson.name, colorHex: toPerson.color, size: 50)
+                        ContactPhotoView(photoData: toPerson.photoData, name: toPerson.name, colorHex: toPerson.color, size: .medium)
                             .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
                     }
                     
@@ -264,14 +286,14 @@ struct GraphContainerView: View {
                         .font(.headline)
                     
                     HStack(spacing: 20) {
-                        ContactPhotoView(photoData: fromPerson.photoData, name: fromPerson.name, colorHex: fromPerson.color, size: 50)
+                        ContactPhotoView(photoData: fromPerson.photoData, name: fromPerson.name, colorHex: fromPerson.color, size: .medium)
                             .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
                         
                         Image(systemName: "arrow.left.and.right")
                             .font(.title2)
                             .foregroundColor(.secondary)
                         
-                        ContactPhotoView(photoData: toPerson.photoData, name: toPerson.name, colorHex: toPerson.color, size: 50)
+                        ContactPhotoView(photoData: toPerson.photoData, name: toPerson.name, colorHex: toPerson.color, size: .medium)
                             .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
                     }
                     
@@ -365,7 +387,7 @@ struct GraphContainerView: View {
                     .font(.headline)
                 
                 HStack(spacing: 20) {
-                    ContactPhotoView(photoData: person.photoData, name: person.name, colorHex: person.color, size: 50)
+                    ContactPhotoView(photoData: person.photoData, name: person.name, colorHex: person.color, size: .medium)
                         .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
                     
                     Image(systemName: "arrow.right")
@@ -429,46 +451,95 @@ struct GraphContainerView: View {
         }
     }
     
-    private var pondShortcutBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                // Reset Button
-                Button(action: viewModel.resetCamera) {
-                    HStack(spacing: 6) {
-                        Text("Center")
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(.ultraThinMaterial)
-                    .cornerRadius(20)
-                }
-                .foregroundColor(.primary)
-                
-                // Pond Buttons
-                ForEach(circles.sorted(by: { $0.sortOrder < $1.sortOrder })) { circle in
-                    Button(action: {
-                        viewModel.centerOnPond(name: circle.name)
-
-                    }) {
-                        HStack(spacing: 6) {
-                            Text(circle.name)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            Capsule()
-                                .fill(Color(hex: circle.color).opacity(0.2))
-                        )
-                        .overlay(
-                            Capsule()
-                                .stroke(Color(hex: circle.color).opacity(0.3), lineWidth: 1)
-                        )
-                    }
-                    .foregroundColor(.primary)
-                }
+    private var floatingPondCarousel: some View {
+        let sortedCircles = circles.sorted(by: { $0.sortOrder < $1.sortOrder })
+        let currentIndex = sortedCircles.firstIndex(where: { $0.name == viewModel.selectedPondFilter })
+        
+        let displayName = viewModel.selectedPondFilter ?? "All Ponds"
+        let displayColor = currentIndex != nil ? Color(hex: sortedCircles[currentIndex!].color) : Color.primary
+        
+        return HStack(spacing: 8) {
+            Button(action: {
+                withAnimation { cyclePond(direction: -1, sortedCircles: sortedCircles) }
+            }) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(sortedCircles.isEmpty ? .secondary.opacity(0.3) : .primary)
+                    .frame(width: 30, height: 40)
             }
-            .padding(.horizontal)
-            .padding(.top, 12)
+            .disabled(sortedCircles.isEmpty)
+            
+            Text(displayName)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(displayColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .multilineTextAlignment(.center)
+                .frame(width: 100)
+                .animation(.easeInOut, value: displayName)
+            
+            Button(action: {
+                withAnimation { cyclePond(direction: 1, sortedCircles: sortedCircles) }
+            }) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(sortedCircles.isEmpty ? .secondary.opacity(0.3) : .primary)
+                    .frame(width: 30, height: 40)
+            }
+            .disabled(sortedCircles.isEmpty)
+        }
+        .padding(.horizontal, 4)
+        .frame(height: 40)
+        .background(.ultraThinMaterial)
+        .clipShape(Capsule())
+        .shadow(color: Color.black.opacity(0.1), radius: 5, y: 2)
+        .layoutPriority(1)
+        .gesture(
+            DragGesture()
+                .onEnded { value in
+                    if value.translation.width < -30 {
+                        // Swiped left = next pond
+                        withAnimation { cyclePond(direction: 1, sortedCircles: sortedCircles) }
+                    } else if value.translation.width > 30 {
+                        // Swiped right = previous pond
+                        withAnimation { cyclePond(direction: -1, sortedCircles: sortedCircles) }
+                    }
+                }
+        )
+    }
+    
+    private func cyclePond(direction: Int, sortedCircles: [GoldfishCircle]) {
+        if sortedCircles.isEmpty { return }
+        
+        let currentIndex: Int
+        if let currentName = viewModel.selectedPondFilter,
+           let idx = sortedCircles.firstIndex(where: { $0.name == currentName }) {
+            currentIndex = idx
+        } else {
+            currentIndex = -1 // All Ponds
+        }
+        
+        let totalCount = sortedCircles.count
+        var nextIndex = currentIndex + direction
+        
+        // Wrap around logic
+        if nextIndex > totalCount - 1 {
+            nextIndex = -1 // Wrap to "All Ponds"
+        } else if nextIndex < -1 {
+            nextIndex = totalCount - 1 // Wrap to last pond
+        }
+        
+        // Apply selection
+        if nextIndex == -1 {
+            if viewModel.selectedPondFilter != nil {
+                viewModel.selectedPondFilter = nil
+                viewModel.resetCamera()
+            }
+        } else {
+            let nextPond = sortedCircles[nextIndex]
+            if viewModel.selectedPondFilter != nextPond.name {
+                viewModel.centerOnPond(name: nextPond.name)
+            }
         }
     }
 }

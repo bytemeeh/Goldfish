@@ -10,11 +10,14 @@ protocol GraphSceneDelegate: AnyObject {
     func didUpdateZoom(_ zoom: CGFloat)
     func didUpdateCameraPosition(_ position: CGPoint)
     func centerOnContact(_ id: UUID)
+    func centerOnMe()
     func centerOnPond(name: String)
+    func didUpdatePondFilter(_ name: String?)
     func requestConnection(from: UUID, to: UUID)
     func didUpdateSearchMatches(_ ids: Set<UUID>?)
     func animateNewConnection(from: UUID, to: UUID)
     func didLongPressContact(_ id: UUID)
+    func fitToGraph()
 }
 
 // MARK: - GraphViewModel
@@ -28,6 +31,10 @@ final class GraphViewModel: ObservableObject {
     weak var sceneDelegate: GraphSceneDelegate?
     
     // MARK: - State
+    
+    /// Flag to prevent infinite feedback loops when updating from the scene
+    private var isUpdatingFromScene = false
+    
     @Published var selectedContactID: UUID? {
         didSet {
             sceneDelegate?.didSelectContact(selectedContactID)
@@ -37,6 +44,17 @@ final class GraphViewModel: ObservableObject {
     @Published var searchMatchedIDs: Set<UUID>? {
         didSet {
             sceneDelegate?.didUpdateSearchMatches(searchMatchedIDs)
+            if let ids = searchMatchedIDs, ids.count == 1, let id = ids.first {
+                centerOnContact(id)
+            }
+        }
+    }
+    
+
+    
+    @Published var selectedPondFilter: String? {
+        didSet {
+            sceneDelegate?.didUpdatePondFilter(selectedPondFilter)
         }
     }
     
@@ -46,12 +64,14 @@ final class GraphViewModel: ObservableObject {
             // Clamp
             if zoomLevel < 0.1 { zoomLevel = 0.1 }
             if zoomLevel > 4.0 { zoomLevel = 4.0 }
+            guard !isUpdatingFromScene else { return }
             sceneDelegate?.didUpdateZoom(zoomLevel)
         }
     }
     
     @Published var cameraPosition: CGPoint = .zero {
         didSet {
+            guard !isUpdatingFromScene else { return }
             sceneDelegate?.didUpdateCameraPosition(cameraPosition)
         }
     }
@@ -72,7 +92,7 @@ final class GraphViewModel: ObservableObject {
     
     @Published var pendingActionContactID: UUID?
     
-    private var levelsLoaded = false
+    @Published var levelsLoaded = false
     private var isLoadingInProgress = false
     
     // MARK: - Init
@@ -145,33 +165,40 @@ final class GraphViewModel: ObservableObject {
     }
     
     func centerOnPond(name: String) {
-        sceneDelegate?.centerOnPond(name: name)
+        if selectedPondFilter == name {
+            // Toggle off if already selected
+            selectedPondFilter = nil
+        } else {
+            selectedPondFilter = name
+            sceneDelegate?.centerOnPond(name: name)
+        }
     }
     
     func zoomIn() {
-        zoomLevel *= 1.2
+        zoomLevel = min(zoomLevel * 1.2, 4.0)
+        sceneDelegate?.didUpdateZoom(zoomLevel)
     }
     
     func zoomOut() {
-        zoomLevel /= 1.2
+        zoomLevel = max(zoomLevel / 1.2, 0.1)
+        sceneDelegate?.didUpdateZoom(zoomLevel)
     }
     
     func resetCamera() {
-        zoomLevel = 1.0
-        cameraPosition = .zero
-        sceneDelegate?.didUpdateZoom(1.0)
-        sceneDelegate?.didUpdateCameraPosition(.zero)
+        sceneDelegate?.centerOnMe()
     }
     
     // MARK: - Scene Feedback
     /// Called by the scene when user drags camera
     func updateCameraFromScene(position: CGPoint, zoom: CGFloat) {
+        isUpdatingFromScene = true
         if self.cameraPosition != position {
             self.cameraPosition = position
         }
         if self.zoomLevel != zoom {
             self.zoomLevel = zoom
         }
+        isUpdatingFromScene = false
     }
     
     /// Called by the scene when user drags a node onto another node

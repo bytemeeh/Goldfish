@@ -4,8 +4,8 @@ import SwiftData
 // MARK: - App Entry Point
 @main
 struct GoldfishApp: App {
-    /// Tracks whether onboarding is complete.
-    /// If false, we show the `OnboardingFlow`.
+    /// Tracks whether the user has completed the initial sign-in step.
+    /// HomeView shows `OnboardingSignInOverlay` (over the ponds graph) until this is true.
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     
     /// The SwiftData container.
@@ -48,25 +48,20 @@ struct GoldfishApp: App {
                     retryDatabaseInit()
                 }
             } else if let container = modelContainer, let manager = dataManager {
-                Group {
-                    if !hasCompletedOnboarding {
-                        // Show ONLY onboarding — no HomeView underneath
-                        OnboardingFlow()
-                            .transition(.opacity)
-                    } else {
-                        HomeView()
-                            .transition(.opacity)
-                    }
-                }
-                .animation(.easeInOut, value: hasCompletedOnboarding)
-                .toastOverlay()
-                .environment(\.modelContext, container.mainContext)
-                .environmentObject(manager)
-                .environmentObject(walkthroughManager)
-                .environmentObject(demoModeManager)
-                .environmentObject(toastManager)
-                .preferredColorScheme(.dark)
-                .tint(Color.goldfishAccent)
+                // Always show HomeView so the ponds graph is visible in the background,
+                // even during onboarding. The onboarding sign-in card appears as an
+                // overlay on top of the live graph populated with demo data.
+                HomeView()
+                    .transition(.opacity)
+                    .animation(.easeInOut, value: hasCompletedOnboarding)
+                    .toastOverlay()
+                    .environment(\.modelContext, container.mainContext)
+                    .environmentObject(manager)
+                    .environmentObject(walkthroughManager)
+                    .environmentObject(demoModeManager)
+                    .environmentObject(toastManager)
+                    .preferredColorScheme(.dark)
+                    .tint(Color.goldfishAccent)
             } else {
                 ProgressView()
             }

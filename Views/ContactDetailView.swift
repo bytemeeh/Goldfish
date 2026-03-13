@@ -17,14 +17,23 @@ struct ContactDetailView: View {
                         photoData: viewModel.person.photoData,
                         name: viewModel.person.name,
                         colorHex: viewModel.person.color,
-                        size: 100
+                        size: .extraLarge
                     )
                     
                     VStack(spacing: 4) {
                         Text(viewModel.person.name)
                             .font(.title)
                             .fontWeight(.bold)
-                            .multilineTextAlignment(.center)
+                        if viewModel.person.isMe {
+                            Text("This is you")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundColor(.accentColor)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(Color.accentColor.opacity(0.15))
+                                .clipShape(Capsule())
+                        }
                         
                         if let circleName = viewModel.person.circleContacts.first?.circle.name {
                             Text(circleName)
@@ -179,6 +188,11 @@ struct ContactDetailView: View {
         }
         .onAppear {
             viewModel.refreshData()
+        }
+        .onChange(of: viewModel.person.isDeleted) { _, deleted in
+            if deleted {
+                dismiss()
+            }
         }
     }
     

@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -110,7 +110,7 @@
 		BB68F40C7CE83693EE0BA98F /* GoldfishModelContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishModelContainer.swift; sourceTree = "<group>"; };
 		CAB1639DB0E83F4C9EEB7341 /* GraphViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphViewModel.swift; sourceTree = "<group>"; };
 		D23CC945346F772BDBFB3766 /* GoldfishDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishDataManager.swift; sourceTree = "<group>"; };
-		D3A49C20C5A36D698F6C0C28 /* Goldfish.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Goldfish.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D3A49C20C5A36D698F6C0C28 /* Goldfish.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Goldfish.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D5778550682B283AF818B234 /* OnboardingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlow.swift; sourceTree = "<group>"; };
 		D78BF7A723944E3DBB95E364 /* ContactPhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactPhotoView.swift; sourceTree = "<group>"; };
 		D7D6D567A57494FE76310713 /* PrivacyPolicyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyPolicyView.swift; sourceTree = "<group>"; };
@@ -294,9 +294,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
-				TargetAttributes = {
-				};
+				LastUpgradeCheck = 2620;
 			};
 			buildConfigurationList = 9B22BB186E7740FB30B7520C /* Build configuration list for PBXProject "Goldfish" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -565,6 +563,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Goldfish/Goldfish.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = VL6L6N34D5;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Goldfish/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -588,6 +587,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Goldfish/Goldfish.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = VL6L6N34D5;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Goldfish/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

@@ -145,19 +145,19 @@ final class ContactFormViewModel: ObservableObject {
                 try dataManager.updatePerson(
                     person,
                     name: fullName,
-                    phone: phone.isEmpty ? nil : phone,
-                    email: email.isEmpty ? nil : email,
-                    birthday: dob,
-                    notes: notes.isEmpty ? nil : notes,
+                    phone: .set(phone.isEmpty ? nil : phone),
+                    email: .set(email.isEmpty ? nil : email),
+                    birthday: .set(dob),
+                    notes: .set(notes.isEmpty ? nil : notes),
                     isFavorite: isFavorite,
                     tags: tags,
                     color: colorHex,
-                    photoData: finalPhotoData,
-                    street: street.isEmpty ? nil : street,
-                    city: city.isEmpty ? nil : city,
-                    state: state.isEmpty ? nil : state,
-                    country: country.isEmpty ? nil : country,
-                    postalCode: postalCode.isEmpty ? nil : postalCode
+                    photoData: .set(finalPhotoData),
+                    street: .set(street.isEmpty ? nil : street),
+                    city: .set(city.isEmpty ? nil : city),
+                    state: .set(state.isEmpty ? nil : state),
+                    country: .set(country.isEmpty ? nil : country),
+                    postalCode: .set(postalCode.isEmpty ? nil : postalCode)
                 )
                 
                 // Update circles
@@ -226,22 +226,23 @@ final class ContactFormViewModel: ObservableObject {
     
     private func createEmojiImage(emoji: String) -> Data? {
         let size = CGSize(width: 200, height: 200)
-        UIGraphicsBeginImageContextWithOptions(size, false, 0)
-        UIColor.clear.set()
-        let rect = CGRect(origin: .zero, size: size)
-        UIRectFill(rect)
-        let string = emoji as NSString
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 160)
-        ]
-        let stringSize = string.size(withAttributes: attributes)
-        string.draw(in: CGRect(x: (size.width - stringSize.width) / 2,
-                               y: (size.height - stringSize.height) / 2,
-                               width: stringSize.width,
-                               height: stringSize.height),
-                    withAttributes: attributes)
-        let image = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
-        return image?.jpegData(compressionQuality: 0.8)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let image = renderer.image { _ in
+            let string = emoji as NSString
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 160)
+            ]
+            let stringSize = string.size(withAttributes: attributes)
+            string.draw(
+                in: CGRect(
+                    x: (size.width - stringSize.width) / 2,
+                    y: (size.height - stringSize.height) / 2,
+                    width: stringSize.width,
+                    height: stringSize.height
+                ),
+                withAttributes: attributes
+            )
+        }
+        return image.jpegData(compressionQuality: 0.8)
     }
 }

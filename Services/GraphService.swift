@@ -223,11 +223,7 @@ struct GraphService {
             levels.append(GraphLevel(depth: depth, circleGroups: orphanGroups))
         }
 
-        // Exclude level 0 (ME node only) and re-index depths from 0
-        let visibleLevels = Array(levels.dropFirst())
-        return visibleLevels.enumerated().map { index, level in
-            GraphLevel(depth: index, circleGroups: level.circleGroups)
-        }
+        return levels
     }
     
     /// Demo-mode-aware variant of `buildGraphLevels`.
@@ -303,11 +299,7 @@ struct GraphService {
             levels.append(GraphLevel(depth: depth, circleGroups: orphanGroups))
         }
 
-        // Exclude level 0 (ME node only) and re-index depths from 0
-        let visibleLevels = Array(levels.dropFirst())
-        return visibleLevels.enumerated().map { index, level in
-            GraphLevel(depth: index, circleGroups: level.circleGroups)
-        }
+        return levels
     }
 
     /// Returns all direct neighbors of a person (both directions, all types).
@@ -482,19 +474,21 @@ struct GraphService {
     ///   - query: The search string (case-insensitive, partial match).
     ///   - context: ModelContext for performing the fetch.
     /// - Returns: Contacts sorted by match relevance.
-    func search(query: String, context: ModelContext) throws -> [Person] {
+    func search(query: String, context: ModelContext, demoMode: Bool = false) throws -> [Person] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return [] }
 
         let lowered = trimmed.lowercased()
 
-        // BUG 3 FIX: Single fetch — load all persons once, run every filter in-memory.
-        // Previously this method fetched 2-3 times (predicate + allPersons + circles).
-        // At 1000 contacts that was O(3N) fetches. Now it's O(N) with one fetch.
+        // Single fetch — load all persons once, run every filter in-memory.
         let allPersons = try context.fetch(FetchDescriptor<Person>())
+        
+        // Only search among contacts that are actually visible (matching demo mode,
+        // and excluding the "Me" contact which is never shown in lists or highlighted).
+        let candidates = allPersons.filter { !$0.isMe && $0.isDemo == demoMode }
 
-        // 1. Name / email / phone / notes filter (replaces the predicate fetch)
-        let fieldMatches = allPersons.filter { person in
+        // 1. Name / email / phone / notes filter
+        let fieldMatches = candidates.filter { person in
             person.name.localizedCaseInsensitiveContains(trimmed) ||
             (person.email ?? "").localizedCaseInsensitiveContains(trimmed) ||
             (person.phone ?? "").localizedCaseInsensitiveContains(trimmed) ||
@@ -502,12 +496,12 @@ struct GraphService {
         }
 
         // 2. Tag match (tags is [String], can't express in #Predicate)
-        let tagMatches = allPersons.filter { person in
+        let tagMatches = candidates.filter { person in
             person.tags.contains { $0.localizedCaseInsensitiveContains(trimmed) }
         }
 
         // 3. Circle name match — fetch circles separately (lightweight),
-        //    but resolve contacts from the already-loaded allPersons array
+        //    but resolve contacts from the already-loaded candidates array
         let circleDescriptor = FetchDescriptor<GoldfishCircle>(
             predicate: #Predicate<GoldfishCircle> { circle in
                 circle.name.localizedStandardContains(trimmed)
@@ -521,13 +515,13 @@ struct GraphService {
                     .map(\.contact.id)
             }
         )
-        let circleMatches = allPersons.filter { circleContactIds.contains($0.id) }
+        let circleMatches = candidates.filter { circleContactIds.contains($0.id) }
 
         // 4. Relationship type label match
         let matchingRelTypes = RelationshipType.allCases.filter {
             $0.displayName.localizedCaseInsensitiveContains(trimmed)
         }
-        let relTypeMatches: [Person] = matchingRelTypes.isEmpty ? [] : allPersons.filter { person in
+        let relTypeMatches: [Person] = matchingRelTypes.isEmpty ? [] : candidates.filter { person in
             person.allRelationships.contains { rel in
                 let relType = RelationshipType(rawValue: rel.typeRawValue) ?? .other
                 return matchingRelTypes.contains(relType)

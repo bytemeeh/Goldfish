@@ -35,8 +35,8 @@ final class OnboardingViewModel: ObservableObject {
                 if let me = try dataManager.fetchMePerson() {
                     try dataManager.updatePerson(
                         me,
-                        phone: phone.isEmpty ? nil : phone,
-                        email: email.isEmpty ? nil : email
+                        phone: .set(phone.isEmpty ? nil : phone),
+                        email: .set(email.isEmpty ? nil : email)
                     )
                 }
             }

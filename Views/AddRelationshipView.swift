@@ -52,7 +52,7 @@ struct AddRelationshipView: View {
                                         photoData: contact.photoData,
                                         name: contact.name,
                                         colorHex: contact.color,
-                                        size: 36
+                                        size: .extraSmall
                                     )
                                     Text(contact.name)
                                         .foregroundStyle(.primary)

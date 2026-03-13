@@ -17,15 +17,18 @@ struct HomeView: View {
 private struct HomeContent: View {
     @EnvironmentObject var dataManager: GoldfishDataManager
 
-
     @EnvironmentObject var walkthroughManager: FeatureWalkthroughManager
     @EnvironmentObject var demoModeManager: DemoModeManager
     @StateObject private var viewModel: HomeViewModel
     @StateObject private var graphViewModel: GraphViewModel
 
+    /// Tracks whether the user has completed the initial sign-in onboarding.
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+
     @State private var showSettings = false
     @State private var showAddContact = false
-    @State private var isSearchActive = false
+    @State private var showSearchBar = false
+    @FocusState private var isSearchFocused: Bool
 
     init(dataManager: GoldfishDataManager) {
         _viewModel = StateObject(wrappedValue: HomeViewModel(dataManager: dataManager))
@@ -36,137 +39,212 @@ private struct HomeContent: View {
         ZStack {
             NavigationStack {
                 VStack(spacing: 0) {
-                    if isSearchActive {
+                    if showSearchBar {
                         HStack {
                             Image(systemName: "magnifyingglass")
-                                .foregroundColor(.secondary)
-                            TextField("Search...", text: $viewModel.searchText)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .foregroundColor(.gray)
+                            TextField("Search contacts...", text: $viewModel.searchText)
+                                .focused($isSearchFocused)
+                                .disableAutocorrection(true)
+                            
                             if !viewModel.searchText.isEmpty {
-                                Button(action: { viewModel.searchText = "" }) {
+                                Button(action: {
+                                    viewModel.searchText = ""
+                                }) {
                                     Image(systemName: "xmark.circle.fill")
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(.gray)
                                 }
                             }
+                            
                             Button("Cancel") {
                                 withAnimation {
-                                    isSearchActive = false
+                                    showSearchBar = false
                                     viewModel.searchText = ""
+                                    isSearchFocused = false
                                 }
                             }
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(.goldfishAccent)
+                            .padding(.leading, 8)
                         }
+                        .padding(10)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(10)
                         .padding(.horizontal)
-                        .padding(.vertical, 8)
-                        .background(Color(uiColor: .systemGroupedBackground))
+                        .padding(.top, 8)
+                        .padding(.bottom, 4)
                         .transition(.move(edge: .top).combined(with: .opacity))
                     }
-                    
-                    if viewModel.viewMode == .graph {
-                        GraphContainerView(viewModel: graphViewModel)
-                            .onTapGesture {
-                                if isSearchActive {
-                                    withAnimation {
-                                        isSearchActive = false
-                                        viewModel.searchText = ""
+
+                    ZStack(alignment: .top) {
+                        if viewModel.viewMode == .graph {
+                            GraphContainerView(viewModel: graphViewModel)
+                                .onChange(of: viewModel.isSearching) { _, active in
+                                    if active && !viewModel.searchText.isEmpty {
+                                        graphViewModel.searchMatchedIDs = Set(viewModel.filteredContacts.map(\.id))
+                                    } else {
+                                        graphViewModel.searchMatchedIDs = nil
                                     }
                                 }
-                            }
-                            .onChange(of: isSearchActive) { _, active in
-                                if active && !viewModel.searchText.isEmpty {
-                                    graphViewModel.searchMatchedIDs = Set(viewModel.filteredContacts.map(\.id))
-                                } else {
-                                    graphViewModel.searchMatchedIDs = nil
+                                .onChange(of: viewModel.filteredContacts) { _, contacts in
+                                    if viewModel.isSearching && !viewModel.searchText.isEmpty {
+                                        graphViewModel.searchMatchedIDs = Set(contacts.map(\.id))
+                                    } else {
+                                        graphViewModel.searchMatchedIDs = nil
+                                    }
                                 }
-                            }
-                            .onChange(of: viewModel.filteredContacts) { _, contacts in
-                                if isSearchActive && !viewModel.searchText.isEmpty {
-                                    graphViewModel.searchMatchedIDs = Set(contacts.map(\.id))
-                                } else {
-                                    graphViewModel.searchMatchedIDs = nil
+                                .onChange(of: demoModeManager.isDemoModeActive) { _, isActive in
+                                    graphViewModel.isDemoMode = isActive
+                                    graphViewModel.refreshGraph()
+                                    viewModel.isDemoMode = isActive
+                                    viewModel.loadData()
                                 }
-                            }
-                    } else {
-                        contactsList
+                                .onAppear {
+                                    graphViewModel.isDemoMode = demoModeManager.isDemoModeActive
+                                    viewModel.isDemoMode = demoModeManager.isDemoModeActive
+                                }
+                        } else {
+                            contactsList
+                        }
+
+                        if showSearchBar && isSearchFocused && !viewModel.searchText.isEmpty {
+                            SearchOverlayView(
+                                viewModel: viewModel,
+                                onSelect: { person in
+                                    // Complete search with the selected person's name
+                                    viewModel.searchText = person.name
+                                    isSearchFocused = false
+                                }
+                            )
+                            .padding(.horizontal)
+                        }
                     }
                 }
-                .navigationTitle(viewModel.viewMode == .graph ? "Ponds" : "Contacts")
+                .navigationTitle("")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItemGroup(placement: .topBarLeading) {
-                        Button { showSettings = true } label: {
-                            Image(systemName: "gear")
+                    ToolbarItem(placement: .principal) {
+                        Picker("View Mode", selection: Binding(
+                            get: { viewModel.viewMode },
+                            set: { viewModel.viewMode = $0 }
+                        )) {
+                            Text("Ponds").tag(HomeViewMode.graph)
+                            Text("Contacts").tag(HomeViewMode.list)
                         }
+                        .pickerStyle(.segmented)
+                        .frame(width: 200)
+                    }
+                    ToolbarItemGroup(placement: .topBarTrailing) {
                         Button { 
-                            withAnimation { isSearchActive.toggle() }
-                            if !isSearchActive { viewModel.searchText = "" }
+                            withAnimation {
+                                showSearchBar.toggle()
+                                if showSearchBar {
+                                    isSearchFocused = true
+                                } else {
+                                    viewModel.searchText = ""
+                                    isSearchFocused = false
+                                }
+                            }
                         } label: {
                             Image(systemName: "magnifyingglass")
                         }
-                    }
-                    ToolbarItemGroup(placement: .topBarTrailing) {
-                        Button { viewModel.toggleViewMode() } label: {
-                            Image(systemName: viewModel.viewMode == .graph ? "list.bullet" : "network")
+                        Button { showSettings = true } label: {
+                            Image(systemName: "gear")
                         }
-
-
                         Button { showAddContact = true } label: {
                             Image(systemName: "plus")
                         }
                     }
                 }
-                .sheet(isPresented: $showSettings) {
-                    NavigationStack {
-                        SettingsView()
-                            .environmentObject(dataManager)
-                    }
+            }
+            .sheet(isPresented: $showSettings) {
+                NavigationStack {
+                    SettingsView()
+                        .environmentObject(dataManager)
                 }
-                .sheet(isPresented: $showAddContact, onDismiss: {
-                    viewModel.loadData()
-                    if viewModel.viewMode == .graph {
-                        graphViewModel.refreshGraph()
-                    }
-                }) {
-                    NavigationStack {
-                        ContactFormView(viewModel: ContactFormViewModel(dataManager: dataManager))
-                            .environmentObject(dataManager)
-                    }
-                }
-                .onAppear {
-                    viewModel.isDemoMode = demoModeManager.isDemoModeActive
-                    graphViewModel.isDemoMode = demoModeManager.isDemoModeActive
-                    viewModel.loadData()
-                    if viewModel.viewMode == .graph {
-                        graphViewModel.loadGraph()
-                    }
-                    
-
-                }
-                .onChange(of: demoModeManager.isDemoModeActive) { _, isDemoActive in
-                    viewModel.isDemoMode = isDemoActive
-                    graphViewModel.isDemoMode = isDemoActive
-                    viewModel.loadData()
+            }
+            .sheet(isPresented: $showAddContact, onDismiss: {
+                viewModel.loadData()
+                if viewModel.viewMode == .graph {
                     graphViewModel.refreshGraph()
                 }
-
-            }
-            .walkthroughOverlay()
-            .onAppear {
-                setupWalkthroughCallbacks()
-                walkthroughManager.startWalkthroughIfNeeded(dataManager: dataManager)
-                // Refresh graph after demo data seeding so new contacts appear
-                graphViewModel.refreshGraph()
-            }
-            .onChange(of: walkthroughManager.isActive) { wasActive, isActive in
-                // When walkthrough completes (goes from active to inactive)
-                if wasActive && !isActive {
-                    // Turn on demo mode automatically at the end of the walkthrough
-                    // This sets isDemoModeActive = true, which the Settings toggle reads
-                    demoModeManager.activateDemoMode(dataManager: dataManager)
+            }) {
+                NavigationStack {
+                    ContactFormView(viewModel: ContactFormViewModel(dataManager: dataManager))
+                        .environmentObject(dataManager)
                 }
             }
-        }
+            .onAppear {
+                setupWalkthroughCallbacks()
+                // If onboarding isn't done yet, seed demo data immediately
+                // so the ponds graph is populated behind the sign-in overlay.
+                if !hasCompletedOnboarding {
+                    walkthroughManager.seedDemoDataIfNeeded(dataManager: dataManager)
+                }
+                let demoMode = walkthroughManager.isActive || demoModeManager.isDemoModeActive || !hasCompletedOnboarding
+                viewModel.isDemoMode = demoMode
+                graphViewModel.isDemoMode = demoMode
+                viewModel.loadData()
+                if viewModel.viewMode == .graph {
+                    graphViewModel.loadGraph()
+                }
+                // Switch to graph view for onboarding so ponds are visible
+                if !hasCompletedOnboarding {
+                    viewModel.viewMode = .graph
+                }
+                // Start the walkthrough if onboarding is already done (returning user)
+                if hasCompletedOnboarding {
+                    walkthroughManager.startWalkthroughIfNeeded(dataManager: dataManager)
+                }
+                // Refresh to pick up any freshly seeded demo data
+                graphViewModel.refreshGraph()
+            }
+            .onChange(of: demoModeManager.isDemoModeActive) { _, isDemoActive in
+                let demoMode = walkthroughManager.isActive || isDemoActive
+                viewModel.isDemoMode = demoMode
+                graphViewModel.isDemoMode = demoMode
+                viewModel.loadData()
+                graphViewModel.refreshGraph()
+            }
+            .onChange(of: walkthroughManager.isActive) { _, isActive in
+                let demoMode = isActive || demoModeManager.isDemoModeActive
+                if viewModel.isDemoMode != demoMode {
+                    viewModel.isDemoMode = demoMode
+                    graphViewModel.isDemoMode = demoMode
+                    viewModel.loadData()
+                    graphViewModel.refreshGraph()
+                    if isActive {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            graphViewModel.resetCamera()
+                        }
+                    }
+                }
+            }
+            .walkthroughOverlay()
+            // When sign-in completes, start the feature walkthrough tour
+            .onChange(of: hasCompletedOnboarding) { _, completed in
+                if completed {
+                    // Reload graph in demo mode (demo data already seeded before sign-in)
+                    graphViewModel.isDemoMode = true
+                    viewModel.isDemoMode = true
+                    graphViewModel.refreshGraph()
+                    setupWalkthroughCallbacks()
+                    walkthroughManager.startWalkthroughIfNeeded(dataManager: dataManager)
+                }
+            }
 
+            // ── Onboarding Sign-In Overlay ──
+            // Sits directly inside this ZStack so the ponds graph remains
+            // visible through the transparent top portion of the overlay.
+            if !hasCompletedOnboarding {
+                OnboardingSignInOverlay()
+                    .environmentObject(dataManager)
+                    .environmentObject(walkthroughManager)
+                    .environmentObject(demoModeManager)
+                    .environmentObject(ToastManager.shared)
+                    .ignoresSafeArea()
+                    .zIndex(5000)
+            }
+        }
     }
     
     private func setupWalkthroughCallbacks() {
@@ -181,19 +259,28 @@ private struct HomeContent: View {
     // MARK: - Contacts List
     private var contactsList: some View {
         Group {
-            if viewModel.filteredContacts.isEmpty && viewModel.searchText.isEmpty {
+            switch viewModel.listState {
+            case .loading:
+                ProgressView()
+            case .emptyGlobal:
                 EmptyStateView(
-                    systemImage: "magnifyingglass",
-                    headline: "No results",
-                    subtext: "Try a different search term or add a contact."
+                    systemImage: "person.3.sequence.fill",
+                    headline: "Your pond is empty",
+                    subtext: "Tap the + button to add your first contact."
                 )
-            } else if viewModel.filteredContacts.isEmpty {
+            case .emptyPond(let pondName):
+                EmptyStateView(
+                    systemImage: "circle.grid.cross.fill",
+                    headline: "Empty Pond",
+                    subtext: "There are no contacts in the \(pondName) pond."
+                )
+            case .emptySearch:
                 EmptyStateView(
                     systemImage: "magnifyingglass",
                     headline: "No results",
                     subtext: "Try a different search term."
                 )
-            } else {
+            case .populated:
                 List {
                     ForEach(viewModel.groupedContacts) { group in
                         Section(header: Text(group.name).font(.headline).foregroundColor(.white).textCase(nil)) {
@@ -210,10 +297,11 @@ private struct HomeContent: View {
                                     ContactRowView(person: person)
                                 }
                             }
-                            .onDelete { _ in 
-                                // Deletion from grouped lists requires mapping offsets back to the flat array.
-                                // To keep it simple for now, we'll disable swipe-to-delete from the home view 
-                                // since edit/delete is supported inside the detail view.
+                            .onDelete { offsets in 
+                                for offset in offsets {
+                                    let person = group.contacts[offset]
+                                    viewModel.deleteContact(person)
+                                }
                             }
                         }
                     }

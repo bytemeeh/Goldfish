@@ -17,6 +17,15 @@ enum HomeViewMode: String, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - List State
+enum ListViewState: Equatable {
+    case loading
+    case populated
+    case emptySearch
+    case emptyPond(String)
+    case emptyGlobal
+}
+
 // MARK: - HomeViewModel
 @MainActor
 final class HomeViewModel: ObservableObject {
@@ -48,6 +57,7 @@ final class HomeViewModel: ObservableObject {
     @Published var filteredContacts: [Person] = []
     @Published var groupedContacts: [ContactGroup] = []
     @Published var circles: [GoldfishCircle] = []
+    @Published var listState: ListViewState = .loading
     
     private var cancellables = Set<AnyCancellable>()
     
@@ -134,7 +144,7 @@ final class HomeViewModel: ObservableObject {
         
         Task {
             do {
-                let results = try dataManager.search(query: query)
+                let results = try dataManager.search(query: query, demoMode: isDemoMode)
                 
                 // Apply active filters on top of search results
                 var finalResults = results
@@ -199,5 +209,18 @@ final class HomeViewModel: ObservableObject {
         }
         
         self.groupedContacts = sortedKeys.map { ContactGroup(name: $0, contacts: groups[$0]!) }
+        updateListState()
+    }
+    
+    private func updateListState() {
+        if !filteredContacts.isEmpty {
+            listState = .populated
+        } else if !searchText.isEmpty {
+            listState = .emptySearch
+        } else if let circleID = selectedCircleID, let circle = circles.first(where: { $0.id == circleID }) {
+            listState = .emptyPond(circle.name)
+        } else {
+            listState = .emptyGlobal
+        }
     }
 }
