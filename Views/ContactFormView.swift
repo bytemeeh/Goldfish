@@ -152,7 +152,7 @@ struct ContactFormView: View {
                 }
                 
                 // MARK: - Danger Zone
-                if viewModel.existingPerson != nil {
+                if let existing = viewModel.existingPerson, !existing.isMe {
                     Section {
                         Button(role: .destructive) {
                             if let person = viewModel.existingPerson {

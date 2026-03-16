@@ -1251,27 +1251,30 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
                 snapPreviewLine?.isHidden = true
                 snapPreviewLine?.path = nil
                 
-                // We are not snapping to a node. Are we inside a pond?
-                var foundPondName: String? = nil
-                for info in pondInfos {
-                    if let outline = pondOutlines[info.circleName], let path = outline.path {
-                        if path.contains(node.position) {
-                            foundPondName = info.circleName
-                            break
+                // ME node should never show pond hover feedback
+                if !(draggedNode?.isMe ?? false) {
+                    // We are not snapping to a node. Are we inside a pond?
+                    var foundPondName: String? = nil
+                    for info in pondInfos {
+                        if let outline = pondOutlines[info.circleName], let path = outline.path {
+                            if path.contains(node.position) {
+                                foundPondName = info.circleName
+                                break
+                            }
                         }
                     }
-                }
-                
-                if let old = hoverPondName, old != foundPondName {
-                    pondOutlines[old]?.strokeColor = UIColor.white.withAlphaComponent(0.2)
-                    pondOutlines[old]?.fillColor = .clear
-                }
-                
-                hoverPondName = foundPondName
-                
-                if let new = hoverPondName {
-                    pondOutlines[new]?.strokeColor = .white
-                    pondOutlines[new]?.fillColor = UIColor.white.withAlphaComponent(0.05)
+                    
+                    if let old = hoverPondName, old != foundPondName {
+                        pondOutlines[old]?.strokeColor = UIColor.white.withAlphaComponent(0.2)
+                        pondOutlines[old]?.fillColor = .clear
+                    }
+                    
+                    hoverPondName = foundPondName
+                    
+                    if let new = hoverPondName {
+                        pondOutlines[new]?.strokeColor = .white
+                        pondOutlines[new]?.fillColor = UIColor.white.withAlphaComponent(0.05)
+                    }
                 }
             }
         } else {
@@ -1314,7 +1317,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             if let targetID = snapTargetID {
                 UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
                 graphDelegate?.requestConnection(from: node.personID, to: targetID)
-            } else if let pondName = hoverPondName {
+            } else if let pondName = hoverPondName, !node.isMe {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 graphDelegate?.requestPondMove(for: node.personID, to: pondName)
             }

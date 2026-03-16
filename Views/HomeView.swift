@@ -226,7 +226,12 @@ private struct HomeContent: View {
             // When sign-in completes, start the feature walkthrough tour
             .onChange(of: hasCompletedOnboarding) { _, completed in
                 if completed {
-                    // Reload graph in demo mode (demo data already seeded before sign-in)
+                    // Re-seed demo data now that the Me person exists
+                    // (earlier attempt returned early because Me wasn't created yet)
+                    walkthroughManager.isDemoDataSeeded = false
+                    walkthroughManager.seedDemoDataIfNeeded(dataManager: dataManager)
+                    
+                    // Reload graph in demo mode
                     graphViewModel.isDemoMode = true
                     viewModel.isDemoMode = true
                     graphViewModel.refreshGraph()

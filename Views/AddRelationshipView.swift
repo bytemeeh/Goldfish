@@ -56,6 +56,16 @@ struct AddRelationshipView: View {
                                     )
                                     Text(contact.name)
                                         .foregroundStyle(.primary)
+                                    if contact.isMe {
+                                        Text("Me")
+                                            .font(.caption2)
+                                            .fontWeight(.bold)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Color.accentColor.opacity(0.15))
+                                            .foregroundColor(.accentColor)
+                                            .clipShape(Capsule())
+                                    }
                                     Spacer()
                                     if selectedTarget?.id == contact.id {
                                         Image(systemName: "checkmark")
@@ -99,6 +109,10 @@ struct AddRelationshipView: View {
             }
             if searchText.isEmpty { return true }
             return contact.name.localizedCaseInsensitiveContains(searchText)
+        }.sorted { a, b in
+            if a.isMe { return true }
+            if b.isMe { return false }
+            return a.name < b.name
         }
     }
 

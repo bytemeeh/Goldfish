@@ -275,7 +275,8 @@ final class GoldfishDataManager: ObservableObject {
         from: Person,
         to: Person,
         type: RelationshipType,
-        isPrimary: Bool = false
+        isPrimary: Bool = false,
+        skipAutoAssign: Bool = false
     ) throws -> Relationship {
         // Cycle detection for directional types
         if graphService.wouldCreateCycle(from: from, to: to, type: type, context: context) {
@@ -289,9 +290,11 @@ final class GoldfishDataManager: ObservableObject {
         from.outgoingRelationships.append(relationship)
         to.incomingRelationships.append(relationship)
 
-        // Auto-assign circles
-        try autoAssignCircle(for: from, relationshipType: type)
-        try autoAssignCircle(for: to, relationshipType: type)
+        // Auto-assign circles (skip when caller handles assignment explicitly, e.g. demo data)
+        if !skipAutoAssign {
+            try autoAssignCircle(for: from, relationshipType: type)
+            try autoAssignCircle(for: to, relationshipType: type)
+        }
 
         try context.save()
         return relationship
@@ -529,9 +532,11 @@ final class GoldfishDataManager: ObservableObject {
             return // Already a member
         }
 
-        // Auto-add
+        // Auto-add (also sync in-memory arrays to avoid stale reads)
         let membership = CircleContact(circle: circle, contact: person)
         context.insert(membership)
+        person.circleContacts.append(membership)
+        circle.circleContacts.append(membership)
     }
 
     // MARK: ───────────────────────────────────────────────

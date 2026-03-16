@@ -388,7 +388,8 @@ struct GraphContainerView: View {
         if let personID = viewModel.pendingPondMovePerson,
            let pondName = viewModel.pendingPondMoveTarget,
            let allPersons = try? dataManager.fetchAllPersons(),
-           let person = allPersons.first(where: { $0.id == personID }) {
+           let person = allPersons.first(where: { $0.id == personID }),
+           !person.isMe {
             
             VStack(spacing: 16) {
                 Text("Move to Pond?")

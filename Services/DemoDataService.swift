@@ -24,6 +24,11 @@ final class DemoDataService {
         let hasDemoData = existing.contains { $0.isDemo }
         guard !hasDemoData else { return }
         
+        // Require the "Me" contact to exist before seeding —
+        // relationships are anchored to Me, so seeding without it
+        // would create orphaned demo contacts.
+        guard let me = try dataManager.fetchMePerson() else { return }
+        
         // Ensure system circles exist (may not yet if called before onboarding)
         let existingCircles = try dataManager.fetchAllCircles()
         if !existingCircles.contains(where: { $0.isSystem }) {
@@ -162,35 +167,33 @@ final class DemoDataService {
             color: "#E06858"
         )
         
-        // ── Fetch the "Me" contact ──
-        guard let me = try dataManager.fetchMePerson() else { return }
-        
         // ── Create Relationships ──
+        // skipAutoAssign: true — circle assignments are handled explicitly below
         
         // Family relationships (from Me)
-        try dataManager.createRelationship(from: me, to: sarah, type: .spouse)
-        try dataManager.createRelationship(from: mom, to: me, type: .mother)
-        try dataManager.createRelationship(from: dad, to: me, type: .father)
-        try dataManager.createRelationship(from: me, to: tom, type: .sibling)
+        try dataManager.createRelationship(from: me, to: sarah, type: .spouse, skipAutoAssign: true)
+        try dataManager.createRelationship(from: mom, to: me, type: .mother, skipAutoAssign: true)
+        try dataManager.createRelationship(from: dad, to: me, type: .father, skipAutoAssign: true)
+        try dataManager.createRelationship(from: me, to: tom, type: .sibling, skipAutoAssign: true)
         
         // Mom & Dad are also Tom's parents
-        try dataManager.createRelationship(from: mom, to: tom, type: .mother)
-        try dataManager.createRelationship(from: dad, to: tom, type: .father)
+        try dataManager.createRelationship(from: mom, to: tom, type: .mother, skipAutoAssign: true)
+        try dataManager.createRelationship(from: dad, to: tom, type: .father, skipAutoAssign: true)
         
         // Mom & Dad are spouses
-        try dataManager.createRelationship(from: mom, to: dad, type: .spouse)
+        try dataManager.createRelationship(from: mom, to: dad, type: .spouse, skipAutoAssign: true)
         
         // Friends (from Me)
-        try dataManager.createRelationship(from: me, to: jake, type: .friend)
+        try dataManager.createRelationship(from: me, to: jake, type: .friend, skipAutoAssign: true)
         
         // Jake and Emma know each other
-        try dataManager.createRelationship(from: jake, to: emma, type: .friend)
+        try dataManager.createRelationship(from: jake, to: emma, type: .friend, skipAutoAssign: true)
         
         // Professional (from Me)
-        try dataManager.createRelationship(from: me, to: david, type: .coworker)
+        try dataManager.createRelationship(from: me, to: david, type: .coworker, skipAutoAssign: true)
         
         // David and Lisa are coworkers with each other
-        try dataManager.createRelationship(from: david, to: lisa, type: .coworker)
+        try dataManager.createRelationship(from: david, to: lisa, type: .coworker, skipAutoAssign: true)
         
         // ── Additional Demo Contacts for Custom Pond ──
         
@@ -249,34 +252,34 @@ final class DemoDataService {
         // ── Jake's Family Relationships ──
         
         // Jake & Nicole are spouses
-        try dataManager.createRelationship(from: jake, to: nicole, type: .spouse)
+        try dataManager.createRelationship(from: jake, to: nicole, type: .spouse, skipAutoAssign: true)
         
         // Jake is father of all three kids
-        try dataManager.createRelationship(from: jake, to: liam, type: .father)
-        try dataManager.createRelationship(from: jake, to: ella, type: .father)
-        try dataManager.createRelationship(from: jake, to: noah, type: .father)
+        try dataManager.createRelationship(from: jake, to: liam, type: .father, skipAutoAssign: true)
+        try dataManager.createRelationship(from: jake, to: ella, type: .father, skipAutoAssign: true)
+        try dataManager.createRelationship(from: jake, to: noah, type: .father, skipAutoAssign: true)
         
         // Nicole is mother of all three kids
-        try dataManager.createRelationship(from: nicole, to: liam, type: .mother)
-        try dataManager.createRelationship(from: nicole, to: ella, type: .mother)
-        try dataManager.createRelationship(from: nicole, to: noah, type: .mother)
+        try dataManager.createRelationship(from: nicole, to: liam, type: .mother, skipAutoAssign: true)
+        try dataManager.createRelationship(from: nicole, to: ella, type: .mother, skipAutoAssign: true)
+        try dataManager.createRelationship(from: nicole, to: noah, type: .mother, skipAutoAssign: true)
         
         // Liam, Ella, and Noah are siblings
-        try dataManager.createRelationship(from: liam, to: ella, type: .sibling)
-        try dataManager.createRelationship(from: liam, to: noah, type: .sibling)
-        try dataManager.createRelationship(from: ella, to: noah, type: .sibling)
+        try dataManager.createRelationship(from: liam, to: ella, type: .sibling, skipAutoAssign: true)
+        try dataManager.createRelationship(from: liam, to: noah, type: .sibling, skipAutoAssign: true)
+        try dataManager.createRelationship(from: ella, to: noah, type: .sibling, skipAutoAssign: true)
         
         // Book club friends (connected through Emma, not directly to Me)
-        try dataManager.createRelationship(from: emma, to: mia, type: .friend)
-        try dataManager.createRelationship(from: emma, to: ryan, type: .friend)
+        try dataManager.createRelationship(from: emma, to: mia, type: .friend, skipAutoAssign: true)
+        try dataManager.createRelationship(from: emma, to: ryan, type: .friend, skipAutoAssign: true)
         
         // Mia and Ryan know each other
-        try dataManager.createRelationship(from: mia, to: ryan, type: .friend)
+        try dataManager.createRelationship(from: mia, to: ryan, type: .friend, skipAutoAssign: true)
         
         // Multi-level connections (Depth 2 & 3)
-        try dataManager.createRelationship(from: david, to: chris, type: .coworker)
-        try dataManager.createRelationship(from: jake, to: sam, type: .friend)
-        try dataManager.createRelationship(from: sam, to: alex, type: .partner)
+        try dataManager.createRelationship(from: david, to: chris, type: .coworker, skipAutoAssign: true)
+        try dataManager.createRelationship(from: jake, to: sam, type: .friend, skipAutoAssign: true)
+        try dataManager.createRelationship(from: sam, to: alex, type: .partner, skipAutoAssign: true)
         
         // ── Explicit Circle Assignments ──
         // Single pond per contact: each contact belongs to exactly one pond.

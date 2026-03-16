@@ -16,6 +16,11 @@ private struct CircleManagerContent: View {
     @State private var newCircleEmoji = "⭕️"
     @State private var newCircleColor = Color.gray
 
+    // Edit state
+    @State private var editingCircle: GoldfishCircle?
+    @State private var editName = ""
+    @State private var editColor = Color.gray
+
     init(dataManager: GoldfishDataManager) {
         _viewModel = StateObject(wrappedValue: CircleManagerViewModel(dataManager: dataManager))
     }
@@ -30,10 +35,21 @@ private struct CircleManagerContent: View {
                     if circle.isSystem {
                         Text("System")
                             .font(.caption)
-                            .padding(4)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
                             .background(Color(.secondarySystemBackground))
                             .cornerRadius(4)
                     }
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    editName = circle.name
+                    editColor = Color(hex: circle.color) ?? .gray
+                    editingCircle = circle
                 }
                 .swipeActions {
                     if !circle.isSystem {
@@ -54,6 +70,7 @@ private struct CircleManagerContent: View {
                 }
             }
         }
+        // MARK: - Create Sheet
         .sheet(isPresented: $showCreateSheet) {
             NavigationStack {
                 Form {
@@ -83,5 +100,50 @@ private struct CircleManagerContent: View {
             }
             .presentationDetents([.medium])
         }
+        // MARK: - Edit Sheet
+        .sheet(item: $editingCircle) { circle in
+            NavigationStack {
+                Form {
+                    Section("Details") {
+                        TextField("Name", text: $editName)
+                        ColorPicker("Color", selection: $editColor)
+                    }
+                    if !circle.isSystem {
+                        Section {
+                            Button(role: .destructive) {
+                                viewModel.deleteCircle(circle)
+                                editingCircle = nil
+                            } label: {
+                                HStack {
+                                    Spacer()
+                                    Text("Delete Pond")
+                                    Spacer()
+                                }
+                            }
+                        }
+                    }
+                }
+                .navigationTitle("Edit Pond")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { editingCircle = nil }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Save") {
+                            viewModel.updateCircle(
+                                circle,
+                                name: editName,
+                                emoji: circle.emoji,
+                                color: editColor.toHex() ?? circle.color
+                            )
+                            editingCircle = nil
+                        }
+                        .disabled(editName.isEmpty)
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
     }
 }
+

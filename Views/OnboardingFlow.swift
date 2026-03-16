@@ -22,13 +22,15 @@ struct OnboardingSignInOverlay: View {
             bgColor.ignoresSafeArea()
 
             // Hero goldfish image filling the screen
-            Image("HeroGoldfish")
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
+            GeometryReader { geo in
+                Image("HeroGoldfish")
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+            }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
 
             // Gradient overlay on top of the image to fade into the dark card
             LinearGradient(
