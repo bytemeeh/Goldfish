@@ -144,11 +144,14 @@ struct GraphContainerView: View {
                 viewModel.pendingActionContactID = nil
             }
             
-            // Generate a button for each existing pond
-            ForEach(circles.sorted(by: { $0.sortOrder < $1.sortOrder })) { circle in
-                Button("Assign to \(circle.name)") {
-                    assignContact(contactID, to: circle)
-                    viewModel.pendingActionContactID = nil
+            // Generate a button for each existing pond (only for non-Me contacts)
+            if let person = try? dataManager.fetchAllPersons().first(where: { $0.id == contactID }),
+               !person.isMe {
+                ForEach(circles.sorted(by: { $0.sortOrder < $1.sortOrder })) { circle in
+                    Button("Assign to \(circle.name)") {
+                        assignContact(contactID, to: circle)
+                        viewModel.pendingActionContactID = nil
+                    }
                 }
             }
             
@@ -177,16 +180,16 @@ struct GraphContainerView: View {
         guard let allPersons = try? dataManager.fetchAllPersons(),
               let person = allPersons.first(where: { $0.id == contactID }) else { return }
         
-        // Don't add if already in this circle
-        if !person.circleContacts.contains(where: { $0.circle.id == circle.id }) {
-            let cc = CircleContact(circle: circle, contact: person)
-            dataManager.context.insert(cc)
-            _ = try? dataManager.context.save()
-            ToastManager.shared.showToast(message: "Added \(person.name) to \(circle.name)")
-            viewModel.refreshGraph()
-        } else {
+        // Already in this exact circle? No-op.
+        if person.circleContacts.contains(where: { $0.circle.id == circle.id && !$0.manuallyExcluded }) {
             ToastManager.shared.showToast(message: "\(person.name) is already in \(circle.name)")
+            return
         }
+        
+        // addToCircle enforces single-pond constraint (removes old memberships)
+        let _ = try? dataManager.addToCircle(person, circle: circle)
+        ToastManager.shared.showToast(message: "Moved \(person.name) to \(circle.name)")
+        viewModel.refreshGraph()
     }
 
     /// Gets the existing scene or creates a new one, immediately feeding it graph data.
@@ -334,8 +337,13 @@ struct GraphContainerView: View {
                         
                         if connectPondName != "None",
                            let circle = try? dataManager.fetchAllCircles().first(where: { $0.name == connectPondName }) {
-                            let _ = try? dataManager.addToCircle(fromPerson, circle: circle)
-                            let _ = try? dataManager.addToCircle(toPerson, circle: circle)
+                            // Skip ME contact — it must never belong to a pond
+                            if !fromPerson.isMe {
+                                let _ = try? dataManager.addToCircle(fromPerson, circle: circle)
+                            }
+                            if !toPerson.isMe {
+                                let _ = try? dataManager.addToCircle(toPerson, circle: circle)
+                            }
                         }
                         
                         try? dataManager.context.save()

@@ -265,6 +265,71 @@ final class CircleAutoAssignmentTests: XCTestCase {
             XCTAssertEqual(error as? GoldfishError, .cannotDeleteSystemCircle)
         }
     }
+
+    /// The isMe contact must never be added to any circle.
+    func testMeCannotBeAddedToCircle() throws {
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let familyCircle = try manager.fetchSystemCircles().first { $0.name == "Family" }!
+
+        _ = try manager.addToCircle(me, circle: familyCircle)
+
+        // No CircleContact should have been persisted for the Me contact
+        let members = familyCircle.activeContacts
+        XCTAssertFalse(members.contains { $0.id == me.id })
+    }
+
+    /// Auto-assignment via relationship creation must skip the isMe contact.
+    func testAutoAssignSkipsMeContact() throws {
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let bob = try manager.createPerson(name: "Bob")
+
+        try manager.createRelationship(from: me, to: bob, type: .friend)
+
+        let friendsCircle = try manager.fetchSystemCircles().first { $0.name == "Friends" }!
+        let members = friendsCircle.activeContacts
+
+        // Bob should be in Friends, Me should NOT
+        XCTAssertTrue(members.contains { $0.id == bob.id })
+        XCTAssertFalse(members.contains { $0.id == me.id })
+    }
+
+    /// Adding a contact to a new pond removes them from the old one (single pond enforcement).
+    func testSinglePondEnforcement() throws {
+        let alice = try manager.createPerson(name: "Alice")
+        let familyCircle = try manager.fetchSystemCircles().first { $0.name == "Family" }!
+        let friendsCircle = try manager.fetchSystemCircles().first { $0.name == "Friends" }!
+
+        // Add Alice to Family
+        try manager.addToCircle(alice, circle: familyCircle)
+        XCTAssertTrue(familyCircle.activeContacts.contains { $0.id == alice.id })
+
+        // Now add Alice to Friends — should move her out of Family
+        try manager.addToCircle(alice, circle: friendsCircle)
+        XCTAssertTrue(friendsCircle.activeContacts.contains { $0.id == alice.id })
+
+        // Alice should no longer be in Family active contacts
+        let familyMembers = familyCircle.circleContacts.filter { !$0.manuallyExcluded && $0.contact.id == alice.id }
+        XCTAssertTrue(familyMembers.isEmpty, "Alice should have been removed from Family when added to Friends")
+    }
+
+    /// Auto-assignment should NOT move a contact that is already in a pond.
+    func testAutoAssignSkipsWhenAlreadyInPond() throws {
+        let alice = try manager.createPerson(name: "Alice")
+        let familyCircle = try manager.fetchSystemCircles().first { $0.name == "Family" }!
+
+        // Manually put Alice in Family
+        try manager.addToCircle(alice, circle: familyCircle)
+
+        // Now create a friend relationship for Alice — auto-assign would normally put her in Friends
+        let bob = try manager.createPerson(name: "Bob")
+        try manager.createRelationship(from: alice, to: bob, type: .friend)
+
+        // Alice should still be in Family, NOT moved to Friends
+        XCTAssertTrue(familyCircle.activeContacts.contains { $0.id == alice.id })
+        let friendsCircle = try manager.fetchSystemCircles().first { $0.name == "Friends" }!
+        let aliceInFriends = friendsCircle.circleContacts.filter { !$0.manuallyExcluded && $0.contact.id == alice.id }
+        XCTAssertTrue(aliceInFriends.isEmpty, "Alice should NOT have been auto-moved to Friends")
+    }
 }
 
 // MARK: - Graph Layout Tests

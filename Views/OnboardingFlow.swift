@@ -18,13 +18,25 @@ struct OnboardingSignInOverlay: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Top: transparent gradient so graph shows through behind the overlay
+            // Full background color to prevent graph bleed-through
+            bgColor.ignoresSafeArea()
+
+            // Hero goldfish image filling the screen
+            Image("HeroGoldfish")
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+
+            // Gradient overlay on top of the image to fade into the dark card
             LinearGradient(
                 stops: [
                     .init(color: .clear, location: 0.0),
-                    .init(color: bgColor.opacity(0.55), location: 0.55),
-                    .init(color: bgColor.opacity(0.97), location: 0.78),
-                    .init(color: bgColor, location: 1.0)
+                    .init(color: bgColor.opacity(0.55), location: 0.35),
+                    .init(color: bgColor.opacity(0.97), location: 0.55),
+                    .init(color: bgColor, location: 0.65)
                 ],
                 startPoint: .top,
                 endPoint: .bottom

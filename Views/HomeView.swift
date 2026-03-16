@@ -164,9 +164,7 @@ private struct HomeContent: View {
             }
             .sheet(isPresented: $showAddContact, onDismiss: {
                 viewModel.loadData()
-                if viewModel.viewMode == .graph {
-                    graphViewModel.refreshGraph()
-                }
+                graphViewModel.refreshGraph()
             }) {
                 NavigationStack {
                     ContactFormView(viewModel: ContactFormViewModel(dataManager: dataManager))
@@ -220,6 +218,11 @@ private struct HomeContent: View {
                 }
             }
             .walkthroughOverlay()
+            .onChange(of: viewModel.viewMode) { _, newMode in
+                if newMode == .graph {
+                    graphViewModel.refreshGraph()
+                }
+            }
             // When sign-in completes, start the feature walkthrough tour
             .onChange(of: hasCompletedOnboarding) { _, completed in
                 if completed {
@@ -253,6 +256,15 @@ private struct HomeContent: View {
         }
         walkthroughManager.onRequestListView = {
             withAnimation { viewModel.viewMode = .list }
+        }
+        walkthroughManager.onTourCompleted = { keepDemoData in
+            if keepDemoData {
+                demoModeManager.activateDemoMode(dataManager: dataManager)
+            } else {
+                demoModeManager.removeDemoData(dataManager: dataManager)
+            }
+            viewModel.loadData()
+            graphViewModel.refreshGraph()
         }
     }
 

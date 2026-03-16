@@ -14,6 +14,10 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     private let cameraNode = SKCameraNode()
     private var currentZoom: CGFloat = 1.0
 
+    // MARK: - Delta-Time Clamping
+    private var lastUpdateTime: TimeInterval = 0
+    private let maxDeltaTime: TimeInterval = 1.0 / 30.0  // Cap at ~33ms to prevent lag-spike explosions
+
     // MARK: - Content
     private let contentNode = SKNode()
     private var personNodes: [UUID: PersonNode] = [:]
@@ -47,9 +51,12 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     private var selectedNodeID: UUID?
 
     // MARK: - Physics Settle & Focus Mode
-    private var settleTimer: Timer?
     private var physicsSettled = false
     private var soloedPondName: String? = nil
+    
+    /// Rolling per-frame kinetic energy used for energy-based settling.
+    private var frameEnergyHistory: [CGFloat] = []
+    private let energyHistoryWindowSize = 10
     
     // MARK: - Search State
     private var activeSearchIDs: Set<UUID>? = nil
@@ -73,12 +80,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         physicsWorld.gravity = .zero
         physicsWorld.speed = 1.0
 
-        // Weak radial gravity to keep graph centered
-        let gravity = SKFieldNode.radialGravityField()
-        gravity.strength = 0.1
-        gravity.falloff = 0.5
-        gravity.position = .zero
-        contentNode.addChild(gravity)
+        // NOTE: No SKFieldNode here — all forces are computed manually in update()
 
         setupGestures(in: view)
         
@@ -211,10 +213,20 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         var maxY: CGFloat = -.greatestFiniteMagnitude
         
         for node in nodes {
-            minX = min(minX, node.position.x)
-            maxX = max(maxX, node.position.x)
-            minY = min(minY, node.position.y)
-            maxY = max(maxY, node.position.y)
+            let px = node.position.x
+            let py = node.position.y
+            // FIX 4 — Guard against NaN/Infinity coordinates that cause grey-screen
+            guard px.isFinite && py.isFinite else { continue }
+            minX = min(minX, px)
+            maxX = max(maxX, px)
+            minY = min(minY, py)
+            maxY = max(maxY, py)
+        }
+        
+        // If all positions were invalid, bail out gracefully with identity scale.
+        guard minX < maxX || minY < maxY else {
+            cameraNode.setScale(1.0)
+            return
         }
         
         let width = max(maxX - minX, 100) + (padding * 2)
@@ -222,6 +234,11 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         
         let cx = (minX + maxX) / 2
         let cy = (minY + maxY) / 2
+        // Clamp center as well — should always be finite after the guard above
+        guard cx.isFinite && cy.isFinite else {
+            cameraNode.setScale(1.0)
+            return
+        }
         let target = CGPoint(x: cx, y: cy)
         
         let viewDimWidth = size.width
@@ -232,6 +249,8 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         let zoomY = viewDimHeight / height
         var targetZoom = min(zoomX, zoomY)
         
+        // Clamp the derived scale — prevents setScale(NaN) / setScale(Infinity)
+        if !targetZoom.isFinite || targetZoom <= 0 { targetZoom = 1.0 }
         targetZoom = min(max(targetZoom, minZoom), maxZoom)
         
         let moveAction = SKAction.move(to: target, duration: 0.5)
@@ -311,7 +330,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     func animateNewConnection(from: UUID, to: UUID) {
         guard let nodeA = personNodes[from], let nodeB = personNodes[to] else { return }
         
-        // 1. Visual pulse
+        // 1. Visual pulse on both nodes
         let pulse = SKAction.sequence([
             SKAction.scale(to: 1.15, duration: 0.1),
             SKAction.scale(to: 1.0, duration: 0.2)
@@ -319,33 +338,59 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         nodeA.run(pulse)
         nodeB.run(pulse)
         
-        // 2. Physical "tug" impulse
-        let dx = nodeB.position.x - nodeA.position.x
-        let dy = nodeB.position.y - nodeA.position.y
-        let distance = max(hypot(dx, dy), 1)
-        let impulseMag: CGFloat = 800.0
+        // 2. Intelligent repositioning: if the two nodes are too close,
+        //    find a good angle to place nodeA at restLength from nodeB
+        //    that avoids overlapping other nearby nodes.
+        let idealSpacing: CGFloat = 140.0  // matches FDG restLength
+        let currentDist = hypot(nodeA.position.x - nodeB.position.x,
+                                nodeA.position.y - nodeB.position.y)
         
-        let impulseA = CGVector(dx: (dx / distance) * impulseMag, dy: (dy / distance) * impulseMag)
-        let impulseB = CGVector(dx: (-dx / distance) * impulseMag, dy: (-dy / distance) * impulseMag)
+        if currentDist < idealSpacing * 1.2, let bodyA = nodeA.physicsBody, bodyA.isDynamic {
+            // Scan angles in 30° increments to find the best position
+            let angleSteps = 12
+            var bestAngle: CGFloat = 0
+            var bestMinDist: CGFloat = -1
+            
+            for step in 0..<angleSteps {
+                let candidateAngle = (CGFloat(step) / CGFloat(angleSteps)) * 2.0 * .pi
+                let candidateX = nodeB.position.x + cos(candidateAngle) * idealSpacing
+                let candidateY = nodeB.position.y + sin(candidateAngle) * idealSpacing
+                
+                // Find the minimum distance from this candidate to all OTHER nodes
+                var minDistToOthers: CGFloat = .greatestFiniteMagnitude
+                for (id, otherNode) in personNodes {
+                    guard id != from && id != to else { continue }
+                    let d = hypot(candidateX - otherNode.position.x,
+                                  candidateY - otherNode.position.y)
+                    minDistToOthers = min(minDistToOthers, d)
+                }
+                
+                // Pick the angle that maximizes distance to nearest neighbor
+                if minDistToOthers > bestMinDist {
+                    bestMinDist = minDistToOthers
+                    bestAngle = candidateAngle
+                }
+            }
+            
+            let targetX = nodeB.position.x + cos(bestAngle) * idealSpacing
+            let targetY = nodeB.position.y + sin(bestAngle) * idealSpacing
+            let targetPos = CGPoint(x: targetX, y: targetY)
+            
+            // Stop current velocity and animate to the ideal position
+            bodyA.velocity = .zero
+            let moveAction = SKAction.move(to: targetPos, duration: 0.3)
+            moveAction.timingMode = .easeInEaseOut
+            nodeA.run(moveAction)
+        }
         
-        nodeA.physicsBody?.applyImpulse(impulseA)
-        nodeB.physicsBody?.applyImpulse(impulseB)
-        
-        // 3. Temporarily speed up physics to settle the new connection
+        // 3. Wake physics to let the graph settle naturally after the reposition
         physicsWorld.speed = 1.0
         physicsSettled = false
-        
-        settleTimer?.invalidate()
-        settleTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
-            DispatchQueue.main.async {
-                self?.physicsWorld.speed = 0.0  // Fully freeze physics on settle
-                self?.physicsSettled = true
-                self?.applyIdleFloatingAnimation()
-            }
-        }
+        frameEnergyHistory.removeAll()
     }
 
-    private var edgeSprings: [String: SKPhysicsJointSpring] = [:]
+    /// Tracks which edge keys exist (for rendering). Springs are no longer used.
+    private var edgeConnections: Set<String> = []
     private var initialFitCompleted = false
 
     // MARK: - Graph Building
@@ -355,9 +400,9 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         evaluateNodeVisibility(animated: false)
 
         if !initialFitCompleted {
-            // Use fitToGraph after physics has had time to spread nodes out
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
-                self?.fitToGraph()
+            // Center on "Me" node at a comfortable zoom after physics settles a bit
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                self?.centerOnMe()
                 self?.initialFitCompleted = true
             }
         }
@@ -367,15 +412,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         physicsSettled = false
         physicsWorld.speed = 1.0
         
-        // Ensure gravity field exists
-        if contentNode.childNode(withName: "gravityField") == nil {
-            let gravity = SKFieldNode.radialGravityField()
-            gravity.name = "gravityField"
-            gravity.strength = 0.1
-            gravity.falloff = 0.5
-            gravity.position = .zero
-            contentNode.addChild(gravity)
-        }
+        // NOTE: No SKFieldNode gravity — all forces computed manually in update()
 
         // 1. Identify current vs new persons
         let currentPersonIDs = Set(personNodes.keys)
@@ -404,34 +441,36 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
                     // Create new node
                     let personNode = PersonNode(person: person, depth: level.depth)
                     
+                    // FIX 1 — Pre-scatter: Never spawn at (0,0). Place every node on a
+                    // deterministic ring PLUS a random polar offset so F=k/d² never
+                    // approaches infinity.  The minimum guaranteed separation is 50 pt.
                     let angle = (CGFloat(index) / CGFloat(max(count, 1))) * 2 * .pi
-                    // Add more random jitter to ensure they never start at exactly the same point
-                    let jitterX = CGFloat.random(in: -30...30)
-                    let jitterY = CGFloat.random(in: -30...30)
-                    
-                    // All levels (including 0) should use the radius for initial circular placement
-                    let x = radius * cos(angle) + jitterX
-                    let y = radius * sin(angle) + jitterY
+                    let scatterRadius = CGFloat.random(in: 60...160)
+                    let scatterAngle = angle + CGFloat.random(in: -0.4...0.4)
+                    let x = cos(scatterAngle) * (radius + scatterRadius)
+                    let y = sin(scatterAngle) * (radius + scatterRadius)
                     
                     personNode.position = CGPoint(x: x, y: y)
 
                     let body = SKPhysicsBody(circleOfRadius: 70)
                     body.mass = 1.0
-                    body.linearDamping = 4.0 // Increased to prevent orbital spinning
+                    body.linearDamping = 4.0
                     body.angularDamping = 2.0
-                    body.isDynamic = true
                     body.allowsRotation = false
                     body.categoryBitMask = 1
-                    body.collisionBitMask = 0 // Disabled physical collision to allow radial repulsion exclusively
-                    body.fieldBitMask = 1
+                    body.collisionBitMask = 0
+                    body.fieldBitMask = 0  // No SKFieldNode forces — all manual
+
+                    // Anchor "Me" node: immovable hub prevents multi-body solver instability
+                    if person.isMe {
+                        body.isDynamic = false
+                        personNode.position = .zero
+                    } else {
+                        body.isDynamic = true
+                    }
                     personNode.physicsBody = body
 
-                    // Add a repulsion field to keep other nodes away
-                    let repulsion = SKFieldNode.radialGravityField()
-                    repulsion.strength = -0.6 // Stronger repulsion
-                    repulsion.falloff = 1.0
-                    repulsion.region = SKRegion(radius: 120)
-                    personNode.addChild(repulsion)
+                    // NOTE: No SKFieldNode repulsion child — Coulomb repulsion is manual
 
                     contentNode.addChild(personNode)
                     personNodes[person.id] = personNode
@@ -444,6 +483,8 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         var pondMembers: [String: (color: String, ids: Set<UUID>)] = [:]
         for (_, personNode) in personNodes {
             guard let person = allContacts.first(where: { $0.id == personNode.personID }) else { continue }
+            // ME node is the graph anchor — never include it in any pond
+            guard !person.isMe else { continue }
             
             let activeCircles = person.circleContacts.filter { !$0.manuallyExcluded }
             for membership in activeCircles {
@@ -508,17 +549,14 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             }
         }
         
-        // Remove old edges and springs
+        // Remove old edges (no springs to clean up — they're gone)
         for edgeKey in Array(edgeNodes.keys) where !desiredEdges.contains(edgeKey) {
             edgeNodes[edgeKey]?.removeFromParent()
             edgeNodes.removeValue(forKey: edgeKey)
-            if let spring = edgeSprings[edgeKey] {
-                physicsWorld.remove(spring)
-                edgeSprings.removeValue(forKey: edgeKey)
-            }
         }
+        edgeConnections = desiredEdges
         
-        // Create new edges and springs
+        // Create new edge rendering nodes (NO SKPhysicsJointSpring — Hooke's law is manual)
         for edgeKey in desiredEdges {
             if edgeNodes[edgeKey] == nil {
                 let edgeNode = SKShapeNode()
@@ -531,27 +569,6 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
                 edgeNode.glowWidth = 1.0
                 contentNode.addChild(edgeNode)
                 edgeNodes[edgeKey] = edgeNode
-                
-                // Add spring joint
-                let ids = edgeKey.split(separator: "_")
-                guard ids.count == 2,
-                      let uuidA = UUID(uuidString: String(ids[0])),
-                      let uuidB = UUID(uuidString: String(ids[1])),
-                      let nodeA = personNodes[uuidA],
-                      let nodeB = personNodes[uuidB],
-                      let bodyA = nodeA.physicsBody,
-                      let bodyB = nodeB.physicsBody else { continue }
-
-                let spring = SKPhysicsJointSpring.joint(
-                    withBodyA: bodyA,
-                    bodyB: bodyB,
-                    anchorA: nodeA.position,
-                    anchorB: nodeB.position
-                )
-                spring.frequency = 0.4
-                spring.damping = 0.6
-                physicsWorld.add(spring)
-                edgeSprings[edgeKey] = spring
             }
         }
 
@@ -566,17 +583,11 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             snapPreviewLine = preview
         }
 
-        // Settle logic
-        physicsWorld.speed = 2.0
+        // Energy-based settling: didSimulatePhysics() watches kinetic energy.
+        physicsWorld.speed = 1.0  // Never run above 1.0 — custom sim handles pacing
         physicsSettled = false
-        settleTimer?.invalidate()
-        settleTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
-            DispatchQueue.main.async {
-                self?.physicsWorld.speed = 0.0  // Fully freeze physics on settle
-                self?.physicsSettled = true
-                self?.applyIdleFloatingAnimation()
-            }
-        }
+        frameEnergyHistory.removeAll()
+        lastUpdateTime = 0  // Reset dt tracking for fresh simulation
         
         evaluateNodeVisibility()
     }
@@ -584,21 +595,14 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
 
     
     private func applyIdleFloatingAnimation() {
-        for (_, node) in personNodes {
-            // Subtle bob up and down
-            let duration = Double.random(in: 2.0...3.0)
-            let moveUp = SKAction.moveBy(x: 0, y: 4, duration: duration)
-            moveUp.timingMode = .easeInEaseOut
-            let moveDown = SKAction.moveBy(x: 0, y: -4, duration: duration)
-            moveDown.timingMode = .easeInEaseOut
-            let seq = SKAction.sequence([moveUp, moveDown])
-            node.run(SKAction.repeatForever(seq), withKey: "floating")
-        }
+        // No-op: floating animation removed to prevent any drift after settling
     }
 
-    /// Pulls nodes toward vertical column positions so ponds stack top-to-bottom
-    /// with clear separation, allowing smooth vertical scrolling between them.
-    private func applyQuadrantForces() {
+    /// Computes forces pulling nodes toward vertical column positions so ponds stack top-to-bottom.
+    /// Returns per-node force vectors (does NOT call body.applyForce — caller integrates manually).
+    private func computeQuadrantForces() -> [UUID: CGVector] {
+        var forces: [UUID: CGVector] = [:]
+        
         // Reduced vertical spacing for better visibility on mobile
         let verticalSpacing: CGFloat = 450 
 
@@ -638,38 +642,35 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             slotIndex += 1
         }
 
-        for (_, node) in personNodes {
-            guard let body = node.physicsBody else { continue }
-            
-            // Special handling for "Me" - always keep centered
-            if node.isMe {
-                let dx = -node.position.x
-                let dy = -node.position.y
-                let dist = max(hypot(dx, dy), 1)
-                let forceMag: CGFloat = 60.0
-                body.applyForce(CGVector(dx: (dx/dist)*forceMag, dy: (dy/dist)*forceMag))
-                continue
-            }
+        for (id, node) in personNodes {
+            // "Me" is isDynamic=false so skip — it's pinned at origin
+            if node.isMe { continue }
             
             // Find which pond this node belongs to
             let circleName = pondInfos.first(where: { $0.memberIDs.contains(node.personID) })?.circleName ?? unassignedKey
             guard let target = assignedAnchors[circleName] else { continue }
             
-            // Apply a force towards the assigned vertical slot
             let dx = target.x - node.position.x
             let dy = target.y - node.position.y
             let distance = max(hypot(dx, dy), 1)
-            let forceMagnitude: CGFloat = 40.0
             
-            let force = CGVector(dx: (dx / distance) * forceMagnitude, dy: (dy / distance) * forceMagnitude)
-            body.applyForce(force)
+            // Dead zone: no pull if already within this radius of the anchor
+            let deadZone: CGFloat = 200.0
+            guard distance > deadZone else { continue }
+            
+            let excess = distance - deadZone
+            let forceMagnitude: CGFloat = min(excess * 0.15, 60.0)
+            
+            forces[id] = CGVector(dx: (dx / distance) * forceMagnitude, dy: (dy / distance) * forceMagnitude)
         }
+        return forces
     }
 
-    /// Prevents ponds from overlapping by applying repulsive forces between their member nodes
-    /// if their calculated boundaries are too close.
-    private func applyPondRepulsion(metrics: [PondMetrics]) {
-        guard metrics.count > 1 else { return }
+    /// Computes repulsive forces between ponds to prevent overlap.
+    /// Returns per-node force vectors (does NOT call body.applyForce — caller integrates manually).
+    private func computePondRepulsion(metrics: [PondMetrics]) -> [UUID: CGVector] {
+        var forces: [UUID: CGVector] = [:]
+        guard metrics.count > 1 else { return forces }
         
         for i in 0..<metrics.count {
             for j in i+1..<metrics.count {
@@ -680,45 +681,40 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
                 let dy = m1.center.y - m2.center.y
                 let distance = max(hypot(dx, dy), 1)
                 
-                // Minimum distance = sum of radii + generous safety margin
                 let minDistance = m1.radius + m2.radius + 220
                 
                 if distance < minDistance {
-                    // Ponds overlap or are too close
                     let overlap = minDistance - distance
                     let overlapRatio = overlap / minDistance
-                    // Very strong repulsion that scales sharply with overlap severity
                     let repulsionStrength: CGFloat = 80.0 * overlapRatio * overlapRatio + 30.0
                     
                     let rx = (dx / distance) * repulsionStrength
                     let ry = (dy / distance) * repulsionStrength
                     
-                    let force1 = CGVector(dx: rx, dy: ry)
-                    let force2 = CGVector(dx: -rx, dy: -ry)
-                    
-                    // Apply to all nodes in pond 1
                     for id in m1.memberIDs {
-                        personNodes[id]?.physicsBody?.applyForce(force1)
+                        let prev = forces[id] ?? .zero
+                        forces[id] = CGVector(dx: prev.dx + rx, dy: prev.dy + ry)
                     }
-                    // Apply to all nodes in pond 2
                     for id in m2.memberIDs {
-                        personNodes[id]?.physicsBody?.applyForce(force2)
+                        let prev = forces[id] ?? .zero
+                        forces[id] = CGVector(dx: prev.dx - rx, dy: prev.dy - ry)
                     }
                 }
             }
         }
+        return forces
     }
 
-    /// Prevents non-members (e.g., unassigned nodes) from drifting inside ponds they don't belong to.
-    private func applyPondNodeRepulsion(metrics: [PondMetrics]) {
+    /// Computes repulsive forces pushing non-members out of pond boundaries.
+    /// Returns per-node force vectors (does NOT call body.applyForce — caller integrates manually).
+    private func computePondNodeRepulsion(metrics: [PondMetrics]) -> [UUID: CGVector] {
+        var forces: [UUID: CGVector] = [:]
         for metric in metrics {
             let pondCenter = metric.center
-            // Add a safety buffer to the pond radius
             let repulseRadius = metric.radius + 80
             let memberSet = Set(metric.memberIDs)
             
             for (id, node) in personNodes {
-                // Ignore "Me" node and actual pond members
                 if memberSet.contains(id) { continue }
                 
                 let dx = node.position.x - pondCenter.x
@@ -728,17 +724,17 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
                 if distance < repulseRadius {
                     let overlap = repulseRadius - distance
                     let overlapRatio = overlap / repulseRadius
-                    
-                    // Repel the non-member node away from the pond center
                     let repulsionStrength: CGFloat = 60.0 * overlapRatio * overlapRatio + 20.0
                     
                     let rx = (dx / distance) * repulsionStrength
                     let ry = (dy / distance) * repulsionStrength
                     
-                    node.physicsBody?.applyForce(CGVector(dx: rx, dy: ry))
+                    let prev = forces[id] ?? .zero
+                    forces[id] = CGVector(dx: prev.dx + rx, dy: prev.dy + ry)
                 }
             }
         }
+        return forces
     }
 
     // MARK: - Path Logic
@@ -842,46 +838,20 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         return nil
     }
 
-    // MARK: - Update Loop
+    // MARK: - Update Loop (Custom Deterministic FDG Simulation)
 
     override func update(_ currentTime: TimeInterval) {
+        // ── dt clamping: prevent lag-spike explosions ──
+        if lastUpdateTime == 0 {
+            lastUpdateTime = currentTime
+            return  // Skip the first frame (no valid dt yet)
+        }
+        let dt = min(currentTime - lastUpdateTime, maxDeltaTime)
+        lastUpdateTime = currentTime
+
         let nodesArray = Array(personNodes.values)
-        
-        if !physicsSettled {
-            // Prevent exact overlaps by giving a tiny nudge if nodes are too close
-            if nodesArray.count > 1 {
-                for i in 0..<nodesArray.count {
-                for j in i+1..<nodesArray.count {
-                    let n1 = nodesArray[i]
-                    let n2 = nodesArray[j]
-                    let dx = n1.position.x - n2.position.x
-                    let dy = n1.position.y - n2.position.y
-                    let d2 = dx*dx + dy*dy
-                    if d2 < 25 { // Within 5 pixels
-                        let impulse = CGVector(dx: CGFloat.random(in: -10...10), dy: CGFloat.random(in: -10...10))
-                        n1.physicsBody?.applyImpulse(impulse)
-                        n2.physicsBody?.applyImpulse(impulse)
-                    }
-                }
-            }
-        }
-        
-        // P0-5 Fix: Limit maximum velocity to prevent nodes from flying off uncontrollably
-        for node in nodesArray {
-            if let body = node.physicsBody {
-                let maxSpeed: CGFloat = 800.0
-                let speedStr = hypot(body.velocity.dx, body.velocity.dy)
-                if speedStr > maxSpeed {
-                    body.velocity = CGVector(dx: body.velocity.dx / speedStr * maxSpeed, dy: body.velocity.dy / speedStr * maxSpeed)
-                }
-            }
-        }
 
-        if !physicsSettled {
-            applyQuadrantForces()
-        }
-
-        // 1. Calculate current metrics for all active ponds
+        // ── Pond metrics (computed first so pond forces can use them) ──
         var allMetrics: [PondMetrics] = []
         for info in pondInfos {
             let memberNodes = info.memberIDs.compactMap { personNodes[$0] }
@@ -891,32 +861,118 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
                 continue
             }
 
-            // Compute centroid
             var cx: CGFloat = 0, cy: CGFloat = 0
             for node in memberNodes { cx += node.position.x; cy += node.position.y }
             cx /= CGFloat(memberNodes.count)
             cy /= CGFloat(memberNodes.count)
 
-            // Compute max member distance
             var maxDist: CGFloat = 0
             for node in memberNodes {
                 let d = hypot(node.position.x - cx, node.position.y - cy)
                 if d > maxDist { maxDist = d }
             }
             let pondRadius = memberNodes.count == 1 ? CGFloat(55) : maxDist + 60
-            
+
             allMetrics.append(PondMetrics(name: info.circleName, center: CGPoint(x: cx, y: cy), radius: pondRadius, memberIDs: info.memberIDs))
         }
 
+        // ── Manual Force-Directed Graph simulation ──
+        // ALL forces are accumulated into forceX/forceY per node, then integrated
+        // into a single velocity assignment. No body.applyForce() is used anywhere,
+        // which eliminates the dual-integration drift bug.
         if !physicsSettled {
-            // 2. Apply repulsion between ponds to prevent overlap
-            applyPondRepulsion(metrics: allMetrics)
-            
-            // 2.5 Apply repulsion for unassigned/non-member nodes so they don't sit inside ponds
-            applyPondNodeRepulsion(metrics: allMetrics)
+            // FDG constants
+            let kRepulsion: CGFloat = 3000.0
+            let kSpring: CGFloat = 0.03
+            let maxSpeed: CGFloat = 200.0
+            let damping: CGFloat = 0.88
+            let restLength: CGFloat = 140.0
+
+            // Pre-compute quadrant and pond forces (returned as dictionaries, not applied)
+            let quadrantForces = computeQuadrantForces()
+            let pondRepForces = computePondRepulsion(metrics: allMetrics)
+            let pondNodeRepForces = computePondNodeRepulsion(metrics: allMetrics)
+
+            // 1. Per-node force accumulation + integration
+            for i in 0..<nodesArray.count {
+                let nodeA = nodesArray[i]
+                guard let bodyA = nodeA.physicsBody, bodyA.isDynamic else { continue }
+
+                var forceX: CGFloat = 0
+                var forceY: CGFloat = 0
+
+                // Coulomb Repulsion: all-pairs push (O(n²))
+                for j in 0..<nodesArray.count where i != j {
+                    let nodeB = nodesArray[j]
+                    let dx = nodeA.position.x - nodeB.position.x
+                    let dy = nodeA.position.y - nodeB.position.y
+                    let distSq = max(dx * dx + dy * dy, 1.0)
+                    let dist = sqrt(distSq)
+                    let force = kRepulsion / distSq
+
+                    forceX += (dx / dist) * force
+                    forceY += (dy / dist) * force
+                }
+
+                // Hooke's Law Attraction: pull along edges
+                for edgeKey in edgeConnections {
+                    let ids = edgeKey.split(separator: "_")
+                    guard ids.count == 2 else { continue }
+                    let idA = String(ids[0])
+                    let idB = String(ids[1])
+
+                    let myID = nodeA.personID.uuidString
+                    var otherNode: PersonNode?
+
+                    if myID == idA {
+                        otherNode = personNodes[UUID(uuidString: idB) ?? UUID()]
+                    } else if myID == idB {
+                        otherNode = personNodes[UUID(uuidString: idA) ?? UUID()]
+                    }
+
+                    if let other = otherNode {
+                        let dx = other.position.x - nodeA.position.x
+                        let dy = other.position.y - nodeA.position.y
+                        let dist = max(hypot(dx, dy), 1.0)
+                        let displacement = dist - restLength
+
+                        forceX += (dx / dist) * displacement * kSpring
+                        forceY += (dy / dist) * displacement * kSpring
+                    }
+                }
+
+                // Add quadrant forces (pond slot positioning)
+                let nodeID = nodeA.personID
+                if let qf = quadrantForces[nodeID] {
+                    forceX += qf.dx
+                    forceY += qf.dy
+                }
+                // Add pond-to-pond repulsion
+                if let prf = pondRepForces[nodeID] {
+                    forceX += prf.dx
+                    forceY += prf.dy
+                }
+                // Add non-member pond repulsion
+                if let pnrf = pondNodeRepForces[nodeID] {
+                    forceX += pnrf.dx
+                    forceY += pnrf.dy
+                }
+
+                // Integrate: single velocity assignment with damping and hard cap
+                var vx = (bodyA.velocity.dx + forceX * CGFloat(dt)) * damping
+                var vy = (bodyA.velocity.dy + forceY * CGFloat(dt)) * damping
+
+                let speed = hypot(vx, vy)
+                if speed > maxSpeed {
+                    vx = vx / speed * maxSpeed
+                    vy = vy / speed * maxSpeed
+                }
+
+                bodyA.velocity = CGVector(dx: vx, dy: vy)
+            }
         }
 
-        // 3. Update edge line paths to follow node positions
+        // ── Update edge line paths ──
         for (edgeKey, edgeNode) in edgeNodes {
             let ids = edgeKey.split(separator: "_")
             guard ids.count == 2,
@@ -928,27 +984,26 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             edgeNode.path = calculateCurvedPath(from: nodeA.position, to: nodeB.position, avoiding: [uuidA, uuidB])
         }
 
-        // 4. Update pond outlines to follow node positions (and use metrics)
+        // ── Update pond outlines ──
         for metric in allMetrics {
             guard let outline = pondOutlines[metric.name] else { continue }
-            
+
             let cx = metric.center.x
             let cy = metric.center.y
             let pondRadius = metric.radius
-            
+
             let center = CGPoint(x: cx, y: cy)
             let seed = CGFloat(metric.name.count * 3)
             outline.path = pondShapePath(center: center, radius: pondRadius, seed: seed)
             outline.isHidden = false
 
-            // Update label position (above pond)
             if let label = pondLabels[metric.name] {
                 label.position = CGPoint(x: cx, y: cy + pondRadius + 14)
                 label.isHidden = false
             }
         }
 
-        // Viewport culling
+        // ── Viewport culling ──
         guard let cam = camera else { return }
         let halfW = size.width / (2.0 * currentZoom) + 200
         let halfH = size.height / (2.0 * currentZoom) + 200
@@ -960,7 +1015,45 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         )
 
         for (_, node) in personNodes {
-            node.isHidden = !visibleRect.contains(node.position)
+            let pos = node.position
+            if pos.x.isFinite && pos.y.isFinite {
+                node.isHidden = !visibleRect.contains(pos)
+            }
+        }
+    }
+
+    // MARK: - Energy-Based Physics Settling
+    // FIX 2 — Replace the blind DispatchQueue timer.
+    // This method is called by SpriteKit every frame AFTER simulation completes,
+    // so it is the only safe chokepoint to freeze/wake the world without race conditions.
+    override func didSimulatePhysics() {
+        guard !physicsSettled else { return }
+        
+        // Sum total manhattan-velocity across all dynamic bodies
+        var totalVelocity: CGFloat = 0
+        for node in personNodes.values {
+            guard let body = node.physicsBody, body.isDynamic else { continue }
+            totalVelocity += abs(body.velocity.dx) + abs(body.velocity.dy)
+        }
+        
+        // Maintain a rolling window to avoid triggering on a single quiet frame
+        frameEnergyHistory.append(totalVelocity)
+        if frameEnergyHistory.count > energyHistoryWindowSize {
+            frameEnergyHistory.removeFirst()
+        }
+        
+        // Only settle when the rolling average is below the threshold
+        let averageVelocity = frameEnergyHistory.reduce(0, +) / CGFloat(max(frameEnergyHistory.count, 1))
+        
+        if frameEnergyHistory.count == energyHistoryWindowSize && averageVelocity < 8.0 {
+            // Fully freeze: zero out all velocities so nothing drifts
+            for node in personNodes.values {
+                node.physicsBody?.velocity = .zero
+                node.removeAction(forKey: "floating")
+            }
+            physicsWorld.speed = 0.0
+            physicsSettled = true
+            frameEnergyHistory.removeAll()
         }
     }
 
@@ -1244,14 +1337,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         if physicsSettled {
             physicsWorld.speed = 1.0
             physicsSettled = false
-            settleTimer?.invalidate()
-            settleTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { [weak self] _ in
-                DispatchQueue.main.async {
-                    self?.physicsWorld.speed = 0.0  // Fully freeze physics on settle
-                    self?.physicsSettled = true
-                    self?.applyIdleFloatingAnimation()
-                }
-            }
+            frameEnergyHistory.removeAll()
         }
     }
 
@@ -1278,14 +1364,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         if physicsSettled {
             physicsWorld.speed = 1.0
             physicsSettled = false
-            settleTimer?.invalidate()
-            settleTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { [weak self] _ in
-                DispatchQueue.main.async {
-                    self?.physicsWorld.speed = 0.0  // Fully freeze physics on settle
-                    self?.physicsSettled = true
-                    self?.applyIdleFloatingAnimation()
-                }
-            }
+            frameEnergyHistory.removeAll()
         }
     }
 
@@ -1434,6 +1513,7 @@ final class PersonNode: SKNode {
 
     let personID: UUID
     let isMe: Bool
+    private var meAmbientGlow: SKShapeNode?
     private let circleShape: SKShapeNode
     private let initialsLabel: SKLabelNode
     private let nameLabel: SKLabelNode
@@ -1451,7 +1531,8 @@ final class PersonNode: SKNode {
         self.personID = person.id
         self.isMe = person.isMe
 
-        let radius: CGFloat = 22
+        // ME node is physically larger
+        let radius: CGFloat = person.isMe ? 28 : 22
 
         // Circle shape (ring)
         // Always create unassignedLabel
@@ -1486,17 +1567,22 @@ final class PersonNode: SKNode {
 
             cropNode = crop
         } else {
-            var hash = 0
-            for char in person.name {
-                hash = (hash &* 31) &+ Int(char.asciiValue ?? 0)
+            if person.isMe {
+                // ME node gets a warm amber/gold fill
+                circleShape.fillColor = UIColor(red: 232/255, green: 162/255, blue: 56/255, alpha: 1.0)
+            } else {
+                var hash = 0
+                for char in person.name {
+                    hash = (hash &* 31) &+ Int(char.asciiValue ?? 0)
+                }
+                hash = abs(hash)
+                let hue = CGFloat(hash % 360) / 360.0
+                circleShape.fillColor = UIColor(hue: hue, saturation: 0.4, brightness: 0.85, alpha: 1.0)
             }
-            hash = abs(hash)
-            let hue = CGFloat(hash % 360) / 360.0
-            circleShape.fillColor = UIColor(hue: hue, saturation: 0.4, brightness: 0.85, alpha: 1.0)
 
             initialsLabel = SKLabelNode(text: person.initials)
-            initialsLabel.fontName = "SFProRounded-Semibold"
-            initialsLabel.fontSize = radius * 0.75
+            initialsLabel.fontName = person.isMe ? "SFProRounded-Bold" : "SFProRounded-Semibold"
+            initialsLabel.fontSize = radius * (person.isMe ? 0.65 : 0.75)
             initialsLabel.fontColor = .white
             initialsLabel.verticalAlignmentMode = .center
             initialsLabel.horizontalAlignmentMode = .center
@@ -1505,10 +1591,10 @@ final class PersonNode: SKNode {
             cropNode = nil
         }
 
-        // Name label
+        // Name label — ME gets bold, slightly larger font
         nameLabel = SKLabelNode(text: person.name)
-        nameLabel.fontName = "SFProText-Regular"
-        nameLabel.fontSize = 11
+        nameLabel.fontName = person.isMe ? "SFProText-Semibold" : "SFProText-Regular"
+        nameLabel.fontSize = person.isMe ? 12 : 11
         nameLabel.fontColor = UIColor.label
         nameLabel.verticalAlignmentMode = .top
         nameLabel.horizontalAlignmentMode = .center
@@ -1542,8 +1628,8 @@ final class PersonNode: SKNode {
             starLabel = nil
         }
 
-        // Dot for extreme zoom-out
-        dotNode = SKShapeNode(circleOfRadius: 4)
+        // Dot for extreme zoom-out — ME dot is larger
+        dotNode = SKShapeNode(circleOfRadius: person.isMe ? 6 : 4)
         dotNode.fillColor = circleShape.fillColor != .clear ? circleShape.fillColor : circleShape.strokeColor
         dotNode.strokeColor = .clear
         dotNode.isHidden = true
@@ -1551,6 +1637,31 @@ final class PersonNode: SKNode {
         super.init()
 
         self.name = person.id.uuidString
+
+        // ME ambient glow — a warm halo behind the node
+        if person.isMe {
+            let ambientGlow = SKShapeNode(circleOfRadius: radius + 10)
+            ambientGlow.fillColor = UIColor(red: 232/255, green: 162/255, blue: 56/255, alpha: 0.12)
+            ambientGlow.strokeColor = UIColor(red: 232/255, green: 162/255, blue: 56/255, alpha: 0.25)
+            ambientGlow.lineWidth = 2
+            ambientGlow.glowWidth = 6
+            ambientGlow.zPosition = -2
+            meAmbientGlow = ambientGlow
+            addChild(ambientGlow)
+            
+            // Subtle breathing pulse on the glow
+            let pulseUp = SKAction.group([
+                SKAction.fadeAlpha(to: 1.0, duration: 2.0),
+                SKAction.scale(to: 1.08, duration: 2.0)
+            ])
+            pulseUp.timingMode = .easeInEaseOut
+            let pulseDown = SKAction.group([
+                SKAction.fadeAlpha(to: 0.6, duration: 2.0),
+                SKAction.scale(to: 1.0, duration: 2.0)
+            ])
+            pulseDown.timingMode = .easeInEaseOut
+            ambientGlow.run(SKAction.repeatForever(SKAction.sequence([pulseUp, pulseDown])), withKey: "mePulse")
+        }
 
         addChild(glowNode)
         addChild(hoverGlowNode)
@@ -1572,7 +1683,7 @@ final class PersonNode: SKNode {
     // MARK: - Update
 
     func update(with person: Person) {
-        let radius: CGFloat = 22
+        let radius: CGFloat = isMe ? 28 : 22
         let activeCircles = person.circleContacts.filter { !$0.manuallyExcluded }
         let hasCircle = !activeCircles.isEmpty
         let isAssigned = hasCircle || !person.isOrphan
@@ -1583,8 +1694,10 @@ final class PersonNode: SKNode {
 
         if isMe {
             circleShape.path = path
-            circleShape.strokeColor = .white
-            circleShape.lineWidth = 4.0
+            // Warm golden-amber ring for ME
+            circleShape.strokeColor = UIColor(red: 232/255, green: 162/255, blue: 56/255, alpha: 1.0)
+            circleShape.lineWidth = 3.5
+            circleShape.glowWidth = 4
             unassignedLabel.isHidden = true
         } else if isAssigned {
             circleShape.path = path

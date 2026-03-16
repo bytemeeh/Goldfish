@@ -24,7 +24,13 @@ final class DemoDataService {
         let hasDemoData = existing.contains { $0.isDemo }
         guard !hasDemoData else { return }
         
-        // Ensure system circles exist
+        // Ensure system circles exist (may not yet if called before onboarding)
+        let existingCircles = try dataManager.fetchAllCircles()
+        if !existingCircles.contains(where: { $0.isSystem }) {
+            try dataManager.createSystemCircles()
+        }
+        
+        // Fetch circles for assignment
         let circles = try dataManager.fetchAllCircles()
         let familyCircle = circles.first { $0.name == "Family" }
         let friendsCircle = circles.first { $0.name == "Friends" }
@@ -67,10 +73,53 @@ final class DemoDataService {
             phone: "+1 (628) 555-0167",
             email: "jake.m@email.com",
             birthday: makeDate(month: 5, day: 3, year: 1994),
-            notes: "College roommate. Always up for weekend trips.",
+            notes: "College roommate. Married to Nicole, 3 kids. Always up for weekend trips and BBQs.",
             isDemo: true,
             isFavorite: true,
             color: "#4ECDC4"
+        )
+        
+        // ── Jake's Family ──
+        
+        let nicole = try dataManager.createPerson(
+            name: "Nicole Morrison",
+            phone: "+1 (628) 555-0168",
+            email: "nicole.m@email.com",
+            birthday: makeDate(month: 7, day: 3, year: 1995),
+            notes: "Jake's wife. Graphic designer, loves pasta making and Saturday farmers markets.",
+            isDemo: true,
+            isFavorite: true,
+            color: "#E8A87C"
+        )
+        
+        let liam = try dataManager.createPerson(
+            name: "Liam Morrison",
+            phone: nil,
+            email: nil,
+            birthday: makeDate(month: 9, day: 12, year: 2018),
+            notes: "Jake & Nicole's oldest. Obsessed with dinosaurs and Lego. Plays little league.",
+            isDemo: true,
+            color: "#85DCBA"
+        )
+        
+        let ella = try dataManager.createPerson(
+            name: "Ella Morrison",
+            phone: nil,
+            email: nil,
+            birthday: makeDate(month: 3, day: 21, year: 2021),
+            notes: "Middle child. Taking ballet classes. Loves drawing rainbows.",
+            isDemo: true,
+            color: "#F6C3B7"
+        )
+        
+        let noah = try dataManager.createPerson(
+            name: "Noah Morrison",
+            phone: nil,
+            email: nil,
+            birthday: makeDate(month: 12, day: 8, year: 2025),
+            notes: "The baby! Born Dec 2025. Already has his dad's smile.",
+            isDemo: true,
+            color: "#B5EAD7"
         )
         
         let emma = try dataManager.createPerson(
@@ -133,14 +182,12 @@ final class DemoDataService {
         
         // Friends (from Me)
         try dataManager.createRelationship(from: me, to: jake, type: .friend)
-        try dataManager.createRelationship(from: me, to: emma, type: .friend)
         
         // Jake and Emma know each other
         try dataManager.createRelationship(from: jake, to: emma, type: .friend)
         
         // Professional (from Me)
         try dataManager.createRelationship(from: me, to: david, type: .coworker)
-        try dataManager.createRelationship(from: me, to: lisa, type: .coworker)
         
         // David and Lisa are coworkers with each other
         try dataManager.createRelationship(from: david, to: lisa, type: .coworker)
@@ -199,60 +246,64 @@ final class DemoDataService {
             color: "#F1C40F"
         )
         
-        // Partner relationship (Jake & Emma)
-        try dataManager.createRelationship(from: jake, to: sarah, type: .partner)
+        // ── Jake's Family Relationships ──
         
-        // Book club friends (from Me)
-        try dataManager.createRelationship(from: me, to: mia, type: .friend)
-        try dataManager.createRelationship(from: me, to: ryan, type: .friend)
+        // Jake & Nicole are spouses
+        try dataManager.createRelationship(from: jake, to: nicole, type: .spouse)
+        
+        // Jake is father of all three kids
+        try dataManager.createRelationship(from: jake, to: liam, type: .father)
+        try dataManager.createRelationship(from: jake, to: ella, type: .father)
+        try dataManager.createRelationship(from: jake, to: noah, type: .father)
+        
+        // Nicole is mother of all three kids
+        try dataManager.createRelationship(from: nicole, to: liam, type: .mother)
+        try dataManager.createRelationship(from: nicole, to: ella, type: .mother)
+        try dataManager.createRelationship(from: nicole, to: noah, type: .mother)
+        
+        // Liam, Ella, and Noah are siblings
+        try dataManager.createRelationship(from: liam, to: ella, type: .sibling)
+        try dataManager.createRelationship(from: liam, to: noah, type: .sibling)
+        try dataManager.createRelationship(from: ella, to: noah, type: .sibling)
+        
+        // Book club friends (connected through Emma, not directly to Me)
+        try dataManager.createRelationship(from: emma, to: mia, type: .friend)
+        try dataManager.createRelationship(from: emma, to: ryan, type: .friend)
         
         // Mia and Ryan know each other
         try dataManager.createRelationship(from: mia, to: ryan, type: .friend)
-        
-        // Emma and Mia are friends (cross-pond connection)
-        try dataManager.createRelationship(from: emma, to: mia, type: .friend)
         
         // Multi-level connections (Depth 2 & 3)
         try dataManager.createRelationship(from: david, to: chris, type: .coworker)
         try dataManager.createRelationship(from: jake, to: sam, type: .friend)
         try dataManager.createRelationship(from: sam, to: alex, type: .partner)
         
-        // ── Explicit Circle Assignments (for contacts not auto-assigned) ──
+        // ── Explicit Circle Assignments ──
+        // Single pond per contact: each contact belongs to exactly one pond.
         
         if let familyCircle {
             try dataManager.addToCircle(sarah, circle: familyCircle)
+            try dataManager.addToCircle(mom, circle: familyCircle)
+            try dataManager.addToCircle(dad, circle: familyCircle)
+            try dataManager.addToCircle(tom, circle: familyCircle)
+            try dataManager.addToCircle(nicole, circle: familyCircle)
+            try dataManager.addToCircle(liam, circle: familyCircle)
+            try dataManager.addToCircle(ella, circle: familyCircle)
+            try dataManager.addToCircle(noah, circle: familyCircle)
         }
         if let friendsCircle {
             try dataManager.addToCircle(jake, circle: friendsCircle)
             try dataManager.addToCircle(emma, circle: friendsCircle)
+            try dataManager.addToCircle(sam, circle: friendsCircle)
+            try dataManager.addToCircle(alex, circle: friendsCircle)
+            try dataManager.addToCircle(mia, circle: friendsCircle)
+            try dataManager.addToCircle(ryan, circle: friendsCircle)
         }
         if let proCircle {
             try dataManager.addToCircle(david, circle: proCircle)
             try dataManager.addToCircle(lisa, circle: proCircle)
             try dataManager.addToCircle(chris, circle: proCircle)
         }
-        
-        // ── Custom "Book Club" Pond ──
-        let bookClub = try dataManager.createCircle(
-            name: "Book Club",
-            color: "#9B59B6",
-            emoji: "📚",
-            desc: "Monthly book discussion group"
-        )
-        try dataManager.addToCircle(mia, circle: bookClub)
-        try dataManager.addToCircle(ryan, circle: bookClub)
-        try dataManager.addToCircle(emma, circle: bookClub)
-        
-        // ── Custom "Volleyball" Pond ──
-        let sportsTeam = try dataManager.createCircle(
-            name: "Volley Team",
-            color: "#E67E22",
-            emoji: "🏐",
-            desc: "Weekend recreation"
-        )
-        try dataManager.addToCircle(jake, circle: sportsTeam)
-        try dataManager.addToCircle(sam, circle: sportsTeam)
-        try dataManager.addToCircle(alex, circle: sportsTeam)
     }
     
     // MARK: - Remove Demo Data

@@ -11,6 +11,7 @@
 		209649AE0B756C2AD63AD7BD /* LocationType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F95A5912A5A6B0EB052DD9C /* LocationType.swift */; };
 		35F37B25A44EF4D8C10EF6D9 /* SearchOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23864C6595744BC03BF3C8F6 /* SearchOverlayView.swift */; };
 		3709447CEAC7995DDB63F338 /* CircleManagerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FC9BA7B2DF2B0D060699789 /* CircleManagerViewModel.swift */; };
+		3B805853A39F72E0AAE9604F /* SecurityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB44107A6C85AB4EAE242256 /* SecurityTests.swift */; };
 		3C32AC7FFFE8AEDDE2AFBD26 /* ContactDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84F89864057C05D5D83EF1D1 /* ContactDetailViewModel.swift */; };
 		3E7812D7337CD8B06E16EA69 /* CircleManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC459BB4CA97463F57C743CA /* CircleManagerView.swift */; };
 		428A259CD768E2AF8AAF8CD7 /* GoldfishApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B0D93096FA1C53C7456041 /* GoldfishApp.swift */; };
@@ -40,6 +41,7 @@
 		B925C000EA36BA89C30C53E5 /* GraphNodeSprite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C4DFECA32CAF12FFB7DA2D2 /* GraphNodeSprite.swift */; };
 		BA2C786B2631E28600453399 /* Person.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E6B8425027EED98DE4A82A /* Person.swift */; };
 		C54BCB99ADE0858E76FE6551 /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8E3DED1AC41D0D95F88ED0B /* HomeViewModel.swift */; };
+		C617C5FD21AC140BE812BA59 /* ResetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE1CF14A71D6F29F168F5213 /* ResetTests.swift */; };
 		C73B91046EB0E4140EDA8996 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF0B908F1589B9D32449F5A3 /* SettingsView.swift */; };
 		C876F2B08F4FCD2B482087D0 /* ContactPhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D78BF7A723944E3DBB95E364 /* ContactPhotoView.swift */; };
 		CB8C6223524F67C1379D0F7B /* GoldfishColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84099033F26B00F9703BB69F /* GoldfishColors.swift */; };
@@ -90,7 +92,7 @@
 		79462C044D2EAD600E4E5A22 /* CircleContact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircleContact.swift; sourceTree = "<group>"; };
 		84099033F26B00F9703BB69F /* GoldfishColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishColors.swift; sourceTree = "<group>"; };
 		84F89864057C05D5D83EF1D1 /* ContactDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactDetailViewModel.swift; sourceTree = "<group>"; };
-		8C24F650B4D953E067477E61 /* GoldfishTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GoldfishTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8C24F650B4D953E067477E61 /* GoldfishTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GoldfishTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8CBBD93FA8F2D699FAB66621 /* GoldfishGraphScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishGraphScene.swift; sourceTree = "<group>"; };
 		8D60F686BD156E1DCC710F6C /* GraphContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphContainerView.swift; sourceTree = "<group>"; };
 		92780B32B06F68332108E218 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
@@ -108,6 +110,7 @@
 		B513AB037FC67502BDE35E66 /* ContactExportSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactExportSelectionView.swift; sourceTree = "<group>"; };
 		B60B4485CDD5E2387715C6ED /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		BB68F40C7CE83693EE0BA98F /* GoldfishModelContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishModelContainer.swift; sourceTree = "<group>"; };
+		BE1CF14A71D6F29F168F5213 /* ResetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetTests.swift; sourceTree = "<group>"; };
 		CAB1639DB0E83F4C9EEB7341 /* GraphViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphViewModel.swift; sourceTree = "<group>"; };
 		D23CC945346F772BDBFB3766 /* GoldfishDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishDataManager.swift; sourceTree = "<group>"; };
 		D3A49C20C5A36D698F6C0C28 /* Goldfish.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Goldfish.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -115,6 +118,7 @@
 		D78BF7A723944E3DBB95E364 /* ContactPhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactPhotoView.swift; sourceTree = "<group>"; };
 		D7D6D567A57494FE76310713 /* PrivacyPolicyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyPolicyView.swift; sourceTree = "<group>"; };
 		D8E3DED1AC41D0D95F88ED0B /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
+		DB44107A6C85AB4EAE242256 /* SecurityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityTests.swift; sourceTree = "<group>"; };
 		E23362045AC5C4ADADC9340E /* ContactDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactDetailView.swift; sourceTree = "<group>"; };
 		EC459BB4CA97463F57C743CA /* CircleManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircleManagerView.swift; sourceTree = "<group>"; };
 		EF0B908F1589B9D32449F5A3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -201,6 +205,8 @@
 			isa = PBXGroup;
 			children = (
 				AB7E247B3F4C3AF7C560516E /* GoldfishTests.swift */,
+				BE1CF14A71D6F29F168F5213 /* ResetTests.swift */,
+				DB44107A6C85AB4EAE242256 /* SecurityTests.swift */,
 				22FA52C98225A204657AE2D1 /* VCardTests.swift */,
 			);
 			path = Tests;
@@ -331,6 +337,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				A12178FE25EAC46313A6B449 /* GoldfishTests.swift in Sources */,
+				C617C5FD21AC140BE812BA59 /* ResetTests.swift in Sources */,
+				3B805853A39F72E0AAE9604F /* SecurityTests.swift in Sources */,
 				D00193B89B1F4378A71B925B /* VCardTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -436,6 +444,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -456,6 +465,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.9;
@@ -499,6 +509,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -512,6 +523,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.9;
@@ -563,7 +575,6 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Goldfish/Goldfish.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = VL6L6N34D5;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Goldfish/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -587,7 +598,6 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Goldfish/Goldfish.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = VL6L6N34D5;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Goldfish/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

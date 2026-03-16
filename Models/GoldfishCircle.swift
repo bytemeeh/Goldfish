@@ -13,8 +13,8 @@ import SwiftData
 ///
 /// **Custom circles** are user-created, freely editable, and deletable.
 ///
-/// A contact can belong to multiple circles simultaneously via the
-/// `CircleContact` junction table.
+/// A contact belongs to **at most one** circle at a time. The
+/// `CircleContact` junction table tracks the current membership.
 @Model
 final class GoldfishCircle {
 

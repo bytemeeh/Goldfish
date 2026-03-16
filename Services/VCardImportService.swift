@@ -262,10 +262,15 @@ actor VCardImportService {
     }
     
     /// Returns (created, existing) counts for circle resolution.
+    /// Enforces single pond per contact — only the first circle name is assigned.
     private func resolveCircles(for person: Person, circleNames: [String]) throws -> (created: Int, existing: Int) {
         let uniqueNames = Set(circleNames)
         var created = 0
         var existing = 0
+        var assigned = false
+        
+        // Check if person is already in a pond
+        let alreadyInPond = person.circleContacts.contains { !$0.manuallyExcluded }
         
         for name in uniqueNames {
             var circle: GoldfishCircle?
@@ -285,10 +290,17 @@ actor VCardImportService {
             
             guard let targetCircle = circle else { continue }
             
-            // Add membership if not exists
-            if !person.circleContacts.contains(where: { $0.circle.id == targetCircle.id }) {
-                let membership = CircleContact(circle: targetCircle, contact: person)
-                modelContext.insert(membership)
+            // Single pond enforcement: only assign the first circle, skip if already in a pond
+            if !assigned && !alreadyInPond {
+                if !person.circleContacts.contains(where: { $0.circle.id == targetCircle.id }) {
+                    // Remove any existing memberships first
+                    for cc in person.circleContacts where !cc.manuallyExcluded {
+                        modelContext.delete(cc)
+                    }
+                    let membership = CircleContact(circle: targetCircle, contact: person)
+                    modelContext.insert(membership)
+                }
+                assigned = true
             }
         }
         
@@ -344,8 +356,13 @@ actor VCardImportService {
     }
     
     // Auto-assign to system circles logic (mirrors GoldfishDataManager)
+    // Skips if contact is already in any pond (single pond enforcement).
     private func autoAssignSystemCircle(for person: Person, relationshipType: RelationshipType) throws {
         guard let circleName = relationshipType.autoCircleName else { return }
+        
+        // Skip if already in any pond (don't move people automatically)
+        let activeMemberships = person.circleContacts.filter { !$0.manuallyExcluded }
+        if !activeMemberships.isEmpty { return }
         
         // Find existing system circle
         let circles = try modelContext.fetch(FetchDescriptor<GoldfishCircle>(predicate: #Predicate { $0.isSystem == true }))

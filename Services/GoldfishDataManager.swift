@@ -442,13 +442,21 @@ final class GoldfishDataManager: ObservableObject {
     // MARK: Circle Membership
     // MARK: ───────────────────────────────────────────────
 
-    /// Adds a contact to a circle. No-op if already a member (and not excluded).
+    /// Adds a contact to a circle, enforcing the **single pond per contact** invariant.
+    /// Any existing memberships are removed before the new one is added.
+    /// The `isMe` contact is never added to any circle — it serves as the graph anchor only.
     @discardableResult
     func addToCircle(
         _ person: Person,
         circle: GoldfishCircle
     ) throws -> CircleContact {
-        // Check if already a member
+        // The "Me" contact must never belong to a pond
+        guard !person.isMe else {
+            // Return a dummy membership that won't be persisted — caller doesn't need to know
+            return CircleContact(circle: circle, contact: person)
+        }
+
+        // Check if already a member of THIS circle
         if let existing = findCircleContact(person: person, circle: circle) {
             if existing.manuallyExcluded {
                 // Re-adding after manual exclusion: clear the flag
@@ -456,6 +464,11 @@ final class GoldfishDataManager: ObservableObject {
                 try context.save()
             }
             return existing
+        }
+
+        // Remove all existing pond memberships (single pond enforcement)
+        for cc in person.circleContacts where !cc.manuallyExcluded {
+            context.delete(cc)
         }
 
         let membership = CircleContact(circle: circle, contact: person)
@@ -491,9 +504,16 @@ final class GoldfishDataManager: ObservableObject {
     // MARK: ───────────────────────────────────────────────
 
     /// Auto-assigns a contact to the matching system circle based on relationship type.
-    /// Skips if the contact was manually excluded from that circle.
+    /// Skips if the contact was manually excluded from that circle,
+    /// or if the contact is **already in any pond** (single pond enforcement).
     private func autoAssignCircle(for person: Person, relationshipType: RelationshipType) throws {
+        // Never auto-assign the "Me" contact to any circle
+        guard !person.isMe else { return }
         guard let circleName = relationshipType.autoCircleName else { return }
+
+        // Skip if already in any pond (don't move people automatically)
+        let activeMemberships = person.circleContacts.filter { !$0.manuallyExcluded }
+        if !activeMemberships.isEmpty { return }
 
         let predicate = #Predicate<GoldfishCircle> { $0.name == circleName && $0.isSystem == true }
         var descriptor = FetchDescriptor<GoldfishCircle>(predicate: predicate)
@@ -501,7 +521,7 @@ final class GoldfishDataManager: ObservableObject {
 
         guard let circle = try context.fetch(descriptor).first else { return }
 
-        // Check if manually excluded
+        // Check if manually excluded from this specific circle
         if let existing = findCircleContact(person: person, circle: circle) {
             if existing.manuallyExcluded {
                 return // Respect manual exclusion
@@ -595,7 +615,12 @@ final class GoldfishDataManager: ObservableObject {
     /// - Returns: The created `isMe` person.
     @discardableResult
     func performOnboarding(name: String, color: String? = nil) throws -> Person {
-        try createSystemCircles()
+        // Only create system circles if they don't already exist
+        // (seedDemoData may have already created them)
+        let existingCircles = try fetchAllCircles()
+        if !existingCircles.contains(where: { $0.isSystem }) {
+            try createSystemCircles()
+        }
         let me = try createPerson(name: name, isMe: true, color: color)
         return me
     }
