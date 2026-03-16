@@ -56,6 +56,7 @@ struct OnboardingSignInOverlay: View {
                         .font(.system(size: 15, weight: .light))
                         .foregroundColor(cream.opacity(0.5))
                 }
+                .frame(maxWidth: .infinity)
                 .padding(.bottom, 32)
 
                 VStack(spacing: 12) {

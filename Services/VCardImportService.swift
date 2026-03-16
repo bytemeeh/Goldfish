@@ -264,6 +264,7 @@ actor VCardImportService {
     /// Returns (created, existing) counts for circle resolution.
     /// Enforces single pond per contact — only the first circle name is assigned.
     private func resolveCircles(for person: Person, circleNames: [String]) throws -> (created: Int, existing: Int) {
+        guard !person.isMe else { return (0, 0) }
         let uniqueNames = Set(circleNames)
         var created = 0
         var existing = 0
@@ -358,6 +359,7 @@ actor VCardImportService {
     // Auto-assign to system circles logic (mirrors GoldfishDataManager)
     // Skips if contact is already in any pond (single pond enforcement).
     private func autoAssignSystemCircle(for person: Person, relationshipType: RelationshipType) throws {
+        guard !person.isMe else { return }
         guard let circleName = relationshipType.autoCircleName else { return }
         
         // Skip if already in any pond (don't move people automatically)

@@ -1031,13 +1031,18 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         
         // Sum total manhattan-velocity across all dynamic bodies
         var totalVelocity: CGFloat = 0
+        var dynamicNodeCount: Int = 0
         for node in personNodes.values {
             guard let body = node.physicsBody, body.isDynamic else { continue }
             totalVelocity += abs(body.velocity.dx) + abs(body.velocity.dy)
+            dynamicNodeCount += 1
         }
         
+        // Use average per-node velocity so threshold doesn't scale with node count
+        let perNodeVelocity = dynamicNodeCount > 0 ? totalVelocity / CGFloat(dynamicNodeCount) : 0
+        
         // Maintain a rolling window to avoid triggering on a single quiet frame
-        frameEnergyHistory.append(totalVelocity)
+        frameEnergyHistory.append(perNodeVelocity)
         if frameEnergyHistory.count > energyHistoryWindowSize {
             frameEnergyHistory.removeFirst()
         }
@@ -1045,7 +1050,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         // Only settle when the rolling average is below the threshold
         let averageVelocity = frameEnergyHistory.reduce(0, +) / CGFloat(max(frameEnergyHistory.count, 1))
         
-        if frameEnergyHistory.count == energyHistoryWindowSize && averageVelocity < 8.0 {
+        if frameEnergyHistory.count == energyHistoryWindowSize && averageVelocity < 4.0 {
             // Fully freeze: zero out all velocities so nothing drifts
             for node in personNodes.values {
                 node.physicsBody?.velocity = .zero
@@ -1296,7 +1301,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         scaleDown.timingMode = .easeIn
         node.run(scaleDown)
         
-        node.physicsBody?.isDynamic = true
+        node.physicsBody?.isDynamic = !node.isMe
         node.physicsBody?.categoryBitMask = 1  // Re-enable category
         node.physicsBody?.collisionBitMask = 0 // Keep collision disabled
         node.physicsBody?.velocity = .zero
@@ -1346,7 +1351,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         // longPressTimer = nil
         
         guard let node = draggedNode else { return }
-        node.physicsBody?.isDynamic = true
+        node.physicsBody?.isDynamic = !node.isMe
         node.physicsBody?.categoryBitMask = 1  // Re-enable category
         node.physicsBody?.collisionBitMask = 0 // Keep collision disabled
         if let targetID = snapTargetID { personNodes[targetID]?.setHoverGlow(false) }

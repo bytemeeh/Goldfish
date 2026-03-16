@@ -417,17 +417,9 @@ struct GraphContainerView: View {
                     .padding(.horizontal)
                 
                 Button("Move") {
-                    // Remove from all current ponds first
-                    for cc in person.circleContacts {
-                        dataManager.context.delete(cc)
-                    }
-                    try? dataManager.context.save()
-                    
-                    // Add to the target pond
+                    // Update via DataManager which ensures invariants like !isMe and single-pond
                     if let circle = try? dataManager.fetchAllCircles().first(where: { $0.name == pondName }) {
-                        let cc = CircleContact(circle: circle, contact: person)
-                        dataManager.context.insert(cc)
-                        _ = try? dataManager.context.save()
+                        let _ = try? dataManager.addToCircle(person, circle: circle)
                     }
                     
                     ToastManager.shared.showToast(message: "Moved \(person.name) to \(pondName)")
