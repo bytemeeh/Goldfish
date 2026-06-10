@@ -21,6 +21,10 @@ private struct CircleManagerContent: View {
     @State private var editName = ""
     @State private var editColor = Color.gray
 
+    // Delete confirmation state
+    @State private var circleToDelete: GoldfishCircle?
+    @State private var showEditDeleteConfirmation = false
+
     init(dataManager: GoldfishDataManager) {
         _viewModel = StateObject(wrappedValue: CircleManagerViewModel(dataManager: dataManager))
     }
@@ -54,7 +58,7 @@ private struct CircleManagerContent: View {
                 .swipeActions {
                     if !circle.isSystem {
                         Button(role: .destructive) {
-                            viewModel.deleteCircle(circle)
+                            circleToDelete = circle
                         } label: {
                             Label("Delete", systemImage: "trash")
                         }
@@ -69,6 +73,24 @@ private struct CircleManagerContent: View {
                     Image(systemName: "plus")
                 }
             }
+        }
+        // MARK: - Delete Confirmation (swipe)
+        .confirmationDialog(
+            "Delete \"\(circleToDelete?.name ?? "")\"?",
+            isPresented: Binding(
+                get: { circleToDelete != nil },
+                set: { if !$0 { circleToDelete = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete Pond", role: .destructive) {
+                if let circle = circleToDelete {
+                    viewModel.deleteCircle(circle)
+                }
+                circleToDelete = nil
+            }
+        } message: {
+            Text("Members won't be deleted — they'll just leave this pond.")
         }
         // MARK: - Create Sheet
         .sheet(isPresented: $showCreateSheet) {
@@ -111,8 +133,7 @@ private struct CircleManagerContent: View {
                     if !circle.isSystem {
                         Section {
                             Button(role: .destructive) {
-                                viewModel.deleteCircle(circle)
-                                editingCircle = nil
+                                showEditDeleteConfirmation = true
                             } label: {
                                 HStack {
                                     Spacer()
@@ -122,6 +143,18 @@ private struct CircleManagerContent: View {
                             }
                         }
                     }
+                }
+                .confirmationDialog(
+                    "Delete \"\(circle.name)\"?",
+                    isPresented: $showEditDeleteConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button("Delete Pond", role: .destructive) {
+                        viewModel.deleteCircle(circle)
+                        editingCircle = nil
+                    }
+                } message: {
+                    Text("Members won't be deleted — they'll just leave this pond.")
                 }
                 .navigationTitle("Edit Pond")
                 .toolbar {

@@ -11,7 +11,7 @@ struct SearchOverlayView: View {
                 EmptyStateView(
                     systemImage: "magnifyingglass",
                     headline: "No results for \"\(viewModel.searchText)\"",
-                    subtext: "Try a different name, tag, or circle."
+                    subtext: "Try a different name, tag, or pond."
                 )
                 .frame(height: 300)
             } else {
@@ -25,6 +25,7 @@ struct SearchOverlayView: View {
                     }
                 }
                 .listStyle(.plain)
+                .scrollDismissesKeyboard(.immediately)
             }
         }
         .background(Color(.systemBackground))

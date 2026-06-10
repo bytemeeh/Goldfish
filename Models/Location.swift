@@ -70,13 +70,4 @@ final class Location {
         set { typeRawValue = newValue.rawValue }
     }
 
-    /// Whether this location has valid coordinates for map display.
-    var hasCoordinates: Bool {
-        latitude != nil && longitude != nil
-    }
-
-    /// Display label: user-given name, or the type name as fallback.
-    var displayName: String {
-        name ?? type.displayName
-    }
 }

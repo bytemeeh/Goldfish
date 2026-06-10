@@ -4,7 +4,7 @@ import SwiftUI
 /// Standard list row for a contact.
 /// See Spec §3 (views) and §8.1 (accessibility).
 struct ContactRowView: View {
-    let person: Person
+    @Bindable var person: Person
     
     var subtitle: String {
         let activeCircles = person.circleContacts.filter { !$0.manuallyExcluded }

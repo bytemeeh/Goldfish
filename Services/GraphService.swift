@@ -192,7 +192,7 @@ struct GraphService {
         }
 
         // Include orphan contacts (not reachable via relationships) as the outermost level
-        // OR merge them into existing circles if they share a pond.
+        // OR merge them into existing circles if they share a circle.
         // Exclude demo contacts.
         let allPersons = (try? context.fetch(FetchDescriptor<Person>())) ?? []
         let orphans = allPersons.filter { !visited.contains($0.id) && !$0.isDemo }
@@ -427,8 +427,8 @@ struct GraphService {
             // i.e., from=current, type=mother/father means current is parent of toContact
             for rel in current.outgoingRelationships {
                 let relType = RelationshipType(rawValue: rel.typeRawValue) ?? .other
-                // A parent (mother/father) → their toContact is the child
-                guard relType == .mother || relType == .father else { continue }
+                // A parent (mother/father/parent) → their toContact is the child
+                guard relType == .mother || relType == .father || relType == .parent else { continue }
 
                 let child = rel.toContact
                 if !visited.contains(child.id) {

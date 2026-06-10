@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 import SwiftData
+import os
 
 // MARK: - ContactFormViewModel
 @MainActor
@@ -8,6 +9,7 @@ final class ContactFormViewModel: ObservableObject {
     
     // MARK: - Dependencies
     private let dataManager: GoldfishDataManager
+    @AppStorage("isDemoModeActive") private var isDemoActive: Bool = false
     
     // MARK: - Target
     let existingPerson: Person?
@@ -46,13 +48,19 @@ final class ContactFormViewModel: ObservableObject {
     @Published var allCircles: [GoldfishCircle] = []
     @Published var selectedCircleIDs: Set<UUID> = []
     
+    /// Whether this form is editing the user's own "Me" contact.
+    var isMe: Bool {
+        existingPerson?.isMe == true
+    }
+    
     // MARK: - Validation
     var isValid: Bool {
         !firstName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     
     var pageTitle: String {
-        existingPerson == nil ? "New Contact" : "Edit Contact"
+        if isMe { return "Edit Profile" }
+        return existingPerson == nil ? "New Contact" : "Edit Contact"
     }
     
     // MARK: - Init
@@ -96,9 +104,20 @@ final class ContactFormViewModel: ObservableObject {
     }
     
     private func loadPersons() {
-        if let persons = try? dataManager.fetchAllPersons() {
-            // Exclude current person to prevent self-connection
-            self.allPersons = persons.filter { $0.id != self.existingPerson?.id && !$0.isMe }
+        do {
+            let persons = try dataManager.fetchAllPersons()
+            // Exclude current person to prevent self-connection.
+            // Real contacts (incl. Me) always shown; demo contacts only when demo mode is active.
+            self.allPersons = persons
+                .filter { $0.id != self.existingPerson?.id && ($0.isDemo == isDemoActive || $0.isMe) }
+                .sorted { a, b in
+                    // "Me" always comes first
+                    if a.isMe { return true }
+                    if b.isMe { return false }
+                    return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+                }
+        } catch {
+            print("Error loading persons: \(error)")
         }
     }
     
@@ -171,6 +190,7 @@ final class ContactFormViewModel: ObservableObject {
                     email: email.isEmpty ? nil : email,
                     birthday: dob,
                     notes: notes.isEmpty ? nil : notes,
+                    isDemo: isDemoActive,
                     isFavorite: isFavorite,
                     tags: tags,
                     color: colorHex,
@@ -214,15 +234,7 @@ final class ContactFormViewModel: ObservableObject {
             }
         }
     }
-    
-    func toggleCircle(_ circle: GoldfishCircle) {
-        if selectedCircleIDs.contains(circle.id) {
-            selectedCircleIDs.remove(circle.id)
-        } else {
-            selectedCircleIDs.removeAll() // Enforce single selection
-            selectedCircleIDs.insert(circle.id)
-        }
-    }
+
     
     private func createEmojiImage(emoji: String) -> Data? {
         let size = CGSize(width: 200, height: 200)

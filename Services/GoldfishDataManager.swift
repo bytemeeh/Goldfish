@@ -50,6 +50,19 @@ enum GoldfishError: LocalizedError, Equatable {
     }
 }
 
+// MARK: - Data Change Notifications
+
+/// Posted by `GoldfishDataManager` after successful writes so observers
+/// (e.g. the feature walkthrough) can react to real user actions.
+extension Notification.Name {
+    /// Posted after a person is successfully created (excludes the `isMe` contact).
+    /// userInfo: `"personID": UUID`, `"isDemo": Bool`.
+    static let goldfishPersonCreated = Notification.Name("goldfishPersonCreated")
+    /// Posted after a circle membership is successfully added or removed.
+    /// userInfo: `"personID": UUID`, `"isDemo": Bool`, `"action": "added" | "removed"`.
+    static let goldfishMembershipChanged = Notification.Name("goldfishMembershipChanged")
+}
+
 // MARK: - GoldfishDataManager
 
 /// Central repository for all CRUD operations and business logic.
@@ -143,6 +156,16 @@ final class GoldfishDataManager: ObservableObject {
 
         context.insert(person)
         try context.save()
+
+        // Notify observers (e.g. the walkthrough) of the successful creation.
+        // The isMe contact is an onboarding artifact, not an added contact.
+        if !isMe {
+            NotificationCenter.default.post(
+                name: .goldfishPersonCreated,
+                object: nil,
+                userInfo: ["personID": person.id, "isDemo": isDemo]
+            )
+        }
         return person
     }
 
@@ -268,14 +291,14 @@ final class GoldfishDataManager: ObservableObject {
     ///   - from: The subject (this person IS the `type`).
     ///   - to: The object (relative to this person).
     ///   - type: The relationship type.
-    ///   - isPrimary: Whether this is the primary relationship between these two contacts.
+
     /// - Returns: The newly created `Relationship`.
     @discardableResult
     func createRelationship(
         from: Person,
         to: Person,
         type: RelationshipType,
-        isPrimary: Bool = false,
+
         skipAutoAssign: Bool = false
     ) throws -> Relationship {
         // Cycle detection for directional types
@@ -283,7 +306,7 @@ final class GoldfishDataManager: ObservableObject {
             throw GoldfishError.wouldCreateCycle
         }
 
-        let relationship = Relationship(from: from, to: to, type: type, isPrimary: isPrimary)
+        let relationship = Relationship(from: from, to: to, type: type)
         context.insert(relationship)
         
         // Explicitly maintain in-memory arrays to workaround SwiftData caching
@@ -384,14 +407,14 @@ final class GoldfishDataManager: ObservableObject {
         name: String,
         color: String = "#808080",
         emoji: String = "⭐",
-        desc: String? = nil
+
     ) throws -> GoldfishCircle {
         let maxSort = try fetchAllCircles().map(\.sortOrder).max() ?? -1
         let circle = GoldfishCircle(
             name: name,
             color: color,
             emoji: emoji,
-            desc: desc,
+
             isSystem: false,
             sortOrder: maxSort + 1
         )
@@ -445,7 +468,7 @@ final class GoldfishDataManager: ObservableObject {
     // MARK: Circle Membership
     // MARK: ───────────────────────────────────────────────
 
-    /// Adds a contact to a circle, enforcing the **single pond per contact** invariant.
+    /// Adds a contact to a circle, enforcing the **single circle per contact** invariant.
     /// Any existing memberships are removed before the new one is added.
     /// The `isMe` contact is never added to any circle — it serves as the graph anchor only.
     @discardableResult
@@ -453,7 +476,7 @@ final class GoldfishDataManager: ObservableObject {
         _ person: Person,
         circle: GoldfishCircle
     ) throws -> CircleContact {
-        // The "Me" contact must never belong to a pond
+        // The "Me" contact must never belong to a circle
         guard !person.isMe else {
             // Return a dummy membership that won't be persisted — caller doesn't need to know
             return CircleContact(circle: circle, contact: person)
@@ -465,18 +488,29 @@ final class GoldfishDataManager: ObservableObject {
                 // Re-adding after manual exclusion: clear the flag
                 existing.manuallyExcluded = false
                 try context.save()
+                postMembershipChanged(for: person, action: "added")
             }
             return existing
         }
 
-        // Remove all existing pond memberships (single pond enforcement)
+        // Remove all existing circle memberships (single circle enforcement)
+        // Explicitly maintain in-memory arrays to workaround SwiftData caching
+        // (same pattern as createRelationship at L289-291)
         for cc in person.circleContacts where !cc.manuallyExcluded {
+            cc.circle.circleContacts.removeAll { $0.id == cc.id }
             context.delete(cc)
         }
+        person.circleContacts.removeAll { !$0.manuallyExcluded }
 
         let membership = CircleContact(circle: circle, contact: person)
         context.insert(membership)
+        
+        // Explicitly maintain in-memory arrays
+        person.circleContacts.append(membership)
+        circle.circleContacts.append(membership)
+        
         try context.save()
+        postMembershipChanged(for: person, action: "added")
         return membership
     }
 
@@ -495,6 +529,16 @@ final class GoldfishDataManager: ObservableObject {
             context.delete(membership)
         }
         try context.save()
+        postMembershipChanged(for: person, action: "removed")
+    }
+
+    /// Posts `.goldfishMembershipChanged` after a successful membership write.
+    private func postMembershipChanged(for person: Person, action: String) {
+        NotificationCenter.default.post(
+            name: .goldfishMembershipChanged,
+            object: nil,
+            userInfo: ["personID": person.id, "isDemo": person.isDemo, "action": action]
+        )
     }
 
     /// Finds the CircleContact junction record for a person + circle pair.
@@ -508,13 +552,13 @@ final class GoldfishDataManager: ObservableObject {
 
     /// Auto-assigns a contact to the matching system circle based on relationship type.
     /// Skips if the contact was manually excluded from that circle,
-    /// or if the contact is **already in any pond** (single pond enforcement).
+    /// or if the contact is **already in any circle** (single circle enforcement).
     private func autoAssignCircle(for person: Person, relationshipType: RelationshipType) throws {
         // Never auto-assign the "Me" contact to any circle
         guard !person.isMe else { return }
         guard let circleName = relationshipType.autoCircleName else { return }
 
-        // Skip if already in any pond (don't move people automatically)
+        // Skip if already in any circle (don't move people automatically)
         let activeMemberships = person.circleContacts.filter { !$0.manuallyExcluded }
         if !activeMemberships.isEmpty { return }
 
@@ -630,10 +674,6 @@ final class GoldfishDataManager: ObservableObject {
         return me
     }
 
-    /// Whether onboarding has been completed (isMe contact exists).
-    func isOnboardingComplete() throws -> Bool {
-        try fetchMePerson() != nil
-    }
     
     // MARK: ───────────────────────────────────────────────
     // MARK: Reset

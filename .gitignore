@@ -61,3 +61,15 @@ playground.xcworkspace
 *.png
 temp_diff.patch
 test_script.swift
+
+# Stray build/dev artifacts (should never be committed)
+attached_assets/
+xcodegen.zip
+xcodegen/bin/xcodegen
+xcode_build.log
+uncommitted_changes.patch
+tsx
+rest-express@1.0.0
+updated_contactlist.ts
+test_edges.swift
+*.bak

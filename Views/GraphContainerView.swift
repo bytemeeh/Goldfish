@@ -10,9 +10,10 @@ struct GraphContainerView: View {
 
 
     @State private var scene: GoldfishGraphScene?
-    @State private var connectRelType: RelationshipType = .friend
+    @State private var connectRelType: RelationshipType = .other
     @State private var connectPondName: String = "None"
     @State private var isAddContactPresented = false
+    @State private var isUnassignedSheetPresented = false
     @Query private var circles: [GoldfishCircle]
 
     var body: some View {
@@ -34,46 +35,98 @@ struct GraphContainerView: View {
                 // Pond Shortcut Bar removed in favor of bottom carousel
             }
 
-            // MARK: - Zoom Controls Overlay
+            // MARK: - Zoom Controls & Pond Carousel Overlay
             if viewModel.graphLevels != nil {
                 VStack {
                     Spacer()
-                    HStack {
-                        Spacer()
-                        VStack(spacing: 12) {
-                            Button(action: viewModel.zoomIn) {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .frame(width: 40, height: 40)
-                                    .background(.ultraThinMaterial)
-                                    .clipShape(Circle())
+                    
+                    // MARK: - Unassigned Contacts Callout
+                    if viewModel.unassignedContactCount > 0 {
+                        Button(action: {
+                            isUnassignedSheetPresented = true
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.orange)
+                                Text("\(viewModel.unassignedContactCount) contact\(viewModel.unassignedContactCount == 1 ? "" : "s") need\(viewModel.unassignedContactCount == 1 ? "s" : "") a pond")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(.primary)
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.secondary)
                             }
-
-                            Button(action: viewModel.zoomOut) {
-                                Image(systemName: "minus")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .frame(width: 40, height: 40)
-                                    .background(.ultraThinMaterial)
-                                    .clipShape(Circle())
-                            }
-
-                            Button(action: viewModel.resetCamera) {
-                                Image(systemName: "location.fill")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .frame(width: 40, height: 40)
-                                    .background(.ultraThinMaterial)
-                                    .clipShape(Circle())
-                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(.ultraThinMaterial)
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.orange.opacity(0.4), lineWidth: 1)
+                            )
+                            .clipShape(Capsule())
+                            .shadow(color: Color.orange.opacity(0.15), radius: 8, y: 2)
                         }
-                        .padding()
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .padding(.bottom, 8)
                     }
-                }
-                
-                // MARK: - Floating Pond Carousel
-                VStack {
-                    Spacer()
-                    floatingPondCarousel
-                        .padding(.bottom, 24)
+                    
+                    ZStack(alignment: .bottom) {
+                        // Pond carousel centered in full width
+                        HStack {
+                            Spacer()
+                            floatingPondCarousel
+                            Spacer()
+                        }
+                        
+                        // Zoom buttons pinned to trailing edge
+                        HStack {
+                            Spacer()
+                            VStack(spacing: 12) {
+                                Button(action: {
+                                    viewModel.zoomIn()
+                                }) {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .frame(width: 40, height: 40)
+                                        .background(.ultraThinMaterial)
+                                        .clipShape(Circle())
+                                }
+
+                                Button(action: {
+                                    viewModel.zoomOut()
+                                }) {
+                                    Image(systemName: "minus")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .frame(width: 40, height: 40)
+                                        .background(.ultraThinMaterial)
+                                        .clipShape(Circle())
+                                }
+
+                                Button(action: {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    viewModel.forceReorder()
+                                }) {
+                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .frame(width: 40, height: 40)
+                                        .background(.ultraThinMaterial)
+                                        .clipShape(Circle())
+                                }
+
+                                Button(action: {
+                                    viewModel.resetCamera()
+                                }) {
+                                    Image(systemName: "location.fill")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .frame(width: 40, height: 40)
+                                        .background(.ultraThinMaterial)
+                                        .clipShape(Circle())
+                                }
+                            }
+                            .padding(.trailing)
+                        }
+                    }
+                    .padding(.bottom, 24)
                 }
             }
 
@@ -144,13 +197,15 @@ struct GraphContainerView: View {
                 viewModel.pendingActionContactID = nil
             }
             
-            // Generate a button for each existing pond (only for non-Me contacts)
+            // Generate a button for each existing pond (only for non-Me contacts, and only if not already in that pond)
             if let person = try? dataManager.fetchAllPersons().first(where: { $0.id == contactID }),
                !person.isMe {
                 ForEach(circles.sorted(by: { $0.sortOrder < $1.sortOrder })) { circle in
-                    Button("Assign to \(circle.name)") {
-                        assignContact(contactID, to: circle)
-                        viewModel.pendingActionContactID = nil
+                    if !person.circleContacts.contains(where: { $0.circle.id == circle.id && !$0.manuallyExcluded }) {
+                        Button("Assign to \(circle.name)") {
+                            assignContact(contactID, to: circle)
+                            viewModel.pendingActionContactID = nil
+                        }
                     }
                 }
             }
@@ -172,6 +227,11 @@ struct GraphContainerView: View {
                 ContactFormView(viewModel: ContactFormViewModel(dataManager: dataManager))
                     .environmentObject(dataManager)
             }
+        }
+        .sheet(isPresented: $isUnassignedSheetPresented, onDismiss: {
+            viewModel.refreshGraph()
+        }) {
+            UnassignedContactsSheet(circles: circles, dataManager: dataManager)
         }
     }
 
@@ -195,6 +255,16 @@ struct GraphContainerView: View {
     /// Gets the existing scene or creates a new one, immediately feeding it graph data.
     private func getOrCreateScene(size: CGSize) -> GoldfishGraphScene {
         if let existing = scene {
+            // Ensure delegate link is always fresh
+            existing.graphDelegate = viewModel
+            viewModel.sceneDelegate = existing
+            return existing
+        }
+        
+        // Guard against creating a second scene while the async @State
+        // assignment from a prior call hasn't fired yet.
+        if let existing = viewModel.sceneDelegate as? GoldfishGraphScene {
+            DispatchQueue.main.async { self.scene = existing }
             return existing
         }
         
@@ -285,8 +355,20 @@ struct GraphContainerView: View {
                     .foregroundColor(.secondary)
                 } else {
                     // ── New Connection ──
+                    let draggedPerson = fromPerson.isMe ? toPerson : fromPerson
+                    
                     Text("Connect \(fromPerson.name) → \(toPerson.name)")
                         .font(.headline)
+                        .onAppear {
+                            // Default pond to the non-ME contact's current pond
+                            if let currentPond = draggedPerson.circleContacts
+                                .first(where: { !$0.manuallyExcluded })?.circle.name {
+                                connectPondName = currentPond
+                            } else {
+                                connectPondName = "None"
+                            }
+                            connectRelType = .other
+                        }
                     
                     HStack(spacing: 20) {
                         ContactPhotoView(photoData: fromPerson.photoData, name: fromPerson.name, colorHex: fromPerson.color, size: .medium)
@@ -313,8 +395,10 @@ struct GraphContainerView: View {
                         }
                         
                         HStack {
-                            Text("Move to pond")
+                            Text("Pond for \(draggedPerson.name)")
                                 .foregroundColor(.secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                             Spacer()
                             Picker("Move to pond", selection: $connectPondName) {
                                 Text("None").tag("None")
@@ -330,36 +414,38 @@ struct GraphContainerView: View {
                     .padding(.horizontal, 4)
                     
                     Button("Confirm Connection") {
-                        let rel = Relationship(from: fromPerson, to: toPerson, type: connectRelType)
-                        dataManager.context.insert(rel)
-                        fromPerson.outgoingRelationships.append(rel)
-                        toPerson.incomingRelationships.append(rel)
-                        
-                        if connectPondName != "None",
-                           let circle = try? dataManager.fetchAllCircles().first(where: { $0.name == connectPondName }) {
-                            // Skip ME contact — it must never belong to a pond
-                            if !fromPerson.isMe {
-                                let _ = try? dataManager.addToCircle(fromPerson, circle: circle)
+                        do {
+                            // Let the DataManager handle insertion, cycle detection, and auto-assignment
+                            let _ = try dataManager.createRelationship(from: fromPerson, to: toPerson, type: connectRelType, skipAutoAssign: false)
+                            
+                            // If user explicitly selected a pond for the dragged person, apply it
+                            if connectPondName != "None",
+                               let circle = try? dataManager.fetchAllCircles().first(where: { $0.name == connectPondName }) {
+                                if !draggedPerson.isMe {
+                                    let _ = try? dataManager.addToCircle(draggedPerson, circle: circle)
+                                }
                             }
-                            if !toPerson.isMe {
-                                let _ = try? dataManager.addToCircle(toPerson, circle: circle)
+                            
+                            try? dataManager.context.save()
+                            
+                            ToastManager.shared.showToast(message: "Connected \(fromPerson.name) to \(toPerson.name) 🤝")
+                            
+                            viewModel.confirmConnection()
+                            
+                            withAnimation {
+                                viewModel.pendingConnectionFrom = nil
+                                viewModel.pendingConnectionTo = nil
                             }
+                            viewModel.refreshGraph()
+                            
+                            connectRelType = .other
+                            connectPondName = "None"
+                            
+                        } catch GoldfishError.wouldCreateCycle {
+                            ToastManager.shared.showToast(message: "Cannot connect: would create a cycle")
+                        } catch {
+                            ToastManager.shared.showToast(message: "Failed to connect")
                         }
-                        
-                        try? dataManager.context.save()
-                        
-                        ToastManager.shared.showToast(message: "Connected \(fromPerson.name) & \(toPerson.name)")
-                        
-                        viewModel.confirmConnection()
-                        
-                        withAnimation {
-                            viewModel.pendingConnectionFrom = nil
-                            viewModel.pendingConnectionTo = nil
-                        }
-                        viewModel.refreshGraph()
-                        
-                        connectRelType = .friend
-                        connectPondName = "None"
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.goldfishAccent)
@@ -412,7 +498,7 @@ struct GraphContainerView: View {
                     }
                 }
                 
-                Text("Move **\(person.name)** to the **\(pondName)** circle.")
+                Text("Move **\(person.name)** to the **\(pondName)** pond.")
                     .font(.subheadline)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
@@ -457,7 +543,12 @@ struct GraphContainerView: View {
         let currentIndex = sortedCircles.firstIndex(where: { $0.name == viewModel.selectedPondFilter })
         
         let displayName = viewModel.selectedPondFilter ?? "All Ponds"
-        let displayColor = currentIndex != nil ? Color(hex: sortedCircles[currentIndex!].color) : Color.primary
+        let displayColor: Color = {
+            if let idx = currentIndex {
+                return Color(hex: sortedCircles[idx].color)
+            }
+            return Color.primary
+        }()
         
         return HStack(spacing: 8) {
             Button(action: {
@@ -533,8 +624,7 @@ struct GraphContainerView: View {
         // Apply selection
         if nextIndex == -1 {
             if viewModel.selectedPondFilter != nil {
-                viewModel.selectedPondFilter = nil
-                viewModel.resetCamera()
+                viewModel.showAllPonds()
             }
         } else {
             let nextPond = sortedCircles[nextIndex]

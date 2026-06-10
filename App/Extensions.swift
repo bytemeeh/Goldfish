@@ -86,6 +86,9 @@ class ToastManager: ObservableObject {
             self.message = message
             self.isShowing = true
         }
+
+        // Announce the toast so VoiceOver users hear the feedback
+        UIAccessibility.post(notification: .announcement, argument: message)
         
         dismissTask = Task {
             try? await Task.sleep(nanoseconds: 2_500_000_000)
@@ -158,52 +161,66 @@ struct WalkthroughOverlayView: View {
     @EnvironmentObject var walkthroughManager: FeatureWalkthroughManager
     @EnvironmentObject var demoModeManager: DemoModeManager
     @EnvironmentObject var dataManager: GoldfishDataManager
-    
+
     @State private var dragOffset: CGFloat = 0
     // P0-5 Fix: State to show post-onboarding prompt
     @State private var showDemoDataPrompt = false
-    
+
+    private var step: WalkthroughStep { walkthroughManager.currentStep }
+    private var showingSuccess: Bool { walkthroughManager.showingStepSuccess }
+
     var body: some View {
         ZStack {
-            // Transparent background — passes touches through to navigation bar
+            // Transparent background — there is intentionally NO dimming
+            // layer, so the real UI stays fully usable during interactive
+            // steps (tapping +, dragging fish into ponds, etc.)
             Color.clear
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
-            
+
+            // Spotlight ring around the anchored target (e.g. the + button)
+            if step.isInteractive && !showingSuccess,
+               let frame = walkthroughManager.anchorFrames[step],
+               frame != .zero {
+                WalkthroughSpotlightRing(targetFrame: frame)
+            }
+
             VStack {
                 // Spacer fills the top area — passes touches through
                 Spacer()
                     .allowsHitTesting(false)
-                
+
                 // The actual "Tile" card
                 VStack(spacing: 20) {
                     // Header: Icon + Close Button
                     HStack {
-                        Image(systemName: walkthroughManager.currentStep.icon)
+                        Image(systemName: showingSuccess ? "checkmark.circle.fill" : step.icon)
                             .font(.title2)
-                            .foregroundColor(.goldfishAccent)
-                        
+                            .foregroundColor(showingSuccess ? .green : .goldfishAccent)
+
                         Spacer()
-                        
+
                         // P1-6 Fix: Use X icon instead of ambiguous Skip text
+                        // Always reachable, even mid-interactive-step.
                         Button(action: { showDemoDataPrompt = true }) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.title3)
                                 .foregroundColor(.white.opacity(0.4))
                         }
+                        .accessibilityLabel("End tour")
                     }
                     .padding(.horizontal, 4)
-                    
-                    // Title + Description
+
+                    // Title + Description (or success acknowledgment)
                     // P0-4 Fix: Uniform height for the text container
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(walkthroughManager.currentStep.title)
+                        Text(showingSuccess ? "Nailed it!" : step.title)
                             .font(.title3.bold())
                             .foregroundColor(.white)
-                        
+
                         // P1-3 Fix: Use ScrollView for fluid typography
                         ScrollView(.vertical, showsIndicators: false) {
-                            Text(walkthroughManager.currentStep.description)
+                            Text(showingSuccess ? step.successMessage : step.description)
                                 .font(.subheadline)
                                 .foregroundColor(.white.opacity(0.8))
                                 .fixedSize(horizontal: false, vertical: true)
@@ -212,67 +229,8 @@ struct WalkthroughOverlayView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     // Lock the height so cards don't change size
                     .frame(height: 90, alignment: .top)
-                    
-                    // Navigation Buttons
-                    HStack(spacing: 0) {
-                        // Left Button Container (Back)
-                        if walkthroughManager.currentStep != .welcome {
-                            Button(action: { walkthroughManager.previousStep() }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "chevron.left")
-                                    Text("Back")
-                                }
-                                .font(.subheadline.bold())
-                                .foregroundColor(.white)
-                                .frame(width: 110, height: 44)
-                                .background(Color.white.opacity(0.1))
-                                .cornerRadius(12)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                            }
-                        } else {
-                            // Invisible placeholder to maintain exact symmetry
-                            Color.clear.frame(width: 110, height: 44)
-                        }
-                        
-                        Spacer(minLength: 8)
-                        
-                        // Center Dots
-                        HStack(spacing: 6) {
-                            ForEach(WalkthroughStep.displayableSteps) { step in
-                                Circle()
-                                    .fill(walkthroughManager.currentStep == step ? Color.goldfishAccent : Color.white.opacity(0.2))
-                                    .frame(width: 6, height: 6)
-                            }
-                        }
-                        
-                        Spacer(minLength: 8)
-                        
-                        // Right Button Container (Next / Get Started)
-                        Button(action: { 
-                            if walkthroughManager.currentStep == .complete {
-                                showDemoDataPrompt = true
-                            } else {
-                                walkthroughManager.nextStep() 
-                            }
-                        }) {
-                            HStack(spacing: 4) {
-                                if walkthroughManager.currentStep == .complete {
-                                    Text("Get Started")
-                                } else {
-                                    Text("Next")
-                                    Image(systemName: "chevron.right")
-                                }
-                            }
-                            .font(.subheadline.bold())
-                            .foregroundColor(.black)
-                            .frame(width: 110, height: 44)
-                            .background(Color.goldfishAccent)
-                            .cornerRadius(12)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                        }
-                    }
+
+                    controls
                 }
                 .padding(24)
                 .background(
@@ -287,27 +245,13 @@ struct WalkthroughOverlayView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 30)
                 .offset(x: dragOffset)
-                .gesture(
-                    DragGesture()
-                        .onChanged { gesture in
-                            dragOffset = gesture.translation.width
-                        }
-                        .onEnded { gesture in
-                            if gesture.translation.width < -100 {
-                                if walkthroughManager.currentStep != WalkthroughStep.displayableSteps.last {
-                                    walkthroughManager.nextStep()
-                                }
-                            } else if gesture.translation.width > 100 {
-                                walkthroughManager.previousStep()
-                            }
-                            withAnimation(.spring()) {
-                                dragOffset = 0
-                            }
-                        }
-                )
+                // Swipe navigation only applies to passive steps —
+                // interactive steps advance when the real action completes.
+                .gesture(dragGesture, including: step.isInteractive ? .subviews : .all)
             }
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: walkthroughManager.currentStep)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: walkthroughManager.showingStepSuccess)
         .alert("Complete Setup", isPresented: $showDemoDataPrompt) {
             Button("Keep Demo Data") {
                 walkthroughManager.finishTour(keepDemoData: true)
@@ -320,8 +264,153 @@ struct WalkthroughOverlayView: View {
                 walkthroughManager.currentStep = .complete
             }
         } message: {
-            Text("The walkthrough uses sample contacts, relationships, and ponds to demonstrate features. Do you want to keep them to explore, or start with a blank slate?")
+            Text("The tour pond uses sample contacts, relationships, and ponds. Keep them to explore, or start with a blank slate — contacts you added yourself are kept either way.")
         }
+    }
+
+    // MARK: Controls
+
+    @ViewBuilder private var controls: some View {
+        if step.isInteractive {
+            // Interactive step: the real UI is the "Next button".
+            // Offer only an escape hatch so the step can't soft-lock.
+            HStack {
+                dots
+
+                Spacer(minLength: 8)
+
+                Button(action: { walkthroughManager.skipCurrentStep() }) {
+                    Text("Skip this step")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.white.opacity(0.7))
+                        .frame(height: 44)
+                        .padding(.horizontal, 16)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(12)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+                .disabled(showingSuccess)
+                .opacity(showingSuccess ? 0.4 : 1)
+            }
+        } else {
+            // Passive step: classic Back / dots / Next navigation
+            HStack(spacing: 0) {
+                // Left Button Container (Back)
+                if step != .welcome {
+                    Button(action: { walkthroughManager.previousStep() }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.left")
+                            Text("Back")
+                        }
+                        .font(.subheadline.bold())
+                        .foregroundColor(.white)
+                        .frame(width: 110, height: 44)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(12)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    }
+                } else {
+                    // Invisible placeholder to maintain exact symmetry
+                    Color.clear.frame(width: 110, height: 44)
+                }
+
+                Spacer(minLength: 8)
+
+                dots
+
+                Spacer(minLength: 8)
+
+                // Right Button Container (Next / Get Started)
+                Button(action: {
+                    if step == .complete {
+                        showDemoDataPrompt = true
+                    } else {
+                        walkthroughManager.nextStep()
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        if step == .complete {
+                            Text("Get Started")
+                        } else {
+                            Text("Next")
+                            Image(systemName: "chevron.right")
+                        }
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundColor(.black)
+                    .frame(width: 110, height: 44)
+                    .background(Color.goldfishAccent)
+                    .cornerRadius(12)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                }
+            }
+        }
+    }
+
+    private var dots: some View {
+        HStack(spacing: 6) {
+            ForEach(WalkthroughStep.displayableSteps) { dotStep in
+                Circle()
+                    .fill(step == dotStep ? Color.goldfishAccent : Color.white.opacity(0.2))
+                    .frame(width: 6, height: 6)
+            }
+        }
+    }
+
+    private var dragGesture: some Gesture {
+        DragGesture()
+            .onChanged { gesture in
+                dragOffset = gesture.translation.width
+            }
+            .onEnded { gesture in
+                if gesture.translation.width < -100 {
+                    // Never swipe forward past an interactive step
+                    if step != WalkthroughStep.displayableSteps.last && !step.isInteractive {
+                        walkthroughManager.nextStep()
+                    }
+                } else if gesture.translation.width > 100 {
+                    walkthroughManager.previousStep()
+                }
+                withAnimation(.spring()) {
+                    dragOffset = 0
+                }
+            }
+    }
+}
+
+// MARK: - Walkthrough Spotlight Ring
+/// A pulsing ring drawn over the frame reported by `.walkthroughAnchor(step:)`
+/// to point the user at the control an interactive step asks them to use.
+/// Never intercepts touches.
+private struct WalkthroughSpotlightRing: View {
+    let targetFrame: CGRect
+    @State private var pulse = false
+
+    var body: some View {
+        GeometryReader { proxy in
+            let origin = proxy.frame(in: .global).origin
+            let diameter = max(targetFrame.width, targetFrame.height) + 16
+            Circle()
+                .stroke(Color.goldfishAccent, lineWidth: 3)
+                .frame(width: diameter, height: diameter)
+                .scaleEffect(pulse ? 1.2 : 0.95)
+                .opacity(pulse ? 0.35 : 1.0)
+                .position(
+                    x: targetFrame.midX - origin.x,
+                    y: targetFrame.midY - origin.y
+                )
+                .onAppear {
+                    withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
+                        pulse = true
+                    }
+                }
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+        .transition(.opacity)
     }
 }
 
@@ -336,17 +425,5 @@ public struct IdentifiableWrapper<T: Equatable>: Identifiable, Equatable {
     }
 }
 
-
-// MARK: - Helper: Share Sheet
-struct ShareSheet: UIViewControllerRepresentable {
-    let activityItems: [Any]
-    var applicationActivities: [UIActivity]? = nil
-    
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: applicationActivities)
-    }
-    
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
 
 // MARK: - UUID Identifiable

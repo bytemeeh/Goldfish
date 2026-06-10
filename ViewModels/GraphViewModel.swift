@@ -18,6 +18,8 @@ protocol GraphSceneDelegate: AnyObject {
     func animateNewConnection(from: UUID, to: UUID)
     func didLongPressContact(_ id: UUID)
     func fitToGraph()
+    func fitToGraphCenteredOnMe()
+    func forceReorder()
 }
 
 // MARK: - GraphViewModel
@@ -92,6 +94,9 @@ final class GraphViewModel: ObservableObject {
     
     @Published var pendingActionContactID: UUID?
     
+    /// Number of non-ME contacts with no active pond assignment.
+    @Published var unassignedContactCount: Int = 0
+    
     @Published var levelsLoaded = false
     private var isLoadingInProgress = false
     
@@ -132,9 +137,16 @@ final class GraphViewModel: ObservableObject {
                 if let levels {
                     self.graphLevels = levels
                     self.levelsLoaded = true
-                    self.hasNoData = levels.flatMap(\.allContacts).isEmpty
+                    let allContacts = levels.flatMap(\.allContacts)
+                    self.hasNoData = allContacts.isEmpty
+                    
+                    // Compute unassigned contact count
+                    self.unassignedContactCount = allContacts.filter { person in
+                        !person.isMe && person.circleContacts.filter { !$0.manuallyExcluded }.isEmpty
+                    }.count
+                    
                     sceneDelegate?.didUpdateGraphLevels(levels)
-                    print("[GraphVM] Graph loaded with \(levels.flatMap(\.allContacts).count) contacts")
+                    print("[GraphVM] Graph loaded with \(allContacts.count) contacts, \(self.unassignedContactCount) unassigned")
                 } else {
                     self.hasNoData = true
                     print("[GraphVM] No Me contact found — hasNoData = true")
@@ -175,17 +187,27 @@ final class GraphViewModel: ObservableObject {
     }
     
     func zoomIn() {
-        zoomLevel = min(zoomLevel * 1.2, 4.0)
-        sceneDelegate?.didUpdateZoom(zoomLevel)
+        let newZoom = min(zoomLevel * 1.2, 4.0)
+        zoomLevel = newZoom
     }
     
     func zoomOut() {
-        zoomLevel = max(zoomLevel / 1.2, 0.1)
-        sceneDelegate?.didUpdateZoom(zoomLevel)
+        let newZoom = max(zoomLevel / 1.2, 0.1)
+        zoomLevel = newZoom
+    }
+    
+    /// Zooms out to show all ponds with "Me" at the center of the viewport.
+    func showAllPonds() {
+        selectedPondFilter = nil
+        sceneDelegate?.fitToGraphCenteredOnMe()
     }
     
     func resetCamera() {
         sceneDelegate?.centerOnMe()
+    }
+    
+    func forceReorder() {
+        sceneDelegate?.forceReorder()
     }
     
     // MARK: - Scene Feedback

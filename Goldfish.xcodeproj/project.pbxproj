@@ -3,34 +3,49 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		056B6A9B3F5C0A88CEF14B1B /* PersonNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDAFE9FA6FE2EF6F22AA98ED /* PersonNode.swift */; };
+		AB10C0FFEE0000000000F411 /* WalkthroughAnchorKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB10C0FFEE0000000000F412 /* WalkthroughAnchorKey.swift */; };
+		13F4950E1B74904E3F9F647A /* AIBulkApprovalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE71A85663EBAE30CBA4176 /* AIBulkApprovalView.swift */; };
+		1414705B81BC390D8796F564 /* GraphDTOs.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAAC06457690325532197922 /* GraphDTOs.swift */; };
 		1E1F04E4AE429CD72482FAC0 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92780B32B06F68332108E218 /* SettingsViewModel.swift */; };
 		209649AE0B756C2AD63AD7BD /* LocationType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F95A5912A5A6B0EB052DD9C /* LocationType.swift */; };
+		24B33E12A74E80EF889E0C43 /* FluidBlobBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF599775E0E28DC4E5DC4454 /* FluidBlobBackground.swift */; };
+		2AC7A2999FE519BED537C5E6 /* UnassignedContactsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624CC08ED273A09F801331F7 /* UnassignedContactsSheet.swift */; };
 		35F37B25A44EF4D8C10EF6D9 /* SearchOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23864C6595744BC03BF3C8F6 /* SearchOverlayView.swift */; };
 		3709447CEAC7995DDB63F338 /* CircleManagerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FC9BA7B2DF2B0D060699789 /* CircleManagerViewModel.swift */; };
-		3B805853A39F72E0AAE9604F /* SecurityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB44107A6C85AB4EAE242256 /* SecurityTests.swift */; };
+		38AAEE7CD88B9FA51B7F0D87 /* GraphDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFAD1D0391A2ABAEAE02D83D /* GraphDataProvider.swift */; };
 		3C32AC7FFFE8AEDDE2AFBD26 /* ContactDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84F89864057C05D5D83EF1D1 /* ContactDetailViewModel.swift */; };
 		3E7812D7337CD8B06E16EA69 /* CircleManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC459BB4CA97463F57C743CA /* CircleManagerView.swift */; };
 		428A259CD768E2AF8AAF8CD7 /* GoldfishApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B0D93096FA1C53C7456041 /* GoldfishApp.swift */; };
 		43E832C83A76AA8AC07FFE2A /* VCardExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A886EB6E13DD7F732B3B191 /* VCardExportService.swift */; };
 		4B610CD8A7A8B93670DB16FF /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99AF85323C2489A38837C910 /* Extensions.swift */; };
 		4D8BCFB37DF629DF16DF7D19 /* GraphService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49CD34AF5BA426B62604E12 /* GraphService.swift */; };
+		5007C8095701519211B3E0E0 /* UIKitWrappers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D9E7AB8B09AE699502A7FE3 /* UIKitWrappers.swift */; };
 		58B94D181ACB62212905B341 /* GoldfishGraphScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBBD93FA8F2D699FAB66621 /* GoldfishGraphScene.swift */; };
 		58F0B8A2CA118C06A0C4F4E5 /* VCardImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 491C7C7FB18B72D3012F8B74 /* VCardImportService.swift */; };
 		5ACC2D1E2542DC0142FECC1E /* GraphViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAB1639DB0E83F4C9EEB7341 /* GraphViewModel.swift */; };
+		5B31E56C2EB4E35EE78E9D41 /* GraphCameraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C080EDD8EBF31CE75A4A56A /* GraphCameraManager.swift */; };
 		5D47B4F36C3C1A396F572309 /* RelationshipType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A693BE57C6F9048C77F0398 /* RelationshipType.swift */; };
 		5DC98B3D12DEF8CF921CB133 /* DemoModeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9279A4A5D69E929F330DF2D1 /* DemoModeManager.swift */; };
+		5E18A069DC0182E84339BE23 /* AIDraftContact.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CF0E71CF2866B96D27FCAC5 /* AIDraftContact.swift */; };
 		6249248DF90C2E9D432A8197 /* ContactFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A079D195EFCFE4FD2B14B7DF /* ContactFormView.swift */; };
 		6825D808BE307DCC70CDC709 /* GoldfishModelContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB68F40C7CE83693EE0BA98F /* GoldfishModelContainer.swift */; };
+		73E7E7E346DCC0FA099FEE05 /* GraphInputHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 795AE5DF5193DB2D21DA80C4 /* GraphInputHandler.swift */; };
 		75B3F8D5C2FFE3D74C802999 /* FeatureWalkthroughManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA985F3901E76C30189D18C /* FeatureWalkthroughManager.swift */; };
+		8143C87D5BAB878F756F3850 /* LiquidSpringButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5950774E65E38DDF12BE02 /* LiquidSpringButtonStyle.swift */; };
 		84A64E39C4878EB634727E64 /* DemoDataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6879CE14E7E8A6D7273F384D /* DemoDataService.swift */; };
 		8F8D1F7CB97E6243F69504B0 /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5778550682B283AF818B234 /* OnboardingFlow.swift */; };
-		954FB5F1ED0AE12478D76A66 /* ContactListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B39C8260E0ECAC74E25B14DE /* ContactListView.swift */; };
+		9075725C06DE58E5545784D6 /* AITranscriptionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A446A224A25C8D9C0F3F1939 /* AITranscriptionProvider.swift */; };
+		98AD1930E956249CAFC58B7B /* StressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECA285622988F77191E4DA42 /* StressTests.swift */; };
 		9A8C1106844C5AC2220547B0 /* Location.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FF9B59925D7B3326355A75 /* Location.swift */; };
 		9E423FD0273861F5FE73D8B6 /* ContactExportSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B513AB037FC67502BDE35E66 /* ContactExportSelectionView.swift */; };
+		9E5F370B1E5CDD7F0FFB4892 /* GraphRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAF1D20FE37F98C53F38B6CB /* GraphRenderer.swift */; };
+		9F99ABF5DA47FF8FAA4771DB /* AIVoiceAddViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8DFDC45A6B64A55F0C5F218 /* AIVoiceAddViewModel.swift */; };
+		A1197EC6AB80CF4ACFB7E200 /* AIContactService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 174FB6833351FB8D4B5DBF10 /* AIContactService.swift */; };
 		A12178FE25EAC46313A6B449 /* GoldfishTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB7E247B3F4C3AF7C560516E /* GoldfishTests.swift */; };
 		A4D026AB7FDDC32C97590E53 /* DatabaseErrorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95A3B019259362813897CD33 /* DatabaseErrorView.swift */; };
 		A6A9AA43E6726AA1525CEDFC /* ContactRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D1A3C039925FC8835B046D7 /* ContactRowView.swift */; };
@@ -40,11 +55,14 @@
 		B41998DE0FCD60649AB40520 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2D153727D39B6A0434CB9F2 /* Assets.xcassets */; };
 		B925C000EA36BA89C30C53E5 /* GraphNodeSprite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C4DFECA32CAF12FFB7DA2D2 /* GraphNodeSprite.swift */; };
 		BA2C786B2631E28600453399 /* Person.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E6B8425027EED98DE4A82A /* Person.swift */; };
+		BBB18C33984C5447780B4473 /* ImportSummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D81DCA4936ECC3F66A85FF4 /* ImportSummarySheet.swift */; };
+		BD468383311FE32A9E9D8FA0 /* GraphLayoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27DAFD8AF911476C0A88C8C4 /* GraphLayoutManager.swift */; };
+		C2040BB18544F6082914F3D1 /* GraphPhysicsEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B43B3F7C207DBACA43E0FD /* GraphPhysicsEngine.swift */; };
 		C54BCB99ADE0858E76FE6551 /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8E3DED1AC41D0D95F88ED0B /* HomeViewModel.swift */; };
-		C617C5FD21AC140BE812BA59 /* ResetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE1CF14A71D6F29F168F5213 /* ResetTests.swift */; };
 		C73B91046EB0E4140EDA8996 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF0B908F1589B9D32449F5A3 /* SettingsView.swift */; };
 		C876F2B08F4FCD2B482087D0 /* ContactPhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D78BF7A723944E3DBB95E364 /* ContactPhotoView.swift */; };
 		CB8C6223524F67C1379D0F7B /* GoldfishColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84099033F26B00F9703BB69F /* GoldfishColors.swift */; };
+		CE39ECE7C7D7CECEFF18F8B1 /* AddContactSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4688696F8D0374D534883F43 /* AddContactSheet.swift */; };
 		D00193B89B1F4378A71B925B /* VCardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22FA52C98225A204657AE2D1 /* VCardTests.swift */; };
 		D47C868EB023692B7D1792FA /* ContactFormViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DC978DF10D6338667D1A78F /* ContactFormViewModel.swift */; };
 		D487187C9316C39FA7DA254A /* Relationship.swift in Sources */ = {isa = PBXBuildFile; fileRef = 373D944967C27ED34B060E94 /* Relationship.swift */; };
@@ -56,7 +74,7 @@
 		ECFFC3D41412401DC6EF47D6 /* AddRelationshipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEADE301945C104F6ED28958 /* AddRelationshipView.swift */; };
 		EF70400F6299DAF29D47D401 /* PrivacyPolicyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7D6D567A57494FE76310713 /* PrivacyPolicyView.swift */; };
 		F295843930CD69E05B039F60 /* CircleContact.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79462C044D2EAD600E4E5A22 /* CircleContact.swift */; };
-		FA7438BD7011FE12A8223C31 /* WalkthroughAnchorKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D180B577A15626E75412A7B /* WalkthroughAnchorKey.swift */; };
+		F7DDC7ACD98EE139A57A7705 /* AIVoiceAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9D4C2770CB5680B2CE1AC20 /* AIVoiceAddView.swift */; };
 		FF153E8C06EE64AF9EE23E5C /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60B4485CDD5E2387715C6ED /* HomeView.swift */; };
 /* End PBXBuildFile section */
 
@@ -74,55 +92,73 @@
 		07C06E74A48B5FB4A45AEFFE /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
 		0A1F5F173E53589083A80C83 /* OnboardingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingViewModel.swift; sourceTree = "<group>"; };
 		0FC9BA7B2DF2B0D060699789 /* CircleManagerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircleManagerViewModel.swift; sourceTree = "<group>"; };
+		174FB6833351FB8D4B5DBF10 /* AIContactService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIContactService.swift; sourceTree = "<group>"; };
 		18FF9B59925D7B3326355A75 /* Location.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Location.swift; sourceTree = "<group>"; };
+		1D81DCA4936ECC3F66A85FF4 /* ImportSummarySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportSummarySheet.swift; sourceTree = "<group>"; };
 		1DA985F3901E76C30189D18C /* FeatureWalkthroughManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureWalkthroughManager.swift; sourceTree = "<group>"; };
 		1F95A5912A5A6B0EB052DD9C /* LocationType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationType.swift; sourceTree = "<group>"; };
 		22FA52C98225A204657AE2D1 /* VCardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCardTests.swift; sourceTree = "<group>"; };
 		23864C6595744BC03BF3C8F6 /* SearchOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchOverlayView.swift; sourceTree = "<group>"; };
 		26B0D93096FA1C53C7456041 /* GoldfishApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishApp.swift; sourceTree = "<group>"; };
-		2D180B577A15626E75412A7B /* WalkthroughAnchorKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkthroughAnchorKey.swift; sourceTree = "<group>"; };
+		27DAFD8AF911476C0A88C8C4 /* GraphLayoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphLayoutManager.swift; sourceTree = "<group>"; };
 		2D1A3C039925FC8835B046D7 /* ContactRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactRowView.swift; sourceTree = "<group>"; };
 		373D944967C27ED34B060E94 /* Relationship.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Relationship.swift; sourceTree = "<group>"; };
+		4688696F8D0374D534883F43 /* AddContactSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddContactSheet.swift; sourceTree = "<group>"; };
 		491C7C7FB18B72D3012F8B74 /* VCardImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCardImportService.swift; sourceTree = "<group>"; };
+		4FE71A85663EBAE30CBA4176 /* AIBulkApprovalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIBulkApprovalView.swift; sourceTree = "<group>"; };
 		551C03B877AB16BAD7D978FF /* VCardParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCardParser.swift; sourceTree = "<group>"; };
 		5A693BE57C6F9048C77F0398 /* RelationshipType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelationshipType.swift; sourceTree = "<group>"; };
 		5C4DFECA32CAF12FFB7DA2D2 /* GraphNodeSprite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphNodeSprite.swift; sourceTree = "<group>"; };
 		5DC978DF10D6338667D1A78F /* ContactFormViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactFormViewModel.swift; sourceTree = "<group>"; };
+		624CC08ED273A09F801331F7 /* UnassignedContactsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnassignedContactsSheet.swift; sourceTree = "<group>"; };
 		6879CE14E7E8A6D7273F384D /* DemoDataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoDataService.swift; sourceTree = "<group>"; };
+		6C080EDD8EBF31CE75A4A56A /* GraphCameraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphCameraManager.swift; sourceTree = "<group>"; };
+		6CF0E71CF2866B96D27FCAC5 /* AIDraftContact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIDraftContact.swift; sourceTree = "<group>"; };
 		79462C044D2EAD600E4E5A22 /* CircleContact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircleContact.swift; sourceTree = "<group>"; };
+		795AE5DF5193DB2D21DA80C4 /* GraphInputHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphInputHandler.swift; sourceTree = "<group>"; };
 		84099033F26B00F9703BB69F /* GoldfishColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishColors.swift; sourceTree = "<group>"; };
 		84F89864057C05D5D83EF1D1 /* ContactDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactDetailViewModel.swift; sourceTree = "<group>"; };
-		8C24F650B4D953E067477E61 /* GoldfishTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GoldfishTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8C24F650B4D953E067477E61 /* GoldfishTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GoldfishTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8CBBD93FA8F2D699FAB66621 /* GoldfishGraphScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishGraphScene.swift; sourceTree = "<group>"; };
 		8D60F686BD156E1DCC710F6C /* GraphContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphContainerView.swift; sourceTree = "<group>"; };
 		92780B32B06F68332108E218 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		9279A4A5D69E929F330DF2D1 /* DemoModeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoModeManager.swift; sourceTree = "<group>"; };
 		95A3B019259362813897CD33 /* DatabaseErrorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseErrorView.swift; sourceTree = "<group>"; };
+		95B43B3F7C207DBACA43E0FD /* GraphPhysicsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphPhysicsEngine.swift; sourceTree = "<group>"; };
 		99AF85323C2489A38837C910 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		9A886EB6E13DD7F732B3B191 /* VCardExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCardExportService.swift; sourceTree = "<group>"; };
+		9D9E7AB8B09AE699502A7FE3 /* UIKitWrappers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIKitWrappers.swift; sourceTree = "<group>"; };
 		A079D195EFCFE4FD2B14B7DF /* ContactFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactFormView.swift; sourceTree = "<group>"; };
 		A2D153727D39B6A0434CB9F2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = ../Goldfish/Assets.xcassets; sourceTree = "<group>"; };
 		A4013B831E17C1DAFD260E63 /* VCardExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCardExporter.swift; sourceTree = "<group>"; };
+		A446A224A25C8D9C0F3F1939 /* AITranscriptionProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AITranscriptionProvider.swift; sourceTree = "<group>"; };
 		A49CD34AF5BA426B62604E12 /* GraphService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphService.swift; sourceTree = "<group>"; };
 		AB7E247B3F4C3AF7C560516E /* GoldfishTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishTests.swift; sourceTree = "<group>"; };
 		B1E6B8425027EED98DE4A82A /* Person.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Person.swift; sourceTree = "<group>"; };
-		B39C8260E0ECAC74E25B14DE /* ContactListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactListView.swift; sourceTree = "<group>"; };
 		B513AB037FC67502BDE35E66 /* ContactExportSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactExportSelectionView.swift; sourceTree = "<group>"; };
 		B60B4485CDD5E2387715C6ED /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		B9D4C2770CB5680B2CE1AC20 /* AIVoiceAddView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIVoiceAddView.swift; sourceTree = "<group>"; };
 		BB68F40C7CE83693EE0BA98F /* GoldfishModelContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishModelContainer.swift; sourceTree = "<group>"; };
-		BE1CF14A71D6F29F168F5213 /* ResetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetTests.swift; sourceTree = "<group>"; };
 		CAB1639DB0E83F4C9EEB7341 /* GraphViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphViewModel.swift; sourceTree = "<group>"; };
 		D23CC945346F772BDBFB3766 /* GoldfishDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishDataManager.swift; sourceTree = "<group>"; };
-		D3A49C20C5A36D698F6C0C28 /* Goldfish.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Goldfish.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D3A49C20C5A36D698F6C0C28 /* Goldfish.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Goldfish.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D5778550682B283AF818B234 /* OnboardingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlow.swift; sourceTree = "<group>"; };
 		D78BF7A723944E3DBB95E364 /* ContactPhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactPhotoView.swift; sourceTree = "<group>"; };
 		D7D6D567A57494FE76310713 /* PrivacyPolicyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyPolicyView.swift; sourceTree = "<group>"; };
+		D8DFDC45A6B64A55F0C5F218 /* AIVoiceAddViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIVoiceAddViewModel.swift; sourceTree = "<group>"; };
 		D8E3DED1AC41D0D95F88ED0B /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
-		DB44107A6C85AB4EAE242256 /* SecurityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityTests.swift; sourceTree = "<group>"; };
+		DAF1D20FE37F98C53F38B6CB /* GraphRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphRenderer.swift; sourceTree = "<group>"; };
+		DDAFE9FA6FE2EF6F22AA98ED /* PersonNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonNode.swift; sourceTree = "<group>"; };
+		AB10C0FFEE0000000000F412 /* WalkthroughAnchorKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkthroughAnchorKey.swift; sourceTree = "<group>"; };
+		DF599775E0E28DC4E5DC4454 /* FluidBlobBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluidBlobBackground.swift; sourceTree = "<group>"; };
+		DFAD1D0391A2ABAEAE02D83D /* GraphDataProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphDataProvider.swift; sourceTree = "<group>"; };
 		E23362045AC5C4ADADC9340E /* ContactDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactDetailView.swift; sourceTree = "<group>"; };
 		EC459BB4CA97463F57C743CA /* CircleManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircleManagerView.swift; sourceTree = "<group>"; };
+		ECA285622988F77191E4DA42 /* StressTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StressTests.swift; sourceTree = "<group>"; };
+		ED5950774E65E38DDF12BE02 /* LiquidSpringButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidSpringButtonStyle.swift; sourceTree = "<group>"; };
 		EF0B908F1589B9D32449F5A3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		F20EB7C0FDC13E039E24E3D6 /* GoldfishCircle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishCircle.swift; sourceTree = "<group>"; };
+		FAAC06457690325532197922 /* GraphDTOs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphDTOs.swift; sourceTree = "<group>"; };
 		FEADE301945C104F6ED28958 /* AddRelationshipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRelationshipView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -142,8 +178,16 @@
 				D78BF7A723944E3DBB95E364 /* ContactPhotoView.swift */,
 				2D1A3C039925FC8835B046D7 /* ContactRowView.swift */,
 				07C06E74A48B5FB4A45AEFFE /* EmptyStateView.swift */,
+				DF599775E0E28DC4E5DC4454 /* FluidBlobBackground.swift */,
+				6C080EDD8EBF31CE75A4A56A /* GraphCameraManager.swift */,
+				795AE5DF5193DB2D21DA80C4 /* GraphInputHandler.swift */,
+				27DAFD8AF911476C0A88C8C4 /* GraphLayoutManager.swift */,
 				5C4DFECA32CAF12FFB7DA2D2 /* GraphNodeSprite.swift */,
-				2D180B577A15626E75412A7B /* WalkthroughAnchorKey.swift */,
+				95B43B3F7C207DBACA43E0FD /* GraphPhysicsEngine.swift */,
+				DAF1D20FE37F98C53F38B6CB /* GraphRenderer.swift */,
+				ED5950774E65E38DDF12BE02 /* LiquidSpringButtonStyle.swift */,
+				DDAFE9FA6FE2EF6F22AA98ED /* PersonNode.swift */,
+				AB10C0FFEE0000000000F412 /* WalkthroughAnchorKey.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -161,8 +205,11 @@
 		5EFB2A558042BA37539AECB8 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				174FB6833351FB8D4B5DBF10 /* AIContactService.swift */,
+				A446A224A25C8D9C0F3F1939 /* AITranscriptionProvider.swift */,
 				6879CE14E7E8A6D7273F384D /* DemoDataService.swift */,
 				D23CC945346F772BDBFB3766 /* GoldfishDataManager.swift */,
+				DFAD1D0391A2ABAEAE02D83D /* GraphDataProvider.swift */,
 				A49CD34AF5BA426B62604E12 /* GraphService.swift */,
 				A4013B831E17C1DAFD260E63 /* VCardExporter.swift */,
 				9A886EB6E13DD7F732B3B191 /* VCardExportService.swift */,
@@ -189,9 +236,11 @@
 		94DD597DEBD840FC58988EE8 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				6CF0E71CF2866B96D27FCAC5 /* AIDraftContact.swift */,
 				79462C044D2EAD600E4E5A22 /* CircleContact.swift */,
 				F20EB7C0FDC13E039E24E3D6 /* GoldfishCircle.swift */,
 				BB68F40C7CE83693EE0BA98F /* GoldfishModelContainer.swift */,
+				FAAC06457690325532197922 /* GraphDTOs.swift */,
 				18FF9B59925D7B3326355A75 /* Location.swift */,
 				1F95A5912A5A6B0EB052DD9C /* LocationType.swift */,
 				B1E6B8425027EED98DE4A82A /* Person.swift */,
@@ -205,8 +254,7 @@
 			isa = PBXGroup;
 			children = (
 				AB7E247B3F4C3AF7C560516E /* GoldfishTests.swift */,
-				BE1CF14A71D6F29F168F5213 /* ResetTests.swift */,
-				DB44107A6C85AB4EAE242256 /* SecurityTests.swift */,
+				ECA285622988F77191E4DA42 /* StressTests.swift */,
 				22FA52C98225A204657AE2D1 /* VCardTests.swift */,
 			);
 			path = Tests;
@@ -215,19 +263,24 @@
 		A83CFF25F0A81D31B33EDEE3 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				4688696F8D0374D534883F43 /* AddContactSheet.swift */,
 				FEADE301945C104F6ED28958 /* AddRelationshipView.swift */,
+				4FE71A85663EBAE30CBA4176 /* AIBulkApprovalView.swift */,
+				B9D4C2770CB5680B2CE1AC20 /* AIVoiceAddView.swift */,
 				EC459BB4CA97463F57C743CA /* CircleManagerView.swift */,
 				E23362045AC5C4ADADC9340E /* ContactDetailView.swift */,
 				B513AB037FC67502BDE35E66 /* ContactExportSelectionView.swift */,
 				A079D195EFCFE4FD2B14B7DF /* ContactFormView.swift */,
-				B39C8260E0ECAC74E25B14DE /* ContactListView.swift */,
 				8CBBD93FA8F2D699FAB66621 /* GoldfishGraphScene.swift */,
 				8D60F686BD156E1DCC710F6C /* GraphContainerView.swift */,
 				B60B4485CDD5E2387715C6ED /* HomeView.swift */,
+				1D81DCA4936ECC3F66A85FF4 /* ImportSummarySheet.swift */,
 				D5778550682B283AF818B234 /* OnboardingFlow.swift */,
 				D7D6D567A57494FE76310713 /* PrivacyPolicyView.swift */,
 				23864C6595744BC03BF3C8F6 /* SearchOverlayView.swift */,
 				EF0B908F1589B9D32449F5A3 /* SettingsView.swift */,
+				9D9E7AB8B09AE699502A7FE3 /* UIKitWrappers.swift */,
+				624CC08ED273A09F801331F7 /* UnassignedContactsSheet.swift */,
 				4B90D2506C763D24CDAE8E3A /* Components */,
 			);
 			path = Views;
@@ -236,6 +289,7 @@
 		ADB6A65E2D61192C1D033CD4 /* ViewModels */ = {
 			isa = PBXGroup;
 			children = (
+				D8DFDC45A6B64A55F0C5F218 /* AIVoiceAddViewModel.swift */,
 				0FC9BA7B2DF2B0D060699789 /* CircleManagerViewModel.swift */,
 				84F89864057C05D5D83EF1D1 /* ContactDetailViewModel.swift */,
 				5DC978DF10D6338667D1A78F /* ContactFormViewModel.swift */,
@@ -300,7 +354,9 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 2620;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
 			};
 			buildConfigurationList = 9B22BB186E7740FB30B7520C /* Build configuration list for PBXProject "Goldfish" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -337,8 +393,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A12178FE25EAC46313A6B449 /* GoldfishTests.swift in Sources */,
-				C617C5FD21AC140BE812BA59 /* ResetTests.swift in Sources */,
-				3B805853A39F72E0AAE9604F /* SecurityTests.swift in Sources */,
+				98AD1930E956249CAFC58B7B /* StressTests.swift in Sources */,
 				D00193B89B1F4378A71B925B /* VCardTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -347,6 +402,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				13F4950E1B74904E3F9F647A /* AIBulkApprovalView.swift in Sources */,
+				A1197EC6AB80CF4ACFB7E200 /* AIContactService.swift in Sources */,
+				5E18A069DC0182E84339BE23 /* AIDraftContact.swift in Sources */,
+				9075725C06DE58E5545784D6 /* AITranscriptionProvider.swift in Sources */,
+				F7DDC7ACD98EE139A57A7705 /* AIVoiceAddView.swift in Sources */,
+				9F99ABF5DA47FF8FAA4771DB /* AIVoiceAddViewModel.swift in Sources */,
+				CE39ECE7C7D7CECEFF18F8B1 /* AddContactSheet.swift in Sources */,
 				ECFFC3D41412401DC6EF47D6 /* AddRelationshipView.swift in Sources */,
 				F295843930CD69E05B039F60 /* CircleContact.swift in Sources */,
 				3E7812D7337CD8B06E16EA69 /* CircleManagerView.swift in Sources */,
@@ -356,7 +418,6 @@
 				9E423FD0273861F5FE73D8B6 /* ContactExportSelectionView.swift in Sources */,
 				6249248DF90C2E9D432A8197 /* ContactFormView.swift in Sources */,
 				D47C868EB023692B7D1792FA /* ContactFormViewModel.swift in Sources */,
-				954FB5F1ED0AE12478D76A66 /* ContactListView.swift in Sources */,
 				C876F2B08F4FCD2B482087D0 /* ContactPhotoView.swift in Sources */,
 				A6A9AA43E6726AA1525CEDFC /* ContactRowView.swift in Sources */,
 				A4D026AB7FDDC32C97590E53 /* DatabaseErrorView.swift in Sources */,
@@ -365,34 +426,47 @@
 				A73450712034383991FBE7E2 /* EmptyStateView.swift in Sources */,
 				4B610CD8A7A8B93670DB16FF /* Extensions.swift in Sources */,
 				75B3F8D5C2FFE3D74C802999 /* FeatureWalkthroughManager.swift in Sources */,
+				24B33E12A74E80EF889E0C43 /* FluidBlobBackground.swift in Sources */,
 				428A259CD768E2AF8AAF8CD7 /* GoldfishApp.swift in Sources */,
 				E0ABB2AA7E90577F0246A231 /* GoldfishCircle.swift in Sources */,
 				CB8C6223524F67C1379D0F7B /* GoldfishColors.swift in Sources */,
 				AB98461BD617F57896B4B397 /* GoldfishDataManager.swift in Sources */,
 				58B94D181ACB62212905B341 /* GoldfishGraphScene.swift in Sources */,
 				6825D808BE307DCC70CDC709 /* GoldfishModelContainer.swift in Sources */,
+				5B31E56C2EB4E35EE78E9D41 /* GraphCameraManager.swift in Sources */,
 				A998D6BAA823FC45E444C2EA /* GraphContainerView.swift in Sources */,
+				1414705B81BC390D8796F564 /* GraphDTOs.swift in Sources */,
+				38AAEE7CD88B9FA51B7F0D87 /* GraphDataProvider.swift in Sources */,
+				73E7E7E346DCC0FA099FEE05 /* GraphInputHandler.swift in Sources */,
+				BD468383311FE32A9E9D8FA0 /* GraphLayoutManager.swift in Sources */,
 				B925C000EA36BA89C30C53E5 /* GraphNodeSprite.swift in Sources */,
+				C2040BB18544F6082914F3D1 /* GraphPhysicsEngine.swift in Sources */,
+				9E5F370B1E5CDD7F0FFB4892 /* GraphRenderer.swift in Sources */,
 				4D8BCFB37DF629DF16DF7D19 /* GraphService.swift in Sources */,
 				5ACC2D1E2542DC0142FECC1E /* GraphViewModel.swift in Sources */,
 				FF153E8C06EE64AF9EE23E5C /* HomeView.swift in Sources */,
 				C54BCB99ADE0858E76FE6551 /* HomeViewModel.swift in Sources */,
+				BBB18C33984C5447780B4473 /* ImportSummarySheet.swift in Sources */,
+				8143C87D5BAB878F756F3850 /* LiquidSpringButtonStyle.swift in Sources */,
 				9A8C1106844C5AC2220547B0 /* Location.swift in Sources */,
 				209649AE0B756C2AD63AD7BD /* LocationType.swift in Sources */,
 				8F8D1F7CB97E6243F69504B0 /* OnboardingFlow.swift in Sources */,
 				E6B472A0ACD08E369BBBBAEB /* OnboardingViewModel.swift in Sources */,
 				BA2C786B2631E28600453399 /* Person.swift in Sources */,
+				056B6A9B3F5C0A88CEF14B1B /* PersonNode.swift in Sources */,
+				AB10C0FFEE0000000000F411 /* WalkthroughAnchorKey.swift in Sources */,
 				EF70400F6299DAF29D47D401 /* PrivacyPolicyView.swift in Sources */,
 				D487187C9316C39FA7DA254A /* Relationship.swift in Sources */,
 				5D47B4F36C3C1A396F572309 /* RelationshipType.swift in Sources */,
 				35F37B25A44EF4D8C10EF6D9 /* SearchOverlayView.swift in Sources */,
 				C73B91046EB0E4140EDA8996 /* SettingsView.swift in Sources */,
 				1E1F04E4AE429CD72482FAC0 /* SettingsViewModel.swift in Sources */,
+				5007C8095701519211B3E0E0 /* UIKitWrappers.swift in Sources */,
+				2AC7A2999FE519BED537C5E6 /* UnassignedContactsSheet.swift in Sources */,
 				43E832C83A76AA8AC07FFE2A /* VCardExportService.swift in Sources */,
 				E82DD4151C3447C7DCB412B2 /* VCardExporter.swift in Sources */,
 				58F0B8A2CA118C06A0C4F4E5 /* VCardImportService.swift in Sources */,
 				D54CEDF6AED40B4A376B8051 /* VCardParser.swift in Sources */,
-				FA7438BD7011FE12A8223C31 /* WalkthroughAnchorKey.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -444,7 +518,6 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -465,7 +538,6 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.9;
@@ -509,7 +581,6 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -523,7 +594,6 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.9;

@@ -4,7 +4,7 @@ import SwiftData
 // MARK: - CircleContact
 /// Junction table linking a `Person` to a `GoldfishCircle`.
 ///
-/// **Single pond invariant:** Each contact may belong to at most one circle
+/// **Single circle invariant:** Each contact may belong to at most one circle
 /// at a time. Adding a contact to a new circle removes existing memberships.
 ///
 /// **Manual exclusion guard:**

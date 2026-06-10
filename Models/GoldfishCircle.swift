@@ -30,8 +30,7 @@ final class GoldfishCircle {
     /// Emoji icon shown alongside the circle name.
     var emoji: String
 
-    /// Optional description of the circle's purpose.
-    var desc: String?
+
 
     /// Whether this is a built-in system circle (Family, Friends, Professional).
     /// System circles cannot be deleted.
@@ -62,7 +61,7 @@ final class GoldfishCircle {
         name: String,
         color: String = "#808080",
         emoji: String = "⭐",
-        desc: String? = nil,
+
         isSystem: Bool = false,
         autoRelationshipTypes: [String] = [],
         sortOrder: Int = 0
@@ -71,7 +70,7 @@ final class GoldfishCircle {
         self.name = name
         self.color = color
         self.emoji = emoji
-        self.desc = desc
+
         self.isSystem = isSystem
         self.autoRelationshipTypes = autoRelationshipTypes
         self.sortOrder = sortOrder
@@ -87,10 +86,7 @@ final class GoldfishCircle {
             .map(\.contact)
     }
 
-    /// Whether a given relationship type triggers auto-assignment to this circle.
-    func shouldAutoAssign(for type: RelationshipType) -> Bool {
-        autoRelationshipTypes.contains(type.rawValue)
-    }
+
 
     // MARK: - System Circle Factory
 
@@ -101,7 +97,7 @@ final class GoldfishCircle {
                 name: "Family",
                 color: "#FF6B6B",
                 emoji: "",
-                desc: "Your family members",
+
                 isSystem: true,
                 autoRelationshipTypes: [
                     RelationshipType.mother.rawValue,
@@ -117,7 +113,7 @@ final class GoldfishCircle {
                 name: "Friends",
                 color: "#4ECDC4",
                 emoji: "",
-                desc: "Your friends",
+
                 isSystem: true,
                 autoRelationshipTypes: [
                     RelationshipType.friend.rawValue
@@ -128,7 +124,7 @@ final class GoldfishCircle {
                 name: "Professional",
                 color: "#45B7D1",
                 emoji: "",
-                desc: "Professional contacts and coworkers",
+
                 isSystem: true,
                 autoRelationshipTypes: [
                     RelationshipType.coworker.rawValue

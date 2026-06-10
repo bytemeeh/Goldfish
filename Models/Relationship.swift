@@ -27,11 +27,6 @@ final class Relationship {
     /// Using a String raw value ensures CloudKit compatibility and migration safety.
     var typeRawValue: String
 
-    /// Marks this as the primary relationship between two contacts.
-    /// Used when a person has multiple relationship types with the same contact
-    /// (e.g., both coworker and friend) to determine the display label.
-    var isPrimary: Bool
-
     // MARK: - Linked Contacts
 
     /// The subject contact — this person IS the `type` relative to `toContact`.
@@ -50,14 +45,13 @@ final class Relationship {
         id: UUID = UUID(),
         from: Person,
         to: Person,
-        type: RelationshipType,
-        isPrimary: Bool = false
+        type: RelationshipType
     ) {
         self.id = id
         self.fromContact = from
         self.toContact = to
         self.typeRawValue = type.rawValue
-        self.isPrimary = isPrimary
+
         self.createdAt = Date()
     }
 

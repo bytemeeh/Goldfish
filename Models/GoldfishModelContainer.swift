@@ -46,9 +46,4 @@ enum GoldfishModelContainer {
         return try ModelContainer(for: schema, configurations: [config])
     }
 
-    /// Creates an in-memory container for unit tests.
-    /// Identical to preview but named separately for clarity.
-    static func testing() throws -> ModelContainer {
-        try preview()
-    }
 }

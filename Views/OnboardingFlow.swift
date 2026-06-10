@@ -6,9 +6,10 @@ import ContactsUI
 // MARK: - Onboarding Sign-In Overlay
 /// Full-screen cover displayed over the live ponds graph during onboarding.
 /// The top portion is transparent (graph shows through); the bottom portion
-/// is a dark card with Goldfish branding and sign-in buttons.
+/// is a dark card with Goldfish branding and a Get Started button.
 struct OnboardingSignInOverlay: View {
     @EnvironmentObject var dataManager: GoldfishDataManager
+    @EnvironmentObject var demoModeManager: DemoModeManager
 
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
@@ -61,41 +62,18 @@ struct OnboardingSignInOverlay: View {
                 .frame(maxWidth: .infinity)
                 .padding(.bottom, 32)
 
-                VStack(spacing: 12) {
-                    Button(action: createMeAndContinue) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "applelogo")
-                                .font(.system(size: 15, weight: .semibold))
-                            Text("Continue with Apple")
-                                .font(.system(size: 15, weight: .semibold))
-                        }
+                Button(action: createMeAndContinue) {
+                    Text("Get Started")
+                        .font(.system(size: 15, weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 15)
                         .background(.white)
                         .foregroundColor(.black)
                         .cornerRadius(14)
-                    }
-
-                    Button(action: createMeAndContinue) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "envelope.fill")
-                                .font(.system(size: 14, weight: .medium))
-                            Text("Continue with Email")
-                                .font(.system(size: 15, weight: .medium))
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 15)
-                        .background(cardColor)
-                        .foregroundColor(cream.opacity(0.9))
-                        .cornerRadius(14)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(cream.opacity(0.1), lineWidth: 1)
-                        )
-                    }
                 }
                 .padding(.horizontal, 28)
-                .padding(.bottom, 16)
+                .padding(.bottom, 12)
+
 
                 Text("By continuing you agree to our Terms & Privacy Policy.")
                     .font(.system(size: 11))
@@ -112,9 +90,13 @@ struct OnboardingSignInOverlay: View {
 
     private func createMeAndContinue() {
         do {
+            // 1. Create ME contact if it doesn't exist yet
             if try dataManager.fetchMePerson() == nil {
                 try dataManager.performOnboarding(name: "Me")
             }
+
+
+            // 3. Only NOW mark onboarding as complete — no race condition
             hasCompletedOnboarding = true
         } catch {
             print("Onboarding sign-in error: \(error)")
@@ -286,38 +268,3 @@ class WatercolorDisperseScene: SKScene {
     }
 }
 
-
-// MARK: - Contact Picker Wrapper
-struct ContactPicker: UIViewControllerRepresentable {
-    @Binding var isPresented: Bool
-    var onContactsSelected: ([CNContact]) -> Void
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    func makeUIViewController(context: Context) -> CNContactPickerViewController {
-        let picker = CNContactPickerViewController()
-        picker.delegate = context.coordinator
-        return picker
-    }
-
-    func updateUIViewController(_ uiViewController: CNContactPickerViewController, context: Context) {}
-
-    class Coordinator: NSObject, CNContactPickerDelegate {
-        var parent: ContactPicker
-
-        init(_ parent: ContactPicker) {
-            self.parent = parent
-        }
-
-        func contactPicker(_ picker: CNContactPickerViewController, didSelect contacts: [CNContact]) {
-            parent.onContactsSelected(contacts)
-            parent.isPresented = false
-        }
-
-        func contactPickerDidCancel(_ picker: CNContactPickerViewController) {
-            parent.isPresented = false
-        }
-    }
-}

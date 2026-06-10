@@ -218,10 +218,7 @@ struct VCardExporter {
             let other = rel.otherContact(from: person)
             let type = rel.effectiveType(for: person)
             
-            // Only export if we have a valid relationship type
-            if type != .other {
-                 lines.append("X-GOLDFISH-RELATED-TO:\(other.id.uuidString);\(type.rawValue)")
-            }
+            lines.append("X-GOLDFISH-RELATED-TO:\(other.id.uuidString);\(type.rawValue)")
         }
 
         lines.append("END:VCARD")

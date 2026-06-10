@@ -9,6 +9,9 @@ struct SettingsView: View {
     @StateObject private var viewModel: SettingsViewModel
     @Environment(\.dismiss) private var dismiss
 
+    @AppStorage("aiBackendURL") private var aiBackendURL = ""
+    @AppStorage("aiBackendSecret") private var aiBackendSecret = ""
+
     @State private var showingImporter = false
     @State private var showingImportOptions = false
     @State private var showingPhonebookPicker = false
@@ -49,7 +52,7 @@ struct SettingsView: View {
                         .padding(.vertical, 4)
                     }
                 } else {
-                    Text("My Card not found")
+                    Text("Your card not found")
                         .foregroundStyle(.secondary)
                 }
             }
@@ -72,6 +75,14 @@ struct SettingsView: View {
                     Label("Replay Feature Tour", systemImage: "hand.point.up.left.fill")
                         .foregroundColor(.primary)
                 }
+
+                TextField("AI Backend URL", text: $aiBackendURL)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                
+                SecureField("AI Backend Secret", text: $aiBackendSecret)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
             }
 
             // MARK: - Demo Mode
@@ -214,10 +225,13 @@ struct SettingsView: View {
                 viewModel.importContacts(from: selectedContacts)
             }
         }
-        .alert(viewModel.importAlertTitle, isPresented: $viewModel.showImportCompletionAlert) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text(viewModel.importAlertMessage)
+        .sheet(isPresented: $viewModel.showImportCompletionAlert) {
+            if let result = viewModel.lastImportResult {
+                ImportSummarySheet(result: result) {
+                    viewModel.showImportCompletionAlert = false
+                }
+                .presentationDetents([.medium])
+            }
         }
         .alert("Reset Experience", isPresented: $showingLogoutAlert) {
             Button("Reset Anyway", role: .destructive) {
@@ -231,7 +245,7 @@ struct SettingsView: View {
         } message: {
             Text("This will permanently delete ALL your contacts and connections. This action cannot be undone.")
         }
-        .alert("Export Contacts?", isPresented: $showingExportPrompt) {
+        .alert("Export Contacts", isPresented: $showingExportPrompt) {
             Button("Export and Save") {
                 if let url = viewModel.generateExportURL() {
                     self.exportURL = IdentifiableWrapper(url)

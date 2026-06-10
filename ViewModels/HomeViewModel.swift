@@ -1,6 +1,8 @@
 import SwiftUI
 import SwiftData
 import Combine
+import Contacts
+import UniformTypeIdentifiers
 
 // MARK: - View Mode
 enum HomeViewMode: String, CaseIterable, Identifiable {
@@ -45,6 +47,12 @@ final class HomeViewModel: ObservableObject {
     @Published var isSearching: Bool = false
     @Published var selectedCircleID: UUID?
     @Published var showFavoritesOnly: Bool = false
+    
+    // MARK: - Import State
+    @Published var isImporting = false
+    @Published var importProgress: String = ""
+    @Published var showImportCompletionAlert = false
+    @Published var lastImportResult: ImportResult?
     
     // MARK: - Data
     struct ContactGroup: Identifiable {
@@ -170,9 +178,6 @@ final class HomeViewModel: ObservableObject {
     }
     
     // MARK: - Actions
-    func toggleViewMode() {
-        viewMode = (viewMode == .graph) ? .list : .graph
-    }
     
     func deleteContact(_ person: Person) {
         do {
@@ -181,16 +186,6 @@ final class HomeViewModel: ObservableObject {
         } catch {
             print("Failed to delete contact: \(error)")
         }
-    }
-    
-    func toggleFavoriteFilter() {
-        showFavoritesOnly.toggle()
-        loadData()
-    }
-    
-    func selectCircleFilter(_ circle: GoldfishCircle?) {
-        selectedCircleID = circle?.id
-        loadData()
     }
     
     // MARK: - Grouping Helper
@@ -222,5 +217,113 @@ final class HomeViewModel: ObservableObject {
         } else {
             listState = .emptyGlobal
         }
+    }
+    
+    // MARK: - Import
+    
+    func importContacts(from contacts: [CNContact]) {
+        isImporting = true
+        importProgress = "Reading contacts..."
+        
+        Task {
+            do {
+                var importedCount = 0
+                for cn in contacts {
+                    let fullName = [cn.givenName, cn.familyName]
+                        .filter { !$0.isEmpty }
+                        .joined(separator: " ")
+                    guard !fullName.isEmpty else { continue }
+                    
+                    try dataManager.createPerson(
+                        name: fullName,
+                        birthday: cn.birthday.flatMap { Calendar.current.date(from: $0) },
+                        isDemo: self.isDemoMode,
+                        photoData: cn.imageData
+                    )
+                    importedCount += 1
+                }
+                
+                await MainActor.run {
+                    self.lastImportResult = ImportResult(
+                        importedCount: importedCount,
+                        skippedCount: 0,
+                        errors: [],
+                        skippedDuplicates: [],
+                        isGoldfishFormat: false,
+                        goldfishVersion: nil,
+                        connectionsRestored: 0,
+                        connectionsSkipped: 0,
+                        circlesCreated: 0,
+                        circlesExisting: 0
+                    )
+                    self.isImporting = false
+                    self.importProgress = ""
+                    self.showImportCompletionAlert = true
+                    self.loadData() // Refresh list after import!
+                }
+            } catch {
+                await MainActor.run {
+                    importProgress = "Failed: \(error.localizedDescription)"
+                    isImporting = false
+                }
+            }
+        }
+    }
+    
+    // MARK: - Import Result Formatting
+    
+    var importAlertTitle: String {
+        guard let result = lastImportResult else { return "Import Complete" }
+        if result.isGoldfishFormat {
+            return "Goldfish File Detected ✓"
+        } else {
+            return "Import Complete"
+        }
+    }
+    
+    var importAlertMessage: String {
+        guard let result = lastImportResult else { return "" }
+        
+        var lines: [String] = []
+        
+        if result.isGoldfishFormat {
+            let contactStr = result.importedCount == 1 ? "contact" : "contacts"
+            lines.append("\(result.importedCount) \(contactStr) imported")
+            
+            if result.skippedCount > 0 {
+                let dupStr = result.skippedCount == 1 ? "duplicate" : "duplicates"
+                lines.append("\(result.skippedCount) \(dupStr) skipped")
+            }
+            
+            let connStr = result.connectionsRestored == 1 ? "connection" : "connections"
+            lines.append("\(result.connectionsRestored) \(connStr) restored")
+            
+            if result.connectionsSkipped > 0 {
+                let connSkipStr = result.connectionsSkipped == 1 ? "connection" : "connections"
+                lines.append("\(result.connectionsSkipped) \(connSkipStr) already existed")
+            }
+            
+            if result.circlesCreated > 0 {
+                let pondStr = result.circlesCreated == 1 ? "pond" : "ponds"
+                lines.append("\(result.circlesCreated) new \(pondStr) created")
+            }
+        } else {
+            let contactStr = result.importedCount == 1 ? "contact" : "contacts"
+            lines.append("\(result.importedCount) \(contactStr) added")
+            
+            if result.skippedCount > 0 {
+                let dupStr = result.skippedCount == 1 ? "duplicate" : "duplicates"
+                lines.append("\(result.skippedCount) \(dupStr) skipped")
+            }
+            
+            lines.append("Imported without pond or connection data.")
+        }
+        
+        if !result.errors.isEmpty {
+            let errStr = result.errors.count == 1 ? "error" : "errors"
+            lines.append("\n⚠️ \(result.errors.count) \(errStr) occurred")
+        }
+        
+        return lines.joined(separator: "\n")
     }
 }

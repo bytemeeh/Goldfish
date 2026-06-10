@@ -17,11 +17,4 @@ enum LocationType: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    var symbolName: String {
-        switch self {
-        case .home:  return "house.fill"
-        case .work:  return "building.2.fill"
-        case .other: return "mappin.circle.fill"
-        }
-    }
 }

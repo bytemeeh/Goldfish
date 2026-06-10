@@ -52,12 +52,6 @@ struct ContactDetailView: View {
                 
                 // MARK: - Info Section
                 VStack(alignment: .leading, spacing: 20) {
-                    if let phone = viewModel.person.phone {
-                        InfoRow(icon: "phone.fill", label: "Mobile", value: phone)
-                    }
-                    if let email = viewModel.person.email {
-                        InfoRow(icon: "envelope.fill", label: "Email", value: email)
-                    }
                     if let birthday = viewModel.person.birthday {
                         InfoRow(icon: "gift.fill", label: "Birthday", value: birthday.formatted(date: .long, time: .omitted))
                     }
@@ -77,11 +71,11 @@ struct ContactDetailView: View {
                 // MARK: - Relationships
                 VStack(alignment: .leading, spacing: 16) {
                     HStack {
-                        Text("Relationships")
+                        Text("Connections")
                             .font(.headline)
                         Spacer()
                         Button {
-                            ToastManager.shared.showToast(message: "Drag contacts together in the graph to connect them")
+                            showAddRelationship = true
                         } label: {
                             Image(systemName: "plus.circle.fill")
                                 .font(.title3)
@@ -94,7 +88,7 @@ struct ContactDetailView: View {
                         EmptyStateView(
                             systemImage: "person.line.dotted.person",
                             headline: "No connections yet",
-                            subtext: "Drag contacts together in the graph to connect them"
+                            subtext: "Tap the + button to add a connection."
                         )
                         .frame(height: 200)
                         .cornerRadius(16)
@@ -117,6 +111,21 @@ struct ContactDetailView: View {
                                     }
                                     .buttonStyle(.plain)
                                     .padding(.horizontal)
+                                    .contextMenu {
+                                        Menu("Change Relationship") {
+                                            ForEach(RelationshipType.allCases) { relType in
+                                                Button(relType.displayName) {
+                                                    viewModel.updateRelationshipType(rel, to: relType)
+                                                }
+                                            }
+                                        }
+                                        
+                                        Button(role: .destructive) {
+                                            viewModel.deleteRelationship(rel)
+                                        } label: {
+                                            Label("Remove Connection", systemImage: "trash")
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -196,36 +205,9 @@ struct ContactDetailView: View {
         }
     }
     
-    var hasContactMethods: Bool {
-        viewModel.person.phone != nil || viewModel.person.email != nil
-    }
+
 }
 
-// MARK: - Action Button
-private struct ActionButton: View {
-    let icon: String
-    let label: String
-    var isActive: Bool = false
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 20))
-                    .frame(width: 44, height: 44)
-                    .background(isActive ? Color.yellow : Color.accentColor)
-                    .foregroundColor(isActive ? .white : .white)
-                    .clipShape(Circle())
-                
-                Text(label)
-                    .font(.caption)
-                    .foregroundColor(.primary)
-            }
-        }
-        .buttonStyle(.borderless)
-    }
-}
 
 // MARK: - Info Row
 private struct InfoRow: View {

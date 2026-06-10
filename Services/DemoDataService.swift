@@ -7,322 +7,240 @@ import SwiftData
 /// All demo data is flagged with `isDemo: true` for easy cleanup.
 @MainActor
 final class DemoDataService {
-    
+
     private let dataManager: GoldfishDataManager
-    
+
     init(dataManager: GoldfishDataManager) {
         self.dataManager = dataManager
     }
-    
+
     // MARK: - Seed Demo Data
-    
-    /// Seeds ~8 demo contacts with relationships and circle memberships.
+
+    /// Seeds 10 demo contacts that exercise every key use case at a glance:
+    /// - 3 ponds with members (Family ×3, Friends ×4, Professional ×2)
+    /// - A connected family cluster with parent/sibling/spouse links between non-Me contacts
+    /// - Second-degree contacts (reachable only through another contact, not Me)
+    /// - 2 favorites, 2 near-future birthdays, varied relationship types
+    /// - Exactly one unlinked contact (no relationships, no pond) for the "Unlinked" section
+    ///
     /// Safe to call multiple times — checks if demo data already exists.
-    func seedDemoData() throws {
-        // Guard against double-seeding
+    /// Returns `true` if demo data was fully seeded, `false` if skipped (e.g. Me doesn't exist yet).
+    @discardableResult
+    func seedDemoData() throws -> Bool {
+        // Require the "Me" contact to exist — relationships are anchored to Me.
+        guard let me = try dataManager.fetchMePerson() else { return false }
+
         let existing = try dataManager.fetchAllPersons()
-        let hasDemoData = existing.contains { $0.isDemo }
-        guard !hasDemoData else { return }
-        
-        // Require the "Me" contact to exist before seeding —
-        // relationships are anchored to Me, so seeding without it
-        // would create orphaned demo contacts.
-        guard let me = try dataManager.fetchMePerson() else { return }
-        
+        let demoPersons = existing.filter { $0.isDemo }
+
+        if !demoPersons.isEmpty {
+            // Check if seeding was incomplete (contacts exist but no relationships).
+            // This repairs orphaned demo contacts from prior interrupted seeding.
+            let hasRelationships = demoPersons.contains { !$0.allRelationships.isEmpty }
+            if hasRelationships {
+                // Contacts + relationships exist, but verify circle assignments (ponds).
+                // If any connected demo contact is missing a circle, repair them all.
+                // Contacts without relationships are intentionally unlinked (no pond)
+                // and must NOT trigger or receive repair.
+                let missingCircles = demoPersons.contains { person in
+                    !person.isMe
+                        && !person.allRelationships.isEmpty
+                        && person.circleContacts.filter({ !$0.manuallyExcluded }).isEmpty
+                }
+                if missingCircles {
+                    try repairCircleAssignments(demoPersons: demoPersons)
+                }
+                return true // Fully seeded (with repaired circles if needed)
+            }
+            // Incomplete — clean up orphaned contacts so we can re-seed properly
+            for person in demoPersons {
+                dataManager.context.delete(person)
+            }
+            try dataManager.context.save()
+        }
+
         // Ensure system circles exist (may not yet if called before onboarding)
         let existingCircles = try dataManager.fetchAllCircles()
         if !existingCircles.contains(where: { $0.isSystem }) {
             try dataManager.createSystemCircles()
         }
-        
+
         // Fetch circles for assignment
         let circles = try dataManager.fetchAllCircles()
         let familyCircle = circles.first { $0.name == "Family" }
         let friendsCircle = circles.first { $0.name == "Friends" }
         let proCircle = circles.first { $0.name == "Professional" }
-        
+
         // ── Create Demo Contacts ──
-        
-        let sarah = try dataManager.createPerson(
-            name: "Sarah Chen",
-            phone: "+1 (415) 555-0142",
-            email: "sarah.chen@email.com",
-            birthday: makeDate(month: 3, day: 15, year: 1992),
-            notes: "Loves hiking and photography. Met at college.",
-            isDemo: true,
-            color: "#E8857A"
-        )
-        
-        let mom = try dataManager.createPerson(
-            name: "Linda Miller",
+
+        // Family — a connected cluster: Rosa & Miguel are spouses and the
+        // parents of both Me and Diego, so the graph shows depth beyond
+        // a simple star around Me.
+        let rosa = try dataManager.createPerson(
+            name: "Rosa Alvarez",
             phone: "+1 (312) 555-0198",
-            email: "linda.m@email.com",
-            birthday: makeDate(month: 7, day: 22, year: 1960),
-            notes: "Mom. Calls every Sunday.",
+            email: "rosa.alvarez@email.com",
+            notes: "Mom. Calls every Sunday. Makes the best paella in the family.",
             isDemo: true,
+            isFavorite: true,
             color: "#FF6B6B"
         )
-        
-        let dad = try dataManager.createPerson(
-            name: "Robert Miller",
+
+        let miguel = try dataManager.createPerson(
+            name: "Miguel Alvarez",
             phone: "+1 (312) 555-0199",
-            email: "robert.miller@email.com",
-            birthday: makeDate(month: 11, day: 8, year: 1958),
-            notes: "Dad. Loves woodworking and jazz.",
+            email: "miguel.alvarez@email.com",
             isDemo: true,
-            color: "#D4574A"
+            color: "#E0584C"
         )
-        
-        let jake = try dataManager.createPerson(
-            name: "Jake Morrison",
-            phone: "+1 (628) 555-0167",
-            email: "jake.m@email.com",
-            birthday: makeDate(month: 5, day: 3, year: 1994),
-            notes: "College roommate. Married to Nicole, 3 kids. Always up for weekend trips and BBQs.",
+
+        let diego = try dataManager.createPerson(
+            name: "Diego Alvarez",
+            phone: "+1 (312) 555-0177",
+            email: "diego.alvarez@email.com",
+            birthday: upcomingBirthday(inDays: 19, age: 26),
+            isDemo: true,
+            color: "#F0907F"
+        )
+
+        // Friends — includes a second-degree contact (Jordan is Priya's
+        // partner, not directly linked to Me) and a friend-of-friend link.
+        let priya = try dataManager.createPerson(
+            name: "Priya Sharma",
+            phone: "+1 (415) 555-0142",
+            email: "priya.sharma@email.com",
+            birthday: upcomingBirthday(inDays: 4, age: 31),
+            notes: "Climbing partner. Training for her first marathon.",
             isDemo: true,
             isFavorite: true,
             color: "#4ECDC4"
         )
-        
-        // ── Jake's Family ──
-        
-        let nicole = try dataManager.createPerson(
-            name: "Nicole Morrison",
-            phone: "+1 (628) 555-0168",
-            email: "nicole.m@email.com",
-            birthday: makeDate(month: 7, day: 3, year: 1995),
-            notes: "Jake's wife. Graphic designer, loves pasta making and Saturday farmers markets.",
+
+        let jordan = try dataManager.createPerson(
+            name: "Jordan Lee",
+            phone: "+1 (415) 555-0143",
+            email: "jordan.lee@email.com",
             isDemo: true,
-            isFavorite: true,
-            color: "#E8A87C"
+            color: "#7FD8CD"
         )
-        
-        let liam = try dataManager.createPerson(
-            name: "Liam Morrison",
-            phone: nil,
-            email: nil,
-            birthday: makeDate(month: 9, day: 12, year: 2018),
-            notes: "Jake & Nicole's oldest. Obsessed with dinosaurs and Lego. Plays little league.",
+
+        let tunde = try dataManager.createPerson(
+            name: "Tunde Okafor",
+            phone: "+1 (510) 555-0167",
+            email: "tunde.okafor@email.com",
             isDemo: true,
-            color: "#85DCBA"
+            color: "#2FA89C"
         )
-        
-        let ella = try dataManager.createPerson(
-            name: "Ella Morrison",
-            phone: nil,
-            email: nil,
-            birthday: makeDate(month: 3, day: 21, year: 2021),
-            notes: "Middle child. Taking ballet classes. Loves drawing rainbows.",
-            isDemo: true,
-            color: "#F6C3B7"
-        )
-        
-        let noah = try dataManager.createPerson(
-            name: "Noah Morrison",
-            phone: nil,
-            email: nil,
-            birthday: makeDate(month: 12, day: 8, year: 2025),
-            notes: "The baby! Born Dec 2025. Already has his dad's smile.",
-            isDemo: true,
-            color: "#B5EAD7"
-        )
-        
-        let emma = try dataManager.createPerson(
-            name: "Emma Wilson",
-            phone: "+1 (510) 555-0134",
-            email: "emma.wilson@email.com",
-            birthday: makeDate(month: 9, day: 28, year: 1993),
-            notes: "Book club friend. Recommends great reads.",
+
+        let lena = try dataManager.createPerson(
+            name: "Lena Fischer",
+            phone: "+1 (628) 555-0134",
+            email: "lena.fischer@email.com",
             isDemo: true,
             color: "#5ABEAF"
         )
-        
-        let david = try dataManager.createPerson(
-            name: "David Park",
+
+        // Professional
+        let ingrid = try dataManager.createPerson(
+            name: "Ingrid Johansson",
             phone: "+1 (650) 555-0189",
-            email: "david.park@company.com",
-            birthday: makeDate(month: 1, day: 14, year: 1990),
-            notes: "Team lead at work. Great mentor.",
+            email: "ingrid.j@company.com",
             isDemo: true,
             color: "#45B7D1"
         )
-        
-        let lisa = try dataManager.createPerson(
-            name: "Lisa Thompson",
+
+        let kenji = try dataManager.createPerson(
+            name: "Kenji Tanaka",
             phone: "+1 (408) 555-0156",
-            email: "lisa.t@company.com",
-            birthday: makeDate(month: 12, day: 1, year: 1991),
-            notes: "Coworker. Works on the design team.",
+            email: "kenji.tanaka@company.com",
             isDemo: true,
             color: "#5AC1D8"
         )
-        
-        let tom = try dataManager.createPerson(
-            name: "Tom Miller",
-            phone: "+1 (312) 555-0177",
-            email: "tom.miller@email.com",
-            birthday: makeDate(month: 4, day: 19, year: 1996),
-            notes: "Younger brother. Studying engineering.",
+
+        // Unlinked — exactly one contact with no relationships and no pond,
+        // so the "Unlinked" section and edge-float behavior are visible.
+        // Intentionally given no relationships and no circle assignment below.
+        try dataManager.createPerson(
+            name: "Maya Castillo",
+            phone: "+1 (213) 555-0121",
+            email: "maya.castillo@email.com",
+            notes: "Met at a design conference — still need to connect her.",
             isDemo: true,
-            color: "#E06858"
-        )
-        
-        // ── Create Relationships ──
-        // skipAutoAssign: true — circle assignments are handled explicitly below
-        
-        // Family relationships (from Me)
-        try dataManager.createRelationship(from: me, to: sarah, type: .spouse, skipAutoAssign: true)
-        try dataManager.createRelationship(from: mom, to: me, type: .mother, skipAutoAssign: true)
-        try dataManager.createRelationship(from: dad, to: me, type: .father, skipAutoAssign: true)
-        try dataManager.createRelationship(from: me, to: tom, type: .sibling, skipAutoAssign: true)
-        
-        // Mom & Dad are also Tom's parents
-        try dataManager.createRelationship(from: mom, to: tom, type: .mother, skipAutoAssign: true)
-        try dataManager.createRelationship(from: dad, to: tom, type: .father, skipAutoAssign: true)
-        
-        // Mom & Dad are spouses
-        try dataManager.createRelationship(from: mom, to: dad, type: .spouse, skipAutoAssign: true)
-        
-        // Friends (from Me)
-        try dataManager.createRelationship(from: me, to: jake, type: .friend, skipAutoAssign: true)
-        
-        // Jake and Emma know each other
-        try dataManager.createRelationship(from: jake, to: emma, type: .friend, skipAutoAssign: true)
-        
-        // Professional (from Me)
-        try dataManager.createRelationship(from: me, to: david, type: .coworker, skipAutoAssign: true)
-        
-        // David and Lisa are coworkers with each other
-        try dataManager.createRelationship(from: david, to: lisa, type: .coworker, skipAutoAssign: true)
-        
-        // ── Additional Demo Contacts for Custom Pond ──
-        
-        let mia = try dataManager.createPerson(
-            name: "Mia Rodriguez",
-            phone: "+1 (415) 555-0201",
-            email: "mia.r@email.com",
-            birthday: makeDate(month: 6, day: 10, year: 1995),
-            notes: "Book club organizer. Loves mystery novels.",
-            isDemo: true,
-            color: "#9B59B6"
-        )
-        
-        let ryan = try dataManager.createPerson(
-            name: "Ryan O'Brien",
-            phone: "+1 (415) 555-0202",
-            email: "ryan.ob@email.com",
-            birthday: makeDate(month: 2, day: 28, year: 1991),
-            notes: "Book club member. Sci-fi enthusiast.",
-            isDemo: true,
-            color: "#8E44AD"
-        )
-        
-        // Depth 2 contacts
-        let chris = try dataManager.createPerson(
-            name: "Chris Evans",
-            phone: "+1 (650) 555-0811",
-            email: "chris.e@company.com",
-            birthday: makeDate(month: 8, day: 22, year: 1988),
-            notes: "David's manager.",
-            isDemo: true,
-            color: "#3498DB"
-        )
-        
-        let sam = try dataManager.createPerson(
-            name: "Sam Taylor",
-            phone: "+1 (628) 555-0922",
-            email: "sam.taylor@email.com",
-            birthday: makeDate(month: 10, day: 5, year: 1995),
-            notes: "Jake's teammate.",
-            isDemo: true,
-            color: "#2ECC71"
+            color: "#B8A9D9"
         )
 
-        // Depth 3 contact
-        let alex = try dataManager.createPerson(
-            name: "Alex Jordan",
-            phone: "+1 (415) 555-0344",
-            email: "alex.j@email.com",
-            birthday: makeDate(month: 2, day: 14, year: 1994),
-            notes: "Sam's partner.",
-            isDemo: true,
-            color: "#F1C40F"
-        )
-        
-        // ── Jake's Family Relationships ──
-        
-        // Jake & Nicole are spouses
-        try dataManager.createRelationship(from: jake, to: nicole, type: .spouse, skipAutoAssign: true)
-        
-        // Jake is father of all three kids
-        try dataManager.createRelationship(from: jake, to: liam, type: .father, skipAutoAssign: true)
-        try dataManager.createRelationship(from: jake, to: ella, type: .father, skipAutoAssign: true)
-        try dataManager.createRelationship(from: jake, to: noah, type: .father, skipAutoAssign: true)
-        
-        // Nicole is mother of all three kids
-        try dataManager.createRelationship(from: nicole, to: liam, type: .mother, skipAutoAssign: true)
-        try dataManager.createRelationship(from: nicole, to: ella, type: .mother, skipAutoAssign: true)
-        try dataManager.createRelationship(from: nicole, to: noah, type: .mother, skipAutoAssign: true)
-        
-        // Liam, Ella, and Noah are siblings
-        try dataManager.createRelationship(from: liam, to: ella, type: .sibling, skipAutoAssign: true)
-        try dataManager.createRelationship(from: liam, to: noah, type: .sibling, skipAutoAssign: true)
-        try dataManager.createRelationship(from: ella, to: noah, type: .sibling, skipAutoAssign: true)
-        
-        // Book club friends (connected through Emma, not directly to Me)
-        try dataManager.createRelationship(from: emma, to: mia, type: .friend, skipAutoAssign: true)
-        try dataManager.createRelationship(from: emma, to: ryan, type: .friend, skipAutoAssign: true)
-        
-        // Mia and Ryan know each other
-        try dataManager.createRelationship(from: mia, to: ryan, type: .friend, skipAutoAssign: true)
-        
-        // Multi-level connections (Depth 2 & 3)
-        try dataManager.createRelationship(from: david, to: chris, type: .coworker, skipAutoAssign: true)
-        try dataManager.createRelationship(from: jake, to: sam, type: .friend, skipAutoAssign: true)
-        try dataManager.createRelationship(from: sam, to: alex, type: .partner, skipAutoAssign: true)
-        
+        // ── Create Relationships ──
+        // skipAutoAssign: true — circle assignments are handled explicitly below
+
+        // Family cluster (Me + parents + brother)
+        try dataManager.createRelationship(from: rosa, to: me, type: .mother, skipAutoAssign: true)
+        try dataManager.createRelationship(from: miguel, to: me, type: .father, skipAutoAssign: true)
+        try dataManager.createRelationship(from: me, to: diego, type: .sibling, skipAutoAssign: true)
+
+        // Rosa & Miguel are also Diego's parents, and spouses of each other
+        try dataManager.createRelationship(from: rosa, to: diego, type: .mother, skipAutoAssign: true)
+        try dataManager.createRelationship(from: miguel, to: diego, type: .father, skipAutoAssign: true)
+        try dataManager.createRelationship(from: rosa, to: miguel, type: .spouse, skipAutoAssign: true)
+
+        // Friends (from Me)
+        try dataManager.createRelationship(from: me, to: priya, type: .friend, skipAutoAssign: true)
+        try dataManager.createRelationship(from: me, to: tunde, type: .friend, skipAutoAssign: true)
+        try dataManager.createRelationship(from: me, to: lena, type: .friend, skipAutoAssign: true)
+
+        // Priya and Lena are friends with each other
+        try dataManager.createRelationship(from: priya, to: lena, type: .friend, skipAutoAssign: true)
+
+        // Jordan is Priya's partner — connected only through Priya, not Me
+        try dataManager.createRelationship(from: priya, to: jordan, type: .partner, skipAutoAssign: true)
+
+        // Professional (from Me), plus a coworker link between colleagues
+        try dataManager.createRelationship(from: me, to: ingrid, type: .coworker, skipAutoAssign: true)
+        try dataManager.createRelationship(from: me, to: kenji, type: .coworker, skipAutoAssign: true)
+        try dataManager.createRelationship(from: ingrid, to: kenji, type: .coworker, skipAutoAssign: true)
+
         // ── Explicit Circle Assignments ──
-        // Single pond per contact: each contact belongs to exactly one pond.
-        
+        // Single circle per contact: each contact belongs to exactly one circle.
+        // Maya is deliberately left out of every circle (the unlinked showcase).
+
         if let familyCircle {
-            try dataManager.addToCircle(sarah, circle: familyCircle)
-            try dataManager.addToCircle(mom, circle: familyCircle)
-            try dataManager.addToCircle(dad, circle: familyCircle)
-            try dataManager.addToCircle(tom, circle: familyCircle)
-            try dataManager.addToCircle(nicole, circle: familyCircle)
-            try dataManager.addToCircle(liam, circle: familyCircle)
-            try dataManager.addToCircle(ella, circle: familyCircle)
-            try dataManager.addToCircle(noah, circle: familyCircle)
+            try dataManager.addToCircle(rosa, circle: familyCircle)
+            try dataManager.addToCircle(miguel, circle: familyCircle)
+            try dataManager.addToCircle(diego, circle: familyCircle)
         }
+
         if let friendsCircle {
-            try dataManager.addToCircle(jake, circle: friendsCircle)
-            try dataManager.addToCircle(emma, circle: friendsCircle)
-            try dataManager.addToCircle(sam, circle: friendsCircle)
-            try dataManager.addToCircle(alex, circle: friendsCircle)
-            try dataManager.addToCircle(mia, circle: friendsCircle)
-            try dataManager.addToCircle(ryan, circle: friendsCircle)
+            try dataManager.addToCircle(priya, circle: friendsCircle)
+            try dataManager.addToCircle(jordan, circle: friendsCircle)
+            try dataManager.addToCircle(tunde, circle: friendsCircle)
+            try dataManager.addToCircle(lena, circle: friendsCircle)
         }
+
         if let proCircle {
-            try dataManager.addToCircle(david, circle: proCircle)
-            try dataManager.addToCircle(lisa, circle: proCircle)
-            try dataManager.addToCircle(chris, circle: proCircle)
+            try dataManager.addToCircle(ingrid, circle: proCircle)
+            try dataManager.addToCircle(kenji, circle: proCircle)
         }
+
+        // Force final synchronous commit to ensure all relationships
+        // and circle memberships are persisted before UI initialization
+        try dataManager.context.save()
+
+        return true
     }
-    
+
     // MARK: - Remove Demo Data
-    
+
     /// Removes all contacts flagged as demo data and their relationships.
     /// Also cleans up any custom (non-system) circles that become empty.
     func removeDemoData() throws {
         let allPersons = try dataManager.fetchAllPersons()
         let demoPersons = allPersons.filter { $0.isDemo }
-        
+
         for person in demoPersons {
             // Person's cascade delete rule handles relationships, locations, circle memberships
             dataManager.context.delete(person)
         }
         try dataManager.context.save()
-        
+
         // Clean up custom circles that are now empty (e.g. "Book Club")
         let allCircles = try dataManager.fetchAllCircles()
         for circle in allCircles where !circle.isSystem {
@@ -332,14 +250,54 @@ final class DemoDataService {
         }
         try dataManager.context.save()
     }
-    
+
     // MARK: - Helpers
-    
-    private func makeDate(month: Int, day: Int, year: Int) -> Date? {
-        var components = DateComponents()
-        components.month = month
-        components.day = day
-        components.year = year
-        return Calendar.current.date(from: components)
+
+    /// Repairs missing circle (pond) assignments for demo contacts.
+    /// Uses `RelationshipType.autoCircleName` to determine the correct circle,
+    /// keeping this in sync with the auto-assignment logic in `GoldfishDataManager`.
+    /// Contacts without any relationships are skipped — they are intentionally
+    /// unlinked (no pond) so the "Unlinked" showcase survives repair passes.
+    func repairCircleAssignments(demoPersons: [Person]) throws {
+        let circles = try dataManager.fetchAllCircles()
+        let circlesByName = Dictionary(uniqueKeysWithValues: circles.map { ($0.name, $0) })
+
+        for person in demoPersons {
+            guard !person.isMe else { continue }
+            // Intentionally unlinked contacts stay out of every pond
+            guard !person.allRelationships.isEmpty else { continue }
+            let hasCircle = person.circleContacts.contains { !$0.manuallyExcluded }
+            guard !hasCircle else { continue }
+
+            // Find the first relationship with a known autoCircleName
+            let targetCircleName = person.allRelationships.lazy
+                .compactMap { rel -> String? in
+                    let relType = RelationshipType(rawValue: rel.typeRawValue)
+                    return relType?.autoCircleName
+                }
+                .first
+
+            if let name = targetCircleName, let circle = circlesByName[name] {
+                try dataManager.addToCircle(person, circle: circle)
+            } else if let fallback = circlesByName["Friends"] {
+                // Contacts with only .other relationships get Friends as fallback
+                try dataManager.addToCircle(person, circle: fallback)
+            }
+        }
+
+        try dataManager.context.save()
+    }
+
+    /// Returns a birthday whose month/day falls `inDays` days in the future,
+    /// with a birth year making the contact roughly `age` years old.
+    /// Keeps demo birthdays perpetually "upcoming" so any birthday UI
+    /// always has something to show, regardless of when the demo is seeded.
+    private func upcomingBirthday(inDays days: Int, age: Int) -> Date? {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let upcoming = calendar.date(byAdding: .day, value: days, to: now) else { return nil }
+        var components = calendar.dateComponents([.month, .day], from: upcoming)
+        components.year = calendar.component(.year, from: now) - age
+        return calendar.date(from: components)
     }
 }

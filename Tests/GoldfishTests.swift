@@ -338,6 +338,7 @@ final class CircleAutoAssignmentTests: XCTestCase {
 final class GraphLayoutTests: XCTestCase {
 
     var manager: GoldfishDataManager!
+    let graphService = GraphService()
 
     override func setUp() async throws {
         manager = try makeTestManager()
@@ -353,7 +354,7 @@ final class GraphLayoutTests: XCTestCase {
         try manager.createRelationship(from: me, to: friend, type: .friend)
         try manager.createRelationship(from: friend, to: friendOfFriend, type: .friend)
 
-        let levels = try manager.buildGraphLayout()!
+        let levels = graphService.buildGraphLevels(root: me, context: manager.context)
         // ME is excluded from visible levels: depth 0 = Friend, depth 1 = Friend of Friend
         XCTAssertEqual(levels.count, 2)
         XCTAssertEqual(levels[0].depth, 0)
@@ -366,7 +367,7 @@ final class GraphLayoutTests: XCTestCase {
         let me = try manager.createPerson(name: "Me", isMe: true)
         let orphan = try manager.createPerson(name: "Orphan")
 
-        let levels = try manager.buildGraphLayout()!
+        let levels = graphService.buildGraphLevels(root: me, context: manager.context)
         let allInGraph = levels.flatMap(\.allContacts)
         XCTAssertFalse(allInGraph.contains { $0.id == orphan.id })
     }
@@ -403,5 +404,322 @@ final class DescendantsTests: XCTestCase {
         let leaf = try manager.createPerson(name: "Leaf")
         let descendants = manager.getDescendants(of: leaf)
         XCTAssertTrue(descendants.isEmpty)
+    }
+}
+
+// MARK: - Demo Data Seeding Tests
+
+@MainActor
+final class DemoDataSeedingTests: XCTestCase {
+
+    var manager: GoldfishDataManager!
+
+    override func setUp() async throws {
+        manager = try makeTestManager()
+        try manager.createSystemCircles()
+    }
+
+    /// Every demo contact should have exactly one active circle membership after seeding.
+    func testDemoDataHasValidCircleMemberships() throws {
+        _ = try manager.createPerson(name: "Me", isMe: true)
+        let service = DemoDataService(dataManager: manager)
+        try service.seedDemoData()
+
+        let allPersons = try manager.fetchAllPersons()
+        let demoPersons = allPersons.filter { $0.isDemo }
+
+        XCTAssertFalse(demoPersons.isEmpty, "Demo persons should have been created")
+
+        for person in demoPersons {
+            let active = person.circleContacts.filter { !$0.manuallyExcluded }
+            if person.isOrphan {
+                XCTAssertEqual(active.count, 0, "\(person.name) is the intentional unlinked demo contact and should have 0 circles, has \(active.count)")
+            } else {
+                XCTAssertEqual(active.count, 1, "\(person.name) should have exactly 1 circle, has \(active.count)")
+            }
+        }
+    }
+
+    /// Seeding is idempotent — calling it twice should not duplicate contacts.
+    func testSeedingIsIdempotent() throws {
+        _ = try manager.createPerson(name: "Me", isMe: true)
+        let service = DemoDataService(dataManager: manager)
+
+        try service.seedDemoData()
+        let countAfterFirst = try manager.fetchAllPersons().filter { $0.isDemo }.count
+
+        try service.seedDemoData()
+        let countAfterSecond = try manager.fetchAllPersons().filter { $0.isDemo }.count
+
+        XCTAssertEqual(countAfterFirst, countAfterSecond, "Seeding twice should not create duplicates")
+    }
+    
+    /// Repair restores circle assignments after they've been deleted.
+    func testRepairRestoresMissingCircleAssignments() throws {
+        _ = try manager.createPerson(name: "Me", isMe: true)
+        let service = DemoDataService(dataManager: manager)
+        try service.seedDemoData()
+        
+        // Delete all CircleContact records for demo contacts
+        let allPersons = try manager.fetchAllPersons()
+        let demoPersons = allPersons.filter { $0.isDemo }
+        for person in demoPersons {
+            for cc in person.circleContacts {
+                manager.context.delete(cc)
+            }
+            person.circleContacts.removeAll()
+        }
+        try manager.context.save()
+        
+        // Verify circles are gone
+        for person in demoPersons {
+            XCTAssertTrue(person.circleContacts.isEmpty, "\(person.name) should have 0 circles after deletion")
+        }
+        
+        // Re-seed should trigger repair
+        try service.seedDemoData()
+        
+        // Verify all demo contacts have exactly 1 circle again
+        let refreshedPersons = try manager.fetchAllPersons().filter { $0.isDemo }
+        for person in refreshedPersons {
+            let active = person.circleContacts.filter { !$0.manuallyExcluded }
+            if person.isOrphan {
+                XCTAssertEqual(active.count, 0, "\(person.name) is the intentional unlinked demo contact and repair should leave it pondless, has \(active.count)")
+            } else {
+                XCTAssertEqual(active.count, 1, "\(person.name) should have 1 circle after repair, has \(active.count)")
+            }
+        }
+    }
+    
+    /// Re-running repair on already-assigned contacts does not duplicate memberships.
+    func testRepairDoesNotDuplicateExistingCircleAssignments() throws {
+        _ = try manager.createPerson(name: "Me", isMe: true)
+        let service = DemoDataService(dataManager: manager)
+        try service.seedDemoData()
+        
+        // Call repair directly on contacts that already have circles
+        let demoPersons = try manager.fetchAllPersons().filter { $0.isDemo }
+        try service.repairCircleAssignments(demoPersons: demoPersons)
+        
+        // Every contact should still have exactly 1 circle (no duplicates)
+        for person in demoPersons {
+            let active = person.circleContacts.filter { !$0.manuallyExcluded }
+            if person.isOrphan {
+                XCTAssertEqual(active.count, 0, "\(person.name) is the intentional unlinked demo contact and should stay pondless, has \(active.count)")
+            } else {
+                XCTAssertEqual(active.count, 1, "\(person.name) should still have 1 circle, has \(active.count)")
+            }
+        }
+    }
+}
+
+// MARK: - RelationshipType Edge Coverage Tests
+
+@MainActor
+final class RelationshipTypeEdgeCoverageTests: XCTestCase {
+
+    var manager: GoldfishDataManager!
+
+    override func setUp() async throws {
+        manager = try makeTestManager()
+        try manager.createSystemCircles()
+    }
+
+    // MARK: - Symmetry
+
+    /// Spouse is symmetric — one row covers both directions.
+    func testSpouseIsSymmetric() throws {
+        let a = try manager.createPerson(name: "Alice")
+        let b = try manager.createPerson(name: "Bob")
+        try manager.createRelationship(from: a, to: b, type: .spouse)
+
+        XCTAssertTrue(RelationshipType.spouse.isSymmetric)
+        XCTAssertEqual(a.allRelationships.count, 1)
+        XCTAssertEqual(b.allRelationships.count, 1)
+    }
+
+    /// Partner is symmetric — one row covers both directions.
+    func testPartnerIsSymmetric() throws {
+        let a = try manager.createPerson(name: "Alice")
+        let b = try manager.createPerson(name: "Bob")
+        try manager.createRelationship(from: a, to: b, type: .partner)
+
+        XCTAssertTrue(RelationshipType.partner.isSymmetric)
+        let rel = a.outgoingRelationships.first!
+        XCTAssertEqual(rel.effectiveType(for: a), .partner)
+        XCTAssertEqual(rel.effectiveType(for: b), .partner)
+    }
+
+    /// Coworker is symmetric.
+    func testCoworkerIsSymmetric() throws {
+        let a = try manager.createPerson(name: "Alice")
+        let b = try manager.createPerson(name: "Bob")
+        try manager.createRelationship(from: a, to: b, type: .coworker)
+
+        XCTAssertTrue(RelationshipType.coworker.isSymmetric)
+        let rel = a.outgoingRelationships.first!
+        XCTAssertEqual(rel.effectiveType(for: a), .coworker)
+        XCTAssertEqual(rel.effectiveType(for: b), .coworker)
+    }
+
+    // MARK: - Directional Inverses
+
+    /// Father ↔ child inverse works correctly.
+    func testFatherInverse() throws {
+        let dad = try manager.createPerson(name: "Dad")
+        let kid = try manager.createPerson(name: "Kid")
+        try manager.createRelationship(from: dad, to: kid, type: .father)
+
+        let rel = dad.outgoingRelationships.first!
+        XCTAssertEqual(rel.effectiveType(for: dad), .father)
+        XCTAssertEqual(rel.effectiveType(for: kid), .child)
+    }
+
+    /// Parent ↔ child inverse works correctly (gender-neutral parent).
+    func testParentChildInverse() throws {
+        let parent = try manager.createPerson(name: "Parent")
+        let kid = try manager.createPerson(name: "Kid")
+        try manager.createRelationship(from: parent, to: kid, type: .parent)
+
+        let rel = parent.outgoingRelationships.first!
+        XCTAssertEqual(rel.effectiveType(for: parent), .parent)
+        XCTAssertEqual(rel.effectiveType(for: kid), .child)
+    }
+
+    /// Child → parent inverse resolves to .parent.
+    func testChildInverseIsParent() throws {
+        let kid = try manager.createPerson(name: "Kid")
+        let guardian = try manager.createPerson(name: "Guardian")
+        try manager.createRelationship(from: kid, to: guardian, type: .child)
+
+        let rel = kid.outgoingRelationships.first!
+        XCTAssertEqual(rel.effectiveType(for: kid), .child)
+        XCTAssertEqual(rel.effectiveType(for: guardian), .parent)
+    }
+
+    /// Other has no inverse — effectiveType falls back to .other for both sides.
+    func testOtherHasNoInverse() throws {
+        XCTAssertNil(RelationshipType.other.inverse)
+
+        let a = try manager.createPerson(name: "Alice")
+        let b = try manager.createPerson(name: "Bob")
+        try manager.createRelationship(from: a, to: b, type: .other)
+
+        let rel = a.outgoingRelationships.first!
+        XCTAssertEqual(rel.effectiveType(for: a), .other)
+        // .other has nil inverse → falls back to stored type
+        XCTAssertEqual(rel.effectiveType(for: b), .other)
+    }
+
+    // MARK: - Cycle Detection for Other Directional Types
+
+    /// Father type also triggers cycle detection.
+    func testFatherCycleDetection() throws {
+        let a = try manager.createPerson(name: "A")
+        let b = try manager.createPerson(name: "B")
+        try manager.createRelationship(from: a, to: b, type: .father)
+
+        // B → A (child) would close the cycle
+        XCTAssertThrowsError(
+            try manager.createRelationship(from: b, to: a, type: .child)
+        ) { error in
+            XCTAssertEqual(error as? GoldfishError, .wouldCreateCycle)
+        }
+    }
+
+    /// Parent (gender-neutral) also triggers cycle detection.
+    func testParentCycleDetection() throws {
+        let a = try manager.createPerson(name: "A")
+        let b = try manager.createPerson(name: "B")
+        try manager.createRelationship(from: a, to: b, type: .parent)
+
+        // B → A (child) would close the cycle
+        XCTAssertThrowsError(
+            try manager.createRelationship(from: b, to: a, type: .child)
+        ) { error in
+            XCTAssertEqual(error as? GoldfishError, .wouldCreateCycle)
+        }
+    }
+
+    /// Symmetric partner cycle is allowed (not directional).
+    func testPartnerCycleAllowed() throws {
+        let a = try manager.createPerson(name: "A")
+        let b = try manager.createPerson(name: "B")
+        let c = try manager.createPerson(name: "C")
+
+        try manager.createRelationship(from: a, to: b, type: .partner)
+        try manager.createRelationship(from: b, to: c, type: .partner)
+        XCTAssertNoThrow(
+            try manager.createRelationship(from: c, to: a, type: .partner)
+        )
+    }
+
+    // MARK: - Auto-Assignment
+
+    /// Coworker auto-assigns to Professional circle.
+    func testCoworkerAutoAssignsProfessional() throws {
+        let a = try manager.createPerson(name: "Alice")
+        let b = try manager.createPerson(name: "Bob")
+        try manager.createRelationship(from: a, to: b, type: .coworker)
+
+        let proCircle = try manager.fetchSystemCircles().first { $0.name == "Professional" }!
+        XCTAssertTrue(proCircle.activeContacts.contains { $0.id == a.id })
+        XCTAssertTrue(proCircle.activeContacts.contains { $0.id == b.id })
+    }
+
+    /// Spouse auto-assigns to Family circle.
+    func testSpouseAutoAssignsFamily() throws {
+        let a = try manager.createPerson(name: "Alice")
+        let b = try manager.createPerson(name: "Bob")
+        try manager.createRelationship(from: a, to: b, type: .spouse)
+
+        let familyCircle = try manager.fetchSystemCircles().first { $0.name == "Family" }!
+        XCTAssertTrue(familyCircle.activeContacts.contains { $0.id == a.id })
+        XCTAssertTrue(familyCircle.activeContacts.contains { $0.id == b.id })
+    }
+
+    /// Other type does NOT auto-assign to any circle.
+    func testOtherDoesNotAutoAssign() throws {
+        let a = try manager.createPerson(name: "Alice")
+        let b = try manager.createPerson(name: "Bob")
+        try manager.createRelationship(from: a, to: b, type: .other)
+
+        let circles = try manager.fetchSystemCircles()
+        for circle in circles {
+            XCTAssertFalse(circle.activeContacts.contains { $0.id == a.id },
+                          "\(a.name) should not be in \(circle.name) from .other")
+            XCTAssertFalse(circle.activeContacts.contains { $0.id == b.id },
+                          "\(b.name) should not be in \(circle.name) from .other")
+        }
+    }
+
+    // MARK: - Descendants with .parent
+
+    /// getDescendants traverses .parent relationships (gender-neutral parent → child).
+    func testGetDescendantsViaParentType() throws {
+        let guardian = try manager.createPerson(name: "Guardian")
+        let kid = try manager.createPerson(name: "Kid")
+        try manager.createRelationship(from: guardian, to: kid, type: .parent)
+
+        let descendants = manager.getDescendants(of: guardian)
+        XCTAssertEqual(descendants.count, 1)
+        XCTAssertEqual(descendants.first?.name, "Kid")
+    }
+
+    /// getDescendants follows mixed parent types in a chain.
+    func testGetDescendantsMixedParentTypes() throws {
+        let grandparent = try manager.createPerson(name: "Grandparent")
+        let parentPerson = try manager.createPerson(name: "Parent")
+        let child = try manager.createPerson(name: "Child")
+
+        // grandparent → parent via .parent (gender-neutral)
+        try manager.createRelationship(from: grandparent, to: parentPerson, type: .parent)
+        // parent → child via .mother
+        try manager.createRelationship(from: parentPerson, to: child, type: .mother)
+
+        let descendants = manager.getDescendants(of: grandparent)
+        XCTAssertEqual(descendants.count, 2)
+        XCTAssertTrue(descendants.contains { $0.name == "Parent" })
+        XCTAssertTrue(descendants.contains { $0.name == "Child" })
     }
 }

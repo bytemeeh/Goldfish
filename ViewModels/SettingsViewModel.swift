@@ -114,8 +114,6 @@ final class SettingsViewModel: ObservableObject {
                     
                     try dataManager.createPerson(
                         name: fullName,
-                        phone: cn.phoneNumbers.first?.value.stringValue,
-                        email: cn.emailAddresses.first?.value as String?,
                         birthday: cn.birthday.flatMap { Calendar.current.date(from: $0) },
                         photoData: cn.imageData
                     )
@@ -194,34 +192,47 @@ final class SettingsViewModel: ObservableObject {
         }
     }
     
-    /// Formatted message for the import completion alert.
     var importAlertMessage: String {
         guard let result = lastImportResult else { return "" }
         
         var lines: [String] = []
         
         if result.isGoldfishFormat {
-            lines.append("\(result.importedCount) contacts imported")
+            let contactStr = result.importedCount == 1 ? "contact" : "contacts"
+            lines.append("\(result.importedCount) \(contactStr) imported")
+            
             if result.skippedCount > 0 {
-                lines.append("\(result.skippedCount) duplicates skipped")
+                let dupStr = result.skippedCount == 1 ? "duplicate" : "duplicates"
+                lines.append("\(result.skippedCount) \(dupStr) skipped")
             }
-            lines.append("\(result.connectionsRestored) connections restored")
+            
+            let connStr = result.connectionsRestored == 1 ? "connection" : "connections"
+            lines.append("\(result.connectionsRestored) \(connStr) restored")
+            
             if result.connectionsSkipped > 0 {
-                lines.append("\(result.connectionsSkipped) connections already existed")
+                let connSkipStr = result.connectionsSkipped == 1 ? "connection" : "connections"
+                lines.append("\(result.connectionsSkipped) \(connSkipStr) already existed")
             }
+            
             if result.circlesCreated > 0 {
-                lines.append("\(result.circlesCreated) new ponds created")
+                let pondStr = result.circlesCreated == 1 ? "pond" : "ponds"
+                lines.append("\(result.circlesCreated) new \(pondStr) created")
             }
         } else {
-            lines.append("\(result.importedCount) contacts added")
+            let contactStr = result.importedCount == 1 ? "contact" : "contacts"
+            lines.append("\(result.importedCount) \(contactStr) added")
+            
             if result.skippedCount > 0 {
-                lines.append("\(result.skippedCount) duplicates skipped")
+                let dupStr = result.skippedCount == 1 ? "duplicate" : "duplicates"
+                lines.append("\(result.skippedCount) \(dupStr) skipped")
             }
-            lines.append("No Goldfish connection data found — contacts imported as standalone entries.")
+            
+            lines.append("Imported without pond or connection data.")
         }
         
         if !result.errors.isEmpty {
-            lines.append("\n⚠️ \(result.errors.count) error(s) occurred")
+            let errStr = result.errors.count == 1 ? "error" : "errors"
+            lines.append("\n⚠️ \(result.errors.count) \(errStr) occurred")
         }
         
         return lines.joined(separator: "\n")

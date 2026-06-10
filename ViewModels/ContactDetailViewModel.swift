@@ -65,15 +65,26 @@ final class ContactDetailViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Actions
-    func callContact() {
-        guard let phone = person.phone else { return }
-        let clean = phone.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
-        if let url = URL(string: "tel://\(clean)"), UIApplication.shared.canOpenURL(url) {
-            UIApplication.shared.open(url)
+    func deleteRelationship(_ relationship: Relationship) {
+        do {
+            try dataManager.deleteRelationship(relationship)
+            refreshData()
+        } catch {
+            print("Failed to delete relationship: \(error)")
         }
     }
     
+    func updateRelationshipType(_ relationship: Relationship, to newType: RelationshipType) {
+        do {
+            relationship.type = newType
+            try dataManager.context.save()
+            refreshData()
+        } catch {
+            print("Failed to update relationship type: \(error)")
+        }
+    }
+    
+    // MARK: - Actions
     func messageContact() {
         guard let phone = person.phone else { return }
         let clean = phone.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()

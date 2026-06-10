@@ -107,19 +107,4 @@ enum RelationshipType: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    /// SF Symbol name for each type.
-    var symbolName: String {
-        switch self {
-        case .mother:   return "figure.stand"
-        case .father:   return "figure.stand"
-        case .sibling:  return "figure.2"
-        case .spouse:   return "heart.fill"
-        case .partner:  return "heart"
-        case .friend:   return "person.2.fill"
-        case .coworker: return "briefcase.fill"
-        case .child:    return "figure.child"
-        case .parent:   return "figure.stand"     // BUG 2 FIX
-        case .other:    return "person.crop.circle"
-        }
-    }
 }
