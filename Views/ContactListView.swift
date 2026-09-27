@@ -3,14 +3,22 @@ import SwiftUI
 struct ContactListView: View {
     @ObservedObject var viewModel: HomeViewModel
     @EnvironmentObject var dataManager: GoldfishDataManager
+
+    private var relationshipContexts: RelationshipContextService {
+        let people = (try? dataManager.fetchAllPersons())?.filter {
+            $0.isMe || $0.isDemo == viewModel.isDemoMode
+        } ?? []
+        return RelationshipContextService(people: people)
+    }
     
     var body: some View {
+        let contexts = relationshipContexts
         ScrollView {
             LazyVStack(spacing: 0) {
                 if viewModel.contacts.isEmpty {
                     EmptyStateView(
-                        systemImage: "person.3.fill",
-                        headline: "No contacts yet",
+                        systemImage: "circle.hexagongrid",
+                        headline: "No people yet",
                         subtext: "People you add will appear here.",
                         actionLabel: "Add Contact",
                         action: {
@@ -35,10 +43,17 @@ struct ContactListView: View {
                                         NavigationLink {
                                             ContactDetailView(viewModel: ContactDetailViewModel(person: person, dataManager: dataManager))
                                         } label: {
-                                            ContactRowView(person: person)
+                                            ContactRowView(
+                                                person: person,
+                                                relationshipSummary: contexts.compactSummary(for: person),
+                                                pondSummary: contexts.pondSummary(for: person)
+                                            )
                                                 .padding(.horizontal)
                                         }
-                                        Divider().padding(.leading, 68)
+                                        Rectangle()
+                                            .fill(GoldfishDS.ink(.hairline))
+                                            .frame(height: 0.5)
+                                            .padding(.leading, 68)
                                     }
                                 }
                             }
@@ -49,10 +64,17 @@ struct ContactListView: View {
                             NavigationLink {
                                 ContactDetailView(viewModel: ContactDetailViewModel(person: person, dataManager: dataManager))
                             } label: {
-                                ContactRowView(person: person)
+                                ContactRowView(
+                                    person: person,
+                                    relationshipSummary: contexts.compactSummary(for: person),
+                                    pondSummary: contexts.pondSummary(for: person)
+                                )
                                     .padding(.horizontal)
                             }
-                            Divider().padding(.leading, 68)
+                            Rectangle()
+                                .fill(GoldfishDS.ink(.hairline))
+                                .frame(height: 0.5)
+                                .padding(.leading, 68)
                         }
                     }
                     
@@ -62,6 +84,7 @@ struct ContactListView: View {
             }
             .padding(.top, 8)
         }
+        .background(GoldfishDS.warmBlack)
         .refreshable {
             viewModel.loadData()
         }
@@ -71,13 +94,17 @@ struct ContactListView: View {
 private struct SectionHeader: View {
     let title: String
     var body: some View {
-        Text(title)
-            .font(.subheadline)
-            .fontWeight(.semibold)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal)
-            .padding(.vertical, 8)
-            .background(Color(.systemGroupedBackground))
+        VStack(alignment: .leading, spacing: GoldfishDS.Space.sm) {
+            Text(title)
+                .gfSectionLabel()
+            Rectangle()
+                .fill(GoldfishDS.ink(.hairline))
+                .frame(height: 0.5)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal)
+        .padding(.top, GoldfishDS.Space.lg)
+        .padding(.bottom, GoldfishDS.Space.xs)
+        .background(GoldfishDS.warmBlack)
     }
 }

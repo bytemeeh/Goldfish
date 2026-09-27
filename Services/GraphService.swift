@@ -61,9 +61,11 @@ struct GraphService {
     /// Symmetric types (friend, sibling, spouse, coworker) skip this check
     /// because mutual connections are natural.
     ///
-    /// **Algorithm:** BFS from `toContact`, traversing upward through existing
-    /// directional relationships. If the traversal ever reaches `fromContact`,
-    /// adding this edge would create a cycle.
+    /// **Algorithm:** The new edge is normalized to parent→child direction,
+    /// then BFS walks strictly downward (descendants only) from the would-be
+    /// child. A cycle exists iff the would-be parent is already a descendant
+    /// of the would-be child. Shared structure (one parent with two children,
+    /// both parents linked to both children) is NOT a cycle.
     ///
     /// - Parameters:
     ///   - from: The subject contact (the person in the `type` role).
@@ -83,51 +85,62 @@ struct GraphService {
         // Self-relationships are always a cycle for directional types
         guard from.id != to.id else { return true }
 
-        // BFS: Starting from `to`, walk through directional relationships.
-        // If we reach `from`, then adding from→to creates a cycle.
-        //
-        // We traverse "child" edges forward (outgoing where type is child)
-        // and "parent" edges backward (outgoing where type is mother/father),
-        // depending on what we're adding.
-        //
-        // Simplified approach: traverse ALL directional edges reachable from `to`
-        // (in both directions) and check if `from` is reachable.
-        // This is conservative — it prevents any directional loop.
+        // Normalize the new edge to parent→child lineage direction.
+        // mother/father/parent: `from` is the parent. child: `to` is the parent.
+        // `.other` is directional but carries no lineage semantics, so it
+        // cannot make anyone their own ancestor.
+        let newParent: Person
+        let newChild: Person
+        switch type {
+        case .mother, .father, .parent:
+            newParent = from
+            newChild = to
+        case .child:
+            newParent = to
+            newChild = from
+        default:
+            return false
+        }
 
-        var visited: Set<UUID> = [to.id]
-        var queue: [Person] = [to]
+        // Adding the edge parent→child closes a cycle iff the parent is
+        // already a descendant of the child. BFS strictly downward
+        // (parent→child direction only) from `newChild` — traversing edges
+        // undirected would flag any connected family as a cycle.
+        var visited: Set<UUID> = [newChild.id]
+        var queue: [Person] = [newChild]
 
         while !queue.isEmpty {
             let current = queue.removeFirst()
 
-            // Traverse outgoing directional relationships
-            for rel in current.outgoingRelationships {
-                let relType = RelationshipType(rawValue: rel.typeRawValue) ?? .other
-                guard relType.isDirectional else { continue }
-
-                let neighbor = rel.toContact
-                if neighbor.id == from.id { return true }
-                if !visited.contains(neighbor.id) {
-                    visited.insert(neighbor.id)
-                    queue.append(neighbor)
-                }
-            }
-
-            // Traverse incoming directional relationships
-            for rel in current.incomingRelationships {
-                let relType = RelationshipType(rawValue: rel.typeRawValue) ?? .other
-                guard relType.isDirectional else { continue }
-
-                let neighbor = rel.fromContact
-                if neighbor.id == from.id { return true }
-                if !visited.contains(neighbor.id) {
-                    visited.insert(neighbor.id)
-                    queue.append(neighbor)
+            for child in lineageChildren(of: current) {
+                if child.id == newParent.id { return true }
+                if visited.insert(child.id).inserted {
+                    queue.append(child)
                 }
             }
         }
 
         return false
+    }
+
+    /// All direct children of a person in lineage terms:
+    /// outgoing mother/father/parent edges (person is the parent of `toContact`)
+    /// plus incoming child edges (`fromContact` declared themselves person's child).
+    private func lineageChildren(of person: Person) -> [Person] {
+        var children: [Person] = []
+        for rel in person.outgoingRelationships {
+            let relType = RelationshipType(rawValue: rel.typeRawValue) ?? .other
+            if relType == .mother || relType == .father || relType == .parent {
+                children.append(rel.toContact)
+            }
+        }
+        for rel in person.incomingRelationships {
+            let relType = RelationshipType(rawValue: rel.typeRawValue) ?? .other
+            if relType == .child {
+                children.append(rel.fromContact)
+            }
+        }
+        return children
     }
 
     // MARK: - Graph Layout (BFS)
@@ -143,8 +156,8 @@ struct GraphService {
     /// clustering in the graph view. Contacts not in any circle go into an
     /// "Uncircled" group.
     ///
-    /// **Orphans** (contacts with no relationships) are intentionally excluded
-    /// from the graph layout — they appear in a separate "Unlinked" list section.
+    /// **Orphans** remain visible: they join an existing circle group when
+    /// possible, otherwise they appear in an outer level without invented edges.
     ///
     /// - Parameters:
     ///   - root: The `isMe` contact to use as BFS origin.

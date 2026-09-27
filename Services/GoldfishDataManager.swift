@@ -29,6 +29,13 @@ enum GoldfishError: LocalizedError, Equatable {
     case contactNotFound
     /// The referenced circle was not found.
     case circleNotFound
+    case invalidName
+    case selfRelationship
+    case cannotAssignSelf
+    /// An Undo token references a contact, pond, or record that no longer exists.
+    case undoTargetMissing
+    /// Data changed after the reversible operation, so restoring would overwrite it.
+    case undoConflict
 
     var errorDescription: String? {
         switch self {
@@ -46,8 +53,46 @@ enum GoldfishError: LocalizedError, Equatable {
             return "The specified contact was not found."
         case .circleNotFound:
             return "The specified circle was not found."
+        case .invalidName:
+            return "Enter a name before saving."
+        case .selfRelationship:
+            return "A contact cannot be connected to itself."
+        case .cannotAssignSelf:
+            return "Me stays at the center and cannot join a group."
+        case .undoTargetMissing:
+            return "Undo is no longer available because one of its contacts or ponds was removed."
+        case .undoConflict:
+            return "Undo is no longer available because this connection or pond membership changed."
         }
     }
+}
+
+// MARK: - Reversible operation snapshots
+
+/// Immutable state needed to restore one relationship exactly as it was removed.
+struct RelationshipRemovalUndoToken: Equatable {
+    let relationshipID: UUID
+    let fromContactID: UUID
+    let toContactID: UUID
+    let type: RelationshipType
+    let isPrimary: Bool
+    let createdAt: Date
+}
+
+/// One exact persisted membership row, including retained system-pond exclusions.
+struct PondMembershipSnapshot: Equatable {
+    let membershipID: UUID
+    let circleID: UUID
+    let manuallyExcluded: Bool
+    let createdAt: Date
+}
+
+/// Immutable before/after state for one pond-membership change.
+/// The after snapshot acts as a revision check so Undo never overwrites later edits.
+struct PondMembershipUndoToken: Equatable {
+    let personID: UUID
+    let before: [PondMembershipSnapshot]
+    let after: [PondMembershipSnapshot]
 }
 
 // MARK: - GoldfishDataManager
@@ -65,9 +110,7 @@ enum GoldfishError: LocalizedError, Equatable {
 /// on the same actor/thread as its context. For `@MainActor` SwiftUI views,
 /// pass a main-actor context.
 ///
-/// **CloudKit:** All models sync automatically via `ModelConfiguration`
-/// with a `cloudKitContainerIdentifier`. No custom sync logic needed.
-/// Merge conflicts use "latest wins" (CloudKit default).
+/// Production persistence is local; CloudKit is explicitly disabled.
 @MainActor
 final class GoldfishDataManager: ObservableObject {
 
@@ -76,6 +119,39 @@ final class GoldfishDataManager: ObservableObject {
 
     init(context: ModelContext) {
         self.context = context
+    }
+    private var editDepth = 0
+    private var petKindUndo: [UUID: (person: Person, value: String?)] = [:]
+    func performAtomicEdit<T>(_ operation: () throws -> T) throws -> T {
+        let outermost = editDepth == 0
+        editDepth += 1
+        defer { editDepth -= 1 }
+        do {
+            let value = try operation()
+            if outermost {
+                try context.save()
+                petKindUndo.removeAll()
+                NotificationCenter.default.post(name: .goldfishDataDidChange, object: nil)
+            }
+            return value
+        } catch {
+            if outermost {
+                context.rollback()
+                restorePetKinds()
+            }
+            throw error
+        }
+    }
+    private func persist() throws {
+        guard editDepth == 0 else { return }
+        do { try context.save() }
+        catch {
+            context.rollback()
+            restorePetKinds()
+            throw error
+        }
+        petKindUndo.removeAll()
+        NotificationCenter.default.post(name: .goldfishDataDidChange, object: nil)
     }
     // MARK: - Preview Init (see Extensions.swift)
 
@@ -100,6 +176,7 @@ final class GoldfishDataManager: ObservableObject {
         birthday: Date? = nil,
         notes: String? = nil,
         isMe: Bool = false,
+        petKindRaw: String? = nil,
         isDemo: Bool = false,
         isFavorite: Bool = false,
         tags: [String] = [],
@@ -111,6 +188,8 @@ final class GoldfishDataManager: ObservableObject {
         country: String? = nil,
         postalCode: String? = nil
     ) throws -> Person {
+        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanName.isEmpty else { throw GoldfishError.invalidName }
         // Enforce isMe invariant
         if isMe {
             let existing = try fetchMePerson()
@@ -123,12 +202,13 @@ final class GoldfishDataManager: ObservableObject {
         let compressed: Data? = photoData.flatMap { compressPhoto($0) }
 
         let person = Person(
-            name: name,
+            name: cleanName,
             phone: phone,
             email: email,
             birthday: birthday,
             notes: notes,
             isMe: isMe,
+            petKindRaw: petKindRaw,
             isDemo: isDemo,
             isFavorite: isFavorite,
             tags: tags,
@@ -142,7 +222,7 @@ final class GoldfishDataManager: ObservableObject {
         )
 
         context.insert(person)
-        try context.save()
+        try persist()
         return person
     }
 
@@ -155,6 +235,7 @@ final class GoldfishDataManager: ObservableObject {
         email: OptionalUpdate<String> = .ignore,
         birthday: OptionalUpdate<Date> = .ignore,
         notes: OptionalUpdate<String> = .ignore,
+        petKindRaw: OptionalUpdate<String> = .ignore,
         isFavorite: Bool? = nil,
         tags: [String]? = nil,
         color: String? = nil,
@@ -165,11 +246,19 @@ final class GoldfishDataManager: ObservableObject {
         country: OptionalUpdate<String> = .ignore,
         postalCode: OptionalUpdate<String> = .ignore
     ) throws {
-        if let name { person.name = name }
+        if let name {
+            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { throw GoldfishError.invalidName }
+            person.name = trimmed
+        }
         if case .set(let v) = phone { person.phone = v }
         if case .set(let v) = email { person.email = v }
         if case .set(let v) = birthday { person.birthday = v }
         if case .set(let v) = notes { person.notes = v }
+        if case .set(let v) = petKindRaw {
+            if petKindUndo[person.id] == nil { petKindUndo[person.id] = (person, person.petKindRaw) }
+            person.petKindRaw = person.isMe ? nil : v
+        }
         if let isFavorite { person.isFavorite = isFavorite }
         if let tags { person.tags = tags }
         if let color { person.color = color }
@@ -181,7 +270,12 @@ final class GoldfishDataManager: ObservableObject {
         if case .set(let v) = postalCode { person.postalCode = v }
 
         person.updatedAt = Date()
-        try context.save()
+        try persist()
+    }
+
+    private func restorePetKinds() {
+        for entry in petKindUndo.values { entry.person.petKindRaw = entry.value }
+        petKindUndo.removeAll()
     }
 
     /// Deletes a contact. Throws if the contact has `isMe == true`.
@@ -192,7 +286,7 @@ final class GoldfishDataManager: ObservableObject {
             throw GoldfishError.cannotDeleteSelf
         }
         context.delete(person)
-        try context.save()
+        try persist()
     }
 
     /// Fetches all contacts, optionally filtered and sorted.
@@ -260,9 +354,9 @@ final class GoldfishDataManager: ObservableObject {
     /// **Cycle detection:** For directional types (mother, father, child),
     /// BFS checks that the new edge won't make anyone their own ancestor.
     ///
-    /// **Circle auto-assignment:** After creating the relationship, both contacts
-    /// are automatically added to the matching system circle (Family, Friends,
-    /// Professional) unless they were manually excluded.
+    /// **Circle auto-assignment:** Direct relationships to Me use system ponds.
+    /// Other people's household relationships inherit their existing pond context.
+    /// Existing memberships and manual exclusions are preserved.
     ///
     /// - Parameters:
     ///   - from: The subject (this person IS the `type`).
@@ -278,6 +372,12 @@ final class GoldfishDataManager: ObservableObject {
         isPrimary: Bool = false,
         skipAutoAssign: Bool = false
     ) throws -> Relationship {
+        try performAtomicEdit {
+        guard from.id != to.id else { throw GoldfishError.selfRelationship }
+        if let existing = from.allRelationships.first(where: { $0.matches(from: from, to: to, type: type) }) {
+            existing.preserveSpecificRole(from: from, to: to, type: type)
+            return existing
+        }
         // Cycle detection for directional types
         if graphService.wouldCreateCycle(from: from, to: to, type: type, context: context) {
             throw GoldfishError.wouldCreateCycle
@@ -287,27 +387,114 @@ final class GoldfishDataManager: ObservableObject {
         context.insert(relationship)
         
         // Explicitly maintain in-memory arrays to workaround SwiftData caching
-        from.outgoingRelationships.append(relationship)
-        to.incomingRelationships.append(relationship)
+        if !from.outgoingRelationships.contains(where: { $0.id == relationship.id }) { from.outgoingRelationships.append(relationship) }
+        if !to.incomingRelationships.contains(where: { $0.id == relationship.id }) { to.incomingRelationships.append(relationship) }
 
         // Auto-assign circles (skip when caller handles assignment explicitly, e.g. demo data)
         if !skipAutoAssign {
-            try autoAssignCircle(for: from, relationshipType: type)
-            try autoAssignCircle(for: to, relationshipType: type)
+            try autoAssignCircle(for: from, relatedTo: to, relationshipType: type)
+            try autoAssignCircle(for: to, relatedTo: from, relationshipType: type)
         }
 
-        try context.save()
+        try persist()
         return relationship
+        }
     }
 
-    /// Deletes a relationship.
+    /// Deletes a relationship without creating an Undo token.
     func deleteRelationship(_ relationship: Relationship) throws {
-        // Explicitly maintain in-memory arrays
+        try performAtomicEdit {
+            guard let stored = try fetchRelationship(id: relationship.id) else {
+                throw GoldfishError.undoTargetMissing
+            }
+            unlinkAndDelete(stored)
+        }
+    }
+
+    /// Removes one existing relationship and returns the exact immutable state
+    /// required to restore it. Callers can safely retain this value for a toast.
+    @discardableResult
+    func removeRelationshipWithUndo(_ relationship: Relationship) throws -> RelationshipRemovalUndoToken {
+        try performAtomicEdit {
+            guard let stored = try fetchRelationship(id: relationship.id) else {
+                throw GoldfishError.undoTargetMissing
+            }
+            let token = RelationshipRemovalUndoToken(
+                relationshipID: stored.id,
+                fromContactID: stored.fromContact.id,
+                toContactID: stored.toContact.id,
+                type: stored.type,
+                isPrimary: stored.isPrimary,
+                createdAt: stored.createdAt
+            )
+            unlinkAndDelete(stored)
+            return token
+        }
+    }
+
+    /// Restores a relationship only when both endpoints still exist and no
+    /// later relationship conflicts with the captured logical edge.
+    @discardableResult
+    func restoreRemovedRelationship(using token: RelationshipRemovalUndoToken) throws -> Relationship {
+        try performAtomicEdit {
+            let people = try fetchAllPersons()
+            guard let from = people.first(where: { $0.id == token.fromContactID }),
+                  let to = people.first(where: { $0.id == token.toContactID }) else {
+                throw GoldfishError.undoTargetMissing
+            }
+
+            let relationships = try context.fetch(FetchDescriptor<Relationship>())
+            guard !relationships.contains(where: { $0.id == token.relationshipID }),
+                  !relationships.contains(where: { $0.matches(from: from, to: to, type: token.type) }) else {
+                throw GoldfishError.undoConflict
+            }
+            guard !graphService.wouldCreateCycle(
+                from: from,
+                to: to,
+                type: token.type,
+                context: context
+            ) else {
+                throw GoldfishError.undoConflict
+            }
+
+            let restored = Relationship(
+                id: token.relationshipID,
+                from: from,
+                to: to,
+                type: token.type,
+                isPrimary: token.isPrimary
+            )
+            restored.createdAt = token.createdAt
+            context.insert(restored)
+            if !from.outgoingRelationships.contains(where: { $0.id == restored.id }) {
+                from.outgoingRelationships.append(restored)
+            }
+            if !to.incomingRelationships.contains(where: { $0.id == restored.id }) {
+                to.incomingRelationships.append(restored)
+            }
+            return restored
+        }
+    }
+
+    private func fetchRelationship(id: UUID) throws -> Relationship? {
+        try context.fetch(FetchDescriptor<Relationship>()).first { $0.id == id }
+    }
+
+    private func unlinkAndDelete(_ relationship: Relationship) {
         relationship.fromContact.outgoingRelationships.removeAll { $0.id == relationship.id }
         relationship.toContact.incomingRelationships.removeAll { $0.id == relationship.id }
-        
         context.delete(relationship)
-        try context.save()
+    }
+
+    /// Removes exactly the relationship identified by `id`, when it still exists.
+    /// Used by the short lived Undo affordance after creating a connection; later
+    /// edits and unrelated relationships are never touched.
+    @discardableResult
+    func undoCreatedRelationship(id: UUID) throws -> Bool {
+        let relationships = try context.fetch(FetchDescriptor<Relationship>())
+        guard let relationship = relationships.first(where: { $0.id == id }) else { return false }
+        try deleteRelationship(relationship)
+        return true
     }
 
     /// Fetches all relationships for a given contact (both directions).
@@ -340,7 +527,7 @@ final class GoldfishDataManager: ObservableObject {
             isPrimary: isPrimary
         )
         context.insert(location)
-        try context.save()
+        try persist()
         return location
     }
 
@@ -349,20 +536,21 @@ final class GoldfishDataManager: ObservableObject {
         for loc in location.contact.locations {
             loc.isPrimary = (loc.id == location.id)
         }
-        try context.save()
+        try persist()
     }
 
     /// Deletes a location.
     func deleteLocation(_ location: Location) throws {
         let wasPrimary = location.isPrimary
         let contact = location.contact
+        contact.locations.removeAll { $0.id == location.id }
         context.delete(location)
 
         // If the deleted location was primary, promote the first remaining one
         if wasPrimary, let first = contact.locations.first {
             first.isPrimary = true
         }
-        try context.save()
+        try persist()
     }
 
     // MARK: ───────────────────────────────────────────────
@@ -371,11 +559,15 @@ final class GoldfishDataManager: ObservableObject {
 
     /// Creates the three default system circles. Should be called once during onboarding.
     func createSystemCircles() throws {
-        let circles = GoldfishCircle.createSystemCircles()
-        for circle in circles {
-            context.insert(circle)
+        try performAtomicEdit {
+            let existing = try fetchSystemCircles()
+            for circle in GoldfishCircle.createSystemCircles() {
+                if let match = existing.first(where: { !Set($0.autoRelationshipTypes).isDisjoint(with: circle.autoRelationshipTypes) }) {
+                    // Extend existing system rules without changing its identity or user label.
+                    match.autoRelationshipTypes = Array(Set(match.autoRelationshipTypes + circle.autoRelationshipTypes)).sorted()
+                } else { context.insert(circle) }
+            }
         }
-        try context.save()
     }
 
     /// Creates a custom (non-system) circle.
@@ -386,6 +578,8 @@ final class GoldfishDataManager: ObservableObject {
         emoji: String = "⭐",
         desc: String? = nil
     ) throws -> GoldfishCircle {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { throw GoldfishError.invalidName }
         let maxSort = try fetchAllCircles().map(\.sortOrder).max() ?? -1
         let circle = GoldfishCircle(
             name: name,
@@ -396,7 +590,7 @@ final class GoldfishDataManager: ObservableObject {
             sortOrder: maxSort + 1
         )
         context.insert(circle)
-        try context.save()
+        try persist()
         return circle
     }
 
@@ -406,7 +600,7 @@ final class GoldfishDataManager: ObservableObject {
             throw GoldfishError.cannotDeleteSystemCircle
         }
         context.delete(circle)
-        try context.save()
+        try persist()
     }
 
     /// Updates a circle's display properties.
@@ -417,10 +611,12 @@ final class GoldfishDataManager: ObservableObject {
         emoji: String,
         color: String
     ) throws {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { throw GoldfishError.invalidName }
         circle.name = name
         circle.emoji = emoji
         circle.color = color
-        try context.save()
+        try persist()
     }
 
     /// Fetches all circles, ordered by sortOrder.
@@ -453,31 +649,22 @@ final class GoldfishDataManager: ObservableObject {
         _ person: Person,
         circle: GoldfishCircle
     ) throws -> CircleContact {
-        // The "Me" contact must never belong to a pond
-        guard !person.isMe else {
-            // Return a dummy membership that won't be persisted — caller doesn't need to know
-            return CircleContact(circle: circle, contact: person)
-        }
-
-        // Check if already a member of THIS circle
-        if let existing = findCircleContact(person: person, circle: circle) {
-            if existing.manuallyExcluded {
-                // Re-adding after manual exclusion: clear the flag
-                existing.manuallyExcluded = false
-                try context.save()
+        guard !person.isMe else { throw GoldfishError.cannotAssignSelf }
+        return try performAtomicEdit {
+            // Remove every other active membership even when restoring an exclusion.
+            for membership in person.circleContacts where membership.circle.id != circle.id && !membership.manuallyExcluded {
+                try removeFromCircle(person, circle: membership.circle)
             }
-            return existing
+            if let existing = findCircleContact(person: person, circle: circle) {
+                existing.manuallyExcluded = false
+                return existing
+            }
+            let membership = CircleContact(circle: circle, contact: person)
+            context.insert(membership)
+            if !person.circleContacts.contains(where: { $0.id == membership.id }) { person.circleContacts.append(membership) }
+            if !circle.circleContacts.contains(where: { $0.id == membership.id }) { circle.circleContacts.append(membership) }
+            return membership
         }
-
-        // Remove all existing pond memberships (single pond enforcement)
-        for cc in person.circleContacts where !cc.manuallyExcluded {
-            context.delete(cc)
-        }
-
-        let membership = CircleContact(circle: circle, contact: person)
-        context.insert(membership)
-        try context.save()
-        return membership
     }
 
     /// Removes a contact from a circle.
@@ -492,9 +679,137 @@ final class GoldfishDataManager: ObservableObject {
             // Mark as manually excluded instead of deleting
             membership.manuallyExcluded = true
         } else {
+            person.circleContacts.removeAll { $0.id == membership.id }
+            circle.circleContacts.removeAll { $0.id == membership.id }
             context.delete(membership)
         }
-        try context.save()
+        try persist()
+    }
+
+    /// Changes a contact's active pond and returns an exact before/after token.
+    /// Passing `nil` makes the contact unassigned while retaining system-pond
+    /// exclusion rows that prevent unwanted automatic reassignment.
+    @discardableResult
+    func changePondMembership(
+        of person: Person,
+        to circle: GoldfishCircle?
+    ) throws -> PondMembershipUndoToken {
+        try performAtomicEdit {
+            guard let storedPerson = try fetchAllPersons().first(where: { $0.id == person.id }) else {
+                throw GoldfishError.contactNotFound
+            }
+            let storedCircle: GoldfishCircle?
+            if let circle {
+                guard let match = try fetchAllCircles().first(where: { $0.id == circle.id }) else {
+                    throw GoldfishError.circleNotFound
+                }
+                storedCircle = match
+            } else {
+                storedCircle = nil
+            }
+
+            let before = try membershipSnapshots(for: storedPerson.id)
+            if let storedCircle {
+                try addToCircle(storedPerson, circle: storedCircle)
+            } else {
+                let activeMemberships = storedPerson.circleContacts.filter { !$0.manuallyExcluded }
+                for membership in activeMemberships {
+                    try removeFromCircle(storedPerson, circle: membership.circle)
+                }
+            }
+            let after = try membershipSnapshots(for: storedPerson.id)
+            return PondMembershipUndoToken(personID: storedPerson.id, before: before, after: after)
+        }
+    }
+
+    /// Restores exact membership rows only if no pond edit happened after the
+    /// token was created. Missing contacts or ponds and stale state fail safely.
+    func restorePondMembership(using token: PondMembershipUndoToken) throws {
+        try performAtomicEdit {
+            guard let person = try fetchAllPersons().first(where: { $0.id == token.personID }) else {
+                throw GoldfishError.undoTargetMissing
+            }
+
+            let circles = try fetchAllCircles()
+            let circlesByID = Dictionary(uniqueKeysWithValues: circles.map { ($0.id, $0) })
+            let requiredCircleIDs = Set((token.before + token.after).map(\.circleID))
+            guard requiredCircleIDs.allSatisfy({ circlesByID[$0] != nil }) else {
+                throw GoldfishError.undoTargetMissing
+            }
+
+            let allMemberships = try context.fetch(FetchDescriptor<CircleContact>())
+            let current = snapshots(from: allMemberships.filter { $0.contact.id == token.personID })
+            guard current == token.after else { throw GoldfishError.undoConflict }
+
+            let beforeIDs = Set(token.before.map(\.membershipID))
+            guard !allMemberships.contains(where: {
+                beforeIDs.contains($0.id) && $0.contact.id != token.personID
+            }) else {
+                throw GoldfishError.undoConflict
+            }
+
+            var currentByID = Dictionary(
+                uniqueKeysWithValues: allMemberships
+                    .filter { $0.contact.id == token.personID }
+                    .map { ($0.id, $0) }
+            )
+
+            for membership in Array(currentByID.values) where !beforeIDs.contains(membership.id) {
+                membership.contact.circleContacts.removeAll { $0.id == membership.id }
+                membership.circle.circleContacts.removeAll { $0.id == membership.id }
+                context.delete(membership)
+                currentByID.removeValue(forKey: membership.id)
+            }
+
+            for snapshot in token.before {
+                guard let circle = circlesByID[snapshot.circleID] else {
+                    throw GoldfishError.undoTargetMissing
+                }
+                let membership: CircleContact
+                if let existing = currentByID[snapshot.membershipID] {
+                    if existing.circle.id != circle.id {
+                        existing.circle.circleContacts.removeAll { $0.id == existing.id }
+                        existing.circle = circle
+                    }
+                    membership = existing
+                } else {
+                    membership = CircleContact(
+                        id: snapshot.membershipID,
+                        circle: circle,
+                        contact: person,
+                        manuallyExcluded: snapshot.manuallyExcluded
+                    )
+                    context.insert(membership)
+                }
+                membership.manuallyExcluded = snapshot.manuallyExcluded
+                membership.createdAt = snapshot.createdAt
+                if !person.circleContacts.contains(where: { $0.id == membership.id }) {
+                    person.circleContacts.append(membership)
+                }
+                if !circle.circleContacts.contains(where: { $0.id == membership.id }) {
+                    circle.circleContacts.append(membership)
+                }
+            }
+        }
+    }
+
+    private func membershipSnapshots(for personID: UUID) throws -> [PondMembershipSnapshot] {
+        let memberships = try context.fetch(FetchDescriptor<CircleContact>())
+            .filter { $0.contact.id == personID }
+        return snapshots(from: memberships)
+    }
+
+    private func snapshots(from memberships: [CircleContact]) -> [PondMembershipSnapshot] {
+        memberships
+            .map {
+                PondMembershipSnapshot(
+                    membershipID: $0.id,
+                    circleID: $0.circle.id,
+                    manuallyExcluded: $0.manuallyExcluded,
+                    createdAt: $0.createdAt
+                )
+            }
+            .sorted { $0.membershipID.uuidString < $1.membershipID.uuidString }
     }
 
     /// Finds the CircleContact junction record for a person + circle pair.
@@ -506,37 +821,17 @@ final class GoldfishDataManager: ObservableObject {
     // MARK: Auto-Assignment
     // MARK: ───────────────────────────────────────────────
 
-    /// Auto-assigns a contact to the matching system circle based on relationship type.
-    /// Skips if the contact was manually excluded from that circle,
-    /// or if the contact is **already in any pond** (single pond enforcement).
-    private func autoAssignCircle(for person: Person, relationshipType: RelationshipType) throws {
-        // Never auto-assign the "Me" contact to any circle
-        guard !person.isMe else { return }
-        guard let circleName = relationshipType.autoCircleName else { return }
-
-        // Skip if already in any pond (don't move people automatically)
-        let activeMemberships = person.circleContacts.filter { !$0.manuallyExcluded }
-        if !activeMemberships.isEmpty { return }
-
-        let predicate = #Predicate<GoldfishCircle> { $0.name == circleName && $0.isSystem == true }
-        var descriptor = FetchDescriptor<GoldfishCircle>(predicate: predicate)
-        descriptor.fetchLimit = 1
-
-        guard let circle = try context.fetch(descriptor).first else { return }
-
-        // Check if manually excluded from this specific circle
-        if let existing = findCircleContact(person: person, circle: circle) {
-            if existing.manuallyExcluded {
-                return // Respect manual exclusion
-            }
-            return // Already a member
-        }
+    private func autoAssignCircle(for person: Person, relatedTo other: Person, relationshipType: RelationshipType) throws {
+        guard let circle = PondAssignmentPolicy.suggestedCircle(
+            for: person, relatedTo: other, type: relationshipType,
+            systemCircles: try fetchSystemCircles()
+        ) else { return }
 
         // Auto-add (also sync in-memory arrays to avoid stale reads)
         let membership = CircleContact(circle: circle, contact: person)
         context.insert(membership)
-        person.circleContacts.append(membership)
-        circle.circleContacts.append(membership)
+        if !person.circleContacts.contains(where: { $0.id == membership.id }) { person.circleContacts.append(membership) }
+        if !circle.circleContacts.contains(where: { $0.id == membership.id }) { circle.circleContacts.append(membership) }
     }
 
     // MARK: ───────────────────────────────────────────────
@@ -566,7 +861,25 @@ final class GoldfishDataManager: ObservableObject {
 
     /// Searches contacts with ranked results.
     func search(query: String, demoMode: Bool = false) throws -> [Person] {
-        try graphService.search(query: query, context: context, demoMode: demoMode)
+        if let response = try relationshipSearch(query: query, demoMode: demoMode) {
+            var seen = Set<UUID>()
+            return response.paths.map(\.person).filter { seen.insert($0.id).inserted }
+        }
+        return try graphService.search(query: query, context: context, demoMode: demoMode)
+    }
+
+    /// Nil means an ordinary text search. Recognized questions always produce
+    /// an explicit response, including unsupported syntax and missing links.
+    func relationshipSearch(query: String, demoMode: Bool = false) throws -> RelationshipSearchResponse? {
+        switch RelationshipQueryParser.parse(query) {
+        case .plainText:
+            return nil
+        case .unsupported(let message):
+            return RelationshipSearchResponse(query: nil, paths: [], anchorMatches: [], message: message, isTruncated: false)
+        case .query(let parsed):
+            let people = try fetchAllPersons().filter { !$0.isDeleted && ($0.isMe || $0.isDemo == demoMode) }
+            return RelationshipSearchService().search(parsed, people: people)
+        }
     }
 
     // MARK: ───────────────────────────────────────────────
@@ -620,14 +933,10 @@ final class GoldfishDataManager: ObservableObject {
     /// - Returns: The created `isMe` person.
     @discardableResult
     func performOnboarding(name: String, color: String? = nil) throws -> Person {
-        // Only create system circles if they don't already exist
-        // (seedDemoData may have already created them)
-        let existingCircles = try fetchAllCircles()
-        if !existingCircles.contains(where: { $0.isSystem }) {
+        try performAtomicEdit {
             try createSystemCircles()
+            return try createPerson(name: name, isMe: true, color: color)
         }
-        let me = try createPerson(name: name, isMe: true, color: color)
-        return me
     }
 
     /// Whether onboarding has been completed (isMe contact exists).
@@ -641,23 +950,25 @@ final class GoldfishDataManager: ObservableObject {
 
     /// Clears all data from the database.
     func resetAllData() throws {
-        // Fetch and delete all models manually to ensure reliable deletion
-        // order matters to avoid constraint issues during bulk operations
-        let circleContacts = try context.fetch(FetchDescriptor<CircleContact>())
-        for cc in circleContacts { context.delete(cc) }
+        try performAtomicEdit {
+            // Fetch and delete all models manually to ensure reliable deletion
+            // order matters to avoid constraint issues during bulk operations
+            let circleContacts = try context.fetch(FetchDescriptor<CircleContact>())
+            for cc in circleContacts { context.delete(cc) }
         
-        let relationships = try context.fetch(FetchDescriptor<Relationship>())
-        for rel in relationships { context.delete(rel) }
+            let relationships = try context.fetch(FetchDescriptor<Relationship>())
+            for rel in relationships { context.delete(rel) }
         
-        let locations = try context.fetch(FetchDescriptor<Location>())
-        for loc in locations { context.delete(loc) }
+            let locations = try context.fetch(FetchDescriptor<Location>())
+            for loc in locations { context.delete(loc) }
         
-        let circles = try context.fetch(FetchDescriptor<GoldfishCircle>())
-        for circle in circles { context.delete(circle) }
+            let circles = try context.fetch(FetchDescriptor<GoldfishCircle>())
+            for circle in circles { context.delete(circle) }
         
-        let persons = try context.fetch(FetchDescriptor<Person>())
-        for person in persons { context.delete(person) }
+            let persons = try context.fetch(FetchDescriptor<Person>())
+            for person in persons { context.delete(person) }
         
-        try context.save()
+            try persist()
+        }
     }
 }

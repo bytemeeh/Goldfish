@@ -20,6 +20,18 @@ func makeTestContainerForVCard() throws -> ModelContainer {
 final class VCardTests: XCTestCase {
     
     // MARK: - Exporter & Parser Tests
+
+    func testPetKindRoundTripAndLegacyDefaultsToHuman() throws {
+        let pet = Person(name: "Milo", petKindRaw: ContactKind.cat.rawValue)
+        let data = VCardExporter.export([pet])
+        let text = String(data: data, encoding: .utf8)!
+        XCTAssertTrue(text.contains("X-GOLDFISH-KIND:cat"))
+        XCTAssertEqual(VCardParser.parse(data).first?.petKindRaw, ContactKind.cat.rawValue)
+
+        let old = "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Legacy\r\nEND:VCARD\r\n".data(using: .utf8)!
+        let parsed = VCardParser.parse(old).first!
+        XCTAssertNil(parsed.petKindRaw)
+    }
     
     func testRoundTrip() throws {
         // 1. Create Source Person
@@ -136,7 +148,7 @@ final class VCardTests: XCTestCase {
         
         // Verify manifest is present
         XCTAssertTrue(vCardString.contains("FN:_GOLDFISH_MANIFEST"))
-        XCTAssertTrue(vCardString.contains("X-GOLDFISH-EXPORT-VERSION:1.0"))
+        XCTAssertTrue(vCardString.contains("X-GOLDFISH-EXPORT-VERSION:1.1"))
         XCTAssertTrue(vCardString.contains("X-GOLDFISH-EXPORT-DATE:"))
         XCTAssertTrue(vCardString.contains("X-GOLDFISH-EXPORT-COUNT:2"))
         XCTAssertTrue(vCardString.contains("X-GOLDFISH-EXPORT-CONNECTIONS:0")) // No relationships
@@ -152,7 +164,7 @@ final class VCardTests: XCTestCase {
         // Manifest should be detected
         XCTAssertTrue(result.isGoldfishFormat)
         XCTAssertNotNil(result.manifest)
-        XCTAssertEqual(result.manifest?.version, "1.0")
+        XCTAssertEqual(result.manifest?.version, "1.1")
         XCTAssertEqual(result.manifest?.contactCount, 1)
         XCTAssertEqual(result.manifest?.connectionCount, 0)
         XCTAssertNotNil(result.manifest?.exportDate)
@@ -296,7 +308,7 @@ final class VCardTests: XCTestCase {
         
         // Should detect Goldfish format
         XCTAssertTrue(result.isGoldfishFormat)
-        XCTAssertEqual(result.goldfishVersion, "1.0")
+        XCTAssertEqual(result.goldfishVersion, "1.1")
         XCTAssertEqual(result.importedCount, 1)
     }
     

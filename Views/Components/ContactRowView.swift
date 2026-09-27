@@ -1,69 +1,97 @@
 import SwiftUI
 
 // MARK: - Contact Row View
-/// Standard list row for a contact.
-/// See Spec §3 (views) and §8.1 (accessibility).
+/// Editorial row: pigment coin, serif name and quiet connection metadata.
+/// Relationship and pond context are independent: sharing a pond never implies
+/// a graph connection.
+/// Terracotta marks favorite people.
 struct ContactRowView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let person: Person
-    
-    var subtitle: String {
-        let activeCircles = person.circleContacts.filter { !$0.manuallyExcluded }
-        if let firstCircle = activeCircles.first {
-            return firstCircle.circle.name
-        } else if !person.tags.isEmpty {
-            return person.tags.joined(separator: ", ")
-        }
-        return ""
+    let relationshipSummary: String?
+    let pondSummary: String?
+
+    init(person: Person, relationshipSummary: String? = nil, pondSummary: String? = nil) {
+        self.person = person
+        self.relationshipSummary = relationshipSummary
+        self.pondSummary = pondSummary
     }
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            ContactPhotoView(
-                photoData: person.photoData,
-                name: person.name,
-                colorHex: person.color,
-                size: .small
-            )
-            
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(person.name)
-                        .font(.body)
-                        .foregroundColor(.primary)
-                    if person.isMe {
-                        Text("Me")
-                            .font(.caption2)
-                            .fontWeight(.bold)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.accentColor.opacity(0.15))
-                            .foregroundColor(.accentColor)
-                            .clipShape(Capsule())
-                            .alignmentGuide(.firstTextBaseline) { d in d[.bottom] }
-                    }
-                    
-                    if person.isFavorite {
-                        Image(systemName: "star.fill")
-                            .font(.caption)
-                            .foregroundStyle(.yellow)
-                            .accessibilityLabel("Favorite")
-                    }
-                }
-                
-                if !subtitle.isEmpty {
-                    Text(subtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+
+    private var inferredContexts: RelationshipContextService {
+        var peopleByID: [UUID: Person] = [person.id: person]
+        var queue = [person]
+        var index = 0
+        while index < queue.count {
+            let current = queue[index]
+            index += 1
+            for connected in current.connectedContacts
+            where connected.isMe || connected.isDemo == person.isDemo {
+                if peopleByID[connected.id] == nil {
+                    peopleByID[connected.id] = connected
+                    queue.append(connected)
                 }
             }
-            
-            Spacer()
         }
-        .padding(.vertical, 4)
-        .contentShape(Rectangle()) // Make full row tappable
+        return RelationshipContextService(people: Array(peopleByID.values))
+    }
+
+    private var displayedRelationshipSummary: String? {
+        relationshipSummary ?? inferredContexts.compactSummary(for: person)
+    }
+
+    private var displayedPondSummary: String? {
+        pondSummary ?? inferredContexts.pondSummary(for: person)
+    }
+
+    var body: some View {
+        HStack(spacing: GoldfishDS.Space.lg) {
+            ContactPhotoView(person: person, size: .small)
+
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: GoldfishDS.Space.sm) {
+                    Text(person.name)
+                        .font(.gfName)
+                        .foregroundStyle(GoldfishDS.ink(.primary))
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if person.isFavorite {
+                        Circle()
+                            .fill(GoldfishDS.terracotta)
+                            .frame(width: 5, height: 5)
+                            .accessibilityLabel("Favourite")
+                    }
+                }
+
+                if let displayedRelationshipSummary {
+                    Text(displayedRelationshipSummary)
+                        .font(.gfMeta)
+                        .foregroundStyle(GoldfishDS.ink(.tertiary))
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let displayedPondSummary {
+                    Text(displayedPondSummary)
+                        .font(.gfCaption)
+                        .foregroundStyle(GoldfishDS.ink(.quaternary))
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, GoldfishDS.Space.sm)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(person.name). \(person.isFavorite ? "Favorite." : "")")
-        .accessibilityHint("Double tap to view details")
+        .accessibilityLabel(
+            [person.name,
+             person.isFavorite ? "Favourite" : nil,
+             displayedRelationshipSummary ?? "No saved connection",
+             displayedPondSummary]
+                .compactMap { $0 }
+                .joined(separator: ". ")
+        )
+        .accessibilityHint("Opens contact")
     }
 }

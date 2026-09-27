@@ -72,50 +72,111 @@ extension GoldfishDataManager {
 @MainActor
 class ToastManager: ObservableObject {
     static let shared = ToastManager()
-    
+
     @Published var message: String?
     @Published var isShowing: Bool = false
-    
+    @Published var actionTitle: String?
+    private var action: (() -> Void)?
+
     private var dismissTask: Task<Void, Never>?
-    
+
     func showToast(message: String) {
+        showToast(message: message, actionTitle: nil, action: nil)
+    }
+
+    func showToast(message: String, actionTitle: String?, action: (() -> Void)?) {
         // Cancel any pending dismiss
         dismissTask?.cancel()
-        
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+
+        withAnimation(GoldfishDS.Motion.snappy) {
             self.message = message
+            self.actionTitle = actionTitle
+            self.action = action
+            let announcement = actionTitle.map { "\(message). \($0) is available until dismissed." } ?? message
+            UIAccessibility.post(notification: .announcement, argument: announcement)
             self.isShowing = true
         }
-        
+
         dismissTask = Task {
+            guard actionTitle == nil else { return }
             try? await Task.sleep(nanoseconds: 2_500_000_000)
             guard !Task.isCancelled else { return }
-            withAnimation(.easeOut(duration: 0.3)) {
+            withAnimation(GoldfishDS.Motion.snappy) {
                 self.isShowing = false
+                self.actionTitle = nil
+                self.action = nil
             }
         }
+    }
+
+    /// Executes and clears the current toast action before invoking it. The
+    /// callback may present a replacement toast (for example, "Connection
+    /// undone"), so clearing first prevents the old toast from hiding it.
+    func performAction() {
+        let callback = action
+        action = nil
+        actionTitle = nil
+        withAnimation(GoldfishDS.Motion.snappy) { isShowing = false }
+        callback?()
+    }
+
+    func dismissToast() {
+        dismissTask?.cancel()
+        action = nil
+        actionTitle = nil
+        withAnimation(GoldfishDS.Motion.snappy) { isShowing = false }
     }
 }
 
 // MARK: - Toast Modifier
 struct ToastModifier: ViewModifier {
     @EnvironmentObject var manager: ToastManager
-    
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func body(content: Content) -> some View {
         content
             .overlay(alignment: .bottom) {
                 if manager.isShowing, let message = manager.message {
-                    Text(message)
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundColor(.primary)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Capsule())
-                        .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 5)
+                    let layout = dynamicTypeSize >= .xxLarge
+                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                        : AnyLayout(HStackLayout(spacing: 12))
+                    layout {
+                        Text(message)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if let actionTitle = manager.actionTitle {
+                            Button(actionTitle) {
+                                manager.performAction()
+                            }
+                            .font(.gfMeta.weight(.semibold))
+                            .foregroundStyle(GoldfishDS.terracotta)
+                            .frame(minWidth: 60, minHeight: 44)
+                        }
+                        Button {
+                            manager.dismissToast()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.caption.weight(.semibold))
+                                .frame(width: 44, height: 44)
+                        }
+                        .accessibilityLabel("Dismiss")
+                        .foregroundStyle(GoldfishDS.ink(.secondary))
+                    }
+                        .font(.gfMeta)
+                        .foregroundStyle(GoldfishDS.ink(.primary))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: GoldfishDS.Radius.control)
+                                .fill(GoldfishDS.surface)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: GoldfishDS.Radius.control)
+                                .stroke(GoldfishDS.ink(.hairline), lineWidth: GoldfishDS.Rule.hairline)
+                        )
                         .padding(.bottom, 40)
-                        // Transition
-                        .transition(.move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.9)))
+                        .padding(.horizontal, 16)
+                        .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
                         .zIndex(9999)
                 }
             }
@@ -130,8 +191,8 @@ public extension View {
     }
     
     /// Applies the feature walkthrough overlay
-    func walkthroughOverlay() -> some View {
-        self.modifier(WalkthroughOverlayModifier())
+    func walkthroughOverlay(isPresented: Bool = true) -> some View {
+        self.modifier(WalkthroughOverlayModifier(isPresented: isPresented))
     }
     
 
@@ -139,199 +200,371 @@ public extension View {
 
 // MARK: - Walkthrough Overlay Modifier
 struct WalkthroughOverlayModifier: ViewModifier {
+    var isPresented: Bool
     @EnvironmentObject var walkthroughManager: FeatureWalkthroughManager
-    
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var targetFrames: [WalkthroughStep: CGRect] = [:]
+
     func body(content: Content) -> some View {
         content
             .overlay {
-                if walkthroughManager.isActive {
-                    WalkthroughOverlayView()
-                        .transition(AnyTransition.opacity.combined(with: AnyTransition.scale(scale: 0.95)))
+                if walkthroughManager.isActive && isPresented {
+                    WalkthroughOverlayView(targetFrames: targetFrames)
+                        // Trains, not water: the card slides in along a straight
+                        // track. Reduce Motion = fade only.
+                        .transition(
+                            reduceMotion
+                                ? AnyTransition.opacity
+                                : AnyTransition.move(edge: .bottom).combined(with: .opacity)
+                        )
                         .zIndex(10000)
                 }
+            }
+            .onPreferenceChange(WalkthroughAnchorKey.self) { frames in
+                targetFrames = frames
             }
     }
 }
 
-// MARK: - Walkthrough Overlay View
-struct WalkthroughOverlayView: View {
-    @EnvironmentObject var walkthroughManager: FeatureWalkthroughManager
-    @EnvironmentObject var demoModeManager: DemoModeManager
-    @EnvironmentObject var dataManager: GoldfishDataManager
-    
-    @State private var dragOffset: CGFloat = 0
-    // P0-5 Fix: State to show post-onboarding prompt
-    @State private var showDemoDataPrompt = false
-    
+// MARK: - Reusable inline walkthrough guide
+
+/// The same compact guide used by the home overlay and by modal/search
+/// surfaces. Only the explanatory body scrolls; the end, back, skip, and
+/// continue controls stay visible at every text size.
+struct WalkthroughInlineGuide: View {
+    @EnvironmentObject private var walkthroughManager: FeatureWalkthroughManager
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var maximumHeight: CGFloat = 360
+    var actionPromptOverride: String? = nil
+
+    @State private var measuredBodyHeight: CGFloat = 0
+    @State private var showEndChoice = false
+
+    private var boundedMaximumHeight: CGFloat {
+        guard maximumHeight.isFinite else { return 360 }
+        return max(112, min(520, maximumHeight))
+    }
+
+    private var isCompact: Bool {
+        boundedMaximumHeight < 200
+    }
+
+    private var bodyViewportHeight: CGFloat {
+        let controlsAllowance: CGFloat = dynamicTypeSize.isAccessibilitySize ? 184 : (isCompact ? 109 : 132)
+        let cap = max(40, boundedMaximumHeight - controlsAllowance)
+        guard measuredBodyHeight > 0 else { return min(cap, isCompact ? 56 : 160) }
+        return min(cap, max(40, measuredBodyHeight))
+    }
+
     var body: some View {
-        ZStack {
-            // Transparent background — passes touches through to navigation bar
-            Color.clear
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-            
-            VStack {
-                // Spacer fills the top area — passes touches through
-                Spacer()
-                    .allowsHitTesting(false)
-                
-                // The actual "Tile" card
-                VStack(spacing: 20) {
-                    // Header: Icon + Close Button
-                    HStack {
-                        Image(systemName: walkthroughManager.currentStep.icon)
-                            .font(.title2)
-                            .foregroundColor(.goldfishAccent)
-                        
-                        Spacer()
-                        
-                        // P1-6 Fix: Use X icon instead of ambiguous Skip text
-                        Button(action: { showDemoDataPrompt = true }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.title3)
-                                .foregroundColor(.white.opacity(0.4))
-                        }
+        let step = walkthroughManager.currentStep
+
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(barTone(for: step))
+                .frame(height: GoldfishDS.Rule.bar)
+
+            HStack(spacing: 8) {
+                if !isCompact && !dynamicTypeSize.isAccessibilitySize {
+                    Image(systemName: walkthroughManager.justCompletedStep ? "checkmark.circle.fill" : step.icon)
+                        .font(.title3)
+                        .foregroundStyle(walkthroughManager.justCompletedStep ? Color.goldfishSuccess : GoldfishDS.ink(.primary))
+
+                    if step.isAction {
+                        Text(walkthroughManager.justCompletedStep ? "DONE" : "TRY IT")
+                            .font(.gfCaption)
+                            .kerning(1)
+                            .foregroundStyle(GoldfishDS.warmBlack)
+                            .padding(.vertical, 3)
+                            .padding(.horizontal, 7)
+                            .background(GoldfishDS.ink(.primary), in: RoundedRectangle(cornerRadius: GoldfishDS.Radius.chip))
                     }
-                    .padding(.horizontal, 4)
-                    
-                    // Title + Description
-                    // P0-4 Fix: Uniform height for the text container
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(walkthroughManager.currentStep.title)
-                            .font(.title3.bold())
-                            .foregroundColor(.white)
-                        
-                        // P1-3 Fix: Use ScrollView for fluid typography
-                        ScrollView(.vertical, showsIndicators: false) {
-                            Text(walkthroughManager.currentStep.description)
-                                .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.8))
-                                .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Text(progressLabel(for: step))
+                    .font(.gfMeta)
+                    .foregroundStyle(GoldfishDS.ink(.tertiary))
+                    .accessibilityLabel(step == .welcome ? "Tour introduction" : "Action \(WalkthroughStep.displayableSteps.firstIndex(of: step) ?? 1) of 3")
+                    .fixedSize(horizontal: true, vertical: false)
+
+                Spacer(minLength: 8)
+
+                Button("End") { showEndChoice = true }
+                    .font(.gfMeta)
+                    .foregroundStyle(GoldfishDS.ink(.secondary))
+                    .frame(minWidth: 44, minHeight: 44)
+                    .accessibilityLabel("End feature tour")
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, isCompact ? 0 : 8)
+            .frame(minHeight: isCompact ? 44 : 52)
+
+            ScrollView(.vertical) {
+                Group {
+                if isCompact && step == .search {
+                    Text(walkthroughManager.justCompletedStep
+                         ? walkthroughManager.successDescription
+                         : "Find \(walkthroughManager.examplePersonName), then open the result.")
+                        .font(.gfBody)
+                        .foregroundStyle(GoldfishDS.ink(.primary))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 4)
+                } else {
+                    VStack(alignment: .leading, spacing: 16) {
+                        if let prompt = actionPromptOverride ?? walkthroughManager.currentActionPrompt,
+                           !walkthroughManager.justCompletedStep {
+                            HStack(alignment: .top, spacing: 10) {
+                                Image(systemName: "hand.tap.fill")
+                                    .foregroundStyle(GoldfishDS.ink(.secondary))
+                                Text(prompt)
+                                    .font(.gfBody)
+                                    .foregroundStyle(GoldfishDS.ink(.primary))
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 14)
+                            .background(GoldfishDS.ink(.faint), in: RoundedRectangle(cornerRadius: GoldfishDS.Radius.control))
                         }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    // Lock the height so cards don't change size
-                    .frame(height: 90, alignment: .top)
-                    
-                    // Navigation Buttons
-                    HStack(spacing: 0) {
-                        // Left Button Container (Back)
-                        if walkthroughManager.currentStep != .welcome {
-                            Button(action: { walkthroughManager.previousStep() }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "chevron.left")
-                                    Text("Back")
-                                }
-                                .font(.subheadline.bold())
-                                .foregroundColor(.white)
-                                .frame(width: 110, height: 44)
-                                .background(Color.white.opacity(0.1))
-                                .cornerRadius(12)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                            }
-                        } else {
-                            // Invisible placeholder to maintain exact symmetry
-                            Color.clear.frame(width: 110, height: 44)
+
+                        if !isCompact && !(boundedMaximumHeight < 300 && step.isAction && !walkthroughManager.justCompletedStep) {
+                            Text(step.title)
+                                .font(.gfName)
+                                .textCase(.uppercase)
+                                .kerning(1.4)
+                                .foregroundStyle(GoldfishDS.ink(.primary))
                         }
-                        
-                        Spacer(minLength: 8)
-                        
-                        // Center Dots
-                        HStack(spacing: 6) {
-                            ForEach(WalkthroughStep.displayableSteps) { step in
-                                Circle()
-                                    .fill(walkthroughManager.currentStep == step ? Color.goldfishAccent : Color.white.opacity(0.2))
-                                    .frame(width: 6, height: 6)
-                            }
-                        }
-                        
-                        Spacer(minLength: 8)
-                        
-                        // Right Button Container (Next / Get Started)
-                        Button(action: { 
-                            if walkthroughManager.currentStep == .complete {
-                                showDemoDataPrompt = true
-                            } else {
-                                walkthroughManager.nextStep() 
-                            }
-                        }) {
-                            HStack(spacing: 4) {
-                                if walkthroughManager.currentStep == .complete {
-                                    Text("Get Started")
-                                } else {
-                                    Text("Next")
-                                    Image(systemName: "chevron.right")
-                                }
-                            }
-                            .font(.subheadline.bold())
-                            .foregroundColor(.black)
-                            .frame(width: 110, height: 44)
-                            .background(Color.goldfishAccent)
-                            .cornerRadius(12)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+
+                        if !(boundedMaximumHeight < 300 && step.isAction && !walkthroughManager.justCompletedStep) {
+                        Text(walkthroughManager.justCompletedStep
+                             ? walkthroughManager.successDescription
+                             : walkthroughManager.currentDescription)
+                            .font(.gfBody)
+                            .foregroundStyle(GoldfishDS.ink(.secondary))
+                            .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
-                .padding(24)
-                .background(
-                    RoundedRectangle(cornerRadius: 24)
-                        .fill(Color(red: 0x2A/255, green: 0x24/255, blue: 0x20/255))
-                        .shadow(color: .black.opacity(0.35), radius: 20, y: 10)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                )
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, isCompact ? 0 : 20)
+                .padding(.vertical, isCompact ? 0 : 20)
+                .fixedSize(horizontal: false, vertical: true)
+                .background {
+                    GeometryReader { contentGeometry in
+                        Color.clear.preference(
+                            key: WalkthroughCardContentHeightKey.self,
+                            value: contentGeometry.size.height
+                        )
+                    }
+                }
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(height: bodyViewportHeight)
+
+            Divider()
+                .overlay(GoldfishDS.ink(.hairline))
+
+            guideControls(for: step)
                 .padding(.horizontal, 20)
-                .padding(.bottom, 30)
-                .offset(x: dragOffset)
-                .gesture(
-                    DragGesture()
-                        .onChanged { gesture in
-                            dragOffset = gesture.translation.width
-                        }
-                        .onEnded { gesture in
-                            if gesture.translation.width < -100 {
-                                if walkthroughManager.currentStep != WalkthroughStep.displayableSteps.last {
-                                    walkthroughManager.nextStep()
-                                }
-                            } else if gesture.translation.width > 100 {
-                                walkthroughManager.previousStep()
-                            }
-                            withAnimation(.spring()) {
-                                dragOffset = 0
-                            }
-                        }
-                )
+                .padding(.vertical, 8)
+        }
+        .frame(maxWidth: .infinity)
+        .background(GoldfishDS.surface)
+        .clipShape(RoundedRectangle(cornerRadius: GoldfishDS.Radius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: GoldfishDS.Radius.card)
+                .stroke(GoldfishDS.ink(.hairline), lineWidth: GoldfishDS.Rule.hairline)
+        )
+        .onPreferenceChange(WalkthroughCardContentHeightKey.self) { height in
+            guard height.isFinite, height > 0 else { return }
+            if abs(measuredBodyHeight - height) > 0.5 { measuredBodyHeight = height }
+        }
+        .onChange(of: walkthroughManager.currentStep) { _, _ in measuredBodyHeight = 0 }
+        .alert("End feature tour?", isPresented: $showEndChoice) {
+            Button("Keep exploring samples") { walkthroughManager.finishTour(keepDemoData: true) }
+            Button("Use my contacts") { walkthroughManager.finishTour(keepDemoData: false) }
+            Button("Continue tour", role: .cancel) { }
+        } message: {
+            Text("Your saved contacts stay on this device. Keep the sample mode available to explore, or switch back to your contacts.")
+        }
+    }
+
+    private func progressLabel(for step: WalkthroughStep) -> String {
+        guard let index = WalkthroughStep.displayableSteps.firstIndex(of: step) else { return "Done" }
+        return index == 0 ? "Start" : "\(index) of 3"
+    }
+
+    private func guideControls(for step: WalkthroughStep) -> some View {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 0))
+        return layout {
+            if step != .welcome {
+                Button {
+                    walkthroughManager.previousStep()
+                } label: {
+                    Label("Back", systemImage: "chevron.left")
+                        .font(.gfMeta)
+                        .foregroundStyle(GoldfishDS.ink(.secondary))
+                }
+                .frame(minWidth: 88, minHeight: 44, alignment: .leading)
+            } else if !dynamicTypeSize.isAccessibilitySize {
+                Color.clear.frame(width: 88, height: 44)
+            }
+
+            if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 8) }
+
+            if step.isAction && !walkthroughManager.justCompletedStep {
+                Button("Skip") { walkthroughManager.nextStep() }
+                    .font(.gfMeta)
+                    .foregroundStyle(GoldfishDS.ink(.secondary))
+                    .frame(minWidth: 88, minHeight: 44, alignment: .trailing)
+            } else {
+                Button(step == .complete ? "Finish" : "Continue") {
+                    if step == .complete {
+                        showEndChoice = true
+                    } else {
+                        walkthroughManager.nextStep()
+                    }
+                }
+                .font(.gfLabel)
+                .kerning(1)
+                .foregroundStyle(GoldfishDS.warmBlack)
+                .padding(.horizontal, 16)
+                .frame(minWidth: 100, minHeight: 44)
+                .background(GoldfishDS.ink(.primary), in: RoundedRectangle(cornerRadius: GoldfishDS.Radius.control))
             }
         }
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: walkthroughManager.currentStep)
-        .alert("Complete Setup", isPresented: $showDemoDataPrompt) {
-            Button("Keep Demo Data") {
-                walkthroughManager.finishTour(keepDemoData: true)
-                walkthroughManager.currentStep = .complete
-            }
-            Button("Start Fresh (Empty)", role: .destructive) {
-                // Remove demo data and transition out
-                demoModeManager.removeDemoData(dataManager: dataManager)
-                walkthroughManager.finishTour(keepDemoData: false)
-                walkthroughManager.currentStep = .complete
-            }
-        } message: {
-            Text("The walkthrough uses sample contacts, relationships, and ponds to demonstrate features. Do you want to keep them to explore, or start with a blank slate?")
+    }
+
+    private func barTone(for step: WalkthroughStep) -> Color {
+        switch step {
+        case .welcome, .complete: return GoldfishDS.terracotta
+        default:
+            let tones = [GoldfishDS.pondTone("family"), GoldfishDS.pondTone("friends"), GoldfishDS.pondTone("professional")]
+            return tones[(step.rawValue - 1) % tones.count]
         }
     }
 }
+
+// MARK: - Walkthrough Overlay View
+/// Guided, do-it-yourself tour. Each action step dims the app, points at the
+/// real control, and waits for the user to perform the gesture — the manager
+/// marks the step complete when the matching interaction is reported, then waits
+/// for the user to continue (see HomeView).
+struct WalkthroughOverlayView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @EnvironmentObject var walkthroughManager: FeatureWalkthroughManager
+    let targetFrames: [WalkthroughStep: CGRect]
+
+    @State private var pulse = false
+
+    var body: some View {
+        let step = walkthroughManager.currentStep
+
+        GeometryReader { geometry in
+            ZStack {
+                Color.black.opacity(0.06)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+
+                if step.isAction && !walkthroughManager.justCompletedStep {
+                    targetPointer(for: step, in: geometry)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                        .transition(.opacity)
+                }
+
+                VStack(spacing: 0) {
+                    if step.hintPlacement == .bottom {
+                        Spacer(minLength: 0).allowsHitTesting(false)
+                    }
+
+                    WalkthroughInlineGuide(
+                        maximumHeight: walkthroughManager.maximumOverlayHeight(in: geometry.frame(in: .global))
+                    )
+                        .background(GeometryReader { cardGeometry in
+                            Color.clear.preference(key: WalkthroughCardFrameKey.self,
+                                                   value: cardGeometry.frame(in: .global))
+                        })
+                        .padding(.horizontal, 20)
+                        .padding(.top, step.hintPlacement == .top ? 12 : 0)
+                        .padding(.bottom, step.hintPlacement == .bottom ? 30 : 0)
+
+                    if step.hintPlacement == .top {
+                        Spacer(minLength: 0).allowsHitTesting(false)
+                    }
+                }
+            }
+        }
+        .onPreferenceChange(WalkthroughCardFrameKey.self) { frame in
+            let measured = frame.integral
+            if walkthroughManager.overlayFrame != measured {
+                walkthroughManager.overlayFrame = measured
+            }
+        }
+        .onDisappear { walkthroughManager.overlayFrame = .zero }
+        .animation(GoldfishDS.Motion.settle, value: walkthroughManager.currentStep)
+        .animation(GoldfishDS.Motion.snappy, value: walkthroughManager.justCompletedStep)
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
+                pulse = true
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func targetPointer(for step: WalkthroughStep, in geometry: GeometryProxy) -> some View {
+        if step.isAction,
+           let globalFrame = targetFrames[step],
+           globalFrame.width > 0, globalFrame.height > 0,
+           globalFrame.minX.isFinite, globalFrame.minY.isFinite,
+           globalFrame.maxX.isFinite, globalFrame.maxY.isFinite {
+            let container = geometry.frame(in: .global)
+            let frame = globalFrame.offsetBy(dx: -container.minX, dy: -container.minY)
+            let bounds = CGRect(origin: .zero, size: geometry.size)
+
+            if frame.intersects(bounds), bounds.contains(CGPoint(x: frame.midX, y: frame.midY)) {
+                let cardFrame = walkthroughManager.overlayFrame
+                let cardIsBelow = !cardFrame.isEmpty && cardFrame.minY >= globalFrame.maxY
+                let arrowName = cardIsBelow ? "arrow.up" : "arrow.down"
+                let arrowY = cardIsBelow ? frame.maxY + 20 : frame.minY - 20
+
+                ZStack {
+                    RoundedRectangle(cornerRadius: GoldfishDS.Radius.control)
+                        .stroke(GoldfishDS.terracotta, lineWidth: 2)
+                        .frame(width: frame.width + 12, height: frame.height + 12)
+                        .position(x: frame.midX, y: frame.midY)
+
+                    Image(systemName: arrowName)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(GoldfishDS.terracotta)
+                        .padding(7)
+                        .background(GoldfishDS.surface, in: Circle())
+                        .position(x: frame.midX, y: arrowY)
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .opacity(pulse ? 1 : 0.72)
+                .allowsHitTesting(false)
+            }
+        }
+    }
+}
+
 
 // MARK: - Identifiable Wrapper
 public struct IdentifiableWrapper<T: Equatable>: Identifiable, Equatable {
     public let id: UUID
     public let value: T
     
-    public init(_ value: T) {
-        self.id = UUID()
+    public init(_ value: T, id: UUID = UUID()) {
+        self.id = id
         self.value = value
     }
 }
@@ -350,3 +583,18 @@ struct ShareSheet: UIViewControllerRepresentable {
 }
 
 // MARK: - UUID Identifiable
+
+private struct WalkthroughCardFrameKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        value = nextValue()
+    }
+}
+
+private struct WalkthroughCardContentHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}

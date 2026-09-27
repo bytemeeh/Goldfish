@@ -44,6 +44,8 @@ final class Person {
     /// Exactly one contact has `isMe == true`. This is the graph root.
     /// Created during onboarding; cannot be deleted or reassigned.
     var isMe: Bool
+    /// Nil is the legacy human value for stores created before pet support.
+    var petKindRaw: String?
 
     /// User-toggled favorite for quick access filtering.
     var isFavorite: Bool
@@ -112,6 +114,7 @@ final class Person {
         birthday: Date? = nil,
         notes: String? = nil,
         isMe: Bool = false,
+        petKindRaw: String? = nil,
         isDemo: Bool = false,
         isFavorite: Bool = false,
         tags: [String] = [],
@@ -130,6 +133,7 @@ final class Person {
         self.birthday = birthday
         self.notes = notes
         self.isMe = isMe
+        self.petKindRaw = isMe ? nil : petKindRaw
         self.isDemo = isDemo
         self.isFavorite = isFavorite
         self.tags = tags
@@ -145,6 +149,10 @@ final class Person {
     }
 
     // MARK: - Computed Properties
+
+    var contactKind: ContactKind { ContactKind(rawValue: petKindRaw ?? "human") ?? .human }
+    var isPet: Bool { !isMe && contactKind.isPet }
+    var petSpeciesLabel: String? { isPet ? contactKind.label : nil }
 
     /// All relationships (both directions) for this contact.
     var allRelationships: [Relationship] {
@@ -197,5 +205,18 @@ final class Person {
             contacts.append(rel.fromContact)
         }
         return contacts
+    }
+}
+
+extension Person {
+    var primaryCircle: GoldfishCircle? {
+        let activeMemberships = circleContacts.filter { !$0.manuallyExcluded }
+        let circles: [GoldfishCircle] = activeMemberships.map { $0.circle }
+        return circles.sorted { lhs, rhs in
+            if lhs.sortOrder == rhs.sortOrder {
+                return lhs.id.uuidString < rhs.id.uuidString
+            }
+            return lhs.sortOrder < rhs.sortOrder
+        }.first
     }
 }

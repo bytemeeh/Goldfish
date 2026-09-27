@@ -9,10 +9,10 @@ struct VCardExporter {
     // MARK: - Manifest Constants
     
     /// The special FN used to identify the Goldfish manifest vCard.
-    static let manifestName = "_GOLDFISH_MANIFEST"
+    static let manifestName = VCardParser.manifestName
     
     /// Current export format version.
-    static let exportVersion = "1.0"
+    static let exportVersion = "1.1"
 
     /// Exports a list of contacts to vCard 3.0 data (UTF-8).
     /// - Parameters:
@@ -74,6 +74,8 @@ struct VCardExporter {
         lines.append("BEGIN:VCARD")
         lines.append("VERSION:3.0")
 
+        lines.append("X-GOLDFISH-CONTACT-VERSION:1.1")
+
         // UID
         lines.append("UID:\(person.id.uuidString)")
 
@@ -83,7 +85,7 @@ struct VCardExporter {
         // N (Structured Name: Family;Given;Middle;Prefix;Suffix)
         // We only have a single name string, so we try to split it intelligently
         let (given, family) = splitName(person.name)
-        lines.append(formatLine(key: "N", value: "\(family);\(given);;;"))
+        lines.append(VCardTextCodec.property("N", components: [family, given, "", "", ""], separator: ";"))
 
         // TEL (Phone)
         if let phone = person.phone, !phone.isEmpty {
@@ -116,8 +118,7 @@ struct VCardExporter {
         let country = person.country ?? ""
         
         if !street.isEmpty || !city.isEmpty || !state.isEmpty || !zip.isEmpty || !country.isEmpty {
-            let addressValue = ";;\(street);\(city);\(state);\(zip);\(country)"
-            lines.append(formatLine(key: "ADR;TYPE=HOME", value: addressValue))
+            lines.append(VCardTextCodec.property("ADR;TYPE=HOME", components: ["", "", street, city, state, zip, country], separator: ";"))
         }
 
         // PHOTO
@@ -132,11 +133,7 @@ struct VCardExporter {
 
         // TAGS
         if !person.tags.isEmpty {
-            // Lowercase and escape commas within tags
-            let escapedTags = person.tags.map {
-                $0.lowercased().replacingOccurrences(of: ",", with: "\\,")
-            }.joined(separator: ",")
-            lines.append(formatLine(key: "X-GOLDFISH-TAGS", value: escapedTags))
+            lines.append(VCardTextCodec.property("X-GOLDFISH-TAGS", components: person.tags, separator: ","))
         }
 
         // FAVORITE
@@ -153,73 +150,30 @@ struct VCardExporter {
         if person.isMe {
             lines.append("X-GOLDFISH-IS-ME:true")
         }
+        if person.isPet {
+            lines.append("X-GOLDFISH-KIND:\(person.contactKind.rawValue)")
+        }
 
         // CIRCLES
         // We export all circles the person is a member of (excluding manually excluded ones)
-        let activeCircles = person.circleContacts.filter { !$0.manuallyExcluded }.map { $0.circle.name }
-        for circleName in activeCircles {
-            lines.append(formatLine(key: "X-GOLDFISH-CIRCLE", value: circleName))
+        let activeCircles = person.circleContacts.filter { !$0.manuallyExcluded }.map(\.circle)
+            .sorted { $0.id.uuidString < $1.id.uuidString }
+        for circle in activeCircles {
+            // Keep the original name field for older versions and other vCard consumers.
+            lines.append(formatLine(key: "X-GOLDFISH-CIRCLE", value: circle.name))
+            if let metadata = circle.transferMetadata.encoded {
+                lines.append(formatLine(key: "X-GOLDFISH-GROUP", value: metadata))
+            }
         }
 
-        // RELATED-TO
-        // We include relationship types this person HAS relative to others in the export.
-        // Format: <UUID>;<type>
-        // "This person IS the <type> of <UUID>"
-        // So we look at outgoing relationships where this person is the 'from'.
-        // Directionality: Relationship(from: A, to: B, type: mother) -> A is mother of B.
-        // So in A's vCard: X-GOLDFISH-RELATED-TO: B_UUID;mother
-        
-        // We also need to handle symmetric relationships.
-        // Relationship(from: A, to: B, type: friend) -> A is friend of B.
-        // So in A's vCard: X-GOLDFISH-RELATED-TO: B_UUID;friend
-        
-        // We also need incoming relationships?
-        // If B is A's child (Relationship(from: B, to: A, type: child)), then A is B's mother/father?
-        // The spec says: "The vCard containing X-GOLDFISH-RELATED-TO:<UUID>;mother means 'this contact IS the mother OF the contact with the given UUID.'"
-        // So we strictly export specific relationship records where this person is the 'from' (subject).
-        // Wait, for bidirectional graph, we should export everything we know about this person.
-        //
-        // If we have Relationship(from: A, to: B, type: mother), A is mother.
-        // A's vCard: RELATED-TO: B;mother
-        //
-        // If we have Relationship(from: B, to: A, type: child), B is child.
-        // A is the parent. Does A's vCard need to say "I am parent of B"?
-        // The relationship B->A (child) implies A is parent of B.
-        // But the relationship record is stored as (from: B, to: A, type: child).
-        // A's vCard could act as the source of truth for A's roles.
-        //
-        // However, the spec example shows:
-        // Anna (Mother): X-GOLDFISH-RELATED-TO: <Luca's UUID>;mother
-        // Luca (Child): X-GOLDFISH-RELATED-TO: <Anna's UUID>;child
-        //
-        // This implies we simply iterate `outgoingRelationships` and export them.
-        // For symmetric relationships (friend), they are stored once.
-        // If stored as (A, B, friend), A has it in outgoing. B has it in incoming.
-        // If we only export outgoing, B's vCard won't say "friend of A".
-        //
-        // Correct logic:
-        // Iterate all relationships connected to this person.
-        // Calculate the effective type *from this person's perspective*.
-        // If effective type is valid, export it.
-        //
-        // Example: Friend (symmetric)
-        // Stored: A -> B (friend)
-        // A's vCard: effectiveType(for: A) = friend. Export: B;friend
-        // B's vCard: effectiveType(for: B) = friend (inverse of friend is friend). Export: A;friend
-        //
-        // Example: Mother/Child
-        // Stored: A -> B (mother)
-        // A's vCard: effectiveType(for: A) = mother. Export: B;mother
-        // B's vCard: effectiveType(for: B) = child (inverse of mother). Export: A;child
-        //
-        // This ensures fully connected graph restoration even if only one person is imported.
-        
+        // Export each known perspective. Unknown-direction "other" edges are
+        // emitted only by their stored subject, so a round trip keeps one row.
         for rel in person.allRelationships {
             let other = rel.otherContact(from: person)
             let type = rel.effectiveType(for: person)
             
             // Only export if we have a valid relationship type
-            if type != .other {
+            if type != .other || rel.fromContact.id == person.id {
                  lines.append("X-GOLDFISH-RELATED-TO:\(other.id.uuidString);\(type.rawValue)")
             }
         }
@@ -234,60 +188,7 @@ struct VCardExporter {
 
     /// Formats a vCard property line, escaping values and folding lines at 75 octets.
     private static func formatLine(key: String, value: String) -> String {
-        let escapedValue = escapeValue(value)
-        let line = "\(key):\(escapedValue)"
-        return foldLine(line)
-    }
-
-    /// Escapes special characters in vCard text values (RFC 2426).
-    /// Escapes: \ -> \\, , -> \, , ; -> \;, \n -> \n
-    private static func escapeValue(_ value: String) -> String {
-        return value
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: ",", with: "\\,")
-            .replacingOccurrences(of: ";", with: "\\;")
-            .replacingOccurrences(of: "\n", with: "\\n")
-            .replacingOccurrences(of: "\r", with: "") // Remove CR, keep LF as escaped \n
-    }
-
-    /// Folds lines to max 75 octets (bytes), as per RFC 2426.
-    /// Continuation lines start with specific whitespace (SPACE).
-    private static func foldLine(_ line: String) -> String {
-        let maxLineLength = 75
-        
-        // If strict UTF-8 byte counting is needed, it's complex.
-        // Most vCard parsers accept character-based folding or are lenient.
-        // Swift strings are character-based. We'll use character count for simplicity
-        // as standard ASCII chars are 1 byte and typical names match.
-        // For strict compliance we should count bytes, but that might split multi-byte chars.
-        // Safe approach: split by char count, which is always <= byte count for ASCII,
-        // and safe for UTF-8 (won't split a character).
-        
-        if line.count <= maxLineLength {
-            return line
-        }
-
-        var result = ""
-        var currentIndex = line.startIndex
-        
-        // First line: 75 chars
-        let firstLineEnd = line.index(currentIndex, offsetBy: maxLineLength, limitedBy: line.endIndex) ?? line.endIndex
-        result += line[currentIndex..<firstLineEnd]
-        currentIndex = firstLineEnd
-
-        // Subsequent lines: 74 chars (prefixed with 1 space)
-        while currentIndex < line.endIndex {
-            result += "\r\n " // Fold sequence: CRLF + Space
-            
-            let remaining = line.distance(from: currentIndex, to: line.endIndex)
-            let chunkLength = min(74, remaining)
-            let nextIndex = line.index(currentIndex, offsetBy: chunkLength)
-            
-            result += line[currentIndex..<nextIndex]
-            currentIndex = nextIndex
-        }
-
-        return result
+        VCardTextCodec.property(key, components: [value], separator: "")
     }
 
     /// Simple heuristic to split a full name into Given and Family names.
@@ -299,5 +200,17 @@ struct VCardExporter {
         let given = parts.dropLast().joined(separator: " ")
         let family = parts.last ?? ""
         return (given, family)
+    }
+}
+
+extension GoldfishCircle {
+    var transferMetadata: GroupTransferMetadata {
+        let role: GroupTransferMetadata.SystemRole?
+        if !isSystem { role = nil }
+        else if shouldAutoAssign(for: .mother) || shouldAutoAssign(for: .parent) { role = .family }
+        else if shouldAutoAssign(for: .friend) { role = .friends }
+        else if shouldAutoAssign(for: .coworker) { role = .professional }
+        else { role = nil }
+        return GroupTransferMetadata(id: id, name: name, color: color, systemRole: role)
     }
 }

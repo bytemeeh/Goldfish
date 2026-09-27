@@ -5,10 +5,18 @@ import Contacts
 // MARK: - SettingsViewModel
 @MainActor
 final class SettingsViewModel: ObservableObject {
-    
+
+    enum ImportOutcome: Equatable {
+        case imported
+        case alreadyHere
+        case partial
+        case noContactsFound
+        case couldNotRead
+    }
+
     // MARK: - Dependencies
     private var dataManager: GoldfishDataManager?
-    
+
     // MARK: - State
     @Published var appVersion: String = ""
     @Published var buildNumber: String = ""
@@ -18,26 +26,27 @@ final class SettingsViewModel: ObservableObject {
     @Published var importProgress: String = ""
     @Published var showImportCompletionAlert = false
     @Published var lastImportResult: ImportResult?
+    @Published var errorMessage: String?
     private var isConfigured = false
-    
+
     var hasManualContacts: Bool {
         guard let dataManager else { return false }
         return (try? dataManager.fetchManualContactsCount()) ?? 0 > 0
     }
-    
+
     // MARK: - Init
     init() {
         loadVersion()
     }
-    
+
     /// Called from onAppear once the EnvironmentObject is available.
     func configure(dataManager: GoldfishDataManager) {
-        guard !isConfigured else { return }
+        if isConfigured { loadMePerson(); return }
         self.dataManager = dataManager
         self.isConfigured = true
         loadMePerson()
     }
-    
+
     func loadMePerson() {
         guard let dataManager else { return }
         do {
@@ -46,7 +55,7 @@ final class SettingsViewModel: ObservableObject {
             print("Error fetching ME person: \(error)")
         }
     }
-    
+
     private func loadVersion() {
         let dictionary = Bundle.main.infoDictionary
         self.appVersion = dictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -54,35 +63,33 @@ final class SettingsViewModel: ObservableObject {
     }
 
     // MARK: - Reset
+    @discardableResult
     func performReset(
         walkthroughManager: FeatureWalkthroughManager,
         demoModeManager: DemoModeManager
-    ) {
-        guard let dataManager else { return }
-        
-        // 1. Reset managers (handles their specific UserDefaults and @Published flags)
-        walkthroughManager.reset()
-        demoModeManager.reset()
-
-        // 2. Clear application-level flags
-        let defaults = UserDefaults.standard
-        defaults.set(false, forKey: "hasCompletedOnboarding")
-        defaults.set("graph", forKey: "homeViewMode")
-        defaults.set("name", forKey: "contactSortOrder")
-
-        // 3. Clear the database
+    ) -> Bool {
+        guard let dataManager, !isImporting else { return false }
         do {
+            // Change launch flags only after the database deletion succeeds.
             try dataManager.resetAllData()
+            walkthroughManager.reset()
+            demoModeManager.reset()
+            let defaults = UserDefaults.standard
+            defaults.set(false, forKey: "hasCompletedOnboarding")
+            defaults.set("graph", forKey: "homeViewMode")
+            defaults.set("name", forKey: "contactSortOrder")
+            return true
         } catch {
-            print("Error resetting data: \(error)")
+            errorMessage = "Could not reset: " + error.localizedDescription
+            return false
         }
     }
-    
+
     // MARK: - Export
     func generateExportURL() -> URL? {
         guard let dataManager else { return nil }
         do {
-            let contacts = try dataManager.fetchAllPersons()
+            let contacts = try dataManager.fetchAllPersons().filter { !$0.isDemo }
             let service = VCardExportService()
             let data = service.exportAll(contacts: contacts)
             let url = FileManager.default.temporaryDirectory
@@ -90,140 +97,130 @@ final class SettingsViewModel: ObservableObject {
             try data.write(to: url)
             return url
         } catch {
-            print("Export error: \(error)")
+            errorMessage = "Could not export: " + error.localizedDescription
             return nil
         }
     }
-    
+
     // MARK: - Import
-    
-    // Phonebook import
+
+    // Both import entry points use the same duplicate and relationship rules.
     func importContacts(from contacts: [CNContact]) {
-        guard let dataManager else { return }
+        guard dataManager != nil, !isImporting else { return }
         isImporting = true
         importProgress = "Reading contacts..."
-        
         Task {
             do {
-                var importedCount = 0
-                for cn in contacts {
-                    let fullName = [cn.givenName, cn.familyName]
-                        .filter { !$0.isEmpty }
-                        .joined(separator: " ")
-                    guard !fullName.isEmpty else { continue }
-                    
-                    try dataManager.createPerson(
-                        name: fullName,
-                        phone: cn.phoneNumbers.first?.value.stringValue,
-                        email: cn.emailAddresses.first?.value as String?,
-                        birthday: cn.birthday.flatMap { Calendar.current.date(from: $0) },
-                        photoData: cn.imageData
-                    )
-                    importedCount += 1
-                }
-                
-                await MainActor.run {
-                    self.lastImportResult = ImportResult(
-                        importedCount: importedCount,
-                        skippedCount: 0,
-                        errors: [],
-                        skippedDuplicates: [],
-                        isGoldfishFormat: false,
-                        goldfishVersion: nil,
-                        connectionsRestored: 0,
-                        connectionsSkipped: 0,
-                        circlesCreated: 0,
-                        circlesExisting: 0
-                    )
-                    self.isImporting = false
-                    self.importProgress = ""
-                    self.showImportCompletionAlert = true
-                }
-            } catch {
-                await MainActor.run {
-                    importProgress = "Failed: \(error.localizedDescription)"
-                    isImporting = false
-                }
-            }
+                let data = try CNContactVCardSerialization.data(with: contacts)
+                try await importData(data)
+            } catch { finishImportFailure(error) }
         }
     }
-    
-    // File import
+
     func importContacts(from url: URL) {
-        guard let dataManager else { return }
-        guard url.startAccessingSecurityScopedResource() else { return }
-        defer { url.stopAccessingSecurityScopedResource() }
-        
+        guard dataManager != nil, !isImporting else { return }
         isImporting = true
         importProgress = "Reading file..."
-        
         Task {
+            let hasAccess = url.startAccessingSecurityScopedResource()
+            defer { if hasAccess { url.stopAccessingSecurityScopedResource() } }
             do {
                 let data = try Data(contentsOf: url)
-                let container = dataManager.context.container
-                let service = VCardImportService(modelContainer: container)
-                let result = try await service.importContacts(data) { progress in
-                    Task { @MainActor in
-                        self.importProgress = "Importing... \(Int(progress * 100))%"
-                    }
-                }
-                await MainActor.run {
-                    self.lastImportResult = result
-                    self.isImporting = false
-                    self.importProgress = ""
-                    self.showImportCompletionAlert = true
-                }
-            } catch {
-                await MainActor.run {
-                    importProgress = "Failed: \(error.localizedDescription)"
-                    isImporting = false
-                }
+                try await importData(data)
+            } catch { finishImportFailure(error) }
+        }
+    }
+
+    private func importData(_ data: Data) async throws {
+        guard let dataManager else { throw GoldfishError.contactNotFound }
+        let service = VCardImportService(modelContainer: dataManager.context.container)
+        let result = try await service.importContacts(data) { [weak self] progress in
+            Task { @MainActor in
+                guard let self, self.isImporting else { return }
+                self.importProgress = "Importing... \(Int(progress * 100))%"
             }
         }
+        lastImportResult = result
+        isImporting = false
+        importProgress = ""
+        showImportCompletionAlert = true
+        NotificationCenter.default.post(name: .goldfishDataDidChange, object: nil)
     }
-    
+
+    private func finishImportFailure(_ error: Error) {
+        isImporting = false
+        importProgress = ""
+        errorMessage = "Could not import: " + error.localizedDescription
+    }
+
     // MARK: - Import Result Formatting
-    
-    /// Formatted title for the import completion alert.
+
+    var importOutcome: ImportOutcome? {
+        guard let result = lastImportResult else { return nil }
+        let usableCount = result.importedCount + result.skippedCount
+        if usableCount == 0 {
+            return result.errors.isEmpty ? .noContactsFound : .couldNotRead
+        }
+        if !result.errors.isEmpty { return .partial }
+        return result.importedCount > 0 ? .imported : .alreadyHere
+    }
+
+    var hasImportDetails: Bool {
+        guard let result = lastImportResult else { return false }
+        return !result.skippedDuplicates.isEmpty || !result.errors.isEmpty
+    }
+
+    var importDetailLines: [String] {
+        guard let result = lastImportResult else { return [] }
+        let duplicates = result.skippedDuplicates.prefix(5).map { "Already here: \($0)" }
+        let errors = result.errors.prefix(5).map { "Could not process: \($0)" }
+        return Array(duplicates) + Array(errors)
+    }
+
+    var importDetailOverflowCount: Int {
+        guard let result = lastImportResult else { return 0 }
+        return max(0, result.skippedDuplicates.count - 5) + max(0, result.errors.count - 5)
+    }
+
     var importAlertTitle: String {
-        guard let result = lastImportResult else { return "Import Complete" }
-        if result.isGoldfishFormat {
-            return "Goldfish File Detected ✓"
-        } else {
-            return "Import Complete"
+        switch importOutcome {
+        case .imported: return lastImportResult?.isGoldfishFormat == true ? "Goldfish Import Complete" : "Contacts Imported"
+        case .alreadyHere: return "Already Here"
+        case .partial: return "Import Partially Complete"
+        case .noContactsFound: return "No Contacts Found"
+        case .couldNotRead: return "Couldn’t Read Contacts"
+        case nil: return "Import Complete"
         }
     }
-    
-    /// Formatted message for the import completion alert.
+
     var importAlertMessage: String {
         guard let result = lastImportResult else { return "" }
-        
         var lines: [String] = []
-        
+
+        switch importOutcome {
+        case .noContactsFound:
+            lines.append("No contacts were found in this selection.")
+        case .couldNotRead:
+            lines.append("The file did not contain readable contacts.")
+        case .alreadyHere:
+            lines.append("\(result.skippedCount) contacts were already here. No new contacts were added.")
+        default:
+            if result.importedCount > 0 { lines.append("\(result.importedCount) contacts imported") }
+            if result.skippedCount > 0 { lines.append("\(result.skippedCount) duplicates skipped") }
+        }
+
         if result.isGoldfishFormat {
-            lines.append("\(result.importedCount) contacts imported")
-            if result.skippedCount > 0 {
-                lines.append("\(result.skippedCount) duplicates skipped")
-            }
-            lines.append("\(result.connectionsRestored) connections restored")
-            if result.connectionsSkipped > 0 {
-                lines.append("\(result.connectionsSkipped) connections already existed")
-            }
-            if result.circlesCreated > 0 {
-                lines.append("\(result.circlesCreated) new ponds created")
-            }
-        } else {
-            lines.append("\(result.importedCount) contacts added")
-            if result.skippedCount > 0 {
-                lines.append("\(result.skippedCount) duplicates skipped")
-            }
-            lines.append("No Goldfish connection data found — contacts imported as standalone entries.")
+            if result.connectionsRestored > 0 { lines.append("\(result.connectionsRestored) connections restored") }
+            if result.connectionsSkipped > 0 { lines.append("\(result.connectionsSkipped) connections already existed or could not be restored") }
+            if result.circlesCreated > 0 { lines.append("\(result.circlesCreated) new ponds created") }
+        } else if result.importedCount + result.skippedCount > 0 {
+            lines.append("This vCard does not include Goldfish connection or pond data.")
         }
-        
-        if !result.errors.isEmpty {
-            lines.append("\n⚠️ \(result.errors.count) error(s) occurred")
+
+        if !result.errors.isEmpty && importOutcome != .couldNotRead {
+            lines.append("Some entries could not be processed. Open Details to review them.")
         }
-        
+
         return lines.joined(separator: "\n")
     }
 }

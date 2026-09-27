@@ -3,52 +3,106 @@ import SwiftUI
 // MARK: - CircleManagerViewModel
 @MainActor
 final class CircleManagerViewModel: ObservableObject {
-    
+
+    enum NameFeedback: Equatable {
+        case valid
+        case invalid(String)
+        case duplicate(String)
+        case advisory(String)
+
+        var message: String? {
+            switch self {
+            case .valid: return nil
+            case .invalid(let message), .duplicate(let message), .advisory(let message): return message
+            }
+        }
+
+        var preventsSave: Bool {
+            if case .invalid = self { return true }
+            return false
+        }
+    }
+
     // MARK: - Dependencies
     private let dataManager: GoldfishDataManager
-    
+
     // MARK: - State
+    @Published var errorMessage: String?
     @Published var circles: [GoldfishCircle] = []
-    
+
     // MARK: - Init
     init(dataManager: GoldfishDataManager) {
         self.dataManager = dataManager
         loadCircles()
     }
-    
+
     func loadCircles() {
         do {
             self.circles = try dataManager.fetchAllCircles()
         } catch {
-            print("Error loading circles: \(error)")
+            errorMessage = "Could not load ponds: \(error.localizedDescription)"
         }
     }
-    
+
+    func nameFeedback(_ name: String, excluding circle: GoldfishCircle? = nil) -> NameFeedback {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return .invalid("Enter a name for this pond.") }
+        guard trimmed.rangeOfCharacter(from: .controlCharacters) == nil else {
+            return .invalid("Use visible characters in the pond name.")
+        }
+
+        if let duplicate = circles.first(where: {
+            $0.id != circle?.id && $0.name.localizedCaseInsensitiveCompare(trimmed) == .orderedSame
+        }) {
+            return .duplicate("Another pond is already named \u{201C}\(duplicate.name)\u{201D}. Both can stay if their colors or purpose make them clear.")
+        }
+
+        if trimmed.count > 60 {
+            return .advisory("May be shortened on the map.")
+        }
+        return .valid
+    }
+
     // MARK: - CRUD
-    func createCircle(name: String, emoji: String, color: String) {
+    @discardableResult
+    func createCircle(name: String, emoji: String, color: String) -> Bool {
         do {
-            try dataManager.createCircle(name: name, color: color, emoji: emoji)
+            try dataManager.createCircle(name: name.trimmingCharacters(in: .whitespacesAndNewlines), color: color, emoji: emoji)
             loadCircles()
+            errorMessage = nil
+            return true
         } catch {
-            print("Error creating circle: \(error)")
+            errorMessage = error.localizedDescription
+            return false
+            // print("Error creating circle: \(error)")
         }
     }
-    
-    func deleteCircle(_ circle: GoldfishCircle) {
+
+    @discardableResult
+    func deleteCircle(_ circle: GoldfishCircle) -> Bool {
         do {
             try dataManager.deleteCircle(circle)
             loadCircles()
+            errorMessage = nil
+            return true
         } catch {
-            print("Error deleting circle: \(error)")
+            errorMessage = error.localizedDescription
+            return false
+            // print("Error deleting circle: \(error)")
         }
     }
-    
-    func updateCircle(_ circle: GoldfishCircle, name: String, emoji: String, color: String) {
+
+    @discardableResult
+    func updateCircle(_ circle: GoldfishCircle, name: String, emoji: String, color: String) -> Bool {
         do {
-            try dataManager.updateCircle(circle, name: name, emoji: emoji, color: color)
+            try dataManager.updateCircle(circle, name: name.trimmingCharacters(in: .whitespacesAndNewlines), emoji: emoji, color: color)
             loadCircles()
+            errorMessage = nil
+            return true
         } catch {
-            print("Error updating circle: \(error)")
+            errorMessage = error.localizedDescription
+            return false
+            // print("Error updating circle: \(error)")
         }
     }
 }

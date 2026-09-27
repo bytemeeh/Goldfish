@@ -1,3 +1,5 @@
+> **Historical draft — do not submit this copy.** This document predates the current local-only beta and includes obsolete CloudKit, location, and release claims. Use [the current TestFlight plan](Refinement/TESTFLIGHT_READINESS.md) and [verification record](Refinement/P1_RELEASE_VERIFICATION.md). Those documents explicitly distinguish implemented behavior from pending checks.
+
 # Goldfish — App Store Submission Package
 
 > **Bundle ID:** `com.goldfish.app` *(update to match your actual bundle ID)*  

@@ -7,7 +7,7 @@ options:
 
 settings:
   base:
-    SWIFT_VERSION: "5.9"
+    SWIFT_VERSION: "5.0"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
 
 targets:
@@ -26,13 +26,14 @@ targets:
       - path: Goldfish/Assets.xcassets
         group: Assets
     resources:
-      - path: Assets/EmptyStates
-        buildPhase: resources
       - path: Goldfish/PrivacyInfo.xcprivacy
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.pond.goldfish
         PRODUCT_NAME: Goldfish
+        # User-visible app name. The product and bundle id stay "Goldfish"/
+        # app.pond.goldfish — changing them would orphan installed users' data.
+        INFOPLIST_KEY_CFBundleDisplayName: Goldfish
         INFOPLIST_FILE: Goldfish/Info.plist
         CODE_SIGN_ENTITLEMENTS: Goldfish/Goldfish.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"
@@ -46,7 +47,12 @@ targets:
     info:
       path: Goldfish/Info.plist
       properties:
+        FeedbackSupportEmail: ""
+        ITSAppUsesNonExemptEncryption: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UILaunchScreen: {}
+        CFBundleDisplayName: Goldfish
     dependencies: []
     scheme:
       testTargets:
@@ -58,9 +64,7 @@ targets:
     platform: iOS
     deploymentTarget: "17.0"
     sources:
-      - path: Tests/GoldfishTests.swift
-        group: Tests
-      - path: Tests/VCardTests.swift
+      - path: Tests
         group: Tests
     settings:
       base:

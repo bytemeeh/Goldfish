@@ -11,6 +11,10 @@ final class ContactFormViewModel: ObservableObject {
     
     // MARK: - Target
     let existingPerson: Person?
+    let isDemoMode: Bool
+    @Published var errorMessage: String?
+    private var initialFormState: [String] = []
+    private var initialPhotoData: Data?
     
     // MARK: - Form State
     @Published var firstName: String = ""
@@ -32,6 +36,7 @@ final class ContactFormViewModel: ObservableObject {
     @Published var isFavorite: Bool = false
     @Published var tagsString: String = "" // Comma separated for editing
     @Published var colorHex: String = "#808080"
+    @Published var contactKind: ContactKind = .human
     
     // Photo / Emoji
     @Published var emojiAvatar: String = ""
@@ -51,14 +56,42 @@ final class ContactFormViewModel: ObservableObject {
         !firstName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     
+    private var formState: [String] {
+        [firstName, lastName, phone, email, notes, String(includeBirthday),
+         String(birthday.timeIntervalSince1970), street, city, state, country, postalCode,
+         String(isFavorite), tagsString, colorHex, emojiAvatar,
+         contactKind.rawValue,
+         selectedConnectionID?.uuidString ?? "", selectedRelationshipType.rawValue,
+         selectedCircleIDs.map(\.uuidString).sorted().joined(separator: ",")]
+    }
+
+    var hasUnsavedChanges: Bool {
+        formState != initialFormState || photoData != initialPhotoData
+    }
+
     var pageTitle: String {
-        existingPerson == nil ? "New Contact" : "Edit Contact"
+        existingPerson == nil ? (isDemoMode ? "New Demo Contact" : "New Contact") : "Edit Contact"
+    }
+
+    var relationshipPreview: String? {
+        guard let selectedConnectionID,
+              let target = allPersons.first(where: { $0.id == selectedConnectionID }) else { return nil }
+        let enteredName = [firstName, lastName]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        let subject = enteredName.isEmpty ? "This contact" : enteredName
+        if selectedRelationshipType == .other {
+            return "This saves: \(subject) has another connection to \(target.name)."
+        }
+        return "This saves: \(subject) is \(target.name)’s \(selectedRelationshipType.displayName.lowercased())."
     }
     
     // MARK: - Init
-    init(dataManager: GoldfishDataManager, person: Person? = nil) {
+    init(dataManager: GoldfishDataManager, person: Person? = nil, isDemoMode: Bool? = nil, initialCircleID: UUID? = nil) {
         self.dataManager = dataManager
         self.existingPerson = person
+        self.isDemoMode = person?.isDemo ?? isDemoMode ?? UserDefaults.standard.bool(forKey: "isDemoModeActive")
         
         if let person = person {
             // Edit Mode: Populate fields
@@ -82,10 +115,11 @@ final class ContactFormViewModel: ObservableObject {
             self.tagsString = person.tags.joined(separator: ", ")
             self.colorHex = person.color ?? "#808080"
             self.photoData = person.photoData
+            self.contactKind = person.contactKind
             
             // Populate selected circles
             // This requires fetching logic, or we assume circleContacts are loaded
-            let memberIDs = person.circleContacts.map(\.circle.id)
+            let memberIDs = person.circleContacts.filter { !$0.manuallyExcluded }.map(\.circle.id)
             self.selectedCircleIDs = Set(memberIDs)
         } else {
             // Create Mode: defaults
@@ -93,12 +127,18 @@ final class ContactFormViewModel: ObservableObject {
         
         loadCircles()
         loadPersons()
+        if person == nil, let initialCircleID, allCircles.contains(where: { $0.id == initialCircleID }) {
+            selectedCircleIDs = [initialCircleID]
+        }
+        initialFormState = formState
+        initialPhotoData = photoData
     }
     
     private func loadPersons() {
         if let persons = try? dataManager.fetchAllPersons() {
             // Exclude current person to prevent self-connection
-            self.allPersons = persons.filter { $0.id != self.existingPerson?.id && !$0.isMe }
+            self.allPersons = persons.filter { $0.id != self.existingPerson?.id && ($0.isMe || $0.isDemo == self.isDemoMode) }
+                .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
         }
     }
     
@@ -139,73 +179,77 @@ final class ContactFormViewModel: ObservableObject {
         }
         
         do {
-            let savedPerson: Person
-            if let person = existingPerson {
-                // Update
-                try dataManager.updatePerson(
-                    person,
-                    name: fullName,
-                    phone: .set(phone.isEmpty ? nil : phone),
-                    email: .set(email.isEmpty ? nil : email),
-                    birthday: .set(dob),
-                    notes: .set(notes.isEmpty ? nil : notes),
-                    isFavorite: isFavorite,
-                    tags: tags,
-                    color: colorHex,
-                    photoData: .set(finalPhotoData),
-                    street: .set(street.isEmpty ? nil : street),
-                    city: .set(city.isEmpty ? nil : city),
-                    state: .set(state.isEmpty ? nil : state),
-                    country: .set(country.isEmpty ? nil : country),
-                    postalCode: .set(postalCode.isEmpty ? nil : postalCode)
-                )
+            try dataManager.performAtomicEdit {
+                let savedPerson: Person
+                if let person = existingPerson {
+                    // Update
+                    try dataManager.updatePerson(
+                        person,
+                        name: fullName,
+                        phone: .set(phone.isEmpty ? nil : phone),
+                        email: .set(email.isEmpty ? nil : email),
+                        birthday: .set(dob),
+                        notes: .set(notes.isEmpty ? nil : notes),
+                        petKindRaw: .set(person.isMe ? nil : (contactKind == .human ? nil : contactKind.rawValue)),
+                        isFavorite: isFavorite,
+                        tags: tags,
+                        color: colorHex,
+                        photoData: .set(finalPhotoData),
+                        street: .set(street.isEmpty ? nil : street),
+                        city: .set(city.isEmpty ? nil : city),
+                        state: .set(state.isEmpty ? nil : state),
+                        country: .set(country.isEmpty ? nil : country),
+                        postalCode: .set(postalCode.isEmpty ? nil : postalCode)
+                    )
                 
-                // Update circles
-                try updateCircleMemberships(for: person)
-                savedPerson = person
-            } else {
-                // Create
-                let person = try dataManager.createPerson(
-                    name: fullName,
-                    phone: phone.isEmpty ? nil : phone,
-                    email: email.isEmpty ? nil : email,
-                    birthday: dob,
-                    notes: notes.isEmpty ? nil : notes,
-                    isFavorite: isFavorite,
-                    tags: tags,
-                    color: colorHex,
-                    photoData: finalPhotoData,
-                    street: street.isEmpty ? nil : street,
-                    city: city.isEmpty ? nil : city,
-                    state: state.isEmpty ? nil : state,
-                    country: country.isEmpty ? nil : country,
-                    postalCode: postalCode.isEmpty ? nil : postalCode
-                )
+                    // Update circles
+                    try updateCircleMemberships(for: person)
+                    savedPerson = person
+                } else {
+                    // Create
+                    let person = try dataManager.createPerson(
+                        name: fullName,
+                        phone: phone.isEmpty ? nil : phone,
+                        email: email.isEmpty ? nil : email,
+                        birthday: dob,
+                        notes: notes.isEmpty ? nil : notes,
+                        petKindRaw: contactKind == .human ? nil : contactKind.rawValue,
+                        isDemo: isDemoMode,
+                        isFavorite: isFavorite,
+                        tags: tags,
+                        color: colorHex,
+                        photoData: finalPhotoData,
+                        street: street.isEmpty ? nil : street,
+                        city: city.isEmpty ? nil : city,
+                        state: state.isEmpty ? nil : state,
+                        country: country.isEmpty ? nil : country,
+                        postalCode: postalCode.isEmpty ? nil : postalCode
+                    )
                 
-                try updateCircleMemberships(for: person)
-                savedPerson = person
-            }
-            
-            // Create Connection if selected
-            if let connID = selectedConnectionID,
-               let target = try? dataManager.fetchAllPersons().first(where: { $0.id == connID }) {
-                let exists = savedPerson.outgoingRelationships.contains(where: { $0.toContact.id == target.id }) ||
-                             savedPerson.incomingRelationships.contains(where: { $0.fromContact.id == target.id })
-                if !exists {
-                    _ = try dataManager.createRelationship(from: savedPerson, to: target, type: selectedRelationshipType)
+                    try updateCircleMemberships(for: person)
+                    savedPerson = person
                 }
-            }
             
+                // Create Connection if selected
+                if let connID = selectedConnectionID {
+                    guard let target = try dataManager.fetchAllPersons().first(where: { $0.id == connID }) else {
+                        throw GoldfishError.contactNotFound
+                    }
+                    _ = try dataManager.createRelationship(from: savedPerson, to: target, type: selectedRelationshipType, skipAutoAssign: true)
+                }
+            
+            }
             ToastManager.shared.showToast(message: "Contact saved ✓")
             return true
         } catch {
-            print("Error saving contact: \(error)")
+            errorMessage = "Could not save: \(error.localizedDescription)"
             return false
         }
     }
     
     private func updateCircleMemberships(for person: Person) throws {
         // Simple approach: Add to selected, remove from unselected
+        guard !person.isMe else { return }
         for circle in allCircles {
             if selectedCircleIDs.contains(circle.id) {
                 try dataManager.addToCircle(person, circle: circle)

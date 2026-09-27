@@ -72,6 +72,32 @@ final class Relationship {
     /// Whether this relationship is symmetric (both directions implied by one row).
     var isSymmetric: Bool { type.isSymmetric }
 
+    /// One logical relationship covers the reverse perspective too (mother ↔ child).
+    func matches(from: Person, to: Person, type requested: RelationshipType) -> Bool {
+        if fromContact.id == from.id && toContact.id == to.id {
+            return type == requested
+                || (type == .parent && (requested == .mother || requested == .father))
+                || (requested == .parent && (type == .mother || type == .father))
+        }
+        if fromContact.id == to.id && toContact.id == from.id {
+            return type.inverse == requested || requested.inverse == type
+        }
+        return false
+    }
+
+    /// A generic child/parent inverse must not discard a newly supplied mother/father role.
+    func preserveSpecificRole(from: Person, to: Person, type requested: RelationshipType) {
+        guard (requested == .mother || requested == .father), (type == .child || type == .parent),
+              matches(from: from, to: to, type: requested) else { return }
+        fromContact.outgoingRelationships.removeAll { $0.id == id }
+        toContact.incomingRelationships.removeAll { $0.id == id }
+        fromContact = from
+        toContact = to
+        type = requested
+        if !from.outgoingRelationships.contains(where: { $0.id == id }) { from.outgoingRelationships.append(self) }
+        if !to.incomingRelationships.contains(where: { $0.id == id }) { to.incomingRelationships.append(self) }
+    }
+
     /// Returns the "other" person in this relationship, given one of the two contacts.
     /// Useful when traversing the graph from a known contact.
     func otherContact(from person: Person) -> Person {

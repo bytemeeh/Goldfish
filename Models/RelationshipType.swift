@@ -22,6 +22,8 @@ enum RelationshipType: String, Codable, CaseIterable, Identifiable {
     case coworker
     case child
     case parent   // BUG 2 FIX: generic gender-neutral parent
+    case pet
+    case guardian
     case other
 
     var id: String { rawValue }
@@ -34,14 +36,14 @@ enum RelationshipType: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .sibling, .spouse, .partner, .friend, .coworker:  // BUG 1 FIX: .partner is symmetric
             return true
-        case .mother, .father, .child, .parent, .other:
+        case .mother, .father, .child, .parent, .pet, .guardian, .other:
             return false
         }
     }
 
     /// Whether this relationship is directional (parent → child lineage).
     /// Used by cycle detection — only directional types can create ancestry cycles.
-    var isDirectional: Bool { !isSymmetric }
+    var isDirectional: Bool { !isSymmetric && self != .pet && self != .guardian }
 
     // MARK: - Inverse
 
@@ -58,6 +60,8 @@ enum RelationshipType: String, Codable, CaseIterable, Identifiable {
         case .father:   return .child
         case .child:    return .parent  // BUG 2 FIX: inverse of child is parent
         case .parent:   return .child   // BUG 2 FIX: inverse of parent is child
+        case .pet:      return .guardian
+        case .guardian: return .pet
         case .sibling:  return .sibling
         case .spouse:   return .spouse
         case .friend:   return .friend
@@ -78,7 +82,7 @@ enum RelationshipType: String, Codable, CaseIterable, Identifiable {
     /// - nil: other (no auto-assignment)
     var autoCircleName: String? {
         switch self {
-        case .mother, .father, .sibling, .spouse, .partner, .child, .parent:
+        case .mother, .father, .sibling, .spouse, .partner, .child, .parent, .pet, .guardian:
             return "Family"
         case .friend:
             return "Friends"
@@ -103,6 +107,8 @@ enum RelationshipType: String, Codable, CaseIterable, Identifiable {
         case .coworker: return "Coworker"
         case .child:    return "Child"
         case .parent:   return "Parent"  // BUG 2 FIX
+        case .pet:      return "Pet"
+        case .guardian: return "Guardian"
         case .other:    return "Other"
         }
     }
@@ -117,8 +123,10 @@ enum RelationshipType: String, Codable, CaseIterable, Identifiable {
         case .partner:  return "heart"
         case .friend:   return "person.2.fill"
         case .coworker: return "briefcase.fill"
-        case .child:    return "figure.child"
+        case .child:    return "arrow.triangle.branch"
         case .parent:   return "figure.stand"     // BUG 2 FIX
+        case .pet:      return "pawprint.fill"
+        case .guardian: return "person.fill"
         case .other:    return "person.crop.circle"
         }
     }

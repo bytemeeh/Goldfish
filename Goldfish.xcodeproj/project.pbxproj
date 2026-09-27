@@ -3,15 +3,31 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		16859C5825FBD8FCB94AD807 /* ReversibleDataOperationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63BD97D87691F11000720D84 /* ReversibleDataOperationTests.swift */; };
+		9421425080684F7535007064 /* ContactExperienceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6557D7B6C5D0B81350FE7C32 /* ContactExperienceTests.swift */; };
+		7842BBB74FB0D6663DCEF564 /* RelationshipContextService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 512A119A2B00FF37313368CC /* RelationshipContextService.swift */; };
+		4ADA32CC2FAB5C5BFCE68A3B /* PondDisclosureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 772E3A5CA62977E2836FF495 /* PondDisclosureTests.swift */; };
+		F422378F662D7D899B1B3106 /* PondDisclosure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41B9CF20B8604C2692F8C65F /* PondDisclosure.swift */; };
+		78F9C733CF97AD1EF58F2E7B /* FeedbackReportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D90DE94CEE46F960D06CA6 /* FeedbackReportTests.swift */; };
+		965B4B727A219F1DC536193C /* FeedbackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2231CC1CE5FD5FA42E682B7 /* FeedbackView.swift */; };
+		18CF4E08555799D6F15C00BE /* FeedbackReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2DAF8858548407195C40B9A /* FeedbackReport.swift */; };
+		50B694AAC5F91400B6F54F30 /* RelationshipSearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701B836932AB4881EA7DBD53 /* RelationshipSearchTests.swift */; };
+		E779CAC9C5B33BC57D8E1A94 /* RelationshipQueryParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 290665F73CF6B8A08CAEDDDA /* RelationshipQueryParserTests.swift */; };
+		E7FBB6592335FF2E516FFF1F /* RelationshipSearchResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CE46DD2680EAF54D040A8A2 /* RelationshipSearchResultsView.swift */; };
+		0685C784074EFE459CAD9319 /* RelationshipSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 895B2310F1706584E42611CF /* RelationshipSearchService.swift */; };
+		4C7B891D1DF4A0755E9E4996 /* RelationshipQueryParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E12374A11E75BEE8533EA7D /* RelationshipQueryParser.swift */; };
+		8C08331DD62001DFBB3EDFF5 /* RippleGraphTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1673BB2A1C02BD460A5C6949 /* RippleGraphTests.swift */; };
+		1803C5F148207320987F5582 /* RippleExplorerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B23F0F771F01472F078E179 /* RippleExplorerView.swift */; };
+		B521D3A965FAA2F938E26D8E /* RippleGraph.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEF8500DBCBCE084AF687421 /* RippleGraph.swift */; };
+		FE1F8256AA2A96E50B3FED81 /* ContactKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41E24D23CF1DDEB2B843C8DE /* ContactKind.swift */; };
 		1E1F04E4AE429CD72482FAC0 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92780B32B06F68332108E218 /* SettingsViewModel.swift */; };
 		209649AE0B756C2AD63AD7BD /* LocationType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F95A5912A5A6B0EB052DD9C /* LocationType.swift */; };
 		35F37B25A44EF4D8C10EF6D9 /* SearchOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23864C6595744BC03BF3C8F6 /* SearchOverlayView.swift */; };
 		3709447CEAC7995DDB63F338 /* CircleManagerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FC9BA7B2DF2B0D060699789 /* CircleManagerViewModel.swift */; };
-		3B805853A39F72E0AAE9604F /* SecurityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB44107A6C85AB4EAE242256 /* SecurityTests.swift */; };
 		3C32AC7FFFE8AEDDE2AFBD26 /* ContactDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84F89864057C05D5D83EF1D1 /* ContactDetailViewModel.swift */; };
 		3E7812D7337CD8B06E16EA69 /* CircleManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC459BB4CA97463F57C743CA /* CircleManagerView.swift */; };
 		428A259CD768E2AF8AAF8CD7 /* GoldfishApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B0D93096FA1C53C7456041 /* GoldfishApp.swift */; };
@@ -38,10 +54,8 @@
 		A998D6BAA823FC45E444C2EA /* GraphContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D60F686BD156E1DCC710F6C /* GraphContainerView.swift */; };
 		AB98461BD617F57896B4B397 /* GoldfishDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23CC945346F772BDBFB3766 /* GoldfishDataManager.swift */; };
 		B41998DE0FCD60649AB40520 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2D153727D39B6A0434CB9F2 /* Assets.xcassets */; };
-		B925C000EA36BA89C30C53E5 /* GraphNodeSprite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C4DFECA32CAF12FFB7DA2D2 /* GraphNodeSprite.swift */; };
 		BA2C786B2631E28600453399 /* Person.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E6B8425027EED98DE4A82A /* Person.swift */; };
 		C54BCB99ADE0858E76FE6551 /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8E3DED1AC41D0D95F88ED0B /* HomeViewModel.swift */; };
-		C617C5FD21AC140BE812BA59 /* ResetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE1CF14A71D6F29F168F5213 /* ResetTests.swift */; };
 		C73B91046EB0E4140EDA8996 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF0B908F1589B9D32449F5A3 /* SettingsView.swift */; };
 		C876F2B08F4FCD2B482087D0 /* ContactPhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D78BF7A723944E3DBB95E364 /* ContactPhotoView.swift */; };
 		CB8C6223524F67C1379D0F7B /* GoldfishColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84099033F26B00F9703BB69F /* GoldfishColors.swift */; };
@@ -58,6 +72,22 @@
 		F295843930CD69E05B039F60 /* CircleContact.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79462C044D2EAD600E4E5A22 /* CircleContact.swift */; };
 		FA7438BD7011FE12A8223C31 /* WalkthroughAnchorKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D180B577A15626E75412A7B /* WalkthroughAnchorKey.swift */; };
 		FF153E8C06EE64AF9EE23E5C /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60B4485CDD5E2387715C6ED /* HomeView.swift */; };
+		41D5FD241A76E2BE95934934 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E5901AA27490178DDC04FA31 /* PrivacyInfo.xcprivacy */; };
+		E6C746CFD938A8BEE6C53A05 /* DiagramGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F2C5640987034053549D886 /* DiagramGeometry.swift */; };
+		19CF2F4DA7C2DEA2657BA0BB /* GroupTransferMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 649F3BFE492A7D568B1B93E5 /* GroupTransferMetadata.swift */; };
+		A9D324FE8E48C4C54C956EFF /* RelationshipForest.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5F7831AAC4622C797B4ECA9 /* RelationshipForest.swift */; };
+		0AC192B208ADEEA60E3D9966 /* StoreRecoveryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE73E0548621B6BD979A5029 /* StoreRecoveryService.swift */; };
+		D5F69161751E8220C9C0CF42 /* VCardTextCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = 520ED6096DB57166CAD2A547 /* VCardTextCodec.swift */; };
+		8F09C2245CFA8B74CB90F2DE /* DataIntegrityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ACD097DE9FEE7C38F1EE1A6 /* DataIntegrityTests.swift */; };
+		4C5054A96989FA9CADBB6D2D /* DiagramGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B72207DD9134D6589213AADC /* DiagramGeometryTests.swift */; };
+		4F989FBAB1C4DD4C40C7CDE5 /* GraphLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2D0D7D6634EAE285DAB66CD /* GraphLayoutTests.swift */; };
+		BEADDC29B9382B5563372279 /* RelationshipForestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 124EF18826E7B9600EA4A0FD /* RelationshipForestTests.swift */; };
+		2413D7CD70E0398005F9DEE8 /* ResetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB08A2DF556D90F6897FBCD /* ResetTests.swift */; };
+		C9E27FA2574814EEC6CC5934 /* SecurityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6B75B0832C299F0CB1950EA /* SecurityTests.swift */; };
+		3118EBCFDEA3436B0AA76577 /* StoreRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36E1FFEF2B29609D7F51CE9F /* StoreRecoveryTests.swift */; };
+		81B010AAA874E0F5ECD23772 /* TransferIntegrityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9770C52D459783890F03AE1 /* TransferIntegrityTests.swift */; };
+		1020599106E5615103D5C8BC /* VCardParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 075DA340DC3854AB15A5991C /* VCardParserTests.swift */; };
+		79A1D931FC6F54815AB53AF8 /* VCardTextCodecTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26A97D47BC6A21B0CB7FBAC4 /* VCardTextCodecTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -71,6 +101,23 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		63BD97D87691F11000720D84 /* ReversibleDataOperationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReversibleDataOperationTests.swift; sourceTree = "<group>"; };
+		6557D7B6C5D0B81350FE7C32 /* ContactExperienceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactExperienceTests.swift; sourceTree = "<group>"; };
+		512A119A2B00FF37313368CC /* RelationshipContextService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelationshipContextService.swift; sourceTree = "<group>"; };
+		772E3A5CA62977E2836FF495 /* PondDisclosureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Tests/PondDisclosureTests.swift"; sourceTree = SOURCE_ROOT; };
+		41B9CF20B8604C2692F8C65F /* PondDisclosure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Services/PondDisclosure.swift"; sourceTree = SOURCE_ROOT; };
+		C7D90DE94CEE46F960D06CA6 /* FeedbackReportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Tests/FeedbackReportTests.swift"; sourceTree = SOURCE_ROOT; };
+		E2231CC1CE5FD5FA42E682B7 /* FeedbackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/FeedbackView.swift"; sourceTree = SOURCE_ROOT; };
+		F2DAF8858548407195C40B9A /* FeedbackReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Services/FeedbackReport.swift"; sourceTree = SOURCE_ROOT; };
+		701B836932AB4881EA7DBD53 /* RelationshipSearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Tests/RelationshipSearchTests.swift"; sourceTree = SOURCE_ROOT; };
+		290665F73CF6B8A08CAEDDDA /* RelationshipQueryParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Tests/RelationshipQueryParserTests.swift"; sourceTree = SOURCE_ROOT; };
+		5CE46DD2680EAF54D040A8A2 /* RelationshipSearchResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/RelationshipSearchResultsView.swift"; sourceTree = SOURCE_ROOT; };
+		895B2310F1706584E42611CF /* RelationshipSearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Services/RelationshipSearchService.swift"; sourceTree = SOURCE_ROOT; };
+		7E12374A11E75BEE8533EA7D /* RelationshipQueryParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Services/RelationshipQueryParser.swift"; sourceTree = SOURCE_ROOT; };
+		1673BB2A1C02BD460A5C6949 /* RippleGraphTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Tests/RippleGraphTests.swift"; sourceTree = SOURCE_ROOT; };
+		2B23F0F771F01472F078E179 /* RippleExplorerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/RippleExplorerView.swift"; sourceTree = SOURCE_ROOT; };
+		DEF8500DBCBCE084AF687421 /* RippleGraph.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Services/RippleGraph.swift"; sourceTree = SOURCE_ROOT; };
+		41E24D23CF1DDEB2B843C8DE /* ContactKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Models/ContactKind.swift"; sourceTree = SOURCE_ROOT; };
 		07C06E74A48B5FB4A45AEFFE /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
 		0A1F5F173E53589083A80C83 /* OnboardingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingViewModel.swift; sourceTree = "<group>"; };
 		0FC9BA7B2DF2B0D060699789 /* CircleManagerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircleManagerViewModel.swift; sourceTree = "<group>"; };
@@ -86,13 +133,12 @@
 		491C7C7FB18B72D3012F8B74 /* VCardImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCardImportService.swift; sourceTree = "<group>"; };
 		551C03B877AB16BAD7D978FF /* VCardParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCardParser.swift; sourceTree = "<group>"; };
 		5A693BE57C6F9048C77F0398 /* RelationshipType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelationshipType.swift; sourceTree = "<group>"; };
-		5C4DFECA32CAF12FFB7DA2D2 /* GraphNodeSprite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphNodeSprite.swift; sourceTree = "<group>"; };
 		5DC978DF10D6338667D1A78F /* ContactFormViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactFormViewModel.swift; sourceTree = "<group>"; };
 		6879CE14E7E8A6D7273F384D /* DemoDataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoDataService.swift; sourceTree = "<group>"; };
 		79462C044D2EAD600E4E5A22 /* CircleContact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircleContact.swift; sourceTree = "<group>"; };
 		84099033F26B00F9703BB69F /* GoldfishColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishColors.swift; sourceTree = "<group>"; };
 		84F89864057C05D5D83EF1D1 /* ContactDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactDetailViewModel.swift; sourceTree = "<group>"; };
-		8C24F650B4D953E067477E61 /* GoldfishTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GoldfishTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8C24F650B4D953E067477E61 /* GoldfishTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GoldfishTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8CBBD93FA8F2D699FAB66621 /* GoldfishGraphScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishGraphScene.swift; sourceTree = "<group>"; };
 		8D60F686BD156E1DCC710F6C /* GraphContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphContainerView.swift; sourceTree = "<group>"; };
 		92780B32B06F68332108E218 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
@@ -110,20 +156,34 @@
 		B513AB037FC67502BDE35E66 /* ContactExportSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactExportSelectionView.swift; sourceTree = "<group>"; };
 		B60B4485CDD5E2387715C6ED /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		BB68F40C7CE83693EE0BA98F /* GoldfishModelContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishModelContainer.swift; sourceTree = "<group>"; };
-		BE1CF14A71D6F29F168F5213 /* ResetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetTests.swift; sourceTree = "<group>"; };
 		CAB1639DB0E83F4C9EEB7341 /* GraphViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphViewModel.swift; sourceTree = "<group>"; };
 		D23CC945346F772BDBFB3766 /* GoldfishDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishDataManager.swift; sourceTree = "<group>"; };
-		D3A49C20C5A36D698F6C0C28 /* Goldfish.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Goldfish.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D3A49C20C5A36D698F6C0C28 /* Goldfish.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Goldfish.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D5778550682B283AF818B234 /* OnboardingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlow.swift; sourceTree = "<group>"; };
 		D78BF7A723944E3DBB95E364 /* ContactPhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactPhotoView.swift; sourceTree = "<group>"; };
 		D7D6D567A57494FE76310713 /* PrivacyPolicyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyPolicyView.swift; sourceTree = "<group>"; };
 		D8E3DED1AC41D0D95F88ED0B /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
-		DB44107A6C85AB4EAE242256 /* SecurityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityTests.swift; sourceTree = "<group>"; };
 		E23362045AC5C4ADADC9340E /* ContactDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactDetailView.swift; sourceTree = "<group>"; };
 		EC459BB4CA97463F57C743CA /* CircleManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircleManagerView.swift; sourceTree = "<group>"; };
 		EF0B908F1589B9D32449F5A3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		F20EB7C0FDC13E039E24E3D6 /* GoldfishCircle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishCircle.swift; sourceTree = "<group>"; };
 		FEADE301945C104F6ED28958 /* AddRelationshipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRelationshipView.swift; sourceTree = "<group>"; };
+		E5901AA27490178DDC04FA31 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Goldfish/PrivacyInfo.xcprivacy; sourceTree = SOURCE_ROOT; };
+		8F2C5640987034053549D886 /* DiagramGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/DiagramGeometry.swift; sourceTree = SOURCE_ROOT; };
+		649F3BFE492A7D568B1B93E5 /* GroupTransferMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/GroupTransferMetadata.swift; sourceTree = SOURCE_ROOT; };
+		D5F7831AAC4622C797B4ECA9 /* RelationshipForest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/RelationshipForest.swift; sourceTree = SOURCE_ROOT; };
+		CE73E0548621B6BD979A5029 /* StoreRecoveryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/StoreRecoveryService.swift; sourceTree = SOURCE_ROOT; };
+		520ED6096DB57166CAD2A547 /* VCardTextCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/VCardTextCodec.swift; sourceTree = SOURCE_ROOT; };
+		1ACD097DE9FEE7C38F1EE1A6 /* DataIntegrityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/DataIntegrityTests.swift; sourceTree = SOURCE_ROOT; };
+		B72207DD9134D6589213AADC /* DiagramGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/DiagramGeometryTests.swift; sourceTree = SOURCE_ROOT; };
+		A2D0D7D6634EAE285DAB66CD /* GraphLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/GraphLayoutTests.swift; sourceTree = SOURCE_ROOT; };
+		124EF18826E7B9600EA4A0FD /* RelationshipForestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/RelationshipForestTests.swift; sourceTree = SOURCE_ROOT; };
+		1CB08A2DF556D90F6897FBCD /* ResetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/ResetTests.swift; sourceTree = SOURCE_ROOT; };
+		C6B75B0832C299F0CB1950EA /* SecurityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/SecurityTests.swift; sourceTree = SOURCE_ROOT; };
+		36E1FFEF2B29609D7F51CE9F /* StoreRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/StoreRecoveryTests.swift; sourceTree = SOURCE_ROOT; };
+		B9770C52D459783890F03AE1 /* TransferIntegrityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/TransferIntegrityTests.swift; sourceTree = SOURCE_ROOT; };
+		075DA340DC3854AB15A5991C /* VCardParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/VCardParserTests.swift; sourceTree = SOURCE_ROOT; };
+		26A97D47BC6A21B0CB7FBAC4 /* VCardTextCodecTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/VCardTextCodecTests.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -142,7 +202,6 @@
 				D78BF7A723944E3DBB95E364 /* ContactPhotoView.swift */,
 				2D1A3C039925FC8835B046D7 /* ContactRowView.swift */,
 				07C06E74A48B5FB4A45AEFFE /* EmptyStateView.swift */,
-				5C4DFECA32CAF12FFB7DA2D2 /* GraphNodeSprite.swift */,
 				2D180B577A15626E75412A7B /* WalkthroughAnchorKey.swift */,
 			);
 			path = Components;
@@ -161,6 +220,17 @@
 		5EFB2A558042BA37539AECB8 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				F2DAF8858548407195C40B9A /* FeedbackReport.swift */,
+				895B2310F1706584E42611CF /* RelationshipSearchService.swift */,
+				7E12374A11E75BEE8533EA7D /* RelationshipQueryParser.swift */,
+				512A119A2B00FF37313368CC /* RelationshipContextService.swift */,
+				41B9CF20B8604C2692F8C65F /* PondDisclosure.swift */,
+				DEF8500DBCBCE084AF687421 /* RippleGraph.swift */,
+				520ED6096DB57166CAD2A547 /* VCardTextCodec.swift */,
+				CE73E0548621B6BD979A5029 /* StoreRecoveryService.swift */,
+				D5F7831AAC4622C797B4ECA9 /* RelationshipForest.swift */,
+				649F3BFE492A7D568B1B93E5 /* GroupTransferMetadata.swift */,
+				8F2C5640987034053549D886 /* DiagramGeometry.swift */,
 				6879CE14E7E8A6D7273F384D /* DemoDataService.swift */,
 				D23CC945346F772BDBFB3766 /* GoldfishDataManager.swift */,
 				A49CD34AF5BA426B62604E12 /* GraphService.swift */,
@@ -189,6 +259,7 @@
 		94DD597DEBD840FC58988EE8 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				41E24D23CF1DDEB2B843C8DE /* ContactKind.swift */,
 				79462C044D2EAD600E4E5A22 /* CircleContact.swift */,
 				F20EB7C0FDC13E039E24E3D6 /* GoldfishCircle.swift */,
 				BB68F40C7CE83693EE0BA98F /* GoldfishModelContainer.swift */,
@@ -204,9 +275,24 @@
 		A7E2DD0661BEF6C241A21C0E /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				C7D90DE94CEE46F960D06CA6 /* FeedbackReportTests.swift */,
+				701B836932AB4881EA7DBD53 /* RelationshipSearchTests.swift */,
+				290665F73CF6B8A08CAEDDDA /* RelationshipQueryParserTests.swift */,
+				6557D7B6C5D0B81350FE7C32 /* ContactExperienceTests.swift */,
+				63BD97D87691F11000720D84 /* ReversibleDataOperationTests.swift */,
+				772E3A5CA62977E2836FF495 /* PondDisclosureTests.swift */,
+				1673BB2A1C02BD460A5C6949 /* RippleGraphTests.swift */,
+				26A97D47BC6A21B0CB7FBAC4 /* VCardTextCodecTests.swift */,
+				075DA340DC3854AB15A5991C /* VCardParserTests.swift */,
+				B9770C52D459783890F03AE1 /* TransferIntegrityTests.swift */,
+				36E1FFEF2B29609D7F51CE9F /* StoreRecoveryTests.swift */,
+				C6B75B0832C299F0CB1950EA /* SecurityTests.swift */,
+				1CB08A2DF556D90F6897FBCD /* ResetTests.swift */,
+				124EF18826E7B9600EA4A0FD /* RelationshipForestTests.swift */,
+				A2D0D7D6634EAE285DAB66CD /* GraphLayoutTests.swift */,
+				B72207DD9134D6589213AADC /* DiagramGeometryTests.swift */,
+				1ACD097DE9FEE7C38F1EE1A6 /* DataIntegrityTests.swift */,
 				AB7E247B3F4C3AF7C560516E /* GoldfishTests.swift */,
-				BE1CF14A71D6F29F168F5213 /* ResetTests.swift */,
-				DB44107A6C85AB4EAE242256 /* SecurityTests.swift */,
 				22FA52C98225A204657AE2D1 /* VCardTests.swift */,
 			);
 			path = Tests;
@@ -215,6 +301,9 @@
 		A83CFF25F0A81D31B33EDEE3 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				E2231CC1CE5FD5FA42E682B7 /* FeedbackView.swift */,
+				5CE46DD2680EAF54D040A8A2 /* RelationshipSearchResultsView.swift */,
+				2B23F0F771F01472F078E179 /* RippleExplorerView.swift */,
 				FEADE301945C104F6ED28958 /* AddRelationshipView.swift */,
 				EC459BB4CA97463F57C743CA /* CircleManagerView.swift */,
 				E23362045AC5C4ADADC9340E /* ContactDetailView.swift */,
@@ -252,6 +341,7 @@
 		D41AC9AE2C56EDE078C65BF8 /* Assets */ = {
 			isa = PBXGroup;
 			children = (
+				E5901AA27490178DDC04FA31 /* PrivacyInfo.xcprivacy */,
 				A2D153727D39B6A0434CB9F2 /* Assets.xcassets */,
 				84099033F26B00F9703BB69F /* GoldfishColors.swift */,
 			);
@@ -300,7 +390,9 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 2620;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
 			};
 			buildConfigurationList = 9B22BB186E7740FB30B7520C /* Build configuration list for PBXProject "Goldfish" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -325,6 +417,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				41D5FD241A76E2BE95934934 /* PrivacyInfo.xcprivacy in Resources */,
 				B41998DE0FCD60649AB40520 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -336,9 +429,24 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				78F9C733CF97AD1EF58F2E7B /* FeedbackReportTests.swift in Sources */,
+				9421425080684F7535007064 /* ContactExperienceTests.swift in Sources */,
+				16859C5825FBD8FCB94AD807 /* ReversibleDataOperationTests.swift in Sources */,
+				4ADA32CC2FAB5C5BFCE68A3B /* PondDisclosureTests.swift in Sources */,
+				8C08331DD62001DFBB3EDFF5 /* RippleGraphTests.swift in Sources */,
+				50B694AAC5F91400B6F54F30 /* RelationshipSearchTests.swift in Sources */,
+				E779CAC9C5B33BC57D8E1A94 /* RelationshipQueryParserTests.swift in Sources */,
+				79A1D931FC6F54815AB53AF8 /* VCardTextCodecTests.swift in Sources */,
+				1020599106E5615103D5C8BC /* VCardParserTests.swift in Sources */,
+				81B010AAA874E0F5ECD23772 /* TransferIntegrityTests.swift in Sources */,
+				3118EBCFDEA3436B0AA76577 /* StoreRecoveryTests.swift in Sources */,
+				C9E27FA2574814EEC6CC5934 /* SecurityTests.swift in Sources */,
+				2413D7CD70E0398005F9DEE8 /* ResetTests.swift in Sources */,
+				BEADDC29B9382B5563372279 /* RelationshipForestTests.swift in Sources */,
+				4F989FBAB1C4DD4C40C7CDE5 /* GraphLayoutTests.swift in Sources */,
+				4C5054A96989FA9CADBB6D2D /* DiagramGeometryTests.swift in Sources */,
+				8F09C2245CFA8B74CB90F2DE /* DataIntegrityTests.swift in Sources */,
 				A12178FE25EAC46313A6B449 /* GoldfishTests.swift in Sources */,
-				C617C5FD21AC140BE812BA59 /* ResetTests.swift in Sources */,
-				3B805853A39F72E0AAE9604F /* SecurityTests.swift in Sources */,
 				D00193B89B1F4378A71B925B /* VCardTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -347,6 +455,21 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				965B4B727A219F1DC536193C /* FeedbackView.swift in Sources */,
+				18CF4E08555799D6F15C00BE /* FeedbackReport.swift in Sources */,
+				1803C5F148207320987F5582 /* RippleExplorerView.swift in Sources */,
+				E7FBB6592335FF2E516FFF1F /* RelationshipSearchResultsView.swift in Sources */,
+				0685C784074EFE459CAD9319 /* RelationshipSearchService.swift in Sources */,
+				4C7B891D1DF4A0755E9E4996 /* RelationshipQueryParser.swift in Sources */,
+				7842BBB74FB0D6663DCEF564 /* RelationshipContextService.swift in Sources */,
+				F422378F662D7D899B1B3106 /* PondDisclosure.swift in Sources */,
+				B521D3A965FAA2F938E26D8E /* RippleGraph.swift in Sources */,
+				FE1F8256AA2A96E50B3FED81 /* ContactKind.swift in Sources */,
+				D5F69161751E8220C9C0CF42 /* VCardTextCodec.swift in Sources */,
+				0AC192B208ADEEA60E3D9966 /* StoreRecoveryService.swift in Sources */,
+				A9D324FE8E48C4C54C956EFF /* RelationshipForest.swift in Sources */,
+				19CF2F4DA7C2DEA2657BA0BB /* GroupTransferMetadata.swift in Sources */,
+				E6C746CFD938A8BEE6C53A05 /* DiagramGeometry.swift in Sources */,
 				ECFFC3D41412401DC6EF47D6 /* AddRelationshipView.swift in Sources */,
 				F295843930CD69E05B039F60 /* CircleContact.swift in Sources */,
 				3E7812D7337CD8B06E16EA69 /* CircleManagerView.swift in Sources */,
@@ -372,7 +495,6 @@
 				58B94D181ACB62212905B341 /* GoldfishGraphScene.swift in Sources */,
 				6825D808BE307DCC70CDC709 /* GoldfishModelContainer.swift in Sources */,
 				A998D6BAA823FC45E444C2EA /* GraphContainerView.swift in Sources */,
-				B925C000EA36BA89C30C53E5 /* GraphNodeSprite.swift in Sources */,
 				4D8BCFB37DF629DF16DF7D19 /* GraphService.swift in Sources */,
 				5ACC2D1E2542DC0142FECC1E /* GraphViewModel.swift in Sources */,
 				FF153E8C06EE64AF9EE23E5C /* HomeView.swift in Sources */,
@@ -444,7 +566,6 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -465,10 +586,9 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
 		};
@@ -509,7 +629,6 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -523,10 +642,9 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
@@ -577,6 +695,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Goldfish/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Goldfish;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -600,6 +719,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Goldfish/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Goldfish;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

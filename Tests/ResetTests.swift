@@ -6,9 +6,10 @@ import SwiftData
 final class ResetTests: XCTestCase {
 
     var manager: GoldfishDataManager!
+    var container: ModelContainer!
 
     override func setUp() async throws {
-        manager = try makeTestManager()
+        (manager, container) = try makeTestManager()
     }
 
     func testResetAllData() throws {

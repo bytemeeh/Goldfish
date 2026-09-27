@@ -15,8 +15,12 @@ struct SettingsView: View {
     @State private var showingLogoutAlert = false
     @State private var showingExportPrompt = false
     @State private var exportURL: IdentifiableWrapper<URL>?
+    @State private var showingImportDetails = false
+    @State private var didOfferInitialImport = false
+    private let startWithImport: Bool
 
-    init() {
+    init(startWithImport: Bool = false) {
+        self.startWithImport = startWithImport
         // Placeholder — will be replaced in onAppear; needed because
         // @EnvironmentObject isn't available in init.
         _viewModel = StateObject(wrappedValue: SettingsViewModel())
@@ -24,165 +28,346 @@ struct SettingsView: View {
 
     var body: some View {
         List {
-            // MARK: - Profile
+
+            // MARK: - Large title (signage board: marker-red bar + uppercase)
+            Section {
+                VStack(alignment: .leading, spacing: GoldfishDS.Space.sm) {
+                    Rectangle()
+                        .fill(GoldfishDS.terracotta)
+                        .frame(width: 56, height: GoldfishDS.Rule.bar)
+                    Text("Settings")
+                        .font(.gfDisplay)
+                        .textCase(.uppercase)
+                        .kerning(1.5)
+                        .foregroundStyle(GoldfishDS.ink(.primary))
+                }
+                .padding(.top, GoldfishDS.Space.lg)
+                .padding(.bottom, GoldfishDS.Space.sm)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 0,
+                                         leading: GoldfishDS.Space.pageMargin,
+                                         bottom: 0,
+                                         trailing: GoldfishDS.Space.pageMargin))
+            }
+
+            // MARK: - Profile hero row
             Section {
                 if let me = viewModel.mePerson {
                     NavigationLink {
                         ContactFormView(viewModel: ContactFormViewModel(dataManager: dataManager, person: me))
                             .environmentObject(dataManager)
                     } label: {
-                        HStack(spacing: 12) {
-                            ContactPhotoView(
-                                photoData: me.photoData,
-                                name: me.name,
-                                colorHex: me.color,
-                                size: .medium
-                            )
-                            VStack(alignment: .leading) {
-                                Text(me.name)
-                                    .font(.headline)
-                                Text("This is you")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                        HStack(spacing: GoldfishDS.Space.lg) {
+                            ContactPhotoView(person: me, size: .medium)
+                            VStack(alignment: .leading, spacing: GoldfishDS.Space.xs) {
+                                Text(me.name).font(.gfName).foregroundStyle(GoldfishDS.ink(.primary))
+                                Text("Edit your profile").font(.gfMeta).foregroundStyle(GoldfishDS.ink(.secondary))
                             }
+                            Spacer(minLength: 0)
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, GoldfishDS.Space.sm)
                     }
+                    .accessibilityLabel("Edit your profile, \(me.name)")
+                    .accessibilityIdentifier("editProfileButton")
                 } else {
                     Text("My Card not found")
-                        .foregroundStyle(.secondary)
+                        .font(.gfBody)
+                        .foregroundStyle(GoldfishDS.ink(.tertiary))
                 }
+            } header: {
+                SettingsSectionHeader("Profile")
             }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0,
+                                     leading: GoldfishDS.Space.pageMargin,
+                                     bottom: 0,
+                                     trailing: GoldfishDS.Space.pageMargin))
+            .listRowSeparatorTint(GoldfishDS.ink(.hairline))
 
             // MARK: - Configuration
-            Section("Configuration") {
-                NavigationLink {
+            Section {
+                SettingsNavRow(
+                    icon: "circle.grid.hex",
+                    label: "Manage Ponds"
+                ) {
                     CircleManagerView()
                         .environmentObject(dataManager)
-                } label: {
-                    Label("Manage Ponds", systemImage: "circle.grid.hex")
                 }
-                
-                Button(action: {
+                .overlay(alignment: .bottom) {
+                    Rectangle().fill(GoldfishDS.ink(.hairline)).frame(height: 0.5).padding(.leading, 44)
+                }
+
+                SettingsActionRow(icon: "hand.point.up.left.fill", label: "Replay Feature Tour") {
                     dismiss()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         walkthroughManager.replayWalkthrough(dataManager: dataManager)
                     }
-                }) {
-                    Label("Replay Feature Tour", systemImage: "hand.point.up.left.fill")
-                        .foregroundColor(.primary)
                 }
+            } header: {
+                SettingsSectionHeader("Configuration")
             }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0,
+                                     leading: GoldfishDS.Space.pageMargin,
+                                     bottom: 0,
+                                     trailing: GoldfishDS.Space.pageMargin))
+            .listRowSeparator(.hidden)
+
+            // MARK: - Help & feedback
+            Section {
+                SettingsNavRow(
+                    icon: "ladybug",
+                    label: FeedbackKind.bug.title
+                ) {
+                    FeedbackView(initialKind: .bug)
+                }
+                .overlay(alignment: .bottom) {
+                    Rectangle().fill(GoldfishDS.ink(.hairline)).frame(height: 0.5).padding(.leading, 44)
+                }
+
+                SettingsNavRow(
+                    icon: "lightbulb",
+                    label: FeedbackKind.idea.title
+                ) {
+                    FeedbackView(initialKind: .idea)
+                }
+            } header: {
+                SettingsSectionHeader("Help & feedback")
+            } footer: {
+                Text("Tell us what went wrong or share an idea. You choose what to include and how to share it.")
+                    .font(.gfMeta)
+                    .foregroundStyle(GoldfishDS.ink(.tertiary))
+                    .padding(.horizontal, GoldfishDS.Space.pageMargin)
+                    .padding(.top, GoldfishDS.Space.sm)
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0,
+                                     leading: GoldfishDS.Space.pageMargin,
+                                     bottom: 0,
+                                     trailing: GoldfishDS.Space.pageMargin))
+            .listRowSeparator(.hidden)
 
             // MARK: - Demo Mode
             Section {
-                Toggle(isOn: Binding(
-                    get: { demoModeManager.isDemoModeActive },
-                    set: { newValue in
-                        if newValue {
-                            demoModeManager.activateDemoMode(dataManager: dataManager)
-                        } else {
-                            demoModeManager.deactivateDemoMode()
+                HStack(spacing: GoldfishDS.Space.lg) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 15))
+                        .frame(width: 20)
+                        .foregroundStyle(GoldfishDS.ink(.tertiary))
+                    Text("Show Demo Data")
+                        .font(.gfBody)
+                        .foregroundStyle(GoldfishDS.ink(.primary))
+                    Spacer(minLength: 0)
+                    Toggle("Show Demo Data", isOn: Binding(
+                        get: { demoModeManager.isDemoModeActive },
+                        set: { newValue in
+                            if newValue {
+                                demoModeManager.activateDemoMode(dataManager: dataManager)
+                            } else {
+                                demoModeManager.deactivateDemoMode()
+                            }
                         }
-                    }
-                )) {
-                    Label("Show Demo Data", systemImage: "sparkles")
+                    ))
+                    .labelsHidden()
+                    .tint(GoldfishDS.terracotta)
+                    .disabled(walkthroughManager.isActive)
+                    .opacity(walkthroughManager.isActive ? 0.4 : 1)
+                }
+                .padding(.vertical, GoldfishDS.Space.sm)
+
+                if walkthroughManager.isActive {
+                    Text("Demo data is on during the feature tour.")
+                        .font(.gfMeta)
+                        .foregroundStyle(GoldfishDS.ink(.tertiary))
+                        .padding(.leading, 36)
+                        .padding(.bottom, GoldfishDS.Space.xs)
                 }
             } header: {
-                Text("Demo Mode")
+                SettingsSectionHeader("Demo Mode")
             } footer: {
                 Text("Demo mode shows sample contacts and connections to showcase all features. Your real data is safely hidden while demo mode is active.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(.gfMeta)
+                    .foregroundStyle(GoldfishDS.ink(.tertiary))
+                    .padding(.horizontal, GoldfishDS.Space.pageMargin)
+                    .padding(.top, GoldfishDS.Space.sm)
             }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0,
+                                     leading: GoldfishDS.Space.pageMargin,
+                                     bottom: 0,
+                                     trailing: GoldfishDS.Space.pageMargin))
+            .listRowSeparatorTint(GoldfishDS.ink(.hairline))
 
             // MARK: - Data
             Section {
-                NavigationLink {
+                SettingsNavRow(
+                    icon: "square.and.arrow.up",
+                    label: "Export Contacts"
+                ) {
                     ContactExportSelectionView()
                         .environmentObject(dataManager)
-                } label: {
-                    Label("Export Contacts", systemImage: "square.and.arrow.up")
+                }
+                .overlay(alignment: .bottom) {
+                    Rectangle().fill(GoldfishDS.ink(.hairline)).frame(height: 0.5).padding(.leading, 44)
                 }
 
-                Button {
+                SettingsActionRow(icon: "square.and.arrow.down", label: "Import Contacts") {
                     showingImportOptions = true
-                } label: {
-                    Label("Import Contacts", systemImage: "square.and.arrow.down")
                 }
+                .disabled(viewModel.isImporting)
 
                 if viewModel.isImporting {
-                    HStack {
+                    HStack(spacing: GoldfishDS.Space.md) {
                         ProgressView()
-                            .padding(.trailing, 8)
+                            .tint(GoldfishDS.ink(.secondary))
                         Text(viewModel.importProgress)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.gfMeta)
+                            .foregroundStyle(GoldfishDS.ink(.tertiary))
+                        Spacer(minLength: 0)
                     }
+                    .padding(.vertical, GoldfishDS.Space.sm)
+                    .padding(.leading, 44)
                 }
             } header: {
-                Text("Data")
+                SettingsSectionHeader("Data")
             } footer: {
-                Text("Exports include connections, ponds, and relationship types. Another Goldfish user can import this file to restore the full network.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                Text("Export selected people as a vCard. Goldfish can also restore included connections and pond membership. See Privacy for transfer limits.")
+                    .font(.gfMeta)
+                    .foregroundStyle(GoldfishDS.ink(.tertiary))
+                    .padding(.horizontal, GoldfishDS.Space.pageMargin)
+                    .padding(.top, GoldfishDS.Space.sm)
             }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0,
+                                     leading: GoldfishDS.Space.pageMargin,
+                                     bottom: 0,
+                                     trailing: GoldfishDS.Space.pageMargin))
+            .listRowSeparator(.hidden)
 
-            // MARK: - App Info
+            // MARK: - About
             Section {
-                NavigationLink(destination: PrivacyPolicyView()) {
-                    Label("Privacy Policy", systemImage: "hand.raised.fill")
+                SettingsNavRow(
+                    icon: "hand.raised.fill",
+                    label: "Privacy Policy",
+                    destination: { PrivacyPolicyView() }
+                )
+                .overlay(alignment: .bottom) {
+                    Rectangle().fill(GoldfishDS.ink(.hairline)).frame(height: 0.5).padding(.leading, 44)
                 }
-                
-                HStack {
+
+                HStack(spacing: GoldfishDS.Space.lg) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 15))
+                        .frame(width: 20)
+                        .foregroundStyle(GoldfishDS.ink(.tertiary))
                     Text("Version")
-                    Spacer()
+                        .font(.gfBody)
+                        .foregroundStyle(GoldfishDS.ink(.primary))
+                    Spacer(minLength: 0)
                     Text("\(viewModel.appVersion) (\(viewModel.buildNumber))")
-                        .foregroundStyle(.secondary)
+                        .font(.gfBody)
+                        .monospacedDigit()
+                        .foregroundStyle(GoldfishDS.ink(.tertiary))
                 }
+                .padding(.vertical, GoldfishDS.Space.sm)
+
             } header: {
-                Text("About")
+                SettingsSectionHeader("About")
             } footer: {
-                VStack(spacing: 8) {
+                VStack(spacing: GoldfishDS.Space.xs) {
                     Text("Goldfish © 2026")
-                        .padding(.top)
+                        .font(.gfCaption)
+                        .monospacedDigit()
+                        .kerning(1.1)
+                        .foregroundStyle(GoldfishDS.ink(.quaternary))
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.top, GoldfishDS.Space.lg)
+                .padding(.bottom, GoldfishDS.Space.xl)
             }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0,
+                                     leading: GoldfishDS.Space.pageMargin,
+                                     bottom: 0,
+                                     trailing: GoldfishDS.Space.pageMargin))
+            .listRowSeparator(.hidden)
 
-            // MARK: - Logout
+            // MARK: - Logout / Reset
             Section {
-                Button(role: .destructive) {
+                Button {
                     if viewModel.hasManualContacts {
                         showingExportPrompt = true
                     } else {
                         showingLogoutAlert = true
                     }
                 } label: {
-                    HStack {
-                        Spacer()
-                        Text("Logout and Reset Experience")
-                        Spacer()
-                    }
+                    Text("Reset App")
+                        .font(.gfLabel)
+                        .textCase(.uppercase)
+                        .kerning(1.2)
+                        .foregroundStyle(GoldfishDS.terracotta)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: GoldfishDS.Radius.control)
+                                .strokeBorder(GoldfishDS.terracotta, lineWidth: 1)
+                        )
                 }
+                .buttonStyle(.plain)
+                .padding(.vertical, GoldfishDS.Space.xs)
+            } header: {
+                // Marker-red rule above the section signals severity — end of service.
+                Rectangle()
+                    .fill(GoldfishDS.terracotta)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: GoldfishDS.Rule.hairline)
+                    .listRowInsets(EdgeInsets())
+                    .textCase(nil)
             } footer: {
-                Text("Logout will permanently delete all your local data and reset the app to its initial state.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                Text("Resetting permanently deletes all your local data and returns the app to its initial state.")
+                    .font(.gfMeta)
+                    .foregroundStyle(GoldfishDS.ink(.tertiary))
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
+                    .padding(.horizontal, GoldfishDS.Space.pageMargin)
+                    .padding(.top, GoldfishDS.Space.sm)
+                    .padding(.bottom, GoldfishDS.Space.xxl)
             }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0,
+                                     leading: GoldfishDS.Space.pageMargin,
+                                     bottom: 0,
+                                     trailing: GoldfishDS.Space.pageMargin))
+            .listRowSeparator(.hidden)
         }
-        .navigationTitle("Settings")
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(GoldfishDS.warmBlack.ignoresSafeArea())
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") {
+                Button("Done") {
                     dismiss()
                 }
+                .font(.gfBody)
+                .foregroundStyle(GoldfishDS.ink(.secondary))
             }
         }
         .onAppear {
             viewModel.configure(dataManager: dataManager)
+            guard startWithImport,
+                  !didOfferInitialImport,
+                  !walkthroughManager.isActive,
+                  !demoModeManager.isDemoModeActive else { return }
+            didOfferInitialImport = true
+            DispatchQueue.main.async { showingImportOptions = true }
+        }
+        .onChange(of: viewModel.showImportCompletionAlert) { _, completed in
+            if completed && ((viewModel.lastImportResult?.importedCount ?? 0) + (viewModel.lastImportResult?.skippedCount ?? 0)) > 0 {
+                if walkthroughManager.isActive { walkthroughManager.finishTour(keepDemoData: true) }
+                demoModeManager.deactivateDemoMode()
+            }
         }
         .fileImporter(
             isPresented: $showingImporter,
@@ -195,7 +380,7 @@ struct SettingsView: View {
                     viewModel.importContacts(from: url)
                 }
             case .failure(let error):
-                print("File picker error: \(error)")
+                viewModel.errorMessage = "Could not open file: " + error.localizedDescription
             }
         }
         .confirmationDialog("Import Contacts", isPresented: $showingImportOptions, titleVisibility: .visible) {
@@ -213,47 +398,170 @@ struct SettingsView: View {
             ContactPicker(isPresented: $showingPhonebookPicker) { selectedContacts in
                 viewModel.importContacts(from: selectedContacts)
             }
+            .presentationCornerRadius(GoldfishDS.Radius.sheet)
         }
+        .alert("Action could not be completed", isPresented: Binding(
+            get: { viewModel.errorMessage != nil }, set: { if !$0 { viewModel.errorMessage = nil } }
+        )) { Button("OK") { viewModel.errorMessage = nil } } message: { Text(viewModel.errorMessage ?? "") }
         .alert(viewModel.importAlertTitle, isPresented: $viewModel.showImportCompletionAlert) {
+            if viewModel.hasImportDetails {
+                Button("Details") { showingImportDetails = true }
+            }
             Button("OK", role: .cancel) { }
         } message: {
             Text(viewModel.importAlertMessage)
         }
+        .sheet(isPresented: $showingImportDetails) {
+            ImportDetailsView(
+                lines: viewModel.importDetailLines,
+                overflowCount: viewModel.importDetailOverflowCount
+            )
+            .presentationDetents([.medium, .large])
+            .presentationCornerRadius(GoldfishDS.Radius.sheet)
+        }
         .alert("Reset Experience", isPresented: $showingLogoutAlert) {
-            Button("Reset Anyway", role: .destructive) {
-                viewModel.performReset(
+            Button("Delete All Local Data", role: .destructive) {
+                if viewModel.performReset(
                     walkthroughManager: walkthroughManager,
                     demoModeManager: demoModeManager
-                )
-                dismiss()
+                ) { dismiss() }
             }
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("This will permanently delete ALL your contacts and connections. This action cannot be undone.")
         }
         .alert("Export Contacts?", isPresented: $showingExportPrompt) {
-            Button("Export and Save") {
+            Button("Export First") {
                 if let url = viewModel.generateExportURL() {
                     self.exportURL = IdentifiableWrapper(url)
-                    // We can't easily trigger ShareSheet from here without a bit more boilerplate,
-                    // but we can provide the URL and then reset.
-                    // For now, let's just trigger the system share sheet if possible or reset.
-                    // A better way is to use a ShareLink in SwiftUI or a custom UIActivityViewController wrapper.
                 }
             }
-            Button("Reset Anyway", role: .destructive) {
-                viewModel.performReset(
+            Button("Delete All Local Data", role: .destructive) {
+                if viewModel.performReset(
                     walkthroughManager: walkthroughManager,
                     demoModeManager: demoModeManager
-                )
-                dismiss()
+                ) { dismiss() }
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("You have manually created contacts. Would you like to export them before resetting everything?")
+            Text("You have saved contacts. Export a copy first, then return here to reset. Delete All Local Data permanently deletes your contacts and connections.")
         }
         .sheet(item: $exportURL) { wrapper in
             ShareSheet(activityItems: [wrapper.value])
+                .presentationCornerRadius(GoldfishDS.Radius.sheet)
+        }
+    }
+}
+
+private struct ImportDetailsView: View {
+    @Environment(\.dismiss) private var dismiss
+    let lines: [String]
+    let overflowCount: Int
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                        Text(line)
+                            .font(.gfBody)
+                            .foregroundStyle(GoldfishDS.ink(.primary))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(minHeight: 44, alignment: .leading)
+                    }
+                    if overflowCount > 0 {
+                        Text("\(overflowCount) more details are not shown here.")
+                            .font(.gfMeta)
+                            .foregroundStyle(GoldfishDS.ink(.secondary))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .listRowBackground(GoldfishDS.surface)
+            }
+            .scrollContentBackground(.hidden)
+            .background(GoldfishDS.warmBlack.ignoresSafeArea())
+            .navigationTitle("Import Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(GoldfishDS.terracotta)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Section header
+
+private struct SettingsSectionHeader: View {
+    let title: String
+    init(_ title: String) { self.title = title }
+
+    var body: some View {
+        Text(title)
+            .gfSectionLabel()
+            .padding(.horizontal, GoldfishDS.Space.pageMargin)
+            .padding(.top, GoldfishDS.Space.xl)
+            .padding(.bottom, GoldfishDS.Space.xs)
+            .textCase(nil)           // override List's default uppercase to use our own
+    }
+}
+
+// MARK: - Reusable row: nav destination
+
+private struct SettingsNavRow<Destination: View>: View {
+    let icon: String
+    let label: String
+    let destination: () -> Destination
+
+    var body: some View {
+        NavigationLink(destination: destination()) {
+            SettingsRowContent(icon: icon, label: label, showChevron: false)
+                .padding(.vertical, GoldfishDS.Space.sm)
+        }
+        .accessibilityLabel(label)
+    }
+}
+
+// MARK: - Reusable row: action button (no trailing chevron — it's a tap action, not navigation)
+
+private struct SettingsActionRow: View {
+    let icon: String
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            SettingsRowContent(icon: icon, label: label, showChevron: false)
+        }
+        .buttonStyle(.plain)
+        .padding(.vertical, GoldfishDS.Space.sm)
+    }
+}
+
+// MARK: - Row content (icon + label + optional chevron)
+
+private struct SettingsRowContent: View {
+    let icon: String
+    let label: String
+    var showChevron: Bool = true
+
+    var body: some View {
+        HStack(spacing: GoldfishDS.Space.lg) {
+            Image(systemName: icon)
+                .font(.system(size: 15))
+                .frame(width: 20)
+                .foregroundStyle(GoldfishDS.ink(.tertiary))
+            Text(label)
+                .font(.gfBody)
+                .foregroundStyle(GoldfishDS.ink(.primary))
+            Spacer(minLength: 0)
+            if showChevron {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(GoldfishDS.ink(.quaternary))
+            }
         }
     }
 }

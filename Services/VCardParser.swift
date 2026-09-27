@@ -1,6 +1,7 @@
 import Foundation
+#if canImport(os)
 import os
-import SwiftData // For RelationshipType
+#endif
 
 // MARK: - VCardContact
 /// A lightweight intermediate representation of a parsed vCard contact.
@@ -25,7 +26,9 @@ struct VCardContact {
     var isFavorite: Bool = false
     var color: String?
     var isMe: Bool = false
+    var petKindRaw: String?
     var circles: [String] = []
+    var groups: [GroupTransferMetadata] = []
     var relatedTo: [(uuid: UUID, type: RelationshipType)] = []
 }
 
@@ -61,27 +64,37 @@ struct VCardParseResult {
 /// Handles custom `X-GOLDFISH-*` extensions and Goldfish manifest detection.
 struct VCardParser {
     
+    static let manifestName = "_GOLDFISH_MANIFEST"
+    #if canImport(os)
     private static let logger = Logger(subsystem: "com.goldfish.app", category: "VCardParser")
+    #endif
 
     /// Parses vCard data and returns a full result including manifest detection.
     static func parseWithManifest(_ data: Data) -> VCardParseResult {
         guard let string = String(data: data, encoding: .utf8) else {
+            #if canImport(os)
             logger.error("Failed to decode vCard data as UTF-8")
+            #endif
             return VCardParseResult(manifest: nil, contacts: [])
         }
 
         var contacts: [VCardContact] = []
         var manifest: GoldfishManifest?
         
-        let chunks: [String] = string.components(separatedBy: "BEGIN:VCARD")
-        
-        for chunk in chunks {
-            let trim = chunk.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trim.isEmpty { continue }
-            guard trim.contains("END:VCARD") else { continue }
-            
+        var blocks: [String] = []
+        var current: [String]?
+        for line in string.components(separatedBy: .newlines) {
+            if line.uppercased() == "BEGIN:VCARD" { current = [] }
+            else if line.uppercased() == "END:VCARD" {
+                if let current { blocks.append(current.joined(separator: "\n")) }
+                current = nil
+            } else { current?.append(line) }
+        }
+        for trim in blocks {
             // Check if this is a manifest vCard
-            if trim.contains(VCardExporter.manifestName) {
+            let properties = unfoldLines(trim)
+            if properties.contains("FN:" + manifestName),
+               properties.contains(where: { $0.hasPrefix("X-GOLDFISH-EXPORT-VERSION:") }) {
                 manifest = parseManifest(block: trim)
                 continue
             }
@@ -136,7 +149,9 @@ struct VCardParser {
     private static func parseSingleContact(block: String) -> VCardContact? {
         var contact = VCardContact()
         let lines = unfoldLines(block)
-        
+        let isLegacyGoldfish = !lines.contains("X-GOLDFISH-CONTACT-VERSION:1.1")
+            && lines.contains(where: { $0.hasPrefix("X-GOLDFISH-") })
+
         for line in lines {
             // Split into Key and Value
             // FN:Marcel Meeh -> Key: FN, Value: Marcel Meeh
@@ -163,7 +178,7 @@ struct VCardParser {
                 // If FN is missing, we could try to construct name from N
                 // But for now we rely on FN which is standard for display name
                 if contact.name == nil {
-                     let nameParts = rawValue.components(separatedBy: ";").map { unescape($0) }
+                     let nameParts = structuredComponents(rawValue, legacy: isLegacyGoldfish)
                      let family = nameParts.indices.contains(0) ? nameParts[0] : ""
                      let given = nameParts.indices.contains(1) ? nameParts[1] : ""
                      contact.name = "\(given) \(family)".trimmingCharacters(in: .whitespaces)
@@ -183,7 +198,7 @@ struct VCardParser {
                 contact.notes = unescape(rawValue)
             case "ADR":
                 // ;;Street;City;State;Zip;Country
-                let components = rawValue.components(separatedBy: ";").map { unescape($0) }
+                let components = structuredComponents(rawValue, legacy: isLegacyGoldfish)
                 // RFC 2426: Post Office Box; Extended Address; Street; City; Region; Postal Code; Country
                 // Index 0: PO Box
                 // Index 1: Extended
@@ -203,7 +218,7 @@ struct VCardParser {
             // Custom Extensions
             case "X-GOLDFISH-TAGS":
                 // Comma separated, escaped
-                let tags = unescape(rawValue).components(separatedBy: ",")
+                let tags = VCardTextCodec.components(isLegacyGoldfish ? unescape(rawValue) : rawValue, separatedBy: ",")
                 contact.tags = tags.filter { !$0.isEmpty }
             case "X-GOLDFISH-FAVORITE":
                 contact.isFavorite = (rawValue.lowercased() == "true")
@@ -211,8 +226,14 @@ struct VCardParser {
                 contact.color = rawValue // Parsing handles validation later
             case "X-GOLDFISH-IS-ME":
                 contact.isMe = (rawValue.lowercased() == "true")
+            case "X-GOLDFISH-KIND":
+                contact.petKindRaw = ContactKind(rawValue: rawValue.lowercased())?.rawValue
             case "X-GOLDFISH-CIRCLE":
                 contact.circles.append(unescape(rawValue))
+            case "X-GOLDFISH-GROUP":
+                if let group = GroupTransferMetadata.decode(rawValue), !contact.groups.contains(where: { $0.id == group.id }) {
+                    contact.groups.append(group)
+                }
             case "X-GOLDFISH-RELATED-TO":
                 // UUID;type
                 let relParts = rawValue.split(separator: ";")
@@ -227,12 +248,25 @@ struct VCardParser {
         }
         
         // Validation: Must have at least a Name
+        contact.name = contact.name?.trimmingCharacters(in: .whitespacesAndNewlines)
         if contact.name == nil || contact.name?.isEmpty == true {
+            #if canImport(os)
             logger.warning("Skipping vCard without FN/Name")
+            #endif
             return nil
         }
         
         return contact
+    }
+
+    private static func structuredComponents(_ value: String, legacy: Bool) -> [String] {
+        let fields = VCardTextCodec.components(value, separatedBy: ";")
+        // Goldfish 1.0 incorrectly escaped structural delimiters. Only apply this
+        // fallback to its extension-bearing cards with no unescaped delimiters.
+        if legacy && fields.count == 1 && value.contains("\\;") {
+            return unescape(value).components(separatedBy: ";")
+        }
+        return fields
     }
 
     /// Unfolds "folded" lines (lines starting with space/tab are continuations).
@@ -271,11 +305,6 @@ struct VCardParser {
     /// Unescapes vCard text values.
     /// \\ -> \, \, -> , \; -> ; \n -> newline
     private static func unescape(_ value: String) -> String {
-        return value
-            .replacingOccurrences(of: "\\n", with: "\n")
-            .replacingOccurrences(of: "\\N", with: "\n")
-            .replacingOccurrences(of: "\\,", with: ",")
-            .replacingOccurrences(of: "\\;", with: ";")
-            .replacingOccurrences(of: "\\\\", with: "\\")
+        VCardTextCodec.unescape(value)
     }
 }

@@ -1,13 +1,10 @@
+import Foundation
 import SwiftData
 
 // MARK: - Model Container Configuration
 /// Centralized factory for creating the SwiftData `ModelContainer`.
 ///
-/// **Production:** Uses CloudKit sync via `cloudKitContainerIdentifier`.
-/// All models sync automatically — no custom sync logic required.
-/// Merge conflicts use CloudKit's "latest wins" strategy.
-///
-/// **Previews / Tests:** Uses in-memory storage with no CloudKit.
+/// Production uses local storage. No CloudKit capability is enabled in this build.
 enum GoldfishModelContainer {
 
     /// All model types in the Goldfish schema.
@@ -23,20 +20,19 @@ enum GoldfishModelContainer {
 
     /// Creates the production container with local-only storage.
     ///
-    /// **CloudKit is currently disabled for local development.**
-    /// To re-enable, uncomment the `cloudKitDatabase` line and restore
-    /// the iCloud entitlements in `Goldfish.entitlements`.
-    ///
     /// - Returns: A configured `ModelContainer`.
     static func production(
         cloudKitIdentifier: String = "iCloud.com.goldfish.app"
     ) throws -> ModelContainer {
         let config = ModelConfiguration(
-            schema: schema
-            // CloudKit sync (re-enable when signing is configured):
-            // cloudKitDatabase: .private(cloudKitIdentifier)
+            schema: schema,
+            cloudKitDatabase: .none
         )
         return try ModelContainer(for: schema, configurations: [config])
+    }
+
+    static var localStoreURL: URL {
+        ModelConfiguration(schema: schema, cloudKitDatabase: .none).url
     }
 
     /// Creates an in-memory container for SwiftUI previews.
