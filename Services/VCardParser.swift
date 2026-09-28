@@ -154,7 +154,7 @@ struct VCardParser {
 
         for line in lines {
             // Split into Key and Value
-            // FN:Marcel Meeh -> Key: FN, Value: Marcel Meeh
+            // FN:Alex Morgan -> Key: FN, Value: Alex Morgan
             // ADR;TYPE=HOME:;;Street... -> Key: ADR;TYPE=HOME, Value: ;;Street...
             
             let parts: [String.SubSequence] = line.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: true)

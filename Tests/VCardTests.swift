@@ -38,9 +38,9 @@ final class VCardTests: XCTestCase {
         let id = UUID()
         let source = Person(
             id: id,
-            name: "Marcel Meeh",
+            name: "Alex Morgan",
             phone: "+49123456789",
-            email: "marcel@example.com",
+            email: "alex@example.com",
             birthday: Date(timeIntervalSince1970: 0), // 1970-01-01
             notes: "Likes coding;\nand \"swift\"",
             isFavorite: true,
@@ -56,7 +56,7 @@ final class VCardTests: XCTestCase {
         let vCardString: String = String(data: vCardData, encoding: .utf8)!
         
         // Verify some raw string properties
-        XCTAssertTrue(vCardString.contains("FN:Marcel Meeh"))
+        XCTAssertTrue(vCardString.contains("FN:Alex Morgan"))
         XCTAssertTrue(vCardString.contains("X-GOLDFISH-TAGS:dev,ios\\, swift")) // Escaped comma
         XCTAssertTrue(vCardString.contains("NOTE:Likes coding\\;\\nand \"swift\"")) // Escaped chars
         
@@ -67,9 +67,9 @@ final class VCardTests: XCTestCase {
         
         // 4. Verify Fields
         XCTAssertEqual(result.uid, id)
-        XCTAssertEqual(result.name, "Marcel Meeh")
+        XCTAssertEqual(result.name, "Alex Morgan")
         XCTAssertEqual(result.phone, "+49123456789")
-        XCTAssertEqual(result.email, "marcel@example.com")
+        XCTAssertEqual(result.email, "alex@example.com")
         XCTAssertEqual(result.isFavorite, true)
         XCTAssertEqual(result.color, "#FF0000")
         XCTAssertEqual(result.tags.count, 2)

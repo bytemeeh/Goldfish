@@ -122,7 +122,7 @@ final class RelationshipSearchTests: XCTestCase {
     }
 
     func testMyAnchorUsesTheIsMeContact() {
-        let me = person("Marcel", isMe: true)
+        let me = person("Alex", isMe: true)
         let friend = person("Friend")
         link(me, friend, .friend)
 

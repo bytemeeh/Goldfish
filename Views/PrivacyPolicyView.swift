@@ -13,7 +13,7 @@ struct PrivacyPolicyView: View {
                 section("Exports and recovery copies", "A vCard is a shareable contact export, not a complete pond backup. It includes selected people and contact details; Goldfish relationship and pond metadata may not be retained by other contact apps. Empty ponds, manual exclusions, and some location records are not serialized. A recovery copy contains raw local files and supporting photos for support; share it only with someone you trust.")
                 section("Manage or delete your data", "You can edit or delete contacts in the app, hide sample contacts, and use the reset action in Settings. Export anything you want to keep before resetting or deleting the app. Device backups are controlled by your iOS settings.")
                 section("Feedback and bug reports", "If you choose Report a bug or Share an idea, Goldfish prepares a report from what you wrote, an optional screenshot, and optional app details. Nothing is sent automatically. You choose whether to review it in Mail, share it, or copy it; delivery and handling then depend on the service you choose.")
-                section("Questions", "The app is developed by Marcel Meeh. For questions about this app or its handling of your information, use Help & feedback in Settings.")
+                section("Questions", "For questions about Goldfish or its handling of your information, use Help & feedback in Settings.")
                 if let privacyURL = FeedbackConfiguration.privacyPolicyURL {
                     Link("Goldfish Privacy Policy", destination: privacyURL)
                         .font(.gfBody).foregroundStyle(GoldfishDS.terracotta)

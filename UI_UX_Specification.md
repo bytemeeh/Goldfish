@@ -549,8 +549,8 @@ The query matches against these fields using `localizedCaseInsensitiveContains`:
 
 | Field | Source | Example Match |
 |---|---|---|
-| Name | `person.name` | "Mar" matches "Marcel Meeh" |
-| Email | `person.email` | "gmail" matches "marcel@gmail.com" |
+| Name | `person.name` | "Alex" matches "Alex Morgan" |
+| Email | `person.email` | "example" matches "alex@example.com" |
 | Phone | `person.phone` | "0176" matches "+49 176 1234567" |
 | Notes | `person.notes` | "birthday" matches "Bring cake for his birthday" |
 | Tags | `person.tags` | "gym" matches tag "gym buddy" |

@@ -160,7 +160,7 @@ final class Person {
     }
 
     /// Initials derived from the contact's name.
-    /// - "Marcel Meeh" → "MM"
+    /// - "Alex Morgan" → "AM"
     /// - "Madonna" → "MA"
     /// - "" → "?"
     var initials: String {

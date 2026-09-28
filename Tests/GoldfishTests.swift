@@ -243,7 +243,7 @@ final class SearchTests: XCTestCase {
 
     /// Partial, case-insensitive name match.
     func testSearchByName() throws {
-        try manager.createPerson(name: "Marcel Meeh")
+        try manager.createPerson(name: "Mara Morgan")
         try manager.createPerson(name: "Maria Mueller")
         try manager.createPerson(name: "Bob Smith")
 
