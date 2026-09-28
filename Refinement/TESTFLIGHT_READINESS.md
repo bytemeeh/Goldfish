@@ -20,6 +20,8 @@ This document is a release plan and evidence register for the Goldfish iOS beta.
 | Hosted privacy-policy URL | **Live** — https://goldfish-pond-support.bwjhhk9fbp.chatgpt.site/privacy | Use this exact URL in App Store Connect. |
 | External human acceptance | **Pending — no U18 human sessions yet** | Automated checks and prior visual records do not replace the five-task human protocol in this plan. |
 
+Public app copy, screenshots, support pages, and optional App Store metadata use the **Goldfish** brand and support inbox without personal attribution. Apple still uses the Account Holder’s verified legal name as the developer and seller for an Individual membership; changing that platform-provided identity requires conversion to an eligible Organization membership.
+
 ## Beta product being offered
 
 The beta should be described as a private, local relationship journal. The current usable feature surface is:
