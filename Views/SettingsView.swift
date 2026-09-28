@@ -132,6 +132,14 @@ struct SettingsView: View {
                 ) {
                     FeedbackView(initialKind: .idea)
                 }
+
+                if let supportURL = FeedbackConfiguration.supportURL {
+                    Link(destination: supportURL) {
+                        SettingsRowContent(icon: "lifepreserver", label: "Support website", showChevron: false)
+                            .padding(.vertical, GoldfishDS.Space.sm)
+                    }
+                    .accessibilityLabel("Open Goldfish support website")
+                }
             } header: {
                 SettingsSectionHeader("Help & feedback")
             } footer: {

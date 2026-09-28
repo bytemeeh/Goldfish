@@ -47,7 +47,9 @@ targets:
     info:
       path: Goldfish/Info.plist
       properties:
-        FeedbackSupportEmail: ""
+        FeedbackSupportEmail: "goldfish.pond.app@gmail.com"
+        GoldfishSupportURL: "https://goldfish-pond-support.bwjhhk9fbp.chatgpt.site/"
+        GoldfishPrivacyPolicyURL: "https://goldfish-pond-support.bwjhhk9fbp.chatgpt.site/privacy"
         ITSAppUsesNonExemptEncryption: false
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]

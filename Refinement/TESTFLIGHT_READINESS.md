@@ -1,7 +1,7 @@
 # Goldfish U18 TestFlight readiness
 
-**Prepared:** 27 September 2026  
-**Decision:** **Not ready to upload or invite testers.** Upload is blocked by Apple activation and distribution signing. Support email confirmation and on-screen verification remain pending. Human testing is planned for the beta; it is not represented as completed.
+**Prepared:** 28 September 2026
+**Decision:** **Not ready to invite external testers.** Developer membership and public support details are active. Distribution signing, App Store Connect setup/upload, physical-device verification, and beta review remain pending. Human testing is planned for the beta; it is not represented as completed.
 
 This document is a release plan and evidence register for the Goldfish iOS beta. It does not certify a build. See `P1_RELEASE_VERIFICATION.md` for engineering checks performed during integration. App Store Connect upload, TestFlight installation, physical-device testing and human usability sessions remain pending. Historical build, test, and screenshot records elsewhere in `Refinement/` remain useful engineering context, but they do not fill the U18 release-rehearsal evidence slots below.
 
@@ -9,15 +9,15 @@ This document is a release plan and evidence register for the Goldfish iOS beta.
 
 | Item | Current state | Release consequence |
 |---|---|---|
-| Apple Developer Program membership | **Blocked — purchased, awaiting Apple activation** | TestFlight and App Store Connect distribution cannot be staged until the membership is active. Apple describes TestFlight, App Store Connect, certificates, identifiers, and profiles as membership resources in its [program overview](https://developer.apple.com/help/account/membership/programs-overview). |
-| Signing identities | **Development identity found; distribution signing pending** | Fresh unrestricted keychain inspection found an Apple Development certificate for the Goldfish account (expires 18 February 2027); no Apple Distribution identity was found. A distribution identity or Xcode-managed equivalent is still needed to distribute or upload. Apple documents distribution certificates as the identity used to distribute apps and upload to App Store Connect in its [certificates overview](https://developer.apple.com/help/account/create-certificates/certificates-overview). |
-| App Store Connect app record | **Pending account activation** | Create or confirm the record before upload. The record must use the same bundle ID as the build. |
+| Apple Developer Program membership | **Active — verified 28 September 2026** | Individual membership is active through 28 September 2027. App Store Connect and certificate resources are available. |
+| Signing identities | **Development identity found; Xcode account and distribution signing pending** | An Apple Development certificate exists for the Goldfish account (expires 18 February 2027). Signed archive attempts confirm that Xcode has no Apple account configured and no matching provisioning profile. Add the active account in Xcode Settings → Accounts, then allow Xcode to manage signing. |
+| App Store Connect app record | **Blocked by App Store Connect Terms of Service** | App creation reached Apple’s Terms of Service gate. The Account Holder must review and accept it before the record can be completed. Planned record: iOS, English (U.S.), bundle ID `app.pond.goldfish`, SKU `goldfish-ios-1`, full access. |
 | Source bundle identity | `app.pond.goldfish` | Confirm that this exact explicit App ID is registered to the activated team before archiving. Apple associates uploads using bundle ID, version, and build number, as described in [Upload builds](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds). Keep this Goldfish identifier unchanged so existing local installations retain their data. |
 | Source version | `1.0` (`1`) | Treat as a source value, not an accepted TestFlight version. Choose and record the candidate version/build before archive; increment the build number for every new upload. |
 | Deployment target | iOS 17.0 | Recruit compatible iPhone and iPad testers and cover the supported OS range in the device matrix. |
-| Public support URL | **Pending owner confirmation** | Do not publish a guessed URL. Record the confirmed public URL and accessibility check before external invitations. |
-| Feedback/support email | **Pending owner confirmation** | `FeedbackSupportEmail` is empty in both `Goldfish/Info.plist` and `project.yml`, so direct in-app Mail is intentionally unavailable. A real monitored address is required for TestFlight test information; Apple says the Feedback Email is shown to testers and is the reply-to address for invitations in [Provide test information](https://developer.apple.com/help/app-store-connect/test-a-beta-version/provide-test-information). |
-| Hosted privacy-policy URL | **Pending release-owner confirmation** | The app contains an in-app privacy explanation, but eventual App Store metadata requires a public Privacy Policy URL for iOS, per Apple’s [App information reference](https://developer.apple.com/help/app-store-connect/reference/app-information/app-information). Do not reuse an example URL from historical documents without confirming ownership and content. |
+| Public support URL | **Live** — https://goldfish-pond-support.bwjhhk9fbp.chatgpt.site/ | Verify public access again when submitting the build. |
+| Feedback/support email | **Confirmed** — goldfish.pond.app@gmail.com | Configured in `Goldfish/Info.plist` and `project.yml`; use the same address in TestFlight test information. Apple says it is shown to testers and used as the invitation reply-to address in [Provide test information](https://developer.apple.com/help/app-store-connect/test-a-beta-version/provide-test-information). |
+| Hosted privacy-policy URL | **Live** — https://goldfish-pond-support.bwjhhk9fbp.chatgpt.site/privacy | Use this exact URL in App Store Connect. |
 | External human acceptance | **Pending — no U18 human sessions yet** | Automated checks and prior visual records do not replace the five-task human protocol in this plan. |
 
 ## Beta product being offered
@@ -32,7 +32,7 @@ The beta should be described as a private, local relationship journal. The curre
 - import from a user-selected phonebook subset or vCard file;
 - selective vCard export, with an optional review of the people included and Goldfish metadata for supported connections and pond membership;
 - separated sample and personal scopes, with an explicit way to leave sample mode while retaining both sets of data;
-- a replayable feature tour, in-app privacy information, Dynamic Type layouts, Reduce Motion behavior, accessibility labels/actions, and feedback preparation through user-controlled Share or Copy. Direct Mail remains unavailable until a support inbox is confirmed.
+- a replayable feature tour, in-app and public privacy information, Dynamic Type layouts, Reduce Motion behavior, accessibility labels/actions, and feedback preparation through user-controlled Mail, Share, or Copy.
 
 The source stores the core journal in the local app database and does not enable CloudKit. There is no Goldfish account, server-backed collaboration, advertising SDK, or analytics SDK in the beta scope.
 
@@ -43,7 +43,7 @@ The source stores the core journal in the local app database and does not enable
 - **Local-only storage has local-only recovery.** There is no account or cloud sync. Removing the app can remove its local database. Testers should use fictional or non-sensitive data and export anything they need before deleting the beta.
 - **vCard transfer is not a full database backup.** Unsupported app state may not round-trip, and only the reviewed export scope is included.
 - **Phonebook import is optional.** iOS asks for Contacts access when that path is used; testers may create contacts manually or use the sanitized beta fixture instead.
-- **Support handoff is provisional.** Share and Copy can prepare a report without sending it. A monitored feedback inbox and public support URL remain pending owner confirmation.
+- **Reports are user-controlled.** Goldfish prepares a report without sending it automatically. The tester chooses Mail, Share, or Copy; the confirmed support inbox is `goldfish.pond.app@gmail.com`.
 - **The beta targets iPhone and iPad on iOS/iPadOS 17+.** Device and OS compatibility must be confirmed by the uploaded build before invitations are sent.
 
 ## Draft TestFlight metadata
@@ -62,13 +62,14 @@ Keep placeholders out of App Store Connect. Replace every bracketed field before
 
 > No sign-in is required. On first launch, choose “Explore a Sample” for fictional data and the guided tour, or “Start My Pond” for an empty personal journal. Contacts permission is optional and used only when the reviewer chooses phonebook import; every core contact can be created manually. There are no purchases or subscriptions. Location capture, AI, and voice are not implemented.
 
-### Metadata still required from the owner
+### Metadata values and remaining owner details
 
-- Feedback Email: **[PENDING — monitored owner-confirmed inbox]**
-- Public support URL: **[PENDING — owner-confirmed HTTPS page]**
-- Privacy Policy URL: **[PENDING — owner-confirmed HTTPS page matching current local-only behavior]**
+- Feedback Email: `goldfish.pond.app@gmail.com`
+- Public support URL: `https://goldfish-pond-support.bwjhhk9fbp.chatgpt.site/`
+- Privacy Policy URL: `https://goldfish-pond-support.bwjhhk9fbp.chatgpt.site/privacy`
 - Beta review contact name, phone, and email: **[PENDING]**
-- App Store Connect primary language, category, age rating, SKU, and legal seller details: **[PENDING ACCOUNT ACTIVATION / OWNER ENTRY]**
+- Planned primary language: English (U.S.); planned SKU: `goldfish-ios-1`.
+- Category, age rating, review phone number, and any required legal seller details: **[PENDING OWNER ENTRY]**
 
 Apple requires a beta description and feedback email for external testing, and permits beta information to differ from later App Store metadata; see [Provide test information](https://developer.apple.com/help/app-store-connect/test-a-beta-version/provide-test-information). Apple also recommends a clear “What to Test” entry when adding a build to a group; see [Invite external testers](https://developer.apple.com/help/app-store-connect/test-a-beta-version/invite-external-testers/).
 
@@ -129,13 +130,13 @@ Failure of any criterion holds expansion or release. Automated tests may support
 
 ## Deployment staging sequence
 
-Proceed in this order after the membership becomes active:
+Proceed in this order:
 
 1. Confirm the Account Holder can access Certificates, Identifiers & Profiles and App Store Connect; accept any pending agreements.
-2. Record the Team ID, register or confirm the explicit App ID `app.pond.goldfish`, and create the matching App Store Connect app record.
+2. Use Team ID `VL6L6N34D5` and the registered explicit App ID `app.pond.goldfish`, then create the matching App Store Connect app record after the Account Holder accepts the pending terms.
 3. Configure Xcode signing for the activated team and create or obtain the Apple Distribution identity and App Store Connect provisioning profile. Automatic signing is acceptable if the owner chooses it; Apple explains the distribution-profile options in [Create an App Store Connect provisioning profile](https://developer.apple.com/help/account/provisioning-profiles/create-an-app-store-provisioning-profile).
 4. Confirm the candidate source revision, release configuration, version/build number, app icon, display name, iOS 17 target, Contacts usage string, empty entitlements, and privacy manifest. Resolve every intentional release difference before archive.
-5. Insert the owner-confirmed feedback email in both source configuration locations, publish and inspect the support/privacy pages, and enter the final TestFlight metadata. Confirm the inbox is monitored before any invite is sent.
+5. Keep the confirmed feedback email and published support/privacy URLs in both source configuration locations, and enter the final TestFlight metadata. Confirm the inbox is monitored before any invite is sent.
 6. Produce a Release archive, validate it, and upload through Xcode or another Apple-supported route. Apple notes that a newly uploaded build must finish processing before it appears in App Store Connect; see [Upload builds](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds).
 7. Resolve export-compliance questions, processing warnings, privacy declarations, and beta review information. Create an internal group and install the processed build on supported physical iPhones.
 8. Complete the internal technical rehearsal below. Fix blockers with a new build number and repeat the archive/upload/install path.
@@ -163,12 +164,12 @@ Every row is a placeholder. Change a state to **Complete** only after attaching 
 
 | Evidence item | Required artifact | State |
 |---|---|---|
-| Membership activation | Apple activation email or private account record; activation date and team name recorded without committing credentials | **Pending** |
+| Membership activation | Apple Developer account confirms Individual membership, program resources, and renewal date | **Verified 28 September 2026** |
 | Agreements and roles | Account Holder confirmation and App Store Connect role list | **Pending** |
 | Signing identity | Xcode signing-team view or redacted certificate inventory showing valid Apple Distribution identity | **Pending** |
-| Explicit identifier | Developer portal record for `app.pond.goldfish` and decision for the LINES identifier collision | **Pending** |
+| Explicit identifier | Developer portal record for `app.pond.goldfish` | **Verified 28 September 2026** |
 | App Store Connect record | App name, Apple ID, SKU, bundle ID, primary language, category, age rating | **Pending** |
-| Support endpoints | Public support URL, public privacy URL, monitored feedback email, owner approval, and access-date record | **Pending owner confirmation** |
+| Support endpoints | Public support URL, public privacy URL, monitored feedback email, owner approval, and access-date record | **Verified publicly with HTTP 200 on 28 September 2026** |
 | Candidate manifest | Source revision, clean/known worktree statement, version/build, Xcode version, SDK, archive timestamp | **Pending** |
 | Archive and validation | Xcode Organizer archive identifier plus complete validation output | **Pending** |
 | Upload processing | App Store Connect build page, processing result, warnings, export-compliance answer | **Pending** |

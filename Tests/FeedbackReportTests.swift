@@ -106,6 +106,29 @@ final class FeedbackReportTests: XCTestCase {
         }
         XCTAssertEqual(FeedbackConfiguration.validatedRecipient(" support+bugs@example.com "), "support+bugs@example.com")
     }
+
+    func testSupportURLsRequireHTTPSAndAHost() {
+        for value: String? in [nil, "", "http://example.com", "mailto:support@example.com",
+                               "https:///missing-host", "not a URL"] {
+            XCTAssertNil(FeedbackConfiguration.validatedHTTPSURL(value))
+        }
+        XCTAssertEqual(
+            FeedbackConfiguration.validatedHTTPSURL("https://example.com/privacy")?.absoluteString,
+            "https://example.com/privacy"
+        )
+    }
+
+    func testReleaseBundleContainsConfirmedSupportEndpoints() {
+        XCTAssertEqual(FeedbackConfiguration.recipient, "goldfish.pond.app@gmail.com")
+        XCTAssertEqual(
+            FeedbackConfiguration.supportURL?.absoluteString,
+            "https://goldfish-pond-support.bwjhhk9fbp.chatgpt.site/"
+        )
+        XCTAssertEqual(
+            FeedbackConfiguration.privacyPolicyURL?.absoluteString,
+            "https://goldfish-pond-support.bwjhhk9fbp.chatgpt.site/privacy"
+        )
+    }
 }
 
 @MainActor

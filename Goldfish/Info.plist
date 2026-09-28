@@ -21,7 +21,11 @@
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>FeedbackSupportEmail</key>
-	<string></string>
+	<string>goldfish.pond.app@gmail.com</string>
+	<key>GoldfishSupportURL</key>
+	<string>https://goldfish-pond-support.bwjhhk9fbp.chatgpt.site/</string>
+	<key>GoldfishPrivacyPolicyURL</key>
+	<string>https://goldfish-pond-support.bwjhhk9fbp.chatgpt.site/privacy</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>UISupportedInterfaceOrientations</key>

@@ -24,6 +24,14 @@ enum FeedbackConfiguration {
             ?? "App"
     }
 
+    static var supportURL: URL? {
+        validatedHTTPSURL(Bundle.main.object(forInfoDictionaryKey: "GoldfishSupportURL") as? String)
+    }
+
+    static var privacyPolicyURL: URL? {
+        validatedHTTPSURL(Bundle.main.object(forInfoDictionaryKey: "GoldfishPrivacyPolicyURL") as? String)
+    }
+
     static func validatedRecipient(_ value: String?) -> String? {
         guard let value else { return nil }
         let address = value.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -31,6 +39,14 @@ enum FeedbackConfiguration {
               address.range(of: #"\A[A-Z0-9._%+\-]+@[A-Z0-9](?:[A-Z0-9\-]*[A-Z0-9])?(?:\.[A-Z0-9](?:[A-Z0-9\-]*[A-Z0-9])?)+\z"#,
                             options: [.regularExpression, .caseInsensitive]) != nil else { return nil }
         return address
+    }
+
+    static func validatedHTTPSURL(_ value: String?) -> URL? {
+        guard let value,
+              let url = URL(string: value),
+              url.scheme == "https",
+              url.host != nil else { return nil }
+        return url
     }
 }
 

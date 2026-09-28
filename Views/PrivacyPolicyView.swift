@@ -6,7 +6,7 @@ struct PrivacyPolicyView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: GoldfishDS.Space.xl) {
                 Text("Privacy & your data").font(.gfDisplay)
-                Text("Updated 14 September 2026").font(.gfMeta).foregroundStyle(GoldfishDS.ink(.secondary))
+                Text("Updated 28 September 2026").font(.gfMeta).foregroundStyle(GoldfishDS.ink(.secondary))
                 section("Stored on your device", "Goldfish keeps the contacts, photos, notes, birthdays, addresses, relationships and pond memberships you add in the app’s local database. This version does not enable CloudKit sync, require an account, or include advertising or analytics SDKs.")
                 section("Contacts and photos", "You choose which contacts and images to import. If you use a feature that requests Contacts access, iOS asks for your permission. You can change that permission in Settings. Imported information becomes part of the app’s local database.")
                 section("Maps", "Contact locations can be displayed using Apple’s MapKit. Map content and Apple services are subject to Apple’s privacy policy. This version does not request background location access or provide location tracking.")
@@ -14,6 +14,10 @@ struct PrivacyPolicyView: View {
                 section("Manage or delete your data", "You can edit or delete contacts in the app, hide sample contacts, and use the reset action in Settings. Export anything you want to keep before resetting or deleting the app. Device backups are controlled by your iOS settings.")
                 section("Feedback and bug reports", "If you choose Report a bug or Share an idea, Goldfish prepares a report from what you wrote, an optional screenshot, and optional app details. Nothing is sent automatically. You choose whether to review it in Mail, share it, or copy it; delivery and handling then depend on the service you choose.")
                 section("Questions", "The app is developed by Marcel Meeh. For questions about this app or its handling of your information, use Help & feedback in Settings.")
+                if let privacyURL = FeedbackConfiguration.privacyPolicyURL {
+                    Link("Goldfish Privacy Policy", destination: privacyURL)
+                        .font(.gfBody).foregroundStyle(GoldfishDS.terracotta)
+                }
                 Link("Apple Privacy Policy", destination: URL(string: "https://www.apple.com/legal/privacy/")!)
                     .font(.gfBody).foregroundStyle(GoldfishDS.terracotta)
             }
