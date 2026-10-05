@@ -9,6 +9,14 @@ final class DataIntegrityTests: XCTestCase {
     var container: ModelContainer!
     override func setUp() async throws { (manager, container) = try makeTestManager() }
 
+    func testPersonSchemaProvidesLegacyMigrationDefault() throws {
+        let person = try XCTUnwrap(
+            GoldfishModelContainer.schema.entities.first { $0.name == "Person" }
+        )
+        let isDemo = try XCTUnwrap(person.attributesByName["isDemo"])
+        XCTAssertEqual(isDemo.defaultValue as? Bool, false)
+    }
+
     func testRestoringExcludedMembershipKeepsOneActiveGroup() throws {
         try manager.createSystemCircles()
         let person = try manager.createPerson(name: "Person")

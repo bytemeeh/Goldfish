@@ -77,7 +77,10 @@ final class Person {
     var postalCode: String?
 
     /// Whether this contact was created as part of a demo or onboarding.
-    var isDemo: Bool
+    ///
+    /// Keep the default on the persisted declaration (not only the initializer):
+    /// SwiftData needs it to backfill stores created before this attribute existed.
+    var isDemo: Bool = false
 
     // MARK: - Timestamps
 
