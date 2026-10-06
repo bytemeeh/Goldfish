@@ -32,6 +32,7 @@ protocol GraphSceneDelegate: AnyObject {
     func offscreenContactIDs(_ ids: Set<UUID>) -> Set<UUID>
     func locateContacts(_ ids: Set<UUID>)
     func activateContactChoice(_ id: UUID)
+    func didRestoreAutomaticPondLayout()
 }
 
 extension GraphSceneDelegate {
@@ -40,6 +41,43 @@ extension GraphSceneDelegate {
     func offscreenContactIDs(_ ids: Set<UUID>) -> Set<UUID> { ids }
     func locateContacts(_ ids: Set<UUID>) {}
     func activateContactChoice(_ id: UUID) {}
+    func didRestoreAutomaticPondLayout() {}
+}
+
+/// UserDefaults-backed offsets keep pond placement independent of the SwiftData
+/// schema. The key includes both the current Me identity and graph mode.
+struct PondLayoutStore {
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+
+    func offsets(meID: UUID, isDemo: Bool) -> [String: CGPoint] {
+        guard let data = defaults.data(forKey: key(meID: meID, isDemo: isDemo)),
+              let values = try? JSONDecoder().decode([String: StoredOffset].self, from: data) else { return [:] }
+        return values.reduce(into: [:]) { result, entry in
+            guard entry.value.x.isFinite, entry.value.y.isFinite else { return }
+            result[entry.key] = CGPoint(x: entry.value.x, y: entry.value.y)
+        }
+    }
+
+    func save(_ offset: CGPoint, pondID: String, meID: UUID, isDemo: Bool) {
+        guard offset.x.isFinite, offset.y.isFinite, !pondID.isEmpty else { return }
+        var values = offsets(meID: meID, isDemo: isDemo).mapValues { StoredOffset(x: $0.x, y: $0.y) }
+        values[pondID] = StoredOffset(x: offset.x, y: offset.y)
+        guard let data = try? JSONEncoder().encode(values) else { return }
+        defaults.set(data, forKey: key(meID: meID, isDemo: isDemo))
+    }
+
+    func clear(meID: UUID, isDemo: Bool) { defaults.removeObject(forKey: key(meID: meID, isDemo: isDemo)) }
+
+    private func key(meID: UUID, isDemo: Bool) -> String {
+        "goldfish.pond-layout.v1.\(meID.uuidString).\(isDemo ? "demo" : "personal")"
+    }
+
+    private struct StoredOffset: Codable {
+        let x: CGFloat
+        let y: CGFloat
+    }
 }
 
 /// One bounded disclosure event presented by the graph chrome. A fresh event
@@ -89,6 +127,8 @@ final class GraphViewModel: ObservableObject {
     
     // MARK: - Dependencies
     private let dataManager: GoldfishDataManager
+    private let pondLayoutStore: PondLayoutStore
+    private var pondLayoutMeID: UUID?
     
     // MARK: - Scene Communication
     weak var sceneDelegate: GraphSceneDelegate? {
@@ -250,8 +290,25 @@ final class GraphViewModel: ObservableObject {
     private var isLoadingInProgress = false
     
     // MARK: - Init
-    init(dataManager: GoldfishDataManager) {
+    init(dataManager: GoldfishDataManager, pondLayoutStore: PondLayoutStore = PondLayoutStore()) {
         self.dataManager = dataManager
+        self.pondLayoutStore = pondLayoutStore
+    }
+
+    func pondLayoutOffsets(forMeID meID: UUID) -> [String: CGPoint] {
+        pondLayoutStore.offsets(meID: meID, isDemo: isDemoMode)
+    }
+
+    func savePondLayoutOffset(_ offset: CGPoint, for pondID: String, meID: UUID) {
+        pondLayoutStore.save(offset, pondID: pondID, meID: meID, isDemo: isDemoMode)
+    }
+
+    /// Removes the current user's saved pond translations and returns the
+    /// active scene to its deterministic automatic layout.
+    func restoreAutomaticPondLayout() {
+        guard let meID = graphLevels?.flatMap(\.allContacts).first(where: \.isMe)?.id ?? pondLayoutMeID else { return }
+        pondLayoutStore.clear(meID: meID, isDemo: isDemoMode)
+        sceneDelegate?.didRestoreAutomaticPondLayout()
     }
     
     // MARK: - Methods
@@ -269,6 +326,7 @@ final class GraphViewModel: ObservableObject {
             }
             let levels = try dataManager.buildGraphLayout(demoMode: isDemoMode) ?? []
             graphLevels = levels
+            if let meID = levels.flatMap(\.allContacts).first(where: \.isMe)?.id { pondLayoutMeID = meID }
             if selectedPondFilter == "unassigned", !levels.flatMap(\.allContacts).contains(where: { !$0.isMe && $0.primaryCircle == nil }) {
                 selectedPondFilter = nil
             }

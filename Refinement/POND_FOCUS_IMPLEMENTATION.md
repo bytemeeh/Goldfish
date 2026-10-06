@@ -39,3 +39,13 @@ Evidence from this run is in `/tmp/goldfish-pond-integration/`: `FinalTests.xcre
 The computer-use tool reported that the Mac was locked. Hands-on checks of repeated Pond/List taps, nested navigation, report preview, VoiceOver and large text remain pending an unlocked Mac or a physical test device. Passing model/scene tests and reviewing rendered images do not establish that every device touch is recognized. The history records requests that reach the app; it cannot record a touch that never reaches the button.
 
 These changes are committed to the existing development branch after verification. They have **not** been uploaded as a new TestFlight build. Complete the hands-on checks before distributing this update. Existing personal relationships, including any Friend label in a Family pond, are preserved; membership does not imply a different saved relationship.
+
+## Pond rearrangement follow-up
+
+Long-press a pond title or empty area inside a visible pond, then drag to arrange it. The gesture moves the pond's members, including currently hidden members, with its outline and title. Saved relationships and pond memberships do not change. Contact long-press actions retain priority over pond dragging.
+
+Placements are stored locally for each Me identity and separated between sample and personal graphs. Disclosure and graph refreshes retain the arrangement. Map options includes **Restore automatic layout**, which clears the current graph's saved positions. Cancelling a drag restores its starting position.
+
+This follow-up used three cheaper implementation, test and review agents with parent integration oversight. Final validation: **277 Debug simulator tests passed, 0 failures**, and the unsigned Release device build succeeded. Added regression coverage checks visible and hidden member translation, attached labels/outlines/relationship paths, unchanged other ponds and Me, saved-offset reload, separate personal/sample scopes, invalid coordinates, cancellation after an earlier saved move, and automatic-layout restoration.
+
+The 23-person simulator overview was captured and reviewed. Computer use initially became available, then reported that the Mac was locked before the final long-press interaction check. Hands-on gesture verification remains pending; the automated tests exercise the scene's shared drag implementation. Evidence: `/tmp/goldfish-pond-drag/Tests2.xcresult`, `tests2.log`, `release-build.log`, and `overview.png`. One simulator was used and closed after verification. No new TestFlight build was uploaded.

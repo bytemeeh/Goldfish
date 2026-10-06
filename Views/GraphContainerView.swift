@@ -1041,6 +1041,12 @@ struct GraphContainerView: View {
             }
             .accessibilityIdentifier("mapFitAllPonds")
 
+            Button("Restore automatic layout", systemImage: "arrow.counterclockwise") {
+                viewModel.restoreAutomaticPondLayout()
+            }
+            .accessibilityHint("Returns ponds to their original arrangement without changing contacts or connections")
+            .accessibilityIdentifier("mapRestorePondLayout")
+
             Button("Map help", systemImage: "questionmark.circle") {
                 showsMapHelp = true
             }
@@ -1053,7 +1059,7 @@ struct GraphContainerView: View {
                 .contentShape(Rectangle())
         }
         .accessibilityLabel("Map options")
-        .accessibilityHint("Zoom, fit visible contacts, or open map help")
+        .accessibilityHint("Zoom, fit visible contacts, restore the pond arrangement, or open map help")
         .accessibilityIdentifier("mapOptionsMenu")
     }
 
@@ -1296,6 +1302,7 @@ private struct MapHelpView: View {
         HelpRow(icon: "point.3.connected.trianglepath.dotted", title: "Connections", detail: "Use Show more for the next small group, Hide connections for one branch, or Collapse all to return to you and your direct connections. Open contact shows the full profile.", accessibility: "Show more reveals the next group. Hide connections closes one branch. Collapse all returns to direct connections."),
         HelpRow(icon: "person.2.badge.plus", title: "People in ponds", detail: "Pond totals include everyone. Show people in a pond reveals hidden members in small groups, including people without a saved path from you. It never changes membership.", accessibility: "Pond totals include hidden members. Show people reveals up to four members without changing membership."),
         HelpRow(icon: "link", title: "Connect or move", detail: "Open a contact and choose Add relationship to connect people. Choose Edit, then Pond to move them. Collapse expanded connections before dragging people together or across a pond boundary. Long-press for contact actions.", accessibility: "Open a contact and choose Add relationship to connect people. Choose Edit, then Pond to move them."),
+        HelpRow(icon: "hand.draw", title: "Arrange ponds", detail: "Hold a pond title or an empty area inside it, then drag. Its people move with it, and your arrangement is saved on this device. Hold a person for contact actions. Choose Restore automatic layout in Map options to start over.", accessibility: "Hold a pond title or empty area inside it, then drag to move the pond and its people. Map options includes Restore automatic layout."),
         HelpRow(icon: "arrow.up.left.and.arrow.down.right", title: "Navigate", detail: "Drag empty space to pan, or use two fingers. Pinch to zoom. The map controls also offer Zoom in, Zoom out, and Fit visible contacts. Switch to List to read every name.", accessibility: "Use Zoom in, Zoom out, and Fit visible contacts below the map. Switch to List to read every name.")
     ]
 

@@ -1179,3 +1179,185 @@ final class GraphSceneLayoutTests: XCTestCase {
     }
 
 }
+
+@MainActor
+final class PondRepositionTests: XCTestCase {
+    private func isolatedLayoutStore() -> (PondLayoutStore, UserDefaults, String) {
+        let suiteName = "GoldfishPondRepositionTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        return (PondLayoutStore(defaults: defaults), defaults, suiteName)
+    }
+
+    func testPondOffsetsPersistAcrossModelRestartAndRemainScopedByMode() throws {
+        let (manager, container) = try makeTestManager()
+        defer { withExtendedLifetime(container) {} }
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let (store, defaults, suiteName) = isolatedLayoutStore()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let firstModel = GraphViewModel(dataManager: manager, pondLayoutStore: store)
+        let personalOffset = CGPoint(x: 81.5, y: -42.25)
+        firstModel.savePondLayoutOffset(personalOffset, for: "family", meID: me.id)
+        XCTAssertEqual(firstModel.pondLayoutOffsets(forMeID: me.id)["family"], personalOffset)
+
+        let relaunchedModel = GraphViewModel(dataManager: manager, pondLayoutStore: store)
+        XCTAssertEqual(relaunchedModel.pondLayoutOffsets(forMeID: me.id)["family"], personalOffset)
+        XCTAssertNil(relaunchedModel.pondLayoutOffsets(forMeID: UUID())["family"],
+                     "Another Me identity must have an independent layout")
+        relaunchedModel.isDemoMode = true
+        XCTAssertNil(relaunchedModel.pondLayoutOffsets(forMeID: me.id)["family"],
+                     "Demo mode must not load a personal pond translation")
+        let demoOffset = CGPoint(x: -17, y: 66)
+        relaunchedModel.savePondLayoutOffset(demoOffset, for: "family", meID: me.id)
+        XCTAssertEqual(relaunchedModel.pondLayoutOffsets(forMeID: me.id)["family"], demoOffset)
+        relaunchedModel.isDemoMode = false
+        XCTAssertEqual(relaunchedModel.pondLayoutOffsets(forMeID: me.id)["family"], personalOffset,
+                       "Returning to personal mode must retain its own pond translation")
+    }
+
+    private func makeMovablePondGraph() throws -> (
+        ModelContainer, GoldfishDataManager, GraphViewModel, GoldfishGraphScene,
+        Person, GoldfishCircle, GoldfishCircle, Person, Person, Person, Person,
+        PondLayoutStore, UserDefaults, String
+    ) {
+        let container = try makeTestContainer()
+        let manager = GoldfishDataManager(context: container.mainContext)
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let family = try manager.createCircle(name: "Family")
+        let friends = try manager.createCircle(name: "Friends")
+        let alice = try manager.createPerson(name: "Alice")
+        let bob = try manager.createPerson(name: "Bob")
+        let hidden = try manager.createPerson(name: "Hidden family member")
+        let outsider = try manager.createPerson(name: "Friend")
+        for person in [alice, bob, hidden] { try manager.addToCircle(person, circle: family) }
+        try manager.addToCircle(outsider, circle: friends)
+        try manager.createRelationship(from: me, to: alice, type: .friend)
+        try manager.createRelationship(from: me, to: bob, type: .friend)
+        try manager.createRelationship(from: me, to: outsider, type: .friend)
+        try manager.createRelationship(from: alice, to: bob, type: .friend)
+        try manager.createRelationship(from: bob, to: hidden, type: .friend)
+
+        let (store, defaults, suiteName) = isolatedLayoutStore()
+        // The returned defaults object is retained by the store. A unique suite
+        // prevents test state from touching the user's standard preferences.
+        let model = GraphViewModel(dataManager: manager, pondLayoutStore: store)
+        let scene = GoldfishGraphScene(size: CGSize(width: 390, height: 700))
+        scene.graphDelegate = model
+        model.sceneDelegate = scene
+        model.loadGraph()
+        _ = scene.debugLayout(model.graphLevels ?? [])
+        scene.setPondLayoutOffsets(model.pondLayoutOffsets(forMeID: me.id))
+        model.activatePondContact(id: alice.id)
+        return (container, manager, model, scene, me, family, friends, alice, bob, hidden, outsider,
+                store, defaults, suiteName)
+    }
+
+    func testPondDragMovesHiddenMembersAndKeepsLabelsOutlinesAndRelationshipsAttached() throws {
+        let (container, manager, model, scene, me, family, friends, alice, bob, hidden, outsider,
+             store, defaults, suiteName) = try makeMovablePondGraph()
+        defer { withExtendedLifetime(container) {} }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let familyID = family.id.uuidString
+        let friendsID = friends.id.uuidString
+        XCTAssertFalse(scene.debugDisclosureVisibleIDs.contains(hidden.id), "Fixture must include a hidden pond member")
+        XCTAssertTrue(scene.debugVisibleEdgeCount > 0, "Fixture must render a relationship inside the moved pond")
+
+        let beforePositions = scene.debugNodePositions
+        let beforeLabel = try XCTUnwrap(scene.debugPondLabelBounds[familyID])
+        let beforeBasin = try XCTUnwrap(scene.debugPondBasinBounds[familyID])
+        let beforeOtherLabel = try XCTUnwrap(scene.debugPondLabelBounds[friendsID])
+        let beforeOtherBasin = try XCTUnwrap(scene.debugPondBasinBounds[friendsID])
+        let edgeID = [alice.id.uuidString, bob.id.uuidString].sorted().joined(separator: "_")
+        let beforeEdge = try XCTUnwrap(scene.debugEdgePaths[edgeID]?.boundingBoxOfPath)
+        let delta = CGPoint(x: 53, y: -29)
+        XCTAssertTrue(scene.debugBeginPondDrag(pondID: familyID, at: .zero))
+        scene.debugUpdatePondDrag(to: delta)
+        XCTAssertEqual(scene.debugPondOffsets[familyID], delta)
+
+        for id in [alice.id, bob.id, hidden.id] {
+            let before = try XCTUnwrap(beforePositions[id])
+            let after = try XCTUnwrap(scene.debugNodePositions[id])
+            XCTAssertEqual(after.x - before.x, delta.x, accuracy: 0.001)
+            XCTAssertEqual(after.y - before.y, delta.y, accuracy: 0.001)
+        }
+        for id in [me.id, outsider.id] {
+            XCTAssertEqual(scene.debugNodePositions[id], beforePositions[id], "Contacts outside the moved pond stay fixed")
+        }
+        let movedLabel = try XCTUnwrap(scene.debugPondLabelBounds[familyID])
+        let movedBasin = try XCTUnwrap(scene.debugPondBasinBounds[familyID])
+        XCTAssertEqual(movedLabel.midX - beforeLabel.midX, delta.x, accuracy: 0.5)
+        XCTAssertEqual(movedLabel.midY - beforeLabel.midY, delta.y, accuracy: 0.5)
+        XCTAssertEqual(movedBasin.midX - beforeBasin.midX, delta.x, accuracy: 0.5)
+        XCTAssertEqual(movedBasin.midY - beforeBasin.midY, delta.y, accuracy: 0.5)
+        XCTAssertEqual(scene.debugPondLabelBounds[friendsID], beforeOtherLabel)
+        XCTAssertEqual(scene.debugPondBasinBounds[friendsID], beforeOtherBasin)
+        let movedEdge = try XCTUnwrap(scene.debugEdgePaths[edgeID]?.boundingBoxOfPath)
+        XCTAssertEqual(movedEdge.midX - beforeEdge.midX, delta.x, accuracy: 0.5,
+                       "Relationship paths must follow their translated pond members")
+        XCTAssertEqual(movedEdge.midY - beforeEdge.midY, delta.y, accuracy: 0.5)
+
+        let movedPositions = scene.debugNodePositions
+        scene.didUpdateDisclosure(model.disclosureSnapshot)
+        XCTAssertEqual(scene.debugNodePositions, movedPositions,
+                       "A disclosure redraw reapplies the same offset without accumulating it")
+        scene.debugEndPondDrag()
+        XCTAssertEqual(model.pondLayoutOffsets(forMeID: me.id)[familyID], delta)
+        XCTAssertEqual(alice.primaryCircle?.id, family.id)
+        XCTAssertEqual(bob.primaryCircle?.id, family.id)
+        XCTAssertNil(model.pendingPondMovePerson)
+        XCTAssertNil(model.pendingPondMoveTarget)
+
+        let relaunchedModel = GraphViewModel(dataManager: manager, pondLayoutStore: store)
+        let relaunchedScene = GoldfishGraphScene(size: CGSize(width: 390, height: 700))
+        relaunchedScene.graphDelegate = relaunchedModel
+        relaunchedModel.sceneDelegate = relaunchedScene
+        relaunchedModel.loadGraph()
+        relaunchedScene.debugReloadGraph(relaunchedModel.graphLevels ?? [])
+        relaunchedModel.activatePondContact(id: alice.id)
+        XCTAssertEqual(relaunchedModel.pondLayoutOffsets(forMeID: me.id)[familyID], delta)
+        for id in [alice.id, bob.id, hidden.id] {
+            let before = try XCTUnwrap(movedPositions[id])
+            let after = try XCTUnwrap(relaunchedScene.debugNodePositions[id])
+            XCTAssertEqual(after.x, before.x, accuracy: 0.001)
+            XCTAssertEqual(after.y, before.y, accuracy: 0.001,
+                           "Reloading the graph applies the saved offset exactly once")
+        }
+    }
+
+    func testCancelledPondDragRollsBackWithoutSavingAndResetRestoresAutomaticLayout() throws {
+        let (container, _, model, scene, me, family, _, alice, bob, hidden, _, _, defaults, suiteName) = try makeMovablePondGraph()
+        defer { withExtendedLifetime(container) {} }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let familyID = family.id.uuidString
+        let automaticPositions = scene.debugNodePositions
+        let firstOffset = CGPoint(x: 15, y: -8)
+        XCTAssertTrue(scene.debugBeginPondDrag(pondID: familyID, at: .zero))
+        scene.debugUpdatePondDrag(to: firstOffset)
+        scene.debugEndPondDrag()
+        XCTAssertEqual(model.pondLayoutOffsets(forMeID: me.id)[familyID], firstOffset)
+        let savedPositions = scene.debugNodePositions
+
+        let delta = CGPoint(x: -34, y: 47)
+        XCTAssertTrue(scene.debugBeginPondDrag(pondID: familyID, at: .zero))
+        scene.debugUpdatePondDrag(to: CGPoint(x: CGFloat.nan, y: 0))
+        scene.debugUpdatePondDrag(to: CGPoint(x: CGFloat.infinity, y: 0))
+        XCTAssertEqual(scene.debugNodePositions, savedPositions,
+                       "Non-finite drag updates must leave the saved position intact")
+        scene.debugUpdatePondDrag(to: delta)
+        scene.debugCancelPondDrag()
+        XCTAssertEqual(scene.debugNodePositions, savedPositions)
+        XCTAssertEqual(scene.debugPondOffsets[familyID], firstOffset)
+        XCTAssertEqual(model.pondLayoutOffsets(forMeID: me.id)[familyID], firstOffset,
+                       "A cancelled second drag must preserve the earlier saved translation")
+
+        XCTAssertTrue(scene.debugBeginPondDrag(pondID: familyID, at: .zero))
+        scene.debugUpdatePondDrag(to: delta)
+        scene.debugEndPondDrag()
+        XCTAssertNotEqual(scene.debugNodePositions, automaticPositions)
+        model.restoreAutomaticPondLayout()
+        XCTAssertEqual(model.pondLayoutOffsets(forMeID: me.id), [:])
+        for id in [alice.id, bob.id, hidden.id] {
+            XCTAssertEqual(scene.debugNodePositions[id], automaticPositions[id], "Reset returns every pond member to its automatic slot")
+        }
+    }
+}
