@@ -111,6 +111,9 @@ final class GraphViewModel: ObservableObject {
     
     @Published var searchMatchedIDs: Set<UUID>? {
         didSet {
+            if oldValue != searchMatchedIDs, searchMatchedIDs != nil {
+                clearPondBranchFocusForScopeChange()
+            }
             sceneDelegate?.didUpdateSearchMatches(searchMatchedIDs)
             if let ids = searchMatchedIDs, ids.count == 1, let id = ids.first {
                 centerOnContact(id)
@@ -122,6 +125,9 @@ final class GraphViewModel: ObservableObject {
     
     @Published var selectedPondFilter: String? {
         didSet {
+            if oldValue != selectedPondFilter {
+                clearPondBranchFocusForScopeChange()
+            }
             sceneDelegate?.didUpdatePondFilter(selectedPondFilter)
         }
     }
@@ -359,6 +365,18 @@ final class GraphViewModel: ObservableObject {
         sceneDelegate?.didUpdateDisclosure(pondDisclosureSnapshot)
     }
 
+    /// Leaves the pond while keeping its opened branches for the next visit.
+    func leavePondView() {
+        rippleFocus = nil
+        ripplePage = 0
+        ripplePageCount = 0
+        pendingContactChoiceIDs.removeAll()
+        latestPondReveal = nil
+        pondDisclosure?.leavePondView()
+        sceneDelegate?.didUpdateRipple(focus: nil, neighbors: [])
+        publishDisclosure()
+    }
+
     func togglePondConnections(id: UUID) {
         let visibleBefore = pondDisclosureSnapshot.visibleIDs
         pondDisclosure?.togglePondConnections(id: id)
@@ -372,6 +390,33 @@ final class GraphViewModel: ObservableObject {
 
     func togglePondConnections(for id: UUID) {
         togglePondConnections(id: id)
+    }
+
+    /// Activates a contact tap in the pond: select it, open its branch once,
+    /// and keep the current focus root when it belongs to that branch.
+    func activatePondContact(id: UUID) {
+        let visibleBefore = pondDisclosureSnapshot.visibleIDs
+        pondDisclosure?.activatePondContact(id: id)
+        publishDisclosure()
+        publishRevealFeedback(visibleBefore: visibleBefore)
+    }
+
+    /// Returns to the full pond view while retaining the user's open branches.
+    func clearPondFocus() {
+        pondDisclosure?.clearPondFocus()
+        latestPondReveal = nil
+        publishDisclosure()
+    }
+
+    /// Shows the selected contact's saved route for this interaction only.
+    func showConnectionPath() {
+        pondDisclosure?.showConnectionPath()
+        publishDisclosure()
+    }
+
+    func clearConnectionPath() {
+        pondDisclosure?.clearConnectionPath()
+        publishDisclosure()
     }
 
     func showMorePondConnections(id: UUID) {
@@ -558,6 +603,19 @@ final class GraphViewModel: ObservableObject {
     private func publishDisclosure() {
         pondDisclosureSnapshot = pondDisclosure?.snapshot ?? .empty
         sceneDelegate?.didUpdateDisclosure(pondDisclosureSnapshot)
+    }
+
+    /// A new search or pond filter ends the branch focus interaction while
+    /// leaving an unrelated compatibility route selection intact.
+    private func clearPondBranchFocusForScopeChange() {
+        latestPondReveal = nil
+        if pondDisclosureSnapshot.focusRootID != nil {
+            pondDisclosure?.clearPondFocus()
+            publishDisclosure()
+        } else if !pondDisclosureSnapshot.pathHighlightIDs.isEmpty {
+            pondDisclosure?.clearConnectionPath()
+            publishDisclosure()
+        }
     }
 
     private func publishRevealFeedback(visibleBefore: Set<UUID>) {

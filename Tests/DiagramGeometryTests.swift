@@ -57,4 +57,15 @@ final class DiagramGeometryTests: XCTestCase {
         XCTAssertEqual(shared.slots.count, ids.count)
         XCTAssertTrue(DiagramGeometry.radial([]).slots.isEmpty)
     }
+
+    func testFiveContactRingLeavesRoomForPhoneWidthIdentityLabels() {
+        let ids = (0..<5).map { _ in UUID() }
+        let composition = DiagramGeometry.radial([.init(id: "family", members: ids)])
+        let points = ids.compactMap { composition.slots[$0] }
+        for (index, point) in points.enumerated() {
+            for other in points.dropFirst(index + 1) {
+                XCTAssertGreaterThanOrEqual(hypot(point.x - other.x, point.y - other.y), 219.9)
+            }
+        }
+    }
 }

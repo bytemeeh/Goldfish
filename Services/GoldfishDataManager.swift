@@ -122,15 +122,35 @@ final class GoldfishDataManager: ObservableObject {
     }
     private var editDepth = 0
     private var petKindUndo: [UUID: (person: Person, value: String?)] = [:]
+    private var afterCommitActions: [() -> Void] = []
+
+    /// Runs work only after the current outer transaction has committed. Nested
+    /// repository calls can register follow-up state without marking a rollback
+    /// as complete.
+    func afterCurrentAtomicEditCommits(_ action: @escaping () -> Void) {
+        if editDepth == 0 {
+            action()
+        } else {
+            afterCommitActions.append(action)
+        }
+    }
+
     func performAtomicEdit<T>(_ operation: () throws -> T) throws -> T {
-        let outermost = editDepth == 0
-        editDepth += 1
-        defer { editDepth -= 1 }
+        let entryDepth = editDepth
+        let outermost = entryDepth == 0
+        editDepth = entryDepth + 1
+        defer { editDepth = entryDepth }
         do {
             let value = try operation()
             if outermost {
                 try context.save()
                 petKindUndo.removeAll()
+                // The transaction is committed now. Hooks and synchronous
+                // notification observers may start independent edits.
+                editDepth = entryDepth
+                let actions = afterCommitActions
+                afterCommitActions.removeAll()
+                actions.forEach { $0() }
                 NotificationCenter.default.post(name: .goldfishDataDidChange, object: nil)
             }
             return value
@@ -138,6 +158,7 @@ final class GoldfishDataManager: ObservableObject {
             if outermost {
                 context.rollback()
                 restorePetKinds()
+                afterCommitActions.removeAll()
             }
             throw error
         }

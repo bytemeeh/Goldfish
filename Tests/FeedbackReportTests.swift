@@ -55,6 +55,27 @@ final class FeedbackReportTests: XCTestCase {
         }
     }
 
+    func testInteractionHistoryIsOptInAndContainsOnlyFixedEventLabels() {
+        let history: [InteractionDiagnosticEvent] = [.modeRequestedList, .modeCommittedList]
+        let optedOut = FeedbackReport(kind: .bug, message: "List did not open.",
+                                      interactionHistory: history, diagnostics: details)
+        XCTAssertFalse(optedOut.body.contains("interaction history"))
+        XCTAssertFalse(optedOut.shareText.contains("Requested List view"))
+
+        let optedIn = FeedbackReport(kind: .bug, message: "List did not open.",
+                                     includesInteractionHistory: true,
+                                     interactionHistory: history, diagnostics: details)
+        XCTAssertTrue(optedIn.body.contains("Recent interaction history\nRequested List view\nList view state committed"))
+        XCTAssertFalse(optedIn.shareText.contains("contact ID"))
+        XCTAssertFalse(optedIn.shareText.contains("search text"))
+    }
+
+    func testOptedInHistoryHasAnExplicitEmptyState() {
+        let report = FeedbackReport(kind: .bug, message: "Pond did not open.",
+                                    includesInteractionHistory: true, diagnostics: details)
+        XCTAssertTrue(report.body.contains("Recent interaction history\nNo interaction history is available."))
+    }
+
     func testDiagnosticsAreAnExplicitMinimalAllowlist() {
         XCTAssertEqual(details.text, "App: Goldfish\nVersion: 1.2 (45)\niOS: 26.4\nDevice: iPhone")
     }
@@ -128,6 +149,35 @@ final class FeedbackReportTests: XCTestCase {
             FeedbackConfiguration.privacyPolicyURL?.absoluteString,
             "https://goldfish-pond-support.bwjhhk9fbp.chatgpt.site/privacy"
         )
+    }
+}
+
+@MainActor
+final class InteractionDiagnosticsTests: XCTestCase {
+    func testRingIsBoundedAndPreservesNewestEventOrder() {
+        InteractionDiagnostics.reset()
+        defer { InteractionDiagnostics.reset() }
+        for _ in 0..<InteractionDiagnostics.capacity {
+            InteractionDiagnostics.record(.modeRequestedPond)
+        }
+        InteractionDiagnostics.record(.modeRequestedList)
+        InteractionDiagnostics.record(.listDestinationAppeared)
+
+        let snapshot = InteractionDiagnostics.snapshot()
+        XCTAssertEqual(snapshot.count, InteractionDiagnostics.capacity)
+        XCTAssertEqual(snapshot.first, .modeRequestedPond)
+        XCTAssertEqual(Array(snapshot.suffix(2)), [.modeRequestedList, .listDestinationAppeared])
+    }
+
+    func testSnapshotDoesNotChangeWhenLaterEventsAreRecorded() {
+        InteractionDiagnostics.reset()
+        defer { InteractionDiagnostics.reset() }
+        InteractionDiagnostics.record(.modeRequestedList)
+        let frozen = InteractionDiagnostics.snapshot()
+        InteractionDiagnostics.record(.modeCommittedList)
+
+        XCTAssertEqual(frozen, [.modeRequestedList])
+        XCTAssertEqual(InteractionDiagnostics.snapshot(), [.modeRequestedList, .modeCommittedList])
     }
 }
 

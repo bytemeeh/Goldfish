@@ -148,9 +148,6 @@ private struct HomeContent: View {
                 viewModel.isDemoMode = demoMode
                 graphViewModel.isDemoMode = demoMode
                 viewModel.loadData()
-                if viewModel.viewMode == .graph {
-                    graphViewModel.loadGraph()
-                }
                 // Keep the map behind onboarding without creating sample data.
                 if !hasCompletedOnboarding {
                     viewModel.viewMode = .graph
@@ -159,7 +156,8 @@ private struct HomeContent: View {
                 if hasCompletedOnboarding && demoModeManager.isDemoModeActive {
                     walkthroughManager.startWalkthroughIfNeeded(dataManager: dataManager)
                 }
-                // Refresh to pick up any freshly seeded demo data
+                // Load once after walkthrough/sample setup so the graph sees any
+                // freshly seeded demo data without rebuilding the same map twice.
                 graphViewModel.refreshGraph()
             }
             .onChange(of: demoModeManager.isDemoModeActive) { _, isDemoActive in
@@ -205,11 +203,14 @@ private struct HomeContent: View {
                     if graphViewModel.selectedPondFilter != viewModel.selectedScopeID {
                         graphViewModel.selectedPondFilter = viewModel.selectedScopeID
                     }
-                    graphViewModel.refreshGraph()
+                    // loadGraph() is a no-op while the current map is still valid.
+                    graphViewModel.loadGraph()
+                    InteractionDiagnostics.record(.modeCommittedPond)
                 }
                 if newMode == .list {
+                    InteractionDiagnostics.record(.modeCommittedList)
                     searchToRestoreAfterRipple = nil
-                    graphViewModel.closeRipple()
+                    graphViewModel.leavePondView()
                     walkthroughManager.report(.switchedToList)
                 }
             }
@@ -379,6 +380,7 @@ private struct HomeContent: View {
                                 }
                             }
                             .onAppear {
+                                InteractionDiagnostics.record(.pondDestinationAppeared)
                                 let demoMode = walkthroughManager.isActive || demoModeManager.isDemoModeActive
                                 graphViewModel.isDemoMode = demoMode
                                 viewModel.isDemoMode = demoMode
@@ -387,6 +389,7 @@ private struct HomeContent: View {
                             .allowsHitTesting(!isSearchOverlayPresented)
                     } else {
                         contactsList
+                            .onAppear { InteractionDiagnostics.record(.listDestinationAppeared) }
                             .accessibilityHidden(isSearchOverlayPresented)
                             .allowsHitTesting(!isSearchOverlayPresented)
                     }
@@ -625,11 +628,10 @@ private struct HomeContent: View {
     }
 
     private var modeControls: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 0) {
             modeButton("Pond", mode: .graph)
             modeButton("List", mode: .list)
         }
-        .padding(2)
         .background(GoldfishDS.surface, in: RoundedRectangle(cornerRadius: GoldfishDS.Radius.control))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("homeViewMode")
@@ -638,12 +640,23 @@ private struct HomeContent: View {
 
     private func modeButton(_ title: String, mode: HomeViewMode) -> some View {
         let isSelected = viewModel.viewMode == mode
-        return Button { viewModel.viewMode = mode } label: {
+        return Button {
+            switch mode {
+            case .graph:
+                InteractionDiagnostics.record(.modeRequestedPond)
+            case .list:
+                InteractionDiagnostics.record(.modeRequestedList)
+            }
+            guard viewModel.viewMode != mode else { return }
+            UISelectionFeedbackGenerator().selectionChanged()
+            viewModel.viewMode = mode
+        } label: {
             Text(title)
                 .font(.gfBody.weight(.medium))
                 .foregroundStyle(isSelected ? GoldfishDS.terracotta : GoldfishDS.ink(.secondary))
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .padding(.horizontal, 4)
+                .padding(.vertical, 2)
                 .background(isSelected ? GoldfishDS.terracotta.opacity(0.14) : Color.clear,
                             in: RoundedRectangle(cornerRadius: GoldfishDS.Radius.control - 2))
                 .overlay {
@@ -652,6 +665,7 @@ private struct HomeContent: View {
                             .strokeBorder(GoldfishDS.terracotta.opacity(0.55), lineWidth: 1)
                     }
                 }
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)

@@ -2,9 +2,14 @@ import Foundation
 
 enum RelationshipQueryRole: String, CaseIterable, Equatable {
     case friend, sibling, partner, spouse, child, parent, mother, father
-    case coworker, pet, dog, cat, guardian, connection
+    case coworker, pet, dog, cat, guardian, caregiver, caredFor, connection
 
-    var label: String { rawValue.capitalized }
+    var label: String {
+        switch self {
+        case .caredFor: return "Person receiving care"
+        default: return rawValue.capitalized
+        }
+    }
 }
 
 struct RelationshipQuery: Equatable {
@@ -33,6 +38,10 @@ struct RelationshipQueryParser {
         "coworker": .coworker, "coworkers": .coworker, "colleague": .coworker, "colleagues": .coworker,
         "pet": .pet, "pets": .pet, "dog": .dog, "dogs": .dog, "cat": .cat, "cats": .cat,
         "guardian": .guardian, "guardians": .guardian,
+        "caregiver": .caregiver, "caregivers": .caregiver,
+        "carer": .caregiver, "carers": .caregiver,
+        "caredfor": .caredFor, "cared-for": .caredFor,
+        "care recipient": .caredFor, "person receiving care": .caredFor,
         "connection": .connection, "connections": .connection
     ]
     private static let unsupportedRelationshipWords: Set<String> = [
@@ -145,6 +154,8 @@ struct RelationshipQueryParser {
     private static func role(in text: String) -> RelationshipQueryRole? {
         let words = text.lowercased().split(whereSeparator: { $0.isWhitespace }).map(String.init)
         let filtered = words.filter { $0 != "the" }
+        let phrase = filtered.joined(separator: " ").trimmingCharacters(in: .punctuationCharacters)
+        if phrase == "person receiving care" || phrase == "care recipient" || phrase == "cared for" { return .caredFor }
         guard filtered.count == 1 else { return nil }
         return aliases[filtered[0].trimmingCharacters(in: .punctuationCharacters)]
     }

@@ -111,6 +111,8 @@ struct RelationshipSearchService {
         case .father: return types.contains(.father)
         case .coworker: return types.contains(.coworker)
         case .guardian: return types.contains(.guardian)
+        case .caregiver: return types.contains(.caregiver)
+        case .caredFor: return types.contains(.caredFor)
         case .pet: return types.contains(.pet)
         case .dog: return types.contains(.pet) && neighbor.person.contactKind == .dog
         case .cat: return types.contains(.pet) && neighbor.person.contactKind == .cat

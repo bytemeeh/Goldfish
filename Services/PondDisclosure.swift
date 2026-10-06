@@ -18,11 +18,16 @@ struct PondDisclosureSnapshot: Equatable {
     let unlinkedIDs: Set<UUID>
     let revealedEdges: [PondDisclosureEdge]
     let parents: [UUID: UUID]
+    var focusRootID: UUID? = nil
+    var focusedIDs: Set<UUID> = []
+    var focusedEdges: [PondDisclosureEdge] = []
+    var pathHighlightIDs: [UUID] = []
 
     static let empty = PondDisclosureSnapshot(
         visibleIDs: [], directIDs: [], expandedIDs: [], selectedID: nil,
         trail: [], hiddenNeighborCounts: [:], hiddenByPond: [:],
-        unlinkedIDs: [], revealedEdges: [], parents: [:]
+        unlinkedIDs: [], revealedEdges: [], parents: [:],
+        focusRootID: nil, focusedIDs: [], focusedEdges: [], pathHighlightIDs: []
     )
 }
 
@@ -43,6 +48,8 @@ struct PondDisclosure {
     private var searchVisibleIDs: Set<UUID> = []
     private var trail: [UUID] = []
     private var selectedID: UUID?
+    private var focusRootID: UUID?
+    private var pathHighlightIDs: [UUID] = []
 
     init(people: [Person]) {
         var unique: [UUID: Person] = [:]
@@ -75,6 +82,61 @@ struct PondDisclosure {
         searchVisibleIDs = Set(searchRoute)
         trail = graph.validatedTrail(trail)
         if let selectedID, peopleByID[selectedID] == nil { self.selectedID = nil }
+        if let focusRootID, peopleByID[focusRootID] == nil { self.focusRootID = nil }
+        pathHighlightIDs = graph.validatedTrail(pathHighlightIDs).filter { peopleByID[$0] != nil }
+        rebuildSnapshot()
+    }
+
+    /// Selects a contact and opens its relationships without toggling an open
+    /// branch closed. Contacts inside the focused branch keep that branch's
+    /// original root; a contact outside it starts a new focus.
+    mutating func activatePondContact(id: UUID) {
+        guard id != meID, peopleByID[id] != nil, snapshot.visibleIDs.contains(id) else { return }
+        if focusRootID == nil || !snapshot.focusedIDs.contains(id) {
+            focusRootID = id
+        }
+        if !expandedIDs.contains(id), canActivateBranch(id) {
+            expandedIDs.insert(id)
+            revealNext(for: id)
+        }
+        selectedID = id
+        pathHighlightIDs.removeAll()
+        trail = selectionTrail(to: id)
+        rebuildSnapshot()
+    }
+
+    /// Clears the branch highlight and inspector selection while keeping every
+    /// explicitly opened branch available in the pond.
+    mutating func clearPondFocus() {
+        focusRootID = nil
+        selectedID = nil
+        trail.removeAll()
+        pathHighlightIDs.removeAll()
+        rebuildSnapshot()
+    }
+
+    /// Clears pond-only focus and compatibility route state while preserving
+    /// explicitly expanded branches and manually revealed pond contacts.
+    mutating func leavePondView() {
+        focusRootID = nil
+        selectedID = nil
+        trail.removeAll()
+        searchRoute.removeAll()
+        searchVisibleIDs.removeAll()
+        pathHighlightIDs.removeAll()
+        rebuildSnapshot()
+    }
+
+    /// Temporarily highlights the currently selected contact's saved route.
+    /// This does not change the branch anchor or disclosure state.
+    mutating func showConnectionPath() {
+        pathHighlightIDs = graph.validatedTrail(trail)
+        rebuildSnapshot()
+    }
+
+    mutating func clearConnectionPath() {
+        guard !pathHighlightIDs.isEmpty else { return }
+        pathHighlightIDs.removeAll()
         rebuildSnapshot()
     }
 
@@ -82,6 +144,7 @@ struct PondDisclosure {
     mutating func togglePondConnections(id: UUID) {
         guard peopleByID[id] != nil, snapshot.visibleIDs.contains(id) else { return }
         let selectedTrail = selectionTrail(to: id)
+        pathHighlightIDs.removeAll()
         if expandedIDs.contains(id) {
             expandedIDs.remove(id)
             branchReveals.removeValue(forKey: id)
@@ -106,6 +169,7 @@ struct PondDisclosure {
         expandedIDs.insert(id)
         revealNext(for: id)
         selectedID = id
+        pathHighlightIDs.removeAll()
         trail = selectionTrail(to: id)
         rebuildSnapshot()
     }
@@ -120,6 +184,8 @@ struct PondDisclosure {
         searchVisibleIDs.removeAll()
         trail.removeAll()
         selectedID = nil
+        focusRootID = nil
+        pathHighlightIDs.removeAll()
         rebuildSnapshot()
     }
 
@@ -137,10 +203,12 @@ struct PondDisclosure {
         guard let id else {
             selectedID = nil
             trail.removeAll()
+            pathHighlightIDs.removeAll()
             rebuildSnapshot()
             return
         }
         guard snapshot.visibleIDs.contains(id) else { return }
+        if selectedID != id { pathHighlightIDs.removeAll() }
         selectedID = id
         trail = selectionTrail(to: id)
         rebuildSnapshot()
@@ -155,6 +223,7 @@ struct PondDisclosure {
             return false
         }
         selectedID = id
+        pathHighlightIDs.removeAll()
         trail = Array(trail.prefix(index + 1))
         rebuildSnapshot()
         return true
@@ -168,7 +237,10 @@ struct PondDisclosure {
         searchRoute = validated
         searchVisibleIDs = Set(validated)
         trail = validated
-        if let id, peopleByID[id] != nil { selectedID = id }
+        if let id, peopleByID[id] != nil {
+            if selectedID != id { pathHighlightIDs.removeAll() }
+            selectedID = id
+        }
         rebuildSnapshot()
     }
 
@@ -181,6 +253,8 @@ struct PondDisclosure {
         searchVisibleIDs.removeAll()
         trail.removeAll()
         selectedID = nil
+        focusRootID = nil
+        pathHighlightIDs.removeAll()
         rebuildSnapshot()
     }
 
@@ -206,6 +280,17 @@ struct PondDisclosure {
     }
 
     private var meID: UUID? { graph.meID }
+
+    /// A tap should persist a branch edge that a compatibility route already
+    /// made visible. The ordinary disclosure affordance can still use
+    /// `canExpand` to decide whether there is meaningful expansion work.
+    private func canActivateBranch(_ id: UUID) -> Bool {
+        if canExpand(id) { return true }
+        let ancestors = Set(pathTo(id))
+        return graph.neighbors(of: id).contains {
+            $0.id != meID && snapshot.visibleIDs.contains($0.id) && !ancestors.contains($0.id)
+        }
+    }
 
     private func pondID(for person: Person) -> String {
         person.primaryCircle?.id.uuidString ?? "unassigned"
@@ -263,6 +348,8 @@ struct PondDisclosure {
         // detached cycle from keeping itself visible after its parent closes.
         expandedIDs.formIntersection(visible)
         branchReveals = branchReveals.filter { expandedIDs.contains($0.key) }
+        if let focusRootID, !visible.contains(focusRootID) { self.focusRootID = nil }
+        pathHighlightIDs = pathHighlightIDs.filter { visible.contains($0) }
 
         var edges: [PondDisclosureEdge] = []
         if let meID {
@@ -328,6 +415,7 @@ struct PondDisclosure {
             guard let meID else { return true }
             return graph.shortestPath(from: meID, to: id) == nil
         })
+        let (focusedIDs, focusedEdges) = focusedBranch(visible: visible)
         let currentSelected = selectedID.flatMap { visible.contains($0) ? $0 : nil }
         selectedID = currentSelected
         trail = graph.validatedTrail(trail).filter { visible.contains($0) }
@@ -344,8 +432,47 @@ struct PondDisclosure {
             hiddenByPond: hiddenByPond,
             unlinkedIDs: unlinked,
             revealedEdges: edges,
-            parents: parents
+            parents: parents,
+            focusRootID: focusRootID,
+            focusedIDs: focusedIDs,
+            focusedEdges: focusedEdges,
+            pathHighlightIDs: pathHighlightIDs
         )
+    }
+
+    /// Builds a bounded view from the active contact. The anchor's visible
+    /// saved neighbors are always included, then traversal follows only edges
+    /// explicitly revealed by open branches. Me and the anchor's upstream route
+    /// are barriers, so cycles cannot escape back to the pond roots.
+    private func focusedBranch(visible: Set<UUID>) -> (Set<UUID>, [PondDisclosureEdge]) {
+        guard let root = focusRootID, visible.contains(root) else { return ([], []) }
+        var blocked = Set(pathTo(root).dropLast())
+        if let meID { blocked.insert(meID) }
+        blocked.remove(root)
+
+        var focused: Set<UUID> = [root]
+        var edges: [PondDisclosureEdge] = []
+        var queue = [root]
+        var index = 0
+        while index < queue.count {
+            let source = queue[index]
+            index += 1
+            let targets: [UUID]
+            if source == root {
+                // The contact's own saved neighbors are meaningful context even
+                // when another branch made them visible first.
+                targets = graph.neighbors(of: root).map(\.id)
+            } else if expandedIDs.contains(source) {
+                targets = branchReveals[source, default: []].sorted { $0.uuidString < $1.uuidString }
+            } else {
+                targets = []
+            }
+            for target in targets where visible.contains(target) && !blocked.contains(target) {
+                edges.append(PondDisclosureEdge(from: source, to: target))
+                if focused.insert(target).inserted { queue.append(target) }
+            }
+        }
+        return (focused, edges)
     }
 
     /// Keep the route the user followed when a contact is shared by branches.

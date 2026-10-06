@@ -39,7 +39,7 @@ struct GraphContainerView: View {
                     if walkthroughManager.isActive {
                         viewModel.selectContact(person.id)
                     } else {
-                        viewModel.togglePondConnections(person.id)
+                        viewModel.activatePondContact(id: person.id)
                     }
                 }
                 .accessibilityHint(pondContactHint(person))
@@ -736,13 +736,13 @@ struct GraphContainerView: View {
 
     private func pondContactHint(_ person: Person) -> String {
         if walkthroughManager.isActive { return "Opens contact details and relationships" }
-        if viewModel.isPondConnectionsExpanded(person.id) { return "Hides this person's disclosed connections" }
+        if viewModel.isPondConnectionsExpanded(person.id) { return "Opens this person's connections" }
         if viewModel.canShowPondConnections(person.id) {
             return viewModel.hiddenPondNeighborCount(for: person.id) > 0
-                ? "Shows this person's saved connections"
+                ? "Opens this person and reveals saved connections"
                 : "Keeps shared connections visible if another branch is closed"
         }
-        return "Selects this person in the pond"
+        return "Opens this person in the pond"
     }
 
     @ViewBuilder
@@ -757,7 +757,7 @@ struct GraphContainerView: View {
                 Button("Hide connections") { viewModel.togglePondConnections(person.id) }
             } else if viewModel.canShowPondConnections(person.id) {
                 Button(hiddenCount > 0 ? "Show connections" : "Keep connections open") {
-                    viewModel.togglePondConnections(person.id)
+                    viewModel.activatePondContact(id: person.id)
                 }
             }
         }
@@ -789,13 +789,14 @@ struct GraphContainerView: View {
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     inspectorSummary
-                        .frame(maxWidth: .infinity, minHeight: 60, alignment: .topLeading)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .frame(height: 84, alignment: .topLeading)
                     inspectorActions
                         .frame(height: 44)
                 }
             }
         }
-        .frame(height: dynamicTypeSize.isAccessibilitySize ? 286 : 112, alignment: .top)
+        .frame(height: dynamicTypeSize.isAccessibilitySize ? 286 : 144, alignment: .top)
         .tint(GoldfishDS.terracotta)
         .accessibilityElement(children: .contain)
     }
@@ -804,10 +805,29 @@ struct GraphContainerView: View {
     private var inspectorSummary: some View {
         if let person = viewModel.disclosureCurrentPerson {
             VStack(alignment: .leading, spacing: 3) {
-                Text(person.isMe ? "You" : person.name)
-                    .font(dynamicTypeSize.isAccessibilitySize ? .headline : .gfName)
-                    .foregroundStyle(GoldfishDS.ink(.primary))
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                HStack(spacing: 6) {
+                    Text(person.isMe ? "You" : person.name)
+                        .font(dynamicTypeSize.isAccessibilitySize ? .headline : .gfName)
+                        .foregroundStyle(GoldfishDS.ink(.primary))
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                    Spacer(minLength: 0)
+                    if viewModel.pondDisclosureSnapshot.focusRootID != nil {
+                        Button {
+                            viewModel.clearPondFocus()
+                        } label: {
+                            Label("Back", systemImage: "arrow.uturn.backward")
+                                .font(.gfCaption.weight(.medium))
+                                .lineLimit(1)
+                                .frame(minHeight: 44)
+                                .padding(.horizontal, 8)
+                                .background(GoldfishDS.surface, in: RoundedRectangle(cornerRadius: GoldfishDS.Radius.control))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(focusReturnButtonTitle)
+                        .accessibilityHint(focusReturnButtonHint)
+                        .accessibilityIdentifier("backToAllPonds")
+                    }
+                }
                 Text(RelationshipContextService(people: allGraphPeople).summary(for: person) ?? "No saved path from you")
                     .font(.gfCaption)
                     .foregroundStyle(GoldfishDS.ink(.secondary))
@@ -864,60 +884,144 @@ struct GraphContainerView: View {
     }
 
     private var inspectorActions: some View {
-        HStack(spacing: 8) {
+        Group {
             if let person = viewModel.disclosureCurrentPerson {
-                ScrollView(.horizontal, showsIndicators: false) {
+                contactInspectorActions(for: person)
+            } else {
+                ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
-                        inspectorButton("Open contact", systemImage: "person.crop.circle") {
-                            viewModel.selectContact(person.id)
-                        }
-                        .accessibilityIdentifier("pondOpenContact")
+                        inspectorButton("Center on you", systemImage: "scope") { viewModel.resetCamera() }
+                        inspectorButton("Map help", systemImage: "questionmark.circle") { showsMapHelp = true }
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        inspectorButton("Center on you", systemImage: "scope") { viewModel.resetCamera() }
+                        inspectorButton("Map help", systemImage: "questionmark.circle") { showsMapHelp = true }
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .foregroundStyle(GoldfishDS.ink(.secondary))
+    }
 
-                        let connectionCount = pondGraph.neighbors(of: person.id).count
-                        let hiddenCount = viewModel.hiddenPondNeighborCount(for: person.id)
-                        let isExpanded = viewModel.isPondConnectionsExpanded(person.id)
-                        if isExpanded {
-                            if hiddenCount > 0 {
-                                inspectorButton("Show more", systemImage: "plus.circle") {
-                                    viewModel.showMorePondConnections(person.id)
-                                }
-                                .accessibilityHint("Reveals up to four more saved connections")
-                                .accessibilityIdentifier("showMorePondConnections")
+    private func contactInspectorActions(for person: Person) -> some View {
+        let openContact = inspectorButton("Open contact", systemImage: "person.crop.circle") {
+            viewModel.selectContact(person.id)
+        }
+        .accessibilityIdentifier("pondOpenContact")
+        .layoutPriority(1)
+
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                openContact
+                connectionToggleButton(for: person)
+                inspectorMoreMenu
+                    .accessibilityIdentifier("pondMoreMenu")
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                openContact
+                HStack(spacing: 8) {
+                    connectionToggleButton(for: person)
+                    inspectorMoreMenu
+                        .accessibilityIdentifier("pondMoreMenu")
+                }
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                openContact
+                connectionToggleButton(for: person)
+                inspectorMoreMenu
+                    .accessibilityIdentifier("pondMoreMenu")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func connectionToggleButton(for person: Person) -> some View {
+        let hiddenCount = viewModel.hiddenPondNeighborCount(for: person.id)
+        if viewModel.isPondConnectionsExpanded(person.id) {
+            inspectorButton("Hide", systemImage: "eye.slash") {
+                viewModel.togglePondConnections(person.id)
+            }
+            .accessibilityLabel("Hide connections")
+            .accessibilityHint("Hides this person's disclosed connections")
+            .accessibilityIdentifier("hidePondConnections")
+        } else if viewModel.canShowPondConnections(person.id) {
+            inspectorButton("Show", systemImage: "point.3.connected.trianglepath.dotted") {
+                viewModel.activatePondContact(id: person.id)
+            }
+            .accessibilityLabel("Show connections")
+            .accessibilityValue(hiddenCount > 0 ? "\(hiddenCount) hidden" : "")
+            .accessibilityHint("Opens this person and reveals saved connections")
+            .accessibilityIdentifier("showPondConnections")
+        }
+    }
+
+    private var focusReturnButtonTitle: String {
+        viewModel.selectedPondFilter == nil ? "Back to all ponds" : "Back to overview"
+    }
+
+    private var focusReturnButtonHint: String {
+        viewModel.selectedPondFilter == nil
+            ? "Returns to all ponds and keeps opened branches"
+            : "Returns to the selected pond overview and keeps opened branches"
+    }
+
+    private var inspectorMoreMenu: some View {
+        let snapshot = viewModel.pondDisclosureSnapshot
+        let currentPersonID = viewModel.disclosureCurrentPerson?.id
+        return Menu {
+            if let currentPersonID,
+               viewModel.isPondConnectionsExpanded(currentPersonID),
+               viewModel.hiddenPondNeighborCount(for: currentPersonID) > 0 {
+                Button("Show more connections", systemImage: "plus.circle") {
+                    viewModel.showMorePondConnections(currentPersonID)
+                }
+                .accessibilityIdentifier("showMorePondConnections")
+            }
+            if snapshot.pathHighlightIDs.isEmpty, !snapshot.trail.isEmpty {
+                Button("Show connection path", systemImage: "point.topleft.down.curvedto.point.bottomright.up") {
+                    viewModel.showConnectionPath()
+                }
+                .accessibilityIdentifier("pondPathMenu")
+            } else if !snapshot.pathHighlightIDs.isEmpty {
+                Button("Clear connection path", systemImage: "xmark") {
+                    viewModel.clearConnectionPath()
+                }
+                .accessibilityIdentifier("pondPathMenu")
+            }
+            if snapshot.trail.count > 1 {
+                Menu("Choose a person on path") {
+                    ForEach(snapshot.trail, id: \.self) { id in
+                        if let person = pondPerson(id) {
+                            Button(person.isMe ? "You" : person.name) {
+                                _ = viewModel.selectDisclosureTrailAncestor(id)
                             }
-                            inspectorButton("Hide connections", systemImage: "eye.slash") {
-                                viewModel.togglePondConnections(person.id)
-                            }
-                            .accessibilityIdentifier("hidePondConnections")
-                        } else if viewModel.canShowPondConnections(person.id) {
-                            inspectorButton(hiddenCount > 0 ? "Show connections" : "Keep connections open", systemImage: "point.3.connected.trianglepath.dotted") {
-                                viewModel.togglePondConnections(person.id)
-                            }
-                            .accessibilityValue(hiddenCount > 0 ? "\(hiddenCount) hidden" : "")
-                            .accessibilityHint(hiddenCount > 0
-                                ? "Reveals up to four people without moving the pond"
-                                : "Keeps shared connections visible if another branch is closed")
-                            .accessibilityIdentifier("showPondConnections")
-                        } else {
-                            Label(connectionCount == 0 ? "No saved connections" : "All connections shown", systemImage: "checkmark.circle")
-                                .font(.gfCaption)
-                                .foregroundStyle(GoldfishDS.ink(.tertiary))
-                                .frame(minHeight: 44)
+                            .disabled(id == snapshot.trail.last)
                         }
                     }
                 }
-                .frame(maxWidth: .infinity)
             }
-            if viewModel.disclosureCurrentPerson == nil {
-                inspectorButton("Center on you", systemImage: "scope") { viewModel.resetCamera() }
-                Spacer(minLength: 0)
-                inspectorButton("Map help", systemImage: "questionmark.circle") { showsMapHelp = true }
+            if snapshot.focusRootID != nil {
+                Button(focusReturnButtonTitle, systemImage: "arrow.uturn.backward") {
+                    viewModel.clearPondFocus()
+                }
             }
-            trailNavigation
-            if hasAdditionalDisclosure {
-                collapseAllButton
+            if hasOpenPondBranches {
+                Button("Collapse all", systemImage: "arrow.down.right.and.arrow.up.left") {
+                    viewModel.collapseAllPondConnections()
+                }
+                .accessibilityIdentifier("collapseAllPondConnections")
             }
+        } label: {
+            Label("More", systemImage: "ellipsis")
+                .font(.gfCaption.weight(.medium))
+                .frame(minWidth: 44, minHeight: 44)
+                .padding(.horizontal, 8)
+                .background(GoldfishDS.surface, in: RoundedRectangle(cornerRadius: GoldfishDS.Radius.control))
+                .contentShape(Rectangle())
         }
-        .foregroundStyle(GoldfishDS.ink(.secondary))
+        .accessibilityLabel("More map actions")
+        .accessibilityHint("Path, return to all ponds, and collapse controls")
     }
 
     private var mapOptionsMenu: some View {
@@ -994,7 +1098,7 @@ struct GraphContainerView: View {
                     if walkthroughManager.isActive {
                         viewModel.selectContact(person.id)
                     } else {
-                        viewModel.togglePondConnections(person.id)
+                        viewModel.activatePondContact(id: person.id)
                     }
                 } label: {
                     HStack(alignment: .top, spacing: 10) {
@@ -1187,7 +1291,8 @@ private struct MapHelpView: View {
     }
 
     private let rows = [
-        HelpRow(icon: "hand.tap", title: "Follow", detail: "Tap a person to see their role and reveal up to four of their saved connections. Their place in the pond and your camera stay put.", accessibility: "Tap a person to see their role and show up to four saved connections."),
+        HelpRow(icon: "hand.tap", title: "Follow", detail: "Tap a person to see their role and reveal up to four of their saved connections. Their place in the pond stays put while the camera frames the focused cluster.", accessibility: "Tap a person to see their role, focus the map, and show up to four saved connections."),
+        HelpRow(icon: "circle.dashed", title: "Reading ponds", detail: "In the overview, a quiet line from You to a pond shows organization, not a saved relationship or degree of closeness. Open a person to see saved connections; lines in focused view are saved relationships.", accessibility: "Overview pond lines show organization, not relationships or degree of closeness. Lines in focused view show saved relationships."),
         HelpRow(icon: "point.3.connected.trianglepath.dotted", title: "Connections", detail: "Use Show more for the next small group, Hide connections for one branch, or Collapse all to return to you and your direct connections. Open contact shows the full profile.", accessibility: "Show more reveals the next group. Hide connections closes one branch. Collapse all returns to direct connections."),
         HelpRow(icon: "person.2.badge.plus", title: "People in ponds", detail: "Pond totals include everyone. Show people in a pond reveals hidden members in small groups, including people without a saved path from you. It never changes membership.", accessibility: "Pond totals include hidden members. Show people reveals up to four members without changing membership."),
         HelpRow(icon: "link", title: "Connect or move", detail: "Open a contact and choose Add relationship to connect people. Choose Edit, then Pond to move them. Collapse expanded connections before dragging people together or across a pond boundary. Long-press for contact actions.", accessibility: "Open a contact and choose Add relationship to connect people. Choose Edit, then Pond to move them."),

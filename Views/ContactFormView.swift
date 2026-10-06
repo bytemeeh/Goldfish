@@ -89,6 +89,10 @@ struct ContactFormView: View {
                     .tint(GoldfishDS.terracotta)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                Text("Ponds organize where contacts appear. Relationships describe how people are connected.")
+                    .font(.gfMeta)
+                    .foregroundStyle(GoldfishDS.ink(.secondary))
+                    .padding(.bottom, GoldfishDS.Space.lg)
             }
         }
     }
@@ -176,9 +180,10 @@ struct ContactFormView: View {
                             if viewModel.selectedConnectionID != nil {
                                 hairline
                                 formField(placeholder: "Relationship") {
-                                    Picker("Relationship", selection: $viewModel.selectedRelationshipType) {
+                                    Picker("Relationship", selection: $viewModel.relationshipTypeSelection) {
+                                        Text("Choose a relationship").tag(RelationshipType?.none)
                                         ForEach(RelationshipType.allCases) { type in
-                                            Text(type.displayName).tag(type)
+                                            Text(type.displayName).tag(RelationshipType?.some(type))
                                         }
                                     }
                                     .font(.gfBody)
@@ -186,6 +191,9 @@ struct ContactFormView: View {
                                     .tint(GoldfishDS.terracotta)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 }
+                                Text("Relationship and pond are separate choices.")
+                                    .font(.gfMeta)
+                                    .foregroundStyle(GoldfishDS.ink(.secondary))
                                 if let preview = viewModel.relationshipPreview {
                                     Text(preview)
                                         .font(.gfMeta)

@@ -159,6 +159,19 @@ final class GraphSceneLayoutTests: XCTestCase {
         }
     }
 
+    private func assertOverviewConnectorsStopOutsideVisibleBanks(
+        _ scene: GoldfishGraphScene, file: StaticString = #filePath, line: UInt = #line
+    ) {
+        let banks = scene.debugPresentedPondPaths
+        for (pondID, endpoint) in scene.debugOverviewConnectorEndpoints {
+            guard let bank = banks[pondID] else {
+                XCTFail("An overview connector needs its visible pond bank", file: file, line: line)
+                continue
+            }
+            XCTAssertFalse(bank.contains(endpoint), "The (pondID) connector must stop before its bank", file: file, line: line)
+        }
+    }
+
     func testLateInitialDisclosureDoesNotResetExplicitCameraControls() throws {
         let (manager, container) = try makeTestManager()
         defer { withExtendedLifetime(container) {} }
@@ -174,7 +187,7 @@ final class GraphSceneLayoutTests: XCTestCase {
         XCTAssertEqual(scene.debugCameraZoom, 0.74)
     }
 
-    func testOverviewShowsDirectLinesAndSelectionRevealsSharedContext() throws {
+    func testOverviewShowsPondConnectorAndSelectionRevealsSavedContext() throws {
         let (manager, container) = try makeTestManager()
         defer { withExtendedLifetime(container) {} }
         let me = try manager.createPerson(name: "You", isMe: true)
@@ -188,13 +201,14 @@ final class GraphSceneLayoutTests: XCTestCase {
         let scene = GoldfishGraphScene(size: CGSize(width: 390, height: 500))
         _ = scene.debugLayout([GraphLevel(depth: 0, circleGroups: [CircleGroup(circle: nil, contacts: people)])])
         scene.didUpdateDisclosure(disclosure.snapshot)
-        XCTAssertEqual(scene.debugVisibleEdgeCount, 2)
+        XCTAssertEqual(scene.debugVisibleEdgeCount, 0)
+        XCTAssertEqual(scene.debugOverviewConnectorCount, 1)
         disclosure.selectPondContact(id: alice.id)
         scene.didUpdateDisclosure(disclosure.snapshot)
-        XCTAssertEqual(scene.debugVisibleEdgeCount, 3)
+        XCTAssertEqual(scene.debugVisibleEdgeCount, 1)
         disclosure.collapseAllPondConnections()
         scene.didUpdateDisclosure(disclosure.snapshot)
-        XCTAssertEqual(scene.debugVisibleEdgeCount, 2)
+        XCTAssertEqual(scene.debugVisibleEdgeCount, 0)
     }
 
     func testSampleOverviewSeparatesVisibleIdentitiesAtPhoneWidth() throws {
@@ -215,6 +229,21 @@ final class GraphSceneLayoutTests: XCTestCase {
             _ = scene.debugLayout(levels)
             scene.didUpdateDisclosure(disclosure.snapshot)
             scene.fitAllNodesWithLabels(animated: false)
+            XCTAssertEqual(scene.debugOverviewConnectorPondIDs, scene.debugDirectlyConnectedPondIDs,
+                           "Every directly connected sample pond should have a safe organization connector")
+            XCTAssertTrue(scene.debugOverviewConnectorRoutesAvoidPondHeadings,
+                          "Organization connectors must avoid pond headings")
+            if let me = people.first(where: { $0.isMe }),
+               let center = scene.debugNodePositions[me.id],
+               let coinBounds = scene.debugMeCoinBounds {
+                let expectedDistance = max(coinBounds.width, coinBounds.height) / 2 + 4 / scene.debugCameraZoom
+                for start in scene.debugOverviewConnectorStarts.values {
+                    XCTAssertEqual(hypot(start.x - center.x, start.y - center.y), expectedDistance, accuracy: 0.01,
+                                   "Connectors should begin just beyond the Me coin")
+                }
+            } else {
+                XCTFail("The sample overview should have a measurable Me coin")
+            }
 
             func assertReadableIdentities(_ state: String, file: StaticString = #filePath, line: UInt = #line) {
                 let expected = disclosure.snapshot.visibleIDs
@@ -452,10 +481,98 @@ final class GraphSceneLayoutTests: XCTestCase {
             revealedEdges: [PondDisclosureEdge(from: me.id, to: root.id)], parents: [root.id: me.id]
         ))
         XCTAssertFalse(scene.debugRenderedVisibleIDs.contains(child.id))
-        XCTAssertEqual(scene.debugVisibleEdgeCount, 1)
+        XCTAssertEqual(scene.debugVisibleEdgeCount, 0)
+        XCTAssertEqual(scene.debugOverviewConnectorCount, 1)
+        assertOverviewConnectorsStopOutsideVisibleBanks(scene)
+        scene.didUpdateZoom(scene.debugCameraZoom * 0.8)
+        assertOverviewConnectorsStopOutsideVisibleBanks(scene)
         scene.didUpdateSearchMatches([child.id])
         XCTAssertTrue(scene.debugRenderedVisibleIDs.contains(child.id))
-        XCTAssertEqual(scene.debugVisibleEdgeCount, 2)
+        XCTAssertEqual(scene.debugVisibleEdgeCount, 1)
+        let directEdge = [me.id.uuidString, root.id.uuidString].sorted().joined(separator: "_")
+        XCTAssertFalse(scene.debugVisibleEdgeKeys.contains(directEdge))
+        scene.didUpdateSearchMatches(nil)
+        scene.didUpdateDisclosure(PondDisclosureSnapshot(
+            visibleIDs: [me.id, root.id], directIDs: [root.id], expandedIDs: [], selectedID: root.id,
+            trail: [me.id, root.id], hiddenNeighborCounts: [root.id: 1], hiddenByPond: [:], unlinkedIDs: [],
+            revealedEdges: [PondDisclosureEdge(from: me.id, to: root.id)], parents: [root.id: me.id],
+            pathHighlightIDs: [me.id, root.id]
+        ))
+        XCTAssertTrue(scene.debugVisibleEdgeKeys.contains(directEdge), "An explicit path remains visible without relationship focus")
+    }
+
+    func testFocusedClusterFramesNestedExpansionAndRestoresOverviewCamera() throws {
+        let (manager, container) = try makeTestManager()
+        defer { withExtendedLifetime(container) {} }
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let adriana = try manager.createPerson(name: "Adriana")
+        let riley = try manager.createPerson(name: "Riley")
+        let casey = try manager.createPerson(name: "Casey")
+        try manager.createRelationship(from: me, to: adriana, type: .friend)
+        try manager.createRelationship(from: adriana, to: riley, type: .friend)
+        try manager.createRelationship(from: riley, to: casey, type: .friend)
+        let people = [me, adriana, riley, casey]
+        let levels = [GraphLevel(depth: 0, circleGroups: [CircleGroup(circle: nil, contacts: people)])]
+        let scene = GoldfishGraphScene(size: CGSize(width: 390, height: 700))
+        _ = scene.debugLayout(levels)
+        var disclosure = PondDisclosure(people: people)
+        let overview = disclosure.snapshot
+        scene.didUpdateDisclosure(overview)
+        let overviewCamera = (scene.debugCameraPosition, scene.debugCameraZoom)
+
+        disclosure.activatePondContact(id: adriana.id)
+        scene.didUpdateDisclosure(disclosure.snapshot)
+        XCTAssertEqual(disclosure.snapshot.focusRootID, adriana.id)
+        XCTAssertTrue(disclosure.snapshot.focusedIDs.contains(riley.id))
+        let directEdge = [me.id.uuidString, adriana.id.uuidString].sorted().joined(separator: "_")
+        XCTAssertFalse(scene.debugVisibleEdgeKeys.contains(directEdge))
+        disclosure.showConnectionPath()
+        scene.didUpdateDisclosure(disclosure.snapshot)
+        XCTAssertTrue(scene.debugVisibleEdgeKeys.contains(directEdge), "The explicit route may show the direct relationship line")
+        disclosure.clearConnectionPath()
+        scene.didUpdateDisclosure(disclosure.snapshot)
+        XCTAssertFalse(scene.debugVisibleEdgeKeys.contains(directEdge))
+        let firstFocusCamera = (scene.debugCameraPosition, scene.debugCameraZoom)
+        XCTAssertTrue(firstFocusCamera.0 != overviewCamera.0 || firstFocusCamera.1 != overviewCamera.1)
+
+        disclosure.activatePondContact(id: riley.id)
+        scene.didUpdateDisclosure(disclosure.snapshot)
+        XCTAssertEqual(disclosure.snapshot.focusRootID, adriana.id)
+        XCTAssertTrue(disclosure.snapshot.focusedIDs.contains(casey.id))
+        XCTAssertTrue(scene.debugCameraPosition != firstFocusCamera.0 || scene.debugCameraZoom != firstFocusCamera.1)
+
+        disclosure.clearPondFocus()
+        scene.didUpdateDisclosure(disclosure.snapshot)
+        XCTAssertEqual(scene.debugCameraPosition, overviewCamera.0)
+        XCTAssertEqual(scene.debugCameraZoom, overviewCamera.1, accuracy: 0.000001)
+        XCTAssertTrue(disclosure.snapshot.visibleIDs.contains(casey.id), "Returning to overview keeps expanded branches open")
+    }
+
+    func testDeletingAPondRetiresItsOverviewConnector() throws {
+        let (manager, container) = try makeTestManager()
+        defer { withExtendedLifetime(container) {} }
+        let me = try manager.createPerson(name: "You", isMe: true)
+        let person = try manager.createPerson(name: "Alex")
+        let pond = try manager.createCircle(name: "Team")
+        let removedPondID = pond.id.uuidString
+        try manager.createRelationship(from: me, to: person, type: .friend, skipAutoAssign: true)
+        try manager.addToCircle(person, circle: pond)
+        let people = [me, person]
+        let levels = [GraphLevel(depth: 0, circleGroups: [CircleGroup(circle: nil, contacts: people)])]
+        let scene = GoldfishGraphScene(size: CGSize(width: 390, height: 500))
+        scene.didUpdateGroups(try manager.fetchAllCircles())
+        _ = scene.debugLayout(levels)
+        scene.didUpdateDisclosure(PondDisclosure(people: people).snapshot)
+        XCTAssertTrue(scene.debugOverviewConnectorPondIDs.contains(removedPondID))
+
+        try manager.deleteCircle(pond)
+        scene.didUpdateGroups(try manager.fetchAllCircles())
+        _ = scene.debugLayout(levels)
+        scene.didUpdateDisclosure(PondDisclosure(people: people).snapshot)
+
+        XCTAssertFalse(scene.debugOverviewConnectorPondIDs.contains(removedPondID))
+        XCTAssertTrue(scene.debugOverviewConnectorPondIDs.contains("unassigned"))
+        assertOverviewConnectorsStopOutsideVisibleBanks(scene)
     }
 
     func testDenseLayoutHasFiniteDistinctSlots() throws {
@@ -721,7 +838,7 @@ final class GraphSceneLayoutTests: XCTestCase {
         XCTAssertEqual(scene.debugNodePositions[david.id], davidPosition)
         XCTAssertEqual(scene.debugNodePositions, overviewPositions)
         XCTAssertEqual(scene.debugCameraPosition, overviewCamera.0)
-        XCTAssertEqual(scene.debugCameraZoom, overviewCamera.1)
+        XCTAssertEqual(scene.debugCameraZoom, overviewCamera.1, accuracy: 0.000001)
         XCTAssertEqual(scene.debugGroupMembers, overviewPonds)
         XCTAssertEqual(scene.debugPondGeometryBounds, overviewBasins)
         XCTAssertEqual(scene.debugDisclosureVisibleIDs, [me.id, david.id, lisa.id, chris.id])
@@ -729,7 +846,7 @@ final class GraphSceneLayoutTests: XCTestCase {
         XCTAssertEqual(scene.debugNodePositions[david.id], davidPosition)
         XCTAssertEqual(scene.debugNodePositions, overviewPositions)
         XCTAssertEqual(scene.debugCameraPosition, overviewCamera.0)
-        XCTAssertEqual(scene.debugCameraZoom, overviewCamera.1)
+        XCTAssertEqual(scene.debugCameraZoom, overviewCamera.1, accuracy: 0.000001)
         XCTAssertEqual(scene.debugGroupMembers, overviewPonds)
         XCTAssertEqual(scene.debugPondGeometryBounds, overviewBasins)
         XCTAssertFalse(scene.debugDisclosureVisibleIDs.contains(lisa.id))
@@ -857,15 +974,15 @@ final class GraphSceneLayoutTests: XCTestCase {
         XCTAssertEqual(scene.debugCameraPosition, initialCamera.0)
         XCTAssertEqual(scene.debugCameraZoom, initialCamera.1)
 
-        // This calls the same private scene activation used by touchesEnded,
-        // then lets GraphViewModel publish the resulting snapshot back to the
-        // scene delegate.
+        // This calls the same scene activation used by touchesEnded: it opens
+        // the branch, selects David, and moves the camera to his cluster.
         scene.debugActivatePondContact(david.id)
         XCTAssertEqual(scene.debugRevealedNodeIDs, [me.id, david.id, lisa.id, chris.id])
         XCTAssertNil(model.selectedContactID)
+        XCTAssertEqual(model.pondDisclosureSnapshot.focusRootID, david.id)
+        let focusedCamera = (scene.debugCameraPosition, scene.debugCameraZoom)
+        XCTAssertTrue(focusedCamera.0 != initialCamera.0 || focusedCamera.1 != initialCamera.1)
         XCTAssertEqual(scene.debugNodePositions, initialPositions)
-        XCTAssertEqual(scene.debugCameraPosition, initialCamera.0)
-        XCTAssertEqual(scene.debugCameraZoom, initialCamera.1)
         XCTAssertEqual(model.pondDisclosureSnapshot.parents[lisa.id], david.id)
         XCTAssertEqual(model.pondDisclosureSnapshot.parents[chris.id], david.id)
 
@@ -875,13 +992,18 @@ final class GraphSceneLayoutTests: XCTestCase {
         XCTAssertEqual(model.selectedPondContactID, lisa.id)
         XCTAssertNil(model.selectedContactID)
         XCTAssertEqual(scene.debugRevealedNodeIDs, [me.id, david.id, lisa.id, chris.id])
+        XCTAssertEqual(model.pondDisclosureSnapshot.focusRootID, david.id)
 
+        // Re-activating an open contact is idempotent; it does not collapse the
+        // branch or move the already framed camera.
         scene.debugActivatePondContact(david.id)
-        XCTAssertFalse(scene.debugRevealedNodeIDs.contains(lisa.id))
-        XCTAssertFalse(scene.debugRevealedNodeIDs.contains(chris.id))
+        XCTAssertTrue(scene.debugRevealedNodeIDs.contains(lisa.id))
+        XCTAssertTrue(scene.debugRevealedNodeIDs.contains(chris.id))
         XCTAssertEqual(model.pondDisclosureSnapshot.directIDs, [david.id])
         XCTAssertEqual(model.pondDisclosureSnapshot.parents[david.id], me.id)
         XCTAssertNil(model.selectedContactID)
+        XCTAssertEqual(scene.debugCameraPosition, focusedCamera.0)
+        XCTAssertEqual(scene.debugCameraZoom, focusedCamera.1)
         view.presentScene(nil)
     }
 

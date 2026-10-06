@@ -112,6 +112,121 @@ final class PondDisclosureTests: XCTestCase {
         XCTAssertFalse(disclosure.snapshot.expandedIDs.contains(leaf.id))
     }
 
+    func testActivatingNestedContactKeepsFocusRootAndRepeatedTapDoesNotCollapse() {
+        let me = Person(name: "Me", isMe: true)
+        let adriana = Person(name: "Adriana")
+        let riley = Person(name: "Riley")
+        let parent = Person(name: "Parent")
+        link(me, adriana); link(adriana, riley); link(riley, parent)
+        var disclosure = PondDisclosure(people: [me, adriana, riley, parent])
+
+        disclosure.activatePondContact(id: adriana.id)
+        XCTAssertEqual(disclosure.snapshot.focusRootID, adriana.id)
+        XCTAssertTrue(disclosure.snapshot.focusedIDs.contains(riley.id))
+        XCTAssertTrue(disclosure.snapshot.expandedIDs.contains(adriana.id))
+
+        disclosure.activatePondContact(id: riley.id)
+        XCTAssertEqual(disclosure.snapshot.focusRootID, adriana.id)
+        XCTAssertEqual(disclosure.snapshot.selectedID, riley.id)
+        XCTAssertTrue(disclosure.snapshot.expandedIDs.contains(adriana.id))
+        XCTAssertTrue(disclosure.snapshot.expandedIDs.contains(riley.id))
+        XCTAssertTrue(disclosure.snapshot.focusedIDs.contains(parent.id))
+        XCTAssertTrue(disclosure.snapshot.focusedEdges.contains(PondDisclosureEdge(from: riley.id, to: parent.id)))
+
+        let branches = disclosure.snapshot.expandedIDs
+        disclosure.activatePondContact(id: riley.id)
+        XCTAssertEqual(disclosure.snapshot.expandedIDs, branches)
+        XCTAssertEqual(disclosure.snapshot.focusRootID, adriana.id)
+    }
+
+    func testActivatingUnrelatedContactSwitchesFocusAndClearPreservesBranches() {
+        let me = Person(name: "Me", isMe: true)
+        let adriana = Person(name: "Adriana")
+        let riley = Person(name: "Riley")
+        let unrelated = Person(name: "Unrelated")
+        let colleague = Person(name: "Colleague")
+        link(me, adriana); link(adriana, riley)
+        link(me, unrelated); link(unrelated, colleague)
+        var disclosure = PondDisclosure(people: [me, adriana, riley, unrelated, colleague])
+
+        disclosure.activatePondContact(id: adriana.id)
+        disclosure.activatePondContact(id: unrelated.id)
+        XCTAssertEqual(disclosure.snapshot.focusRootID, unrelated.id)
+        XCTAssertTrue(disclosure.snapshot.focusedIDs.contains(colleague.id))
+        XCTAssertFalse(disclosure.snapshot.focusedIDs.contains(riley.id))
+
+        let branches = disclosure.snapshot.expandedIDs
+        disclosure.clearPondFocus()
+        XCTAssertNil(disclosure.snapshot.focusRootID)
+        XCTAssertNil(disclosure.snapshot.selectedID)
+        XCTAssertTrue(disclosure.snapshot.focusedIDs.isEmpty)
+        XCTAssertEqual(disclosure.snapshot.expandedIDs, branches)
+        XCTAssertTrue(disclosure.snapshot.visibleIDs.contains(riley.id))
+    }
+
+    func testFocusTraversalStopsAtMeAndUpstreamAncestorsAndHandlesSharedCycles() {
+        let me = Person(name: "Me", isMe: true)
+        let upstream = Person(name: "Upstream")
+        let root = Person(name: "Root")
+        let shared = Person(name: "Shared")
+        let side = Person(name: "Side")
+        link(me, upstream); link(upstream, root)
+        link(root, shared); link(root, side); link(shared, side); link(side, root)
+        var disclosure = PondDisclosure(people: [me, upstream, root, shared, side])
+
+        disclosure.activatePondContact(id: upstream.id)
+        disclosure.clearPondFocus()
+        disclosure.activatePondContact(id: root.id)
+        disclosure.activatePondContact(id: shared.id)
+        disclosure.activatePondContact(id: side.id)
+
+        XCTAssertEqual(disclosure.snapshot.focusRootID, root.id)
+        XCTAssertFalse(disclosure.snapshot.focusedIDs.contains(me.id))
+        XCTAssertFalse(disclosure.snapshot.focusedIDs.contains(upstream.id))
+        XCTAssertEqual(disclosure.snapshot.focusedIDs.intersection([root.id, shared.id, side.id]), [root.id, shared.id, side.id])
+        XCTAssertFalse(disclosure.snapshot.focusedEdges.contains { $0.to == me.id || $0.from == me.id })
+        XCTAssertFalse(disclosure.snapshot.focusedEdges.contains { $0.to == upstream.id })
+        XCTAssertEqual(Set(disclosure.snapshot.focusedEdges).count, disclosure.snapshot.focusedEdges.count)
+    }
+
+    func testConnectionPathIsExplicitAndSelectionClearsItWithoutMovingFocusRoot() {
+        let me = Person(name: "Me", isMe: true)
+        let adriana = Person(name: "Adriana")
+        let riley = Person(name: "Riley")
+        let parent = Person(name: "Parent")
+        link(me, adriana); link(adriana, riley); link(riley, parent)
+        var disclosure = PondDisclosure(people: [me, adriana, riley, parent])
+
+        disclosure.activatePondContact(id: adriana.id)
+        disclosure.activatePondContact(id: riley.id)
+        disclosure.showConnectionPath()
+        XCTAssertEqual(disclosure.snapshot.focusRootID, adriana.id)
+        XCTAssertEqual(disclosure.snapshot.pathHighlightIDs.last, riley.id)
+        XCTAssertFalse(disclosure.snapshot.pathHighlightIDs.isEmpty)
+
+        disclosure.activatePondContact(id: parent.id)
+        XCTAssertEqual(disclosure.snapshot.focusRootID, adriana.id)
+        XCTAssertTrue(disclosure.snapshot.pathHighlightIDs.isEmpty)
+        disclosure.clearPondFocus()
+        XCTAssertTrue(disclosure.snapshot.pathHighlightIDs.isEmpty)
+    }
+
+    func testReloadClearsDeletedFocusAndSelectionWithoutRevealingStaleBranch() {
+        let me = Person(name: "Me", isMe: true)
+        let root = Person(name: "Root")
+        let child = Person(name: "Child")
+        link(me, root); link(root, child)
+        var disclosure = PondDisclosure(people: [me, root, child])
+        disclosure.activatePondContact(id: root.id)
+        disclosure.activatePondContact(id: child.id)
+        XCTAssertEqual(disclosure.snapshot.focusRootID, root.id)
+
+        disclosure.reload(people: [me, child])
+        XCTAssertNil(disclosure.snapshot.focusRootID)
+        XCTAssertNil(disclosure.snapshot.selectedID)
+        XCTAssertFalse(disclosure.snapshot.visibleIDs.contains(root.id))
+    }
+
     func testShowInPondRevealsOnlyTheSavedRouteUntilConnectionsAreExplicitlyOpened() {
         let me = Person(name: "Me", isMe: true)
         let direct = Person(name: "Direct")
@@ -306,6 +421,71 @@ final class PondDisclosureTests: XCTestCase {
 
         XCTAssertEqual(viewModel.selectedPondContactID, contact.id)
         XCTAssertEqual(spy.centeredIDs, [])
+    }
+
+    func testPondAndSearchScopeChangesClearFocusButKeepOpenedBranches() throws {
+        let (manager, container) = try makeTestManager()
+        defer { withExtendedLifetime(container) {} }
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let root = try manager.createPerson(name: "Root")
+        let child = try manager.createPerson(name: "Child")
+        try manager.createRelationship(from: me, to: root, type: .friend, skipAutoAssign: true)
+        try manager.createRelationship(from: root, to: child, type: .friend, skipAutoAssign: true)
+
+        let viewModel = GraphViewModel(dataManager: manager)
+        let spy = DisclosureSceneSpy()
+        viewModel.sceneDelegate = spy
+        viewModel.loadGraph()
+        viewModel.activatePondContact(id: root.id)
+        XCTAssertEqual(viewModel.disclosureSnapshot.focusRootID, root.id)
+        XCTAssertTrue(viewModel.disclosureSnapshot.expandedIDs.contains(root.id))
+
+        viewModel.selectedPondFilter = "unassigned"
+        XCTAssertNil(viewModel.disclosureSnapshot.focusRootID)
+        XCTAssertNil(viewModel.disclosureSnapshot.selectedID)
+        XCTAssertTrue(viewModel.disclosureSnapshot.expandedIDs.contains(root.id))
+        XCTAssertNil(spy.focusRootAtPondFilterCallback, "Disclosure focus must clear before the pond filter callback")
+
+        viewModel.activatePondContact(id: root.id)
+        viewModel.selectedPondFilter = nil
+        XCTAssertNil(viewModel.disclosureSnapshot.focusRootID,
+                     "Clearing a pond filter must also end branch focus")
+        XCTAssertNil(viewModel.disclosureSnapshot.selectedID)
+        XCTAssertTrue(viewModel.disclosureSnapshot.expandedIDs.contains(root.id))
+        XCTAssertNil(spy.focusRootAtPondFilterCallback,
+                     "Disclosure focus must clear before the filter callback when returning to All ponds")
+
+        viewModel.activatePondContact(id: root.id)
+        viewModel.searchMatchedIDs = [child.id]
+        XCTAssertNil(viewModel.disclosureSnapshot.focusRootID)
+        XCTAssertNil(viewModel.disclosureSnapshot.selectedID)
+        XCTAssertTrue(viewModel.disclosureSnapshot.expandedIDs.contains(root.id))
+        XCTAssertNil(spy.focusRootAtSearchCallback, "Disclosure focus must clear before the search callback")
+    }
+
+    func testLeavingPondViewClearsCompatibilityRouteAndFocusButKeepsBranches() throws {
+        let (manager, container) = try makeTestManager()
+        defer { withExtendedLifetime(container) {} }
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let root = try manager.createPerson(name: "Root")
+        let child = try manager.createPerson(name: "Child")
+        try manager.createRelationship(from: me, to: root, type: .friend, skipAutoAssign: true)
+        try manager.createRelationship(from: root, to: child, type: .friend, skipAutoAssign: true)
+
+        let viewModel = GraphViewModel(dataManager: manager)
+        viewModel.loadGraph()
+        viewModel.openRipple(child.id, initialTrail: [me.id, root.id, child.id])
+        viewModel.activatePondContact(id: root.id)
+        XCTAssertTrue(viewModel.disclosureSnapshot.expandedIDs.contains(root.id))
+
+        viewModel.leavePondView()
+
+        XCTAssertNil(viewModel.rippleFocus)
+        XCTAssertNil(viewModel.disclosureSnapshot.focusRootID)
+        XCTAssertNil(viewModel.disclosureSnapshot.selectedID)
+        XCTAssertTrue(viewModel.disclosureSnapshot.trail.isEmpty)
+        XCTAssertTrue(viewModel.disclosureSnapshot.expandedIDs.contains(root.id))
+        XCTAssertTrue(viewModel.disclosureSnapshot.visibleIDs.contains(child.id))
     }
 
     func testGraphViewModelPublishesDisclosureSnapshotAfterCompatibilityRoute() throws {
@@ -570,6 +750,8 @@ private final class DisclosureSceneSpy: GraphSceneDelegate {
     var centeredIDs: [UUID] = []
     var lastSnapshot: PondDisclosureSnapshot?
     var lastPondFilter: String?
+    var focusRootAtPondFilterCallback: UUID?
+    var focusRootAtSearchCallback: UUID?
     var centerOnMeCount = 0
     var offscreenIDs: Set<UUID> = []
     var locatedIDs: Set<UUID> = []
@@ -583,9 +765,14 @@ private final class DisclosureSceneSpy: GraphSceneDelegate {
     func centerOnContact(_ id: UUID) { centeredIDs.append(id) }
     func centerOnMe() { centerOnMeCount += 1 }
     func centerOnPond(name: String) {}
-    func didUpdatePondFilter(_ name: String?) { lastPondFilter = name }
+    func didUpdatePondFilter(_ name: String?) {
+        lastPondFilter = name
+        focusRootAtPondFilterCallback = lastSnapshot?.focusRootID
+    }
     func requestConnection(from: UUID, to: UUID) {}
-    func didUpdateSearchMatches(_ ids: Set<UUID>?) {}
+    func didUpdateSearchMatches(_ ids: Set<UUID>?) {
+        focusRootAtSearchCallback = lastSnapshot?.focusRootID
+    }
     func animateNewConnection(from: UUID, to: UUID) {}
     func didLongPressContact(_ id: UUID) {}
     func fitToGraph() {}

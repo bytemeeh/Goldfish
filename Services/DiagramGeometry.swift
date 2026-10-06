@@ -38,10 +38,9 @@ enum DiagramGeometry {
             var slots: [UUID: Point] = [:]
             let members = group.members.sorted { $0.uuidString < $1.uuidString }.filter { assigned.insert($0).inserted }
             // Small ponds need identity-sized stations rather than a decorative
-            // tight ring. These fixed patterns leave roughly 210–220 world
+            // tight ring. These fixed patterns leave at least 210–220 world
             // units between centers (and a wider 4-person grid), so first names
-            // can stay below their coins at phone-width overview zooms. Larger
-            // ponds retain a ring but use a wider minimum chord.
+            // can stay below their coins at phone-width overview zooms.
             switch members.count {
             case 0:
                 break
@@ -61,7 +60,7 @@ enum DiagramGeometry {
                 slots[members[3]] = Point(x: 160, y: -160)
             case 5...12:
                 let count = members.count
-                let radius = 170 / (2 * sin(.pi / Double(count)))
+                let radius = 220 / (2 * sin(.pi / Double(count)))
                 for (index, id) in members.enumerated() {
                     let angle = .pi / 2 + Double(index) * 2 * .pi / Double(count)
                     slots[id] = Point(x: cos(angle) * radius, y: sin(angle) * radius)

@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct ContactListView: View {
     @ObservedObject var viewModel: HomeViewModel

@@ -31,7 +31,7 @@ extension DemoDataService {
                 "Iris van der Meer", "Oscar Berg", "Fatima Ali", "Louis Bernard",
                 "Clara Müller", "Arjun Patel", "Mara Stein", "Jonas Keller"
             ]
-            for (index, name) in names.enumerated() {
+            for (index, name) in names.prefix(27).enumerated() {
                 let cohort: (circle: GoldfishCircle, anchor: Person?, relationship: RelationshipType?, note: String, tag: String)
                 switch index {
                 case 0..<10:
@@ -173,9 +173,16 @@ final class DemoDataService {
         // Keep the fixture as one transaction. Every repository operation is
         // atomic on its own, so without this outer edit an interrupted seed can
         // leave a partial fixture that later calls mistake for a complete one.
-        return try dataManager.performAtomicEdit {
+        let seeded = try dataManager.performAtomicEdit {
             try seedDemoData(me: me)
         }
+        if seeded {
+            let key = daycareSeedMarkerKey(me.id)
+            dataManager.afterCurrentAtomicEditCommits {
+                UserDefaults.standard.set(true, forKey: key)
+            }
+        }
+        return seeded
     }
 
     /// Applies only known corrections to retained sample contacts. This is used
@@ -183,10 +190,23 @@ final class DemoDataService {
     /// create a second fixture or require the full seed cardinality.
     func updateExistingDemoContexts() throws {
         guard let me = try dataManager.fetchMePerson() else { return }
+        var hadDemoPersons = false
         try dataManager.performAtomicEdit {
             let demoPersons = try dataManager.fetchAllPersons().filter { $0.isDemo }
+            hadDemoPersons = !demoPersons.isEmpty
             try repairKnownLegacyDemoData(me: me, demoPersons: demoPersons)
+            try seedDaycareClusterIfNeeded(me: me, demoPersons: demoPersons)
         }
+        if hadDemoPersons {
+            let key = daycareSeedMarkerKey(me.id)
+            dataManager.afterCurrentAtomicEditCommits {
+                UserDefaults.standard.set(true, forKey: key)
+            }
+        }
+    }
+
+    private func daycareSeedMarkerKey(_ meID: UUID) -> String {
+        "demo.daycare-cluster.v1.\(meID.uuidString)"
     }
 
     private func seedDemoData(me: Person) throws -> Bool {
@@ -213,8 +233,13 @@ final class DemoDataService {
             // rejecting a retained contact whose name was changed by the user.
             guard demoPersons.count >= 18 else { return false }
             let hasAssignments = demoPersons.contains { !$0.circleContacts.filter { !$0.manuallyExcluded }.isEmpty }
-            if hasAssignments { return true }
-            return try applyCircleAssignments(for: demoPersons)
+            if hasAssignments {
+                try seedDaycareClusterIfNeeded(me: me, demoPersons: demoPersons)
+                return true
+            }
+            let assigned = try applyCircleAssignments(for: demoPersons)
+            if assigned { try seedDaycareClusterIfNeeded(me: me, demoPersons: demoPersons) }
+            return assigned
         }
 
         // Fetch circles for assignment
@@ -531,9 +556,82 @@ final class DemoDataService {
         try dataManager.addToCircle(emma, circle: bookClubCircle)
         try dataManager.addToCircle(mia, circle: bookClubCircle)
         try dataManager.addToCircle(ryan, circle: bookClubCircle)
+        try seedDaycareClusterIfNeeded(me: me, demoPersons: [
+            sarah, mom, dad, jake, nicole, liam, ella, noah, emma, david, lisa, tom,
+            mia, ryan, chris, sam, alex, priya
+        ])
         return true
     }
-    
+
+    /// A deterministic identity makes retries idempotent and lets retained fixtures
+    /// distinguish a user-deleted cluster member from a contact that was never seeded.
+    /// The existing Daycare pond also acts as a conservative tombstone if every member
+    /// is later deleted; no new schema field is needed.
+    private func seedDaycareClusterIfNeeded(me: Person, demoPersons: [Person]) throws {
+        guard !UserDefaults.standard.bool(forKey: daycareSeedMarkerKey(me.id)) else { return }
+        let expectedNames: Set<String> = [
+            "Sarah Chen", "Linda Miller", "Robert Miller", "Jake Morrison", "Nicole Morrison",
+            "Liam Morrison", "Ella Morrison", "Noah Morrison", "Emma Wilson", "David Park",
+            "Lisa Thompson", "Tom Miller", "Mia Rodriguez", "Ryan O'Brien", "Chris Evans",
+            "Sam Taylor", "Alex Jordan", "Priya Patel"
+        ]
+        guard Set(demoPersons.map(\.name)).isSuperset(of: expectedNames),
+              let sarah = demoPersons.first(where: { $0.name == "Sarah Chen" }),
+              me.allRelationships.contains(where: {
+                  $0.type == .spouse
+                      && (($0.fromContact.id == me.id && $0.toContact.id == sarah.id)
+                          || ($0.fromContact.id == sarah.id && $0.toContact.id == me.id))
+              })
+        else { return }
+        let ids = [
+            UUID(uuidString: "8A8B6B00-5C3E-4E62-9F21-000000000001")!,
+            UUID(uuidString: "8A8B6B00-5C3E-4E62-9F21-000000000002")!,
+            UUID(uuidString: "8A8B6B00-5C3E-4E62-9F21-000000000003")!,
+            UUID(uuidString: "8A8B6B00-5C3E-4E62-9F21-000000000004")!,
+            UUID(uuidString: "8A8B6B00-5C3E-4E62-9F21-000000000005")!
+        ]
+        let persons = try dataManager.fetchAllPersons()
+        guard ids.allSatisfy({ id in !persons.contains(where: { $0.id == id }) }) else { return }
+        let circles = try dataManager.fetchAllCircles()
+        // The known standard seed is identified by its complete original set plus
+        // the stable Me-to-Sarah spouse edge. Me itself is not part of demoPersons.
+        let family = circles.first(where: { $0.isSystem && $0.name == "Family" })
+            ?? circles.first(where: { $0.isSystem && $0.shouldAutoAssign(for: .parent) })
+        guard let family else { return }
+        let daycare: GoldfishCircle
+        if let existing = circles.first(where: { $0.name == "Daycare" }) {
+            // Reuse only the pond this sample created. A user-created pond with
+            // the same name remains outside the sample upgrade.
+            guard UserDefaults.standard.string(forKey: daycarePondKey(me.id)) == existing.id.uuidString else { return }
+            daycare = existing
+        } else {
+            daycare = try dataManager.createCircle(name: "Daycare", color: "#78A9A1", emoji: "🧸")
+        }
+        let adriana = Person(id: ids[0], name: "Adriana", notes: nil, isDemo: true)
+        let riley = Person(id: ids[1], name: "Riley", notes: nil, isDemo: true)
+        let zach = Person(id: ids[2], name: "Zach", notes: nil, isDemo: true)
+        let aaron = Person(id: ids[3], name: "Aaron", notes: nil, isDemo: true)
+        let selma = Person(id: ids[4], name: "Selma", notes: nil, isDemo: true)
+        for person in [adriana, riley, zach, aaron, selma] { dataManager.context.insert(person) }
+        try dataManager.createRelationship(from: adriana, to: me, type: .child, skipAutoAssign: true)
+        try dataManager.createRelationship(from: adriana, to: riley, type: .friend, skipAutoAssign: true)
+        try dataManager.createRelationship(from: zach, to: riley, type: .parent, skipAutoAssign: true)
+        try dataManager.createRelationship(from: aaron, to: riley, type: .parent, skipAutoAssign: true)
+        try dataManager.createRelationship(from: selma, to: adriana, type: .caregiver, skipAutoAssign: true)
+        try dataManager.addToCircle(adriana, circle: family)
+        for person in [riley, zach, aaron, selma] { try dataManager.addToCircle(person, circle: daycare) }
+        let markerKey = daycareSeedMarkerKey(me.id)
+        let pondKey = daycarePondKey(me.id)
+        dataManager.afterCurrentAtomicEditCommits {
+            UserDefaults.standard.set(true, forKey: markerKey)
+            UserDefaults.standard.set(daycare.id.uuidString, forKey: pondKey)
+        }
+    }
+
+    private func daycarePondKey(_ meID: UUID) -> String {
+        "demo.daycare-pond.v1.\(meID.uuidString)"
+    }
+
     // MARK: - Repair Circle Assignments
 
     /// Repairs only the unchanged legacy fixture. Every note update is guarded
@@ -700,6 +798,13 @@ final class DemoDataService {
                 // a same-named or empty circle may belong to the user.
                 dataManager.context.delete(person)
             }
+        }
+        guard let me = try dataManager.fetchMePerson() else { return }
+        let markerKey = daycareSeedMarkerKey(me.id)
+        dataManager.afterCurrentAtomicEditCommits {
+            // Keep the pond identity so a later explicit sample re-seed can reuse
+            // this sample-owned circle while leaving user ponds alone.
+            UserDefaults.standard.removeObject(forKey: markerKey)
         }
     }
     

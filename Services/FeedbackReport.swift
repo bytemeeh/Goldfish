@@ -11,6 +11,47 @@ enum FeedbackKind: String, CaseIterable, Identifiable, Sendable {
     var label: String { self == .bug ? "Bug" : "Idea" }
 }
 
+/// Safe, fixed-vocabulary interaction events. These values intentionally carry
+/// no names, identifiers, search text, coordinates, or free-form payloads.
+enum InteractionDiagnosticEvent: String, CaseIterable, Equatable, Sendable {
+    case modeRequestedPond
+    case modeRequestedList
+    case modeCommittedPond
+    case modeCommittedList
+    case pondDestinationAppeared
+    case listDestinationAppeared
+
+    var reportLine: String {
+        switch self {
+        case .modeRequestedPond: return "Requested Pond view"
+        case .modeRequestedList: return "Requested List view"
+        case .modeCommittedPond: return "Pond view state committed"
+        case .modeCommittedList: return "List view state committed"
+        case .pondDestinationAppeared: return "Pond destination appeared"
+        case .listDestinationAppeared: return "List destination appeared"
+        }
+    }
+}
+
+/// A small in-memory ring used only when a user chooses to attach its snapshot
+/// to a feedback report. Nothing is persisted or transmitted automatically.
+@MainActor
+enum InteractionDiagnostics {
+    static let capacity = 40
+    private(set) static var events: [InteractionDiagnosticEvent] = []
+
+    static func record(_ event: InteractionDiagnosticEvent) {
+        events.append(event)
+        if events.count > capacity {
+            events.removeFirst(events.count - capacity)
+        }
+    }
+
+    static func snapshot() -> [InteractionDiagnosticEvent] { events }
+
+    static func reset() { events.removeAll(keepingCapacity: true) }
+}
+
 /// The support destination is supplied by the app owner in Info.plist.
 /// A missing address leaves the copy/share route available without guessing an inbox.
 enum FeedbackConfiguration {
@@ -90,8 +131,9 @@ enum FeedbackScreenshot {
     }
 }
 
-/// An explicit allowlist: no contacts, account identifiers, device name, logs,
+/// An explicit allowlist: no contacts, account identifiers, device name,
 /// location, or database contents can enter the automatically generated report.
+/// Interaction history is a separate, opt-in attachment of enum-only events.
 struct FeedbackDiagnostics: Equatable, Sendable {
     let appName: String
     let version: String
@@ -126,16 +168,22 @@ struct FeedbackReport: Equatable, Sendable {
     var expectedResult: String
     var area: String
     var includesAppDetails: Bool
+    var includesInteractionHistory: Bool
+    let interactionHistory: [InteractionDiagnosticEvent]
     let diagnostics: FeedbackDiagnostics
 
     init(kind: FeedbackKind, message: String = "", steps: String = "", expectedResult: String = "",
-         area: String = "", includesAppDetails: Bool = true, diagnostics: FeedbackDiagnostics) {
+         area: String = "", includesAppDetails: Bool = true,
+         includesInteractionHistory: Bool = false,
+         interactionHistory: [InteractionDiagnosticEvent] = [], diagnostics: FeedbackDiagnostics) {
         self.kind = kind
         self.message = message
         self.steps = steps
         self.expectedResult = expectedResult
         self.area = area
         self.includesAppDetails = includesAppDetails
+        self.includesInteractionHistory = includesInteractionHistory
+        self.interactionHistory = interactionHistory
         self.diagnostics = diagnostics
     }
 
@@ -167,6 +215,10 @@ struct FeedbackReport: Equatable, Sendable {
             if !trimmed(expectedResult).isEmpty { sections.append("Expected result\n\(trimmed(expectedResult))") }
         }
         if includesAppDetails { sections.append("App details\n\(diagnostics.text)") }
+        if includesInteractionHistory {
+            let history = interactionHistory.map(\.reportLine).joined(separator: "\n")
+            sections.append("Recent interaction history\n\(history.isEmpty ? "No interaction history is available." : history)")
+        }
         return sections.joined(separator: "\n\n")
     }
 

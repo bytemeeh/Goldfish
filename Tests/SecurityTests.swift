@@ -22,11 +22,11 @@ final class QualityScaleTests: XCTestCase {
         XCTAssertTrue(demos.contains { ($0.notes?.count ?? 0) > 500 })
         XCTAssertFalse(demos.flatMap(\.allRelationships).contains { $0.type == .other })
         let qualityAdditions = demos.filter { $0.email?.hasPrefix("sample") == true }
-        XCTAssertEqual(qualityAdditions.count, 32)
+        XCTAssertEqual(qualityAdditions.count, 27)
         XCTAssertTrue(qualityAdditions.allSatisfy { !$0.tags.isEmpty })
         XCTAssertTrue(qualityAdditions.allSatisfy { $0.primaryCircle?.name != "Family" })
         XCTAssertEqual(Set(demos.filter { $0.primaryCircle?.name == "Family" }.map(\.name)),
-                       ["Sarah Chen", "Linda Miller", "Robert Miller", "Tom Miller"])
+                       ["Sarah Chen", "Linda Miller", "Robert Miller", "Tom Miller", "Adriana"])
 
         let peopleByName = Dictionary(uniqueKeysWithValues: demos.map { ($0.name, $0) })
         let david = try XCTUnwrap(peopleByName["David Park"])
@@ -38,8 +38,8 @@ final class QualityScaleTests: XCTestCase {
         let independentCohort = qualityAdditions.filter { $0.tags.contains("Independent contact") }
         XCTAssertEqual(professionalCohort.count, 10)
         XCTAssertEqual(bookClubCohort.count, 8)
-        XCTAssertEqual(designCohort.count, 12)
-        XCTAssertEqual(independentCohort.count, 2)
+        XCTAssertEqual(designCohort.count, 9)
+        XCTAssertEqual(independentCohort.count, 0)
         XCTAssertTrue(professionalCohort.allSatisfy {
             $0.primaryCircle?.id == david.primaryCircle?.id && hasRelationship(between: david, and: $0, type: .coworker)
         })
@@ -50,7 +50,7 @@ final class QualityScaleTests: XCTestCase {
             $0.primaryCircle?.name == "Design & Research Collective" && hasRelationship(between: alex, and: $0, type: .friend)
         })
         XCTAssertTrue(independentCohort.allSatisfy { $0.primaryCircle?.name == "Design & Research Collective" && $0.isOrphan })
-        XCTAssertEqual(Set(demos.filter(\.isOrphan).map(\.name)), ["Priya Patel", "Mara Stein", "Jonas Keller"])
+        XCTAssertEqual(Set(demos.filter(\.isOrphan).map(\.name)), ["Priya Patel"])
 
         let siblingResponse = try XCTUnwrap(manager.relationshipSearch(query: "my sibling", demoMode: true))
         XCTAssertTrue(siblingResponse.paths.contains { $0.person.name == "Tom Miller" })

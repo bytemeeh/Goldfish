@@ -106,6 +106,24 @@ final class RelationshipSearchTests: XCTestCase {
         XCTAssertEqual(chained.paths.map { $0.person.id }, [sibling.id])
     }
 
+    func testCaregivingSearchUsesTheReciprocalRoleInBothDirections() {
+        let caregiver = person("Selma")
+        let recipient = person("Adriana")
+        link(caregiver, recipient, .caregiver)
+
+        let caregivers = RelationshipSearchService().search(
+            RelationshipQuery(anchor: "Adriana", roles: [.caregiver]),
+            people: [caregiver, recipient]
+        )
+        XCTAssertEqual(caregivers.paths.map { $0.person.id }, [caregiver.id])
+
+        let recipients = RelationshipSearchService().search(
+            RelationshipQuery(anchor: "Selma", roles: [.caredFor]),
+            people: [caregiver, recipient]
+        )
+        XCTAssertEqual(recipients.paths.map { $0.person.id }, [recipient.id])
+    }
+
     func testPetSpeciesRequireConfirmedIdentityAndSavedGuardianLink() {
         let owner = person("Owner")
         let dog = person("Milo", kind: .dog)

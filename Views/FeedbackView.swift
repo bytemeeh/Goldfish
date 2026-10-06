@@ -12,6 +12,9 @@ struct FeedbackView: View {
 
     private let recipient: String?
     private let diagnostics: FeedbackDiagnostics
+    /// Captured once when this form opens; later interactions cannot rewrite the
+    /// preview or report being prepared in this session.
+    @State private var interactionHistory: [InteractionDiagnosticEvent]
 
     @State private var kind: FeedbackKind
     @State private var message: String
@@ -21,6 +24,7 @@ struct FeedbackView: View {
     @State private var showBugDetails: Bool
     @State private var didStartEditing = false
     @State private var includesAppDetails = true
+    @State private var includesInteractionHistory = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var screenshotImage: UIImage?
     @State private var screenshotData: Data?
@@ -35,6 +39,7 @@ struct FeedbackView: View {
     init(initialKind: FeedbackKind = .bug, context: String? = nil) {
         self.recipient = FeedbackConfiguration.recipient
         self.diagnostics = FeedbackDiagnostics.current()
+        _interactionHistory = State(initialValue: InteractionDiagnostics.snapshot())
         _kind = State(initialValue: initialKind)
         _message = State(initialValue: "")
         _steps = State(initialValue: "")
@@ -51,6 +56,8 @@ struct FeedbackView: View {
             expectedResult: expectedResult,
             area: area,
             includesAppDetails: includesAppDetails,
+            includesInteractionHistory: includesInteractionHistory,
+            interactionHistory: interactionHistory,
             diagnostics: diagnostics
         )
     }
@@ -242,10 +249,38 @@ struct FeedbackView: View {
                             .padding(.top, GoldfishDS.Space.xs)
                     }
                 }
+
+                Toggle(isOn: $includesInteractionHistory) {
+                    VStack(alignment: .leading, spacing: GoldfishDS.Space.xs) {
+                        Text("Include recent interaction history")
+                            .font(.gfBody)
+                        Text("Optional view-switch events kept in memory, up to 40 events")
+                            .font(.gfMeta)
+                            .foregroundStyle(GoldfishDS.ink(.tertiary))
+                    }
+                }
+                .tint(GoldfishDS.terracotta)
+
+                if includesInteractionHistory {
+                    DisclosureGroup("Preview interaction history") {
+                        Group {
+                            if interactionHistory.isEmpty {
+                                Text("No recent interaction history is available.")
+                            } else {
+                                Text(interactionHistory.map(\.reportLine).joined(separator: "\n"))
+                            }
+                        }
+                        .font(.gfMeta)
+                        .foregroundStyle(GoldfishDS.ink(.secondary))
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, GoldfishDS.Space.xs)
+                    }
+                }
             } header: {
-                Text("App details")
+                Text("Optional details")
             } footer: {
-                Text("The report contains only what you wrote, the selected screenshot, and these optional app details.")
+                Text("Choose which details to include. View-switch history contains no contact details or search text. Nothing is sent until you use Mail or Share. Copy places the report text on your clipboard.")
             }
             .listRowBackground(GoldfishDS.surface)
 

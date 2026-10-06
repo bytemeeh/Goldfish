@@ -46,6 +46,28 @@ final class DataIntegrityTests: XCTestCase {
         XCTAssertEqual(try manager.fetchPersonCount(), 0)
         XCTAssertTrue(try manager.fetchAllCircles().isEmpty)
     }
+    func testAfterCommitHookCanRegisterAnotherHookAndPersistANewEdit() throws {
+        var order: [String] = []
+        var createdID: UUID?
+        try manager.performAtomicEdit {
+            manager.afterCurrentAtomicEditCommits {
+                order.append("first-start")
+                self.manager.afterCurrentAtomicEditCommits {
+                    order.append("second")
+                }
+                if let created = try? self.manager.createPerson(name: "Created from commit hook") {
+                    createdID = created.id
+                }
+                order.append("first-end")
+            }
+        }
+
+        XCTAssertEqual(order, ["first-start", "second", "first-end"])
+        let created = try XCTUnwrap(createdID)
+        XCTAssertTrue(try manager.fetchAllPersons().contains { $0.id == created })
+        XCTAssertFalse(manager.context.hasChanges, "The callback's independent edit must be saved")
+    }
+
     func testSystemGroupsAreIdempotentAndRenameDoesNotBreakAssignment() throws {
         try manager.createSystemCircles()
         try manager.createSystemCircles()
@@ -98,6 +120,18 @@ final class DataIntegrityTests: XCTestCase {
         XCTAssertEqual(specific.fromContact.id, parent.id)
         XCTAssertEqual(try manager.context.fetch(FetchDescriptor<Relationship>()).count, 1)
     }
+    func testCaregiverInverseDoesNotUseFamilyAutoAssignmentOrAncestryDirection() throws {
+        let caregiver = try manager.createPerson(name: "Caregiver")
+        let recipient = try manager.createPerson(name: "Recipient")
+        let relationship = try manager.createRelationship(from: caregiver, to: recipient, type: .caregiver)
+        XCTAssertEqual(relationship.type.inverse, .caredFor)
+        XCTAssertFalse(relationship.type.isDirectional, "Care relationships must not participate in ancestry-cycle checks")
+        XCTAssertNil(caregiver.primaryCircle)
+        XCTAssertNil(recipient.primaryCircle)
+        XCTAssertEqual(relationship.effectiveType(for: caregiver), .caregiver)
+        XCTAssertEqual(relationship.effectiveType(for: recipient), .caredFor)
+    }
+
     func testFirstConnectionIncludesMeAndMissingTargetRollsBackSave() throws {
         let me = try manager.createPerson(name: "Me", isMe: true)
         let form = ContactFormViewModel(dataManager: manager)
@@ -147,6 +181,7 @@ final class DataIntegrityTests: XCTestCase {
         XCTAssertFalse(form.allPersons.contains { $0.id == real.id })
         form.firstName = "New Demo Person"
         form.selectedConnectionID = demo.id
+        form.selectedRelationshipType = .friend
         XCTAssertTrue(form.save())
         let created = try XCTUnwrap(manager.fetchAllPersons().first { $0.name == "New Demo Person" })
         XCTAssertTrue(created.isDemo)
@@ -158,6 +193,22 @@ final class DataIntegrityTests: XCTestCase {
         home.loadData()
         XCTAssertFalse(home.contacts.contains { $0.id == created.id })
         XCTAssertTrue(home.contacts.contains { $0.id == real.id })
+    }
+
+    func testContactFormRequiresAnExplicitRelationshipBeforeSavingAConnection() throws {
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let form = ContactFormViewModel(dataManager: manager)
+        form.firstName = "New Contact"
+        form.selectedConnectionID = me.id
+
+        XCTAssertFalse(form.hasSelectedRelationshipType)
+        XCTAssertFalse(form.save())
+        XCTAssertEqual(try manager.fetchPersonCount(), 1)
+        XCTAssertEqual(form.errorMessage, "Choose how these contacts are connected.")
+
+        form.selectedRelationshipType = .other
+        XCTAssertTrue(form.hasSelectedRelationshipType)
+        XCTAssertTrue(form.save())
     }
 
     func testFirstConnectionRespectsExplicitUnassignedGroupChoice() throws {
@@ -257,9 +308,9 @@ extension DataIntegrityTests {
         XCTAssertTrue(try service.seedDemoData())
         let people = try manager.fetchAllPersons()
         let demoNames = Set(people.filter(\.isDemo).map(\.name))
-        XCTAssertEqual(demoNames.count, 18)
+        XCTAssertEqual(demoNames.count, 23)
         XCTAssertTrue(demoNames.contains("Priya Patel"))
-        XCTAssertEqual(try manager.fetchAllCircles().first(where: { $0.name == "Family" })?.activeContacts.count, 4)
+        XCTAssertEqual(try manager.fetchAllCircles().first(where: { $0.name == "Family" })?.activeContacts.count, 5)
         XCTAssertEqual(try manager.fetchAllCircles().first(where: { $0.name == "Friends" })?.activeContacts.count, 7)
         XCTAssertEqual(try manager.fetchAllCircles().first(where: { $0.name == "Book Club" })?.activeContacts.count, 3)
         XCTAssertEqual(try manager.fetchAllCircles().first(where: { $0.name == "Professional" })?.activeContacts.count, 3)
@@ -274,12 +325,13 @@ extension DataIntegrityTests {
 
     func testStandardDemoRelationshipsAndNotesMatchTheirPondContexts() throws {
         let me = try manager.createPerson(name: "Me", isMe: true)
-        XCTAssertTrue(try DemoDataService(dataManager: manager).seedDemoData())
+        let service = DemoDataService(dataManager: manager)
+        XCTAssertTrue(try service.seedDemoData())
         let demos = try manager.fetchAllPersons().filter(\.isDemo)
         let people = Dictionary(uniqueKeysWithValues: demos.map { ($0.name, $0) })
 
         let expectedPonds: [String: Set<String>] = [
-            "Family": ["Sarah Chen", "Linda Miller", "Robert Miller", "Tom Miller"],
+            "Family": ["Sarah Chen", "Linda Miller", "Robert Miller", "Tom Miller", "Adriana"],
             "Friends": ["Jake Morrison", "Nicole Morrison", "Liam Morrison", "Ella Morrison", "Noah Morrison", "Sam Taylor", "Alex Jordan"],
             "Book Club": ["Emma Wilson", "Mia Rodriguez", "Ryan O'Brien"],
             "Professional": ["David Park", "Lisa Thompson", "Chris Evans"]
@@ -344,8 +396,123 @@ extension DataIntegrityTests {
         XCTAssertTrue(priya.isOrphan)
         XCTAssertNil(priya.primaryCircle)
         XCTAssertTrue(note(for: priya, mentionsAny: ["design", "conference"]))
+        let adriana = try XCTUnwrap(people["Adriana"])
+        let riley = try XCTUnwrap(people["Riley"])
+        let zach = try XCTUnwrap(people["Zach"])
+        let aaron = try XCTUnwrap(people["Aaron"])
+        let selma = try XCTUnwrap(people["Selma"])
+        let daycare = try XCTUnwrap(manager.fetchAllCircles().first { $0.name == "Daycare" })
+        XCTAssertTrue(adriana.isDemo && riley.isDemo && zach.isDemo && aaron.isDemo && selma.isDemo)
+        XCTAssertTrue([adriana, riley, zach, aaron, selma].allSatisfy { ($0.notes ?? "").isEmpty })
+        XCTAssertTrue(hasRelationship(from: adriana, to: me, type: .child))
+        XCTAssertTrue(hasRelationship(between: adriana, and: riley, type: .friend))
+        XCTAssertTrue(hasRelationship(from: zach, to: riley, type: .parent))
+        XCTAssertTrue(hasRelationship(from: aaron, to: riley, type: .parent))
+        XCTAssertTrue(hasRelationship(from: selma, to: adriana, type: .caregiver))
+        XCTAssertEqual(adriana.primaryCircle?.name, "Family")
+        for person in [riley, zach, aaron, selma] { XCTAssertEqual(person.primaryCircle?.id, daycare.id) }
+        XCTAssertFalse(hasRelationship(between: adriana, and: zach, type: .parent))
+        XCTAssertFalse(hasRelationship(between: adriana, and: aaron, type: .parent))
+        XCTAssertFalse(hasRelationship(between: zach, and: aaron, type: .spouse))
+        let idsBeforeReplay = Set(try manager.fetchAllPersons().map(\.id))
+        XCTAssertTrue(try service.seedDemoData())
+        XCTAssertEqual(Set(try manager.fetchAllPersons().map(\.id)), idsBeforeReplay)
+
+        let customPond = try manager.createCircle(name: "Riley's Pond")
+        try manager.updatePerson(riley, name: "Riley Edited", notes: .set("A note I added."))
+        try manager.addToCircle(riley, circle: customPond)
+        try manager.deletePerson(selma)
+        XCTAssertTrue(try service.seedDemoData())
+        let replayedPeople = try manager.fetchAllPersons()
+        XCTAssertEqual(replayedPeople.first { $0.id == riley.id }?.name, "Riley Edited")
+        XCTAssertEqual(replayedPeople.first { $0.id == riley.id }?.notes, "A note I added.")
+        XCTAssertEqual(replayedPeople.first { $0.id == riley.id }?.primaryCircle?.id, customPond.id)
+        XCTAssertFalse(replayedPeople.contains { $0.id == selma.id })
+
         let siblingResponse = try XCTUnwrap(manager.relationshipSearch(query: "my sibling", demoMode: true))
         XCTAssertTrue(siblingResponse.paths.contains { $0.person.name == "Tom Miller" })
+    }
+
+    func testExistingStandardDemoUpgradeRunsFromContextRepairAndKeepsPersonalContacts() throws {
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let personal = try manager.createPerson(name: "Personal Contact", notes: "Keep this.")
+        let service = DemoDataService(dataManager: manager)
+        XCTAssertTrue(try service.seedDemoData())
+        let sample = try manager.fetchAllPersons().filter(\.isDemo)
+        for person in sample where ["Adriana", "Riley", "Zach", "Aaron", "Selma"].contains(person.name) {
+            try manager.deletePerson(person)
+        }
+        let daycare = try XCTUnwrap(manager.fetchAllCircles().first { $0.name == "Daycare" })
+        try manager.deleteCircle(daycare)
+        UserDefaults.standard.removeObject(forKey: "demo.daycare-cluster.v1.\(me.id.uuidString)")
+
+        try service.updateExistingDemoContexts()
+
+        let upgraded = try manager.fetchAllPersons()
+        XCTAssertTrue(["Adriana", "Riley", "Zach", "Aaron", "Selma"].allSatisfy { name in
+            upgraded.contains { $0.name == name && $0.isDemo }
+        })
+        XCTAssertTrue(upgraded.contains { $0.id == personal.id && !$0.isDemo && $0.notes == "Keep this." })
+    }
+
+    func testCompletedSampleClusterTombstonePreventsReaddingDeletedPeopleOrPond() throws {
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let service = DemoDataService(dataManager: manager)
+        XCTAssertTrue(try service.seedDemoData())
+        let sample = try manager.fetchAllPersons().filter(\.isDemo)
+        for person in sample where ["Adriana", "Riley", "Zach", "Aaron", "Selma"].contains(person.name) {
+            try manager.deletePerson(person)
+        }
+        let daycare = try XCTUnwrap(manager.fetchAllCircles().first { $0.name == "Daycare" })
+        try manager.deleteCircle(daycare)
+
+        XCTAssertTrue(try service.seedDemoData())
+
+        let remaining = try manager.fetchAllPersons()
+        XCTAssertFalse(remaining.contains { ["Adriana", "Riley", "Zach", "Aaron", "Selma"].contains($0.name) })
+        XCTAssertFalse(try manager.fetchAllCircles().contains { $0.name == "Daycare" })
+        XCTAssertTrue(remaining.contains { $0.id == me.id && $0.isMe })
+    }
+
+    func testSampleClusterMarkerIsWrittenOnlyAfterTheOuterTransactionCommits() throws {
+        enum Failure: Error { case abort }
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let service = DemoDataService(dataManager: manager)
+        let marker = "demo.daycare-cluster.v1.\(me.id.uuidString)"
+
+        XCTAssertThrowsError(try manager.performAtomicEdit {
+            XCTAssertTrue(try service.seedDemoData())
+            throw Failure.abort
+        })
+
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: marker))
+        XCTAssertTrue(try manager.fetchAllPersons().filter(\.isDemo).isEmpty)
+        XCTAssertTrue(try service.seedDemoData())
+        XCTAssertEqual(try manager.fetchAllPersons().filter(\.isDemo).count, 23)
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: marker))
+    }
+
+    func testEditedCustomDemoSetDoesNotReceiveStandardSampleCluster() throws {
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let service = DemoDataService(dataManager: manager)
+        XCTAssertTrue(try service.seedDemoData())
+        let sample = try manager.fetchAllPersons().filter(\.isDemo)
+        for person in sample where ["Adriana", "Riley", "Zach", "Aaron", "Selma"].contains(person.name) {
+            try manager.deletePerson(person)
+        }
+        let daycare = try XCTUnwrap(manager.fetchAllCircles().first { $0.name == "Daycare" })
+        try manager.deleteCircle(daycare)
+        let sarah = try XCTUnwrap(sample.first { $0.name == "Sarah Chen" })
+        try manager.updatePerson(sarah, name: "Sarah's New Name")
+        UserDefaults.standard.removeObject(forKey: "demo.daycare-cluster.v1.\(me.id.uuidString)")
+
+        try service.updateExistingDemoContexts()
+
+        let people = try manager.fetchAllPersons()
+        XCTAssertEqual(people.filter(\.isDemo).count, 18)
+        XCTAssertFalse(people.contains { ["Adriana", "Riley", "Zach", "Aaron", "Selma"].contains($0.name) })
+        XCTAssertFalse(try manager.fetchAllCircles().contains { $0.name == "Daycare" })
+        XCTAssertEqual(people.first { $0.id == sarah.id }?.name, "Sarah's New Name")
     }
 
     func testLegacyDemoContextRepairPreservesIdentityThenRespectsLaterUserEdits() throws {
@@ -479,6 +646,28 @@ extension DataIntegrityTests {
         XCTAssertTrue(retained.activeContacts.isEmpty)
     }
 
+    func testRemovingSampleClearsMarkerAndAllowsReseedingItsRetainedDaycarePond() throws {
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let service = DemoDataService(dataManager: manager)
+        let marker = "demo.daycare-cluster.v1.\(me.id.uuidString)"
+        XCTAssertTrue(try service.seedDemoData())
+        let originalPond = try XCTUnwrap(manager.fetchAllCircles().first { $0.name == "Daycare" })
+
+        try service.removeDemoData()
+
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: marker))
+        XCTAssertEqual(try manager.fetchAllCircles().first { $0.id == originalPond.id }?.activeContacts.count, 0)
+        XCTAssertTrue(try service.seedDemoData())
+
+        let reseededPeople = try manager.fetchAllPersons().filter(\.isDemo)
+        let adriana = try XCTUnwrap(reseededPeople.first { $0.name == "Adriana" })
+        let daycare = try XCTUnwrap(manager.fetchAllCircles().first { $0.name == "Daycare" })
+        XCTAssertEqual(reseededPeople.count, 23)
+        XCTAssertEqual(daycare.id, originalPond.id)
+        XCTAssertEqual(adriana.primaryCircle?.name, "Family")
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: marker))
+    }
+
     func testDemoSeedFindsRenamedSystemCirclesByRole() throws {
         _ = try manager.createPerson(name: "Me", isMe: true)
         try manager.createSystemCircles()
@@ -490,7 +679,7 @@ extension DataIntegrityTests {
         try manager.updateCircle(professional, name: "Work", emoji: professional.emoji, color: professional.color)
 
         XCTAssertTrue(try DemoDataService(dataManager: manager).seedDemoData())
-        XCTAssertEqual(try manager.fetchAllCircles().first { $0.id == family.id }?.activeContacts.count, 4)
+        XCTAssertEqual(try manager.fetchAllCircles().first { $0.id == family.id }?.activeContacts.count, 5)
         XCTAssertEqual(try manager.fetchAllCircles().first { $0.id == friends.id }?.activeContacts.count, 7)
         XCTAssertEqual(try manager.fetchAllCircles().first { $0.id == professional.id }?.activeContacts.count, 3)
         XCTAssertEqual(try manager.fetchAllCircles().filter(\.isSystem).count, 3)

@@ -18,6 +18,10 @@ final class RelationshipQueryParserTests: XCTestCase {
                        .query(RelationshipQuery(anchor: "me", roles: [.friend])))
         XCTAssertEqual(RelationshipQueryParser.parse("Who are Sam's friends?"),
                        .query(RelationshipQuery(anchor: "Sam", roles: [.friend])))
+        XCTAssertEqual(RelationshipQueryParser.parse("Adriana's caregiver"),
+                       .query(RelationshipQuery(anchor: "Adriana", roles: [.caregiver])))
+        XCTAssertEqual(RelationshipQueryParser.parse("person receiving care of Selma"),
+                       .query(RelationshipQuery(anchor: "Selma", roles: [.caredFor])))
         XCTAssertEqual(RelationshipQueryParser.parse("What is Sam's friend called?"),
                        .query(RelationshipQuery(anchor: "Sam", roles: [.friend])))
     }

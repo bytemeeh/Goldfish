@@ -117,6 +117,10 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     // MARK: - Camera
     private let cameraNode = SKCameraNode()
     private var currentZoom: CGFloat = 1.0
+    private var actualCameraZoom: CGFloat {
+        let scale = cameraNode.xScale
+        return scale.isFinite && scale > 0 ? 1 / scale : currentZoom
+    }
 
 #if DEBUG
     var currentZoomForDebug: CGFloat { currentZoom }
@@ -126,6 +130,9 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     private let contentNode = SKNode()
     private var personNodes: [UUID: PersonNode] = [:]
     private var edgeNodes: [String: SKShapeNode] = [:]
+    private var overviewPondConnectors: [String: SKShapeNode] = [:]
+    private var overviewPondConnectorEndpoints: [String: CGPoint] = [:]
+    private var overviewPondConnectorStarts: [String: CGPoint] = [:]
     private var graphLevelsCache: [GraphLevel] = []
 
     // MARK: - Layout
@@ -176,6 +183,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     /// keeps every contact and every resting slot, then only fades/hides nodes
     /// and edges whose IDs are absent from the snapshot.
     private var disclosureSnapshot: PondDisclosureSnapshot?
+    private var disclosureCameraBeforeFocus: (position: CGPoint, zoom: CGFloat)?
 
     // MARK: - Focus Mode
     private var soloedPondName: String? = nil
@@ -360,6 +368,12 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     /// position or ordinary camera state. Painted pond outlines intentionally
     /// grow around newly presented members while cached full geometry stays put.
     func didUpdateDisclosure(_ snapshot: PondDisclosureSnapshot) {
+        let previous = disclosureSnapshot
+        let hadEmphasis = previous?.focusRootID != nil || !(previous?.pathHighlightIDs.isEmpty ?? true)
+        let hasEmphasis = snapshot.focusRootID != nil || !snapshot.pathHighlightIDs.isEmpty
+        if !hadEmphasis && hasEmphasis {
+            disclosureCameraBeforeFocus = (cameraNode.position, actualCameraZoom)
+        }
         disclosureSnapshot = snapshot
         if !directFirstLayoutActive, reconcileDirectFirstLayout(allowActivation: true) {
             applyLayout(animated: false)
@@ -370,6 +384,19 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         updateLOD()
         arrangeNameLabels()
         renderEdges()
+        renderOverviewPondConnectors()
+        if hadEmphasis && !hasEmphasis {
+            let saved = disclosureCameraBeforeFocus
+            disclosureCameraBeforeFocus = nil
+            if let saved { restoreCamera(saved) }
+        } else if hasEmphasis {
+            let focusChanged = previous?.focusRootID != snapshot.focusRootID
+            let clusterExpanded = previous?.focusedIDs != snapshot.focusedIDs
+            let pathChanged = previous?.pathHighlightIDs != snapshot.pathHighlightIDs
+            if focusChanged || clusterExpanded || pathChanged {
+                fitFocusedCluster(animated: true)
+            }
+        }
         fitInitialDisclosureIfNeeded()
     }
 
@@ -405,7 +432,11 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             // The inspector has a stable footprint while selecting/expanding.
             // An actual size change (rotation or Dynamic Type) needs a fresh
             // fit so the Pond stays inside its new viewport.
-            fitToComposition(animated: false)
+            if disclosureSnapshot?.focusRootID != nil {
+                fitFocusedCluster(animated: false)
+            } else {
+                fitToComposition(animated: false)
+            }
         }
     }
 
@@ -630,7 +661,8 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     /// Core fit: frame `rect` in content space, biasing the center toward Me, and
     /// respecting the measured top and bottom overlay insets.
     private func fitToRect(_ rect: CGRect, minZoom: CGFloat, maxZoom: CGFloat,
-                           padding: CGFloat, screenInset: CGFloat = 0, animated: Bool = true) {
+                           padding: CGFloat, screenInset: CGFloat = 0, animated: Bool = true,
+                           biasToMe: Bool = true) {
         guard rect.width.isFinite && rect.height.isFinite else { return }
 
         let minX = rect.minX, maxX = rect.maxX
@@ -672,7 +704,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         // a positive shift by the max-edge slack. This prevents the Me-bias from pushing a
         // basin (e.g. Friends on the far left) off-screen.
         var center = CGPoint(x: cx, y: cy)
-        if targetZoom.isFinite && targetZoom > 0 {
+        if biasToMe && targetZoom.isFinite && targetZoom > 0 {
             let halfViewW = (usableWidth / targetZoom) / 2
             let halfViewH = (usableHeight / targetZoom) / 2
             let slackLeft = max(halfViewW - (cx - minX), 0)   // room to shift center left
@@ -734,6 +766,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         arrangeNameLabels()
         for (key, edge) in edgeNodes { edge.lineWidth = edgeScreenWidth(key) / zoom }
         lastLabelScaleZoom = currentZoom
+        renderOverviewPondConnectors()
     }
 
     /// Keep progressive pond headings attached to their reserved title bands.
@@ -881,6 +914,9 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         }
         soloedPondName = name
         evaluateNodeVisibility(animated: true)
+        renderBasins(animated: true)
+        renderLabels()
+        renderEdges()
         if let cameraToRestore { restoreCamera(cameraToRestore) }
         if name != nil { fitToComposition(animated: true) }
     }
@@ -902,6 +938,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         renderBasins(animated: false)
         renderLabels()
         evaluateNodeVisibility(animated: false)
+        renderEdges()
     }
 
     func didLongPressContact(_ id: UUID) {
@@ -1157,8 +1194,23 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     /// the chosen person's saved lines so their immediate context stays useful.
     private func edgeIsPresented(_ edgeKey: String) -> Bool {
         guard disclosureSnapshot != nil else { return true }
+        guard let snapshot = disclosureSnapshot else { return false }
+        if pathEdgeKeys(snapshot.pathHighlightIDs).contains(edgeKey) { return true }
+        if snapshot.focusRootID != nil {
+            if Set(snapshot.focusedEdges.map { self.edgeKey($0.from, $0.to) }).contains(edgeKey) { return true }
+            if !edgeTouchesMe(edgeKey) && disclosedEdgeKeys.contains(edgeKey) { return true }
+            return false
+        }
+        // In the all-pond overview, direct connections are represented by one
+        // organization connector per pond. They are not individual relationship lines.
+        if edgeTouchesMe(edgeKey) { return false }
         if disclosedEdgeKeys.contains(edgeKey) || edgeTouchesSelected(edgeKey) { return true }
         return edgeIDs(edgeKey).contains { activeSearchIDs?.contains($0) == true }
+    }
+
+    private func pathEdgeKeys(_ ids: [UUID]) -> Set<String> {
+        guard ids.count > 1 else { return [] }
+        return Set(zip(ids, ids.dropFirst()).map { edgeKey($0.0, $0.1) })
     }
 
     private func edgeScreenWidth(_ edgeKey: String) -> CGFloat {
@@ -1170,6 +1222,16 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     /// Quiet graph hierarchy: cross-pond links recede, while Me and the
     /// selected contact remain easy to trace without relying on color alone.
     private func strokeColorForEdge(_ edgeKey: String) -> UIColor {
+        if let snapshot = disclosureSnapshot,
+           pathEdgeKeys(snapshot.pathHighlightIDs).contains(edgeKey) {
+            return GraphInk.indigo.withAlphaComponent(0.9)
+        }
+        if disclosureSnapshot?.focusRootID != nil,
+           let snapshot = disclosureSnapshot,
+           !snapshot.focusedIDs.isEmpty,
+           !edgeIDs(edgeKey).allSatisfy(snapshot.focusedIDs.contains) {
+            return GraphInk.ink(0.08)
+        }
         if edgeTouchesSelected(edgeKey) { return GraphInk.indigo.withAlphaComponent(0.70) }
         if edgeTouchesMe(edgeKey) { return GraphInk.indigo.withAlphaComponent(0.32) }
         return edgeIsCrossPond(edgeKey) ? GraphInk.ink(0.13) : GraphInk.ink(0.22)
@@ -1486,6 +1548,22 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         renderEdges()
     }
 
+    /// Frames only the active relationship cluster, with no origin/Me bias.
+    private func fitFocusedCluster(animated: Bool) {
+        guard let snapshot = disclosureSnapshot else { return }
+        let framedIDs = snapshot.focusedIDs.union(snapshot.pathHighlightIDs)
+        guard !framedIDs.isEmpty else { return }
+        let bounds = framedIDs.compactMap { id -> CGRect? in
+            guard let node = personNodes[id], !node.isHidden else { return nil }
+            let point = layoutSlots[id] ?? node.position
+            return node.visibleIdentityBounds.offsetBy(dx: point.x, dy: point.y)
+        }.reduce(nil as CGRect?) { partial, next in
+            partial.map { $0.union(next) } ?? next
+        }
+        guard let bounds else { return }
+        fitToRect(bounds, minZoom: 0.001, maxZoom: 1.3, padding: 44, screenInset: 28, animated: animated, biasToMe: false)
+    }
+
     private func renderBasins(animated: Bool) {
         for (name, basin) in pondBasins {
             basin.removeAllChildren()
@@ -1544,6 +1622,146 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
                 edgeNode.zPosition = edgeTouchesSelected(edgeKey) ? -1 : -3
             }
         }
+        renderOverviewPondConnectors()
+    }
+
+    /// In the overview, a pond connector describes where direct contacts are
+    /// organized. It deliberately ends just outside the visible bank and never
+    /// enters the pond or crosses an identity label.
+    private func renderOverviewPondConnectors() {
+        for node in overviewPondConnectors.values { node.isHidden = true }
+        overviewPondConnectorEndpoints.removeAll()
+        overviewPondConnectorStarts.removeAll()
+        // Layout rebuilds can remove or rename a pond. Retire its cached node
+        // immediately so stale connector geometry cannot reappear later.
+        for name in Array(overviewPondConnectors.keys) where pondGeometries[name] == nil {
+            overviewPondConnectors.removeValue(forKey: name)?.removeFromParent()
+        }
+        guard let snapshot = disclosureSnapshot,
+              snapshot.focusRootID == nil,
+              snapshot.pathHighlightIDs.isEmpty,
+              soloedPondName == nil,
+              let meID = graphLevelsCache.flatMap(\.allContacts).first(where: \.isMe)?.id,
+              let meNode = personNodes[meID] else {
+            return
+        }
+        let directlyConnectedPonds = Set(snapshot.directIDs.compactMap { pondID(for: $0) })
+        for name in Array(overviewPondConnectors.keys) where !directlyConnectedPonds.contains(name) {
+            overviewPondConnectors.removeValue(forKey: name)?.removeFromParent()
+        }
+        for name in pondGeometries.keys {
+            guard directlyConnectedPonds.contains(name),
+                  let path = presentedPondPath(name),
+                  let connectorRoute = safestConnectorRoute(from: meNode, toward: path, meID: meID) else {
+                continue
+            }
+            let node = overviewPondConnectors[name] ?? {
+                let shape = SKShapeNode()
+                shape.name = "overviewPondConnector-\(name)"
+                shape.strokeColor = GraphInk.ink(0.22)
+                shape.lineWidth = 0.8 / max(currentZoom, 0.001)
+                shape.lineCap = .round
+                shape.zPosition = -4
+                contentNode.addChild(shape)
+                overviewPondConnectors[name] = shape
+                return shape
+            }()
+            let connectorPath = CGMutablePath()
+            connectorPath.move(to: connectorRoute.start)
+            connectorPath.addLine(to: connectorRoute.end)
+            node.path = connectorPath
+            node.isHidden = false
+            node.alpha = 1
+            node.strokeColor = GraphInk.ink(0.22)
+            node.lineWidth = 0.8 / max(currentZoom, 0.001)
+            overviewPondConnectorStarts[name] = connectorRoute.start
+            overviewPondConnectorEndpoints[name] = connectorRoute.end
+        }
+    }
+
+    private func safestConnectorRoute(from meNode: PersonNode, toward path: CGPath, meID: UUID)
+        -> (start: CGPoint, end: CGPoint)? {
+        let zoom = max(currentZoom, 0.001)
+        let coinBounds = meNode.identityBounds.offsetBy(dx: meNode.position.x, dy: meNode.position.y)
+        let startDistance = max(coinBounds.width, coinBounds.height) / 2 + 4 / zoom
+        let inset = 2 / zoom
+        let bounds = path.boundingBoxOfPath
+        let targets = [
+            CGPoint(x: bounds.midX, y: bounds.midY),
+            CGPoint(x: bounds.midX, y: bounds.minY + bounds.height * 0.25),
+            CGPoint(x: bounds.minX + bounds.width * 0.25, y: bounds.midY),
+            CGPoint(x: bounds.minX + bounds.width * 0.75, y: bounds.midY)
+        ]
+        let safeRoutes: [(start: CGPoint, end: CGPoint, length: CGFloat)] = targets.compactMap { target in
+            guard path.contains(target),
+                  let bankPoint = connectorBankPoint(from: meNode.position, toward: target, path: path) else {
+                return nil
+            }
+            let dx = bankPoint.x - meNode.position.x
+            let dy = bankPoint.y - meNode.position.y
+            let length = max(1, hypot(dx, dy))
+            let start = CGPoint(x: meNode.position.x + dx / length * startDistance,
+                                y: meNode.position.y + dy / length * startDistance)
+            let end = CGPoint(x: bankPoint.x - dx / length * inset,
+                              y: bankPoint.y - dy / length * inset)
+            guard !connectorOverlapsAnnotation(from: start, to: end, meID: meID,
+                                               meNameBounds: meNode.nameBounds.offsetBy(dx: meNode.position.x, dy: meNode.position.y)) else {
+                return nil
+            }
+            return (start, end, hypot(end.x - start.x, end.y - start.y))
+        }
+        guard let shortest = safeRoutes.min(by: { $0.length < $1.length }) else { return nil }
+        return (shortest.start, shortest.end)
+    }
+
+    private func connectorOverlapsAnnotation(from start: CGPoint, to end: CGPoint, meID: UUID,
+                                             meNameBounds: CGRect) -> Bool {
+        let width = 3 / max(currentZoom, 0.001)
+        if !meNameBounds.isNull && !meNameBounds.isEmpty,
+           segmentIntersectsRect(start, end, rect: meNameBounds.insetBy(dx: -width, dy: -width)) { return true }
+        for (id, node) in personNodes where id != meID && !node.isHidden && node.alpha > 0.1 {
+            let bounds = node.visibleIdentityBounds.offsetBy(dx: node.position.x, dy: node.position.y)
+            if segmentIntersectsRect(start, end, rect: bounds.insetBy(dx: -width, dy: -width)) { return true }
+        }
+        for label in pondLabels.values where !label.isHidden {
+            let bounds = label.calculateAccumulatedFrame()
+            if segmentIntersectsRect(start, end, rect: bounds.insetBy(dx: -width, dy: -width)) { return true }
+        }
+        return false
+    }
+
+    private func segmentIntersectsRect(_ start: CGPoint, _ end: CGPoint, rect: CGRect) -> Bool {
+        guard !rect.isNull && !rect.isEmpty else { return false }
+        if rect.contains(start) || rect.contains(end) { return true }
+        let corners = [CGPoint(x: rect.minX, y: rect.minY), CGPoint(x: rect.maxX, y: rect.minY),
+                       CGPoint(x: rect.maxX, y: rect.maxY), CGPoint(x: rect.minX, y: rect.maxY)]
+        func intersects(_ a: CGPoint, _ b: CGPoint, _ c: CGPoint, _ d: CGPoint) -> Bool {
+            let denominator = (d.y - c.y) * (b.x - a.x) - (d.x - c.x) * (b.y - a.y)
+            guard abs(denominator) > 0.0001 else { return false }
+            let ua = ((d.x - c.x) * (a.y - c.y) - (d.y - c.y) * (a.x - c.x)) / denominator
+            let ub = ((b.x - a.x) * (a.y - c.y) - (b.y - a.y) * (a.x - c.x)) / denominator
+            return ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1
+        }
+        return (0..<4).contains { intersects(start, end, corners[$0], corners[($0 + 1) % 4]) }
+    }
+
+    /// Finds the point where the ray from the Me marker toward a visible bank
+    /// first exits the organic pond path. Binary search keeps the connector on
+    /// the rendered outline instead of its rectangular bounds.
+    private func connectorBankPoint(from origin: CGPoint, toward target: CGPoint, path: CGPath) -> CGPoint? {
+        let bounds = path.boundingBoxOfPath
+        guard path.contains(target) else { return nil }
+        let delta = CGPoint(x: origin.x - target.x, y: origin.y - target.y)
+        let magnitude = max(1, hypot(delta.x, delta.y))
+        var outside = CGPoint(x: target.x + delta.x / magnitude * (magnitude + max(bounds.width, bounds.height)),
+                              y: target.y + delta.y / magnitude * (magnitude + max(bounds.width, bounds.height)))
+        guard !path.contains(outside) else { return nil }
+        var inside = target
+        for _ in 0..<20 {
+            let middle = CGPoint(x: (inside.x + outside.x) / 2, y: (inside.y + outside.y) / 2)
+            if path.contains(middle) { inside = middle } else { outside = middle }
+        }
+        return inside
     }
 
     /// diagonal leg covering the smaller axis delta, then a straight run for the
@@ -1649,6 +1867,10 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         let duration: TimeInterval = animated && sceneReady && !UIAccessibility.isReduceMotionEnabled ? 0.3 : 0.0
         let isSearchActive = activeSearchIDs != nil
         let isSoloActive = soloedPondName != nil
+        let focusedIDs = disclosureSnapshot?.focusedIDs ?? []
+        let focusAndPathIDs = focusedIDs.union(disclosureSnapshot?.pathHighlightIDs ?? [])
+        let hasRelationshipFocus = disclosureSnapshot?.focusRootID != nil
+        let hasFocusedPresentation = hasRelationshipFocus || !(disclosureSnapshot?.pathHighlightIDs.isEmpty ?? true)
 
         let soloedPondInfo = soloedPondName.flatMap { name in pondInfos.first { $0.id == name } }
         let soloedNodeIDs = Set((soloedPondInfo?.memberIDs ?? []) + (pondGeometries[soloedPondName ?? ""]?.memberIDs ?? []))
@@ -1686,7 +1908,10 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
                     alpha = min(alpha, 0.15)
                 }
             }
-            if disclosureSnapshot != nil && !isSearchActive && !isSoloActive { alpha = 1.0 }
+            if hasFocusedPresentation && !isSearchActive {
+                alpha = focusAndPathIDs.contains(id) ? 1.0 : min(alpha, 0.16)
+            }
+            if disclosureSnapshot != nil && !isSearchActive && !isSoloActive && !hasFocusedPresentation { alpha = 1.0 }
             if duration == 0 {
                 node.removeAction(forKey: "visibility")
                 node.alpha = alpha
@@ -1711,8 +1936,11 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             edge.isHidden = false
             let inFocusedPond = ids.allSatisfy { soloedNodeIDs.contains($0) || personNodes[$0]?.isMe == true }
             let matchesSearch = ids.contains { activeSearchIDs?.contains($0) == true }
+            let pathEdge = disclosureSnapshot.map { pathEdgeKeys($0.pathHighlightIDs).contains(edgeKey) } ?? false
+            let edgeInFocus = ids.count == 2 && ids.allSatisfy(focusedIDs.contains)
             let edgeAlpha: CGFloat = isSearchActive ? (matchesSearch ? 1 : 0.05) :
-                (disclosureSnapshot != nil ? 1 : (isSoloActive && !inFocusedPond ? 0.05 : 1))
+                (hasFocusedPresentation ? ((edgeInFocus || pathEdge) ? 1 : 0.06) :
+                    (disclosureSnapshot != nil ? 1 : (isSoloActive && !inFocusedPond ? 0.05 : 1)))
             let action = SKAction.fadeAlpha(to: edgeAlpha, duration: duration)
             action.timingMode = .easeInEaseOut
             edge.run(action)
@@ -1721,7 +1949,9 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         for (name, basin) in pondBasins {
             basin.isHidden = !pondIsPresented(name)
             let isThisSolo = (name == soloedPondName)
-            let basinAlpha: CGFloat = isSearchActive ? 0.4 : (isSoloActive ? (isThisSolo ? 1.0 : 0.25) : 1.0)
+            let focusMembers = disclosureSnapshot?.focusedIDs.union(disclosureSnapshot?.pathHighlightIDs ?? []) ?? []
+            let inFocus = pondGeometries[name]?.memberIDs.contains(where: focusMembers.contains) == true
+            let basinAlpha: CGFloat = isSearchActive ? 0.4 : (hasFocusedPresentation ? (inFocus ? 1.0 : 0.14) : (isSoloActive ? (isThisSolo ? 1.0 : 0.25) : 1.0))
             let action = SKAction.fadeAlpha(to: basinAlpha, duration: duration)
             action.timingMode = .easeInEaseOut
             basin.run(action, withKey: "visibility")
@@ -1730,7 +1960,9 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         for (name, label) in pondLabels {
             label.isHidden = !pondIsPresented(name)
             let isThisSolo = (name == soloedPondName)
-            let labelAlpha: CGFloat = isSearchActive ? 0.1 : (isSoloActive ? (isThisSolo ? 1.0 : 0.1) : 1.0)
+            let focusMembers = disclosureSnapshot?.focusedIDs.union(disclosureSnapshot?.pathHighlightIDs ?? []) ?? []
+            let inFocus = pondGeometries[name]?.memberIDs.contains(where: focusMembers.contains) == true
+            let labelAlpha: CGFloat = isSearchActive ? 0.1 : (hasFocusedPresentation ? (inFocus ? 1.0 : 0.12) : (isSoloActive ? (isThisSolo ? 1.0 : 0.1) : 1.0))
             let action = SKAction.fadeAlpha(to: labelAlpha, duration: duration)
             action.timingMode = .easeInEaseOut
             label.run(action, withKey: "visibility")
@@ -2201,7 +2433,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
 
     private func activatePondContact(_ id: UUID) {
         if opensRipplesOnTap {
-            graphDelegate?.togglePondConnections(id)
+            graphDelegate?.activatePondContact(id: id)
         } else {
             graphDelegate?.selectContact(id)
         }
@@ -2338,6 +2570,28 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     var debugParents: [UUID: UUID] { branchParentByChild }
     var debugHiddenIDs: Set<UUID> { hiddenBranchIDs }
     var debugVisibleEdgeCount: Int { edgeNodes.values.filter { !$0.isHidden }.count }
+    var debugVisibleEdgeKeys: Set<String> { Set(edgeNodes.filter { !$0.value.isHidden }.map { $0.key }) }
+    var debugOverviewConnectorPondIDs: Set<String> {
+        Set(overviewPondConnectors.filter { !$0.value.isHidden }.map { $0.key })
+    }
+    var debugDirectlyConnectedPondIDs: Set<String> {
+        Set((disclosureSnapshot?.directIDs ?? []).compactMap { pondID(for: $0) })
+    }
+    var debugOverviewConnectorEndpoints: [String: CGPoint] { overviewPondConnectorEndpoints }
+    var debugOverviewConnectorStarts: [String: CGPoint] { overviewPondConnectorStarts }
+    var debugMeCoinBounds: CGRect? {
+        guard let node = personNodes.values.first(where: { $0.isMe }) else { return nil }
+        return node.identityBounds.offsetBy(dx: node.position.x, dy: node.position.y)
+    }
+    var debugOverviewConnectorRoutesAvoidPondHeadings: Bool {
+        overviewPondConnectorStarts.allSatisfy { name, start in
+            guard let end = overviewPondConnectorEndpoints[name] else { return false }
+            return pondLabels.values.filter { !$0.isHidden }.allSatisfy { label in
+                !segmentIntersectsRect(start, end, rect: label.calculateAccumulatedFrame())
+            }
+        }
+    }
+    var debugOverviewConnectorCount: Int { debugOverviewConnectorPondIDs.count }
     var debugCompactIdentityIDs: Set<UUID> {
         Set(personNodes.values.filter { !$0.isMe && $0.compactIdentityIsVisible }.map(\.personID))
     }

@@ -14,7 +14,7 @@ struct AddRelationshipView: View {
     private let logger = Logger(subsystem: "com.goldfish.app", category: "AddRelationshipView")
     @Environment(\.dismiss) private var dismiss
 
-    @State private var selectedType: RelationshipType = .friend
+    @State private var selectedType: RelationshipType?
     @State private var selectedTarget: Person?
     @State private var searchText = ""
     @State private var isTargetSearchPresented = false
@@ -127,11 +127,11 @@ struct AddRelationshipView: View {
                     Button("Save") { saveRelationship() }
                         .font(.gfBody.weight(.medium))
                         .foregroundStyle(
-                            (selectedTarget == nil || isSaving)
+                            (selectedTarget == nil || selectedType == nil || isSaving)
                                 ? GoldfishDS.ink(.quaternary)
                                 : GoldfishDS.terracotta
                         )
-                        .disabled(selectedTarget == nil || isSaving)
+                        .disabled(selectedTarget == nil || selectedType == nil || isSaving)
                 }
             }
             .alert("Error", isPresented: $showError) {
@@ -224,8 +224,9 @@ struct AddRelationshipView: View {
 
     private var relationshipMenu: some View {
         Picker("Relationship type", selection: $selectedType) {
+            Text("Choose a relationship").tag(RelationshipType?.none)
             ForEach(RelationshipType.allCases) { type in
-                Text(type.displayName).tag(type)
+                Text(type.displayName).tag(RelationshipType?.some(type))
             }
         }
         .pickerStyle(.menu)
@@ -261,8 +262,19 @@ struct AddRelationshipView: View {
     }
 
     private func directionLabel(target: Person) -> String {
-        if selectedType == .other { return "Record a connection from \(person.name) to \(target.name)." }
-        return "\(person.name) is a \(selectedType.displayName.lowercased()) of \(target.name)."
+        guard let selectedType else { return "Choose a relationship to see its direction." }
+        switch selectedType {
+        case .other:
+            return "Record a connection from \(person.name) to \(target.name)."
+        case .caregiver:
+            return "\(person.name) provides care to \(target.name)."
+        case .caredFor:
+            return "\(person.name) receives care from \(target.name)."
+        case .child:
+            return "\(person.name) is \(target.name)’s child."
+        default:
+            return "\(person.name) is a \(selectedType.displayName.lowercased()) of \(target.name)."
+        }
     }
 
     // MARK: - Actions
@@ -278,7 +290,7 @@ struct AddRelationshipView: View {
     }
 
     private func saveRelationship() {
-        guard let target = selectedTarget else { return }
+        guard let target = selectedTarget, let selectedType else { return }
         isSaving = true
         let relationshipIDsBeforeSave = Set(person.allRelationships.map(\.id))
         do {

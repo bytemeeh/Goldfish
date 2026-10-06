@@ -44,7 +44,12 @@ final class ContactFormViewModel: ObservableObject {
     
     // Connections
     @Published var selectedConnectionID: UUID?
-    @Published var selectedRelationshipType: RelationshipType = .friend
+    @Published var selectedRelationshipType: RelationshipType = .other {
+        didSet {
+            hasSelectedRelationshipType = true
+        }
+    }
+    @Published var hasSelectedRelationshipType = false
     @Published var allPersons: [Person] = []
     
     // Circles
@@ -62,6 +67,7 @@ final class ContactFormViewModel: ObservableObject {
          String(isFavorite), tagsString, colorHex, emojiAvatar,
          contactKind.rawValue,
          selectedConnectionID?.uuidString ?? "", selectedRelationshipType.rawValue,
+         String(hasSelectedRelationshipType),
          selectedCircleIDs.map(\.uuidString).sorted().joined(separator: ",")]
     }
 
@@ -73,18 +79,39 @@ final class ContactFormViewModel: ObservableObject {
         existingPerson == nil ? (isDemoMode ? "New Demo Contact" : "New Contact") : "Edit Contact"
     }
 
+    var relationshipTypeSelection: RelationshipType? {
+        get { hasSelectedRelationshipType ? selectedRelationshipType : nil }
+        set {
+            guard let newValue else {
+                hasSelectedRelationshipType = false
+                return
+            }
+            selectedRelationshipType = newValue
+            hasSelectedRelationshipType = true
+        }
+    }
+
     var relationshipPreview: String? {
-        guard let selectedConnectionID,
+        guard hasSelectedRelationshipType,
+              let selectedConnectionID,
               let target = allPersons.first(where: { $0.id == selectedConnectionID }) else { return nil }
         let enteredName = [firstName, lastName]
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
             .joined(separator: " ")
         let subject = enteredName.isEmpty ? "This contact" : enteredName
-        if selectedRelationshipType == .other {
+        switch selectedRelationshipType {
+        case .other:
             return "This saves: \(subject) has another connection to \(target.name)."
+        case .caregiver:
+            return "This saves: \(subject) provides care to \(target.name)."
+        case .caredFor:
+            return "This saves: \(subject) receives care from \(target.name)."
+        case .child:
+            return "This saves: \(subject) is \(target.name)’s child."
+        default:
+            return "This saves: \(subject) is \(target.name)’s \(selectedRelationshipType.displayName.lowercased())."
         }
-        return "This saves: \(subject) is \(target.name)’s \(selectedRelationshipType.displayName.lowercased())."
     }
     
     // MARK: - Init
@@ -159,6 +186,10 @@ final class ContactFormViewModel: ObservableObject {
     // MARK: - Actions
     func save() -> Bool {
         guard isValid else { return false }
+        if selectedConnectionID != nil && !hasSelectedRelationshipType {
+            errorMessage = "Choose how these contacts are connected."
+            return false
+        }
         
         let tags = tagsString
             .split(separator: ",")
