@@ -62,12 +62,12 @@ struct ContactDetailView: View {
 
             // MARK: - Relationships
             Section {
-                if allowsRippleExploration && viewModel.connectedPeopleCount > 0 && !walkthroughManager.isActive,
+                if allowsRippleExploration && (viewModel.connectedPeopleCount > 0 || viewModel.person.isMe) && !walkthroughManager.isActive,
                    let onExploreRipples {
                     Button {
                         onExploreRipples(viewModel.person.id)
                     } label: {
-                        Label("Show in Pond", systemImage: "circle.dotted.circle")
+                        Label(viewModel.person.isMe ? "My ponds" : "Show in Pond", systemImage: "circle.dotted.circle")
                             .font(.gfBody)
                             .foregroundStyle(GoldfishDS.terracotta)
                             .frame(minHeight: 44)

@@ -563,10 +563,112 @@ final class PondDisclosureTests: XCTestCase {
 
         viewModel.resetCamera()
 
-        XCTAssertEqual(spy.centerOnMeCount, 1)
+        XCTAssertEqual(spy.fitToGraphCount, 1)
         XCTAssertEqual(viewModel.disclosureSnapshot, disclosure)
         XCTAssertEqual(viewModel.rippleFocus, focus)
         XCTAssertEqual(viewModel.selectedPondFilter, "friends-pond")
+    }
+
+    func testMyPondsHomeClearsTransientScopeButKeepsBranchesAndSavedLayout() throws {
+        let (manager, container) = try makeTestManager()
+        defer { withExtendedLifetime(container) {} }
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let root = try manager.createPerson(name: "Root")
+        let child = try manager.createPerson(name: "Child")
+        let grandchild = try manager.createPerson(name: "Grandchild")
+        let pond = try manager.createCircle(name: "Family")
+        try manager.addToCircle(root, circle: pond)
+        try manager.createRelationship(from: me, to: root, type: .friend, skipAutoAssign: true)
+        try manager.createRelationship(from: root, to: child, type: .friend, skipAutoAssign: true)
+        try manager.createRelationship(from: child, to: grandchild, type: .friend, skipAutoAssign: true)
+
+        let suiteName = "GoldfishMyPondsHomeTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = PondLayoutStore(defaults: defaults)
+        let viewModel = GraphViewModel(dataManager: manager, pondLayoutStore: store)
+        let spy = DisclosureSceneSpy()
+        viewModel.sceneDelegate = spy
+        viewModel.loadGraph()
+        let offset = CGPoint(x: 36, y: -24)
+        viewModel.savePondLayoutOffset(offset, for: pond.id.uuidString, meID: me.id)
+
+        viewModel.selectedPondFilter = pond.id.uuidString
+        viewModel.searchMatchedIDs = [root.id, child.id]
+        viewModel.selectedContactID = root.id
+        viewModel.activatePondContact(id: root.id)
+        viewModel.activatePondContact(id: child.id)
+        viewModel.showConnectionPath()
+        let expanded = viewModel.disclosureSnapshot.expandedIDs
+        XCTAssertEqual(viewModel.disclosureSnapshot.focusRootID, root.id)
+        XCTAssertFalse(viewModel.disclosureSnapshot.pathHighlightIDs.isEmpty)
+        XCTAssertTrue(expanded.contains(root.id))
+        XCTAssertTrue(expanded.contains(child.id))
+
+        viewModel.showMyPonds()
+
+        XCTAssertNil(viewModel.disclosureSnapshot.focusRootID)
+        XCTAssertNil(viewModel.disclosureSnapshot.selectedID)
+        XCTAssertTrue(viewModel.disclosureSnapshot.pathHighlightIDs.isEmpty)
+        XCTAssertTrue(viewModel.disclosureSnapshot.trail.isEmpty)
+        XCTAssertEqual(viewModel.disclosureSnapshot.expandedIDs, expanded)
+        XCTAssertTrue(viewModel.disclosureSnapshot.visibleIDs.contains(grandchild.id))
+        XCTAssertNil(viewModel.selectedContactID)
+        XCTAssertNil(viewModel.searchMatchedIDs)
+        XCTAssertNil(viewModel.selectedPondFilter)
+        XCTAssertEqual(viewModel.pondLayoutOffsets(forMeID: me.id)[pond.id.uuidString], offset)
+        XCTAssertEqual(spy.fitToGraphCount, 1)
+    }
+
+    func testOpeningMeProfileReturnsHomeWhileOrdinaryProfileOpensRipple() throws {
+        let (manager, container) = try makeTestManager()
+        defer { withExtendedLifetime(container) {} }
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let root = try manager.createPerson(name: "Root")
+        let child = try manager.createPerson(name: "Child")
+        let grandchild = try manager.createPerson(name: "Grandchild")
+        let family = try manager.createCircle(name: "Family")
+        try manager.addToCircle(root, circle: family)
+        try manager.createRelationship(from: me, to: root, type: .friend, skipAutoAssign: true)
+        try manager.createRelationship(from: root, to: child, type: .friend, skipAutoAssign: true)
+        try manager.createRelationship(from: child, to: grandchild, type: .friend, skipAutoAssign: true)
+
+        let viewModel = GraphViewModel(dataManager: manager)
+        let spy = DisclosureSceneSpy()
+        viewModel.sceneDelegate = spy
+        viewModel.loadGraph()
+        viewModel.selectedPondFilter = family.id.uuidString
+        viewModel.searchMatchedIDs = [child.id]
+        viewModel.activatePondContact(id: root.id)
+        viewModel.activatePondContact(id: child.id)
+        viewModel.showConnectionPath()
+        viewModel.selectedContactID = root.id
+
+        XCTAssertNotNil(viewModel.disclosureSnapshot.focusRootID)
+        XCTAssertFalse(viewModel.disclosureSnapshot.pathHighlightIDs.isEmpty)
+        XCTAssertTrue(viewModel.disclosureSnapshot.expandedIDs.contains(root.id))
+        XCTAssertTrue(viewModel.disclosureSnapshot.expandedIDs.contains(child.id))
+
+        viewModel.openRipple(me.id)
+
+        XCTAssertNil(viewModel.rippleFocus, "Opening Me's profile should not create a route rooted on the hidden node")
+        XCTAssertNil(viewModel.disclosureSnapshot.focusRootID)
+        XCTAssertNil(viewModel.disclosureSnapshot.selectedID)
+        XCTAssertTrue(viewModel.disclosureSnapshot.pathHighlightIDs.isEmpty)
+        XCTAssertTrue(viewModel.disclosureSnapshot.trail.isEmpty)
+        XCTAssertTrue(viewModel.disclosureSnapshot.expandedIDs.contains(root.id))
+        XCTAssertTrue(viewModel.disclosureSnapshot.expandedIDs.contains(child.id))
+        XCTAssertNil(viewModel.selectedContactID)
+        XCTAssertNil(viewModel.searchMatchedIDs)
+        XCTAssertNil(viewModel.selectedPondFilter)
+        XCTAssertEqual(spy.fitToGraphCount, 1)
+
+        viewModel.openRipple(child.id)
+        XCTAssertEqual(viewModel.rippleFocus?.contactID, child.id,
+                       "Opening an ordinary contact profile should keep the ripple route behavior")
+        XCTAssertTrue(viewModel.disclosureSnapshot.trail.contains(child.id))
+        XCTAssertEqual(spy.fitToGraphCount, 1,
+                       "An ordinary contact route should not invoke the My ponds framing action")
     }
 
     func testRevealFeedbackReportsOffscreenIDsAndOnlyLocatesOnRequest() throws {
@@ -753,6 +855,7 @@ private final class DisclosureSceneSpy: GraphSceneDelegate {
     var focusRootAtPondFilterCallback: UUID?
     var focusRootAtSearchCallback: UUID?
     var centerOnMeCount = 0
+    var fitToGraphCount = 0
     var offscreenIDs: Set<UUID> = []
     var locatedIDs: Set<UUID> = []
     var activatedChoiceIDs: [UUID] = []
@@ -775,7 +878,7 @@ private final class DisclosureSceneSpy: GraphSceneDelegate {
     }
     func animateNewConnection(from: UUID, to: UUID) {}
     func didLongPressContact(_ id: UUID) {}
-    func fitToGraph() {}
+    func fitToGraph() { fitToGraphCount += 1 }
     func didUpdateDisclosure(_ snapshot: PondDisclosureSnapshot) { lastSnapshot = snapshot }
     func offscreenContactIDs(_ ids: Set<UUID>) -> Set<UUID> { ids.intersection(offscreenIDs) }
     func locateContacts(_ ids: Set<UUID>) { locatedIDs = ids }

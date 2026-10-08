@@ -361,6 +361,9 @@ final class GraphViewModel: ObservableObject {
     func selectContact(_ id: UUID?) {
         selectedContactID = id
         if let id = id, rippleFocus == nil, pondDisclosureSnapshot.selectedID != id {
+            // Me can be intentionally absent from the overview canvas. Opening
+            // its profile should not move the camera to its canonical layout slot.
+            if graphLevels?.flatMap(\.allContacts).first(where: { $0.id == id })?.isMe == true { return }
             centerOnContact(id)
         }
     }
@@ -375,6 +378,10 @@ final class GraphViewModel: ObservableObject {
             loadGraph()
         }
         guard isValidRippleContact(id) else { return }
+        if graphLevels?.flatMap(\.allContacts).first(where: { $0.id == id })?.isMe == true {
+            showMyPonds()
+            return
+        }
 
         selectedContactID = nil
         let graph = rippleGraph
@@ -475,6 +482,16 @@ final class GraphViewModel: ObservableObject {
     func clearConnectionPath() {
         pondDisclosure?.clearConnectionPath()
         publishDisclosure()
+    }
+
+    /// Returns to the all-ponds overview while keeping explicitly opened
+    /// branches and saved pond positions intact.
+    func showMyPonds() {
+        leavePondView()
+        selectedContactID = nil
+        searchMatchedIDs = nil
+        selectedPondFilter = nil
+        sceneDelegate?.fitToGraph()
     }
 
     func showMorePondConnections(id: UUID) {
@@ -712,7 +729,7 @@ final class GraphViewModel: ObservableObject {
     }
     
     func resetCamera() {
-        sceneDelegate?.centerOnMe()
+        sceneDelegate?.fitToGraph()
     }
     
     // MARK: - Scene Feedback

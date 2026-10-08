@@ -137,6 +137,12 @@ final class GraphSceneLayoutTests: XCTestCase {
                                file: file, line: line)
             }
         }
+        assertPresentedPondsDoNotOverlap(scene, file: file, line: line)
+    }
+
+    private func assertPresentedPondsDoNotOverlap(
+        _ scene: GoldfishGraphScene, file: StaticString = #filePath, line: UInt = #line
+    ) {
         let banks = scene.debugPresentedPondPaths.sorted { $0.key < $1.key }
         for (index, bank) in banks.enumerated() {
             for other in banks.dropFirst(index + 1) {
@@ -159,16 +165,31 @@ final class GraphSceneLayoutTests: XCTestCase {
         }
     }
 
-    private func assertOverviewConnectorsStopOutsideVisibleBanks(
-        _ scene: GoldfishGraphScene, file: StaticString = #filePath, line: UInt = #line
+    private func assertMeAbsentFromOrdinaryOverview(
+        _ me: Person, in scene: GoldfishGraphScene, file: StaticString = #filePath, line: UInt = #line
     ) {
-        let banks = scene.debugPresentedPondPaths
-        for (pondID, endpoint) in scene.debugOverviewConnectorEndpoints {
-            guard let bank = banks[pondID] else {
-                XCTFail("An overview connector needs its visible pond bank", file: file, line: line)
-                continue
+        XCTAssertFalse(scene.debugMeIsVisible, "Me should be omitted from ordinary pond overview", file: file, line: line)
+        XCTAssertFalse(scene.debugRenderedVisibleIDs.contains(me.id), "Me should not be rendered in ordinary overview", file: file, line: line)
+        XCTAssertFalse(scene.debugRevealedNodeIDs.contains(me.id), "Me should not have a visible scene node in ordinary overview", file: file, line: line)
+        if let point = scene.debugNodePositions[me.id] {
+            XCTAssertFalse(scene.debugContactCandidateIDs(at: point).contains(me.id),
+                           "Me should not be a contact hit target in ordinary overview", file: file, line: line)
+        } else {
+            XCTFail("The graph should retain Me's canonical position for explicit routes", file: file, line: line)
+        }
+    }
+
+    private func assertVisibleNamesAvoidOtherCoins(
+        in scene: GoldfishGraphScene, file: StaticString = #filePath, line: UInt = #line
+    ) {
+        let labels = scene.debugVisibleNameLabelBounds
+        let coins = scene.debugVisibleCoinBounds
+        for (personID, label) in labels {
+            for (otherID, coin) in coins where personID != otherID {
+                XCTAssertFalse(label.intersects(coin),
+                               "Visible name label \(scene.debugDisclosureIdentityLabels[personID] ?? personID.uuidString) overlaps another visible coin \(otherID)",
+                               file: file, line: line)
             }
-            XCTAssertFalse(bank.contains(endpoint), "The (pondID) connector must stop before its bank", file: file, line: line)
         }
     }
 
@@ -187,28 +208,80 @@ final class GraphSceneLayoutTests: XCTestCase {
         XCTAssertEqual(scene.debugCameraZoom, 0.74)
     }
 
-    func testOverviewShowsPondConnectorAndSelectionRevealsSavedContext() throws {
+    func testOverviewHidesMeUntilTheRelationshipPathIsExplicit() throws {
         let (manager, container) = try makeTestManager()
         defer { withExtendedLifetime(container) {} }
         let me = try manager.createPerson(name: "You", isMe: true)
         let alice = try manager.createPerson(name: "Alice")
         let bob = try manager.createPerson(name: "Bob")
+        let family = try manager.createCircle(name: "Family")
+        try manager.addToCircle(alice, circle: family)
         try manager.createRelationship(from: me, to: alice, type: .friend)
         try manager.createRelationship(from: me, to: bob, type: .friend)
         try manager.createRelationship(from: alice, to: bob, type: .friend)
         let people = [me, alice, bob]
         var disclosure = PondDisclosure(people: people)
         let scene = GoldfishGraphScene(size: CGSize(width: 390, height: 500))
+        scene.didUpdateGroups([family])
         _ = scene.debugLayout([GraphLevel(depth: 0, circleGroups: [CircleGroup(circle: nil, contacts: people)])])
         scene.didUpdateDisclosure(disclosure.snapshot)
         XCTAssertEqual(scene.debugVisibleEdgeCount, 0)
-        XCTAssertEqual(scene.debugOverviewConnectorCount, 1)
+        XCTAssertEqual(scene.debugOverviewConnectorCount, 0)
+        assertMeAbsentFromOrdinaryOverview(me, in: scene)
         disclosure.selectPondContact(id: alice.id)
         scene.didUpdateDisclosure(disclosure.snapshot)
-        XCTAssertEqual(scene.debugVisibleEdgeCount, 1)
+        let meAliceEdge = [me.id.uuidString, alice.id.uuidString].sorted().joined(separator: "_")
+        XCTAssertFalse(scene.debugVisibleEdgeKeys.contains(meAliceEdge),
+                       "Selecting a contact should not implicitly reveal its relationship to Me")
+        assertMeAbsentFromOrdinaryOverview(me, in: scene)
+        disclosure.showConnectionPath()
+        scene.didUpdateDisclosure(disclosure.snapshot)
+        XCTAssertTrue(scene.debugMeIsVisible, "An explicit route should show Me as its actual endpoint")
+        XCTAssertTrue(scene.debugRevealedNodeIDs.contains(me.id),
+                      "An explicit route should present Me as its actual endpoint")
+        XCTAssertTrue(scene.debugRenderedVisibleIDs.contains(me.id))
+        let mePoint = try XCTUnwrap(scene.debugPresentedMePosition)
+        let renderedMePoint = try XCTUnwrap(scene.debugNodePositions[me.id])
+        XCTAssertEqual(renderedMePoint.x, mePoint.x, accuracy: 0.0001,
+                       "The rendered Me marker and explicit relationship endpoint must share an x position")
+        XCTAssertEqual(renderedMePoint.y, mePoint.y, accuracy: 0.0001,
+                       "The rendered Me marker and explicit relationship endpoint must share a y position")
+        let alicePoint = try XCTUnwrap(scene.debugNodePositions[alice.id])
+        let directEdge = meAliceEdge
+        XCTAssertTrue(scene.debugVisibleEdgeKeys.contains(directEdge))
+        let pathBounds = try XCTUnwrap(scene.debugEdgePaths[directEdge]?.boundingBoxOfPath)
+        XCTAssertTrue(pathBounds.insetBy(dx: -0.001, dy: -0.001).contains(mePoint),
+                      "The explicit relationship path should reach its Me endpoint")
+        XCTAssertTrue(pathBounds.insetBy(dx: -0.001, dy: -0.001).contains(alicePoint),
+                      "The explicit relationship path should reach the selected contact endpoint")
+        let meFootprint = CGRect(x: mePoint.x - 38, y: mePoint.y - 48, width: 76, height: 96)
+        XCTAssertFalse(scene.debugVisibleIdentityBounds.filter { $0.key != me.id }.values
+            .contains(where: { meFootprint.intersects($0) }),
+                       "The path endpoint must not overlap a visible contact identity")
+        XCTAssertTrue(scene.debugPresentedPondPaths.values.allSatisfy { !$0.contains(mePoint) },
+                      "The path endpoint must sit outside painted pond water")
+
+        scene.didUpdateZoom(0.74)
+        let pondBounds = try XCTUnwrap(scene.debugPondBasinBounds[family.id.uuidString])
+        XCTAssertTrue(scene.debugBeginPondDrag(pondID: family.id.uuidString, at: CGPoint(x: pondBounds.midX, y: pondBounds.midY)))
+        scene.debugUpdatePondDrag(to: CGPoint(x: pondBounds.midX + 29, y: pondBounds.midY - 16))
+        scene.debugEndPondDrag()
+        let movedMePoint = try XCTUnwrap(scene.debugPresentedMePosition)
+        let movedRenderedMePoint = try XCTUnwrap(scene.debugNodePositions[me.id])
+        XCTAssertEqual(movedRenderedMePoint.x, movedMePoint.x, accuracy: 0.0001,
+                       "Moving a pond must keep the rendered endpoint aligned horizontally with its route")
+        XCTAssertEqual(movedRenderedMePoint.y, movedMePoint.y, accuracy: 0.0001,
+                       "Moving a pond must keep the rendered endpoint aligned vertically with its route")
+        let movedPathBounds = try XCTUnwrap(scene.debugEdgePaths[directEdge]?.boundingBoxOfPath)
+        XCTAssertTrue(movedPathBounds.insetBy(dx: -0.001, dy: -0.001).contains(movedMePoint))
+        let movedMeFootprint = CGRect(x: movedMePoint.x - 38, y: movedMePoint.y - 48, width: 76, height: 96)
+        XCTAssertFalse(scene.debugVisibleIdentityBounds.filter { $0.key != me.id }.values
+            .contains(where: { movedMeFootprint.intersects($0) }))
+        XCTAssertTrue(scene.debugPresentedPondPaths.values.allSatisfy { !$0.contains(movedMePoint) })
         disclosure.collapseAllPondConnections()
         scene.didUpdateDisclosure(disclosure.snapshot)
         XCTAssertEqual(scene.debugVisibleEdgeCount, 0)
+        assertMeAbsentFromOrdinaryOverview(me, in: scene)
     }
 
     func testSampleOverviewSeparatesVisibleIdentitiesAtPhoneWidth() throws {
@@ -229,25 +302,14 @@ final class GraphSceneLayoutTests: XCTestCase {
             _ = scene.debugLayout(levels)
             scene.didUpdateDisclosure(disclosure.snapshot)
             scene.fitAllNodesWithLabels(animated: false)
-            XCTAssertEqual(scene.debugOverviewConnectorPondIDs, scene.debugDirectlyConnectedPondIDs,
-                           "Every directly connected sample pond should have a safe organization connector")
-            XCTAssertTrue(scene.debugOverviewConnectorRoutesAvoidPondHeadings,
-                          "Organization connectors must avoid pond headings")
-            if let me = people.first(where: { $0.isMe }),
-               let center = scene.debugNodePositions[me.id],
-               let coinBounds = scene.debugMeCoinBounds {
-                let expectedDistance = max(coinBounds.width, coinBounds.height) / 2 + 4 / scene.debugCameraZoom
-                for start in scene.debugOverviewConnectorStarts.values {
-                    XCTAssertEqual(hypot(start.x - center.x, start.y - center.y), expectedDistance, accuracy: 0.01,
-                                   "Connectors should begin just beyond the Me coin")
-                }
-            } else {
-                XCTFail("The sample overview should have a measurable Me coin")
-            }
+            XCTAssertEqual(scene.debugOverviewConnectorCount, 0,
+                           "Pond overview should not use Me as an organization hub")
+            assertMeAbsentFromOrdinaryOverview(try XCTUnwrap(people.first { $0.isMe }), in: scene)
 
             func assertReadableIdentities(_ state: String, file: StaticString = #filePath, line: UInt = #line) {
                 let expected = disclosure.snapshot.visibleIDs
-                XCTAssertEqual(scene.debugFullIdentityIDs, expected, "Every visible contact needs an identity in \(state)", file: file, line: line)
+                let expectedOnMap = expected.subtracting(people.filter(\.isMe).map(\.id))
+                XCTAssertEqual(scene.debugFullIdentityIDs, expectedOnMap, "Every visible contact needs an identity in \(state)", file: file, line: line)
                 let bounds = scene.debugVisibleIdentityBounds
                 for (id, rect) in bounds {
                     for (otherID, otherRect) in bounds where id.uuidString < otherID.uuidString {
@@ -268,6 +330,166 @@ final class GraphSceneLayoutTests: XCTestCase {
             XCTAssertEqual(scene.debugCameraPosition, originalCamera.0)
             XCTAssertEqual(scene.debugCameraZoom, originalCamera.1)
         }
+    }
+
+    func testExpandedDaycareStaysClearOfFamilyAfterReturningHome() throws {
+        let (manager, container) = try makeTestManager()
+        defer { withExtendedLifetime(container) {} }
+        try manager.performOnboarding(name: "You")
+        XCTAssertTrue(try DemoDataService(dataManager: manager).seedDemoData())
+
+        let people = try manager.fetchAllPersons()
+        let circles = try manager.fetchAllCircles()
+        let adriana = try XCTUnwrap(people.first { $0.name == "Adriana" })
+        let riley = try XCTUnwrap(people.first { $0.name == "Riley" })
+        let selma = try XCTUnwrap(people.first { $0.name == "Selma" })
+        let sarah = try XCTUnwrap(people.first { $0.name == "Sarah Chen" })
+        let family = try XCTUnwrap(circles.first { $0.name == "Family" })
+        let daycare = try XCTUnwrap(circles.first { $0.name == "Daycare" })
+        XCTAssertEqual(sarah.primaryCircle?.id, family.id)
+        XCTAssertEqual(selma.primaryCircle?.id, daycare.id)
+
+        let model = GraphViewModel(dataManager: manager)
+        model.isDemoMode = true
+        let scene = GoldfishGraphScene(size: CGSize(width: 390, height: 700))
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 700))
+        view.presentScene(scene)
+        defer { view.presentScene(nil) }
+        scene.graphDelegate = model
+        model.sceneDelegate = scene
+        model.loadGraph()
+
+        XCTAssertTrue(scene.debugPondOffsets.isEmpty, "The collision check must use automatic pond placement")
+        scene.debugActivatePondContact(adriana.id)
+        scene.debugActivatePondContact(riley.id)
+        XCTAssertTrue(model.disclosureSnapshot.expandedIDs.contains(adriana.id))
+        XCTAssertTrue(model.disclosureSnapshot.expandedIDs.contains(riley.id))
+        XCTAssertTrue(model.disclosureSnapshot.visibleIDs.contains(selma.id))
+
+        let positionsBeforeHome = scene.debugNodePositions
+        model.showMyPonds()
+        XCTAssertTrue(model.disclosureSnapshot.expandedIDs.contains(adriana.id),
+                      "Returning home must preserve Adriana's expanded branch")
+        XCTAssertTrue(model.disclosureSnapshot.expandedIDs.contains(riley.id),
+                      "Returning home must preserve Riley's expanded branch")
+        XCTAssertNil(model.disclosureSnapshot.focusRootID)
+        XCTAssertTrue(scene.debugPondOffsets.isEmpty, "Showing home must not create personal pond offsets")
+        for person in [selma, sarah] {
+            let before = try XCTUnwrap(positionsBeforeHome[person.id])
+            let after = try XCTUnwrap(scene.debugNodePositions[person.id])
+            XCTAssertEqual(after.x, before.x, accuracy: 0.0001,
+                           "Home framing must not move saved identity slot for \(person.name)")
+            XCTAssertEqual(after.y, before.y, accuracy: 0.0001,
+                           "Home framing must not move saved identity slot for \(person.name)")
+        }
+
+        // Fit and counter-scale repeatedly to exercise name placement after the
+        // camera changes. A second pass can reveal labels suppressed earlier.
+        for pass in 0..<3 {
+            scene.fitToGraph()
+            let zoomFactor: CGFloat = pass.isMultiple(of: 2) ? 0.92 : 1.08
+            scene.didUpdateZoom(scene.debugCameraZoom * zoomFactor)
+            scene.didUpdateZoom(scene.debugCameraZoom / zoomFactor)
+            assertVisibleNamesAvoidOtherCoins(in: scene)
+        }
+
+        let familyIDs = Set(people.filter { $0.primaryCircle?.id == family.id }.map(\.id))
+        let daycareIDs = Set(people.filter { $0.primaryCircle?.id == daycare.id }.map(\.id))
+        let coinBounds = scene.debugVisibleCoinBounds
+        let nameBounds = scene.debugVisibleNameLabelBounds
+        let zoom = scene.debugCameraZoom
+        XCTAssertTrue(zoom.isFinite && zoom > 0, "Screen-space comparison needs a valid camera scale")
+        func scaledToScreen(_ rect: CGRect) -> CGRect {
+            CGRect(x: rect.minX * zoom, y: rect.minY * zoom,
+                   width: rect.width * zoom, height: rect.height * zoom)
+        }
+        let namesByID = Dictionary(uniqueKeysWithValues: people.map { ($0.id, $0.name) })
+        let selmaCoin = try XCTUnwrap(coinBounds[selma.id], "Expanded Daycare coin must be presented")
+        let sarahCoin = try XCTUnwrap(coinBounds[sarah.id], "Family coin must remain presented")
+        XCTAssertFalse(scaledToScreen(selmaCoin).intersects(scaledToScreen(sarahCoin)),
+                       "Daycare coin Selma \(selmaCoin) must not overlap Family coin Sarah \(sarahCoin)")
+        for daycareID in daycareIDs {
+            guard let daycareCoin = coinBounds[daycareID] else { continue }
+            for familyID in familyIDs {
+                guard let familyCoin = coinBounds[familyID] else { continue }
+                let daycareName = namesByID[daycareID] ?? daycareID.uuidString
+                let familyName = namesByID[familyID] ?? familyID.uuidString
+                XCTAssertFalse(scaledToScreen(daycareCoin).intersects(scaledToScreen(familyCoin)),
+                               "Daycare coin \(daycareName) overlaps Family coin \(familyName): \(daycareCoin) / \(familyCoin)")
+                if let label = nameBounds[daycareID] {
+                    XCTAssertFalse(scaledToScreen(label).intersects(scaledToScreen(familyCoin)),
+                                   "Daycare label \(daycareName) overlaps Family coin \(familyName): \(label) / \(familyCoin)")
+                }
+                if let label = nameBounds[familyID] {
+                    XCTAssertFalse(scaledToScreen(daycareCoin).intersects(scaledToScreen(label)),
+                                   "Daycare coin \(daycareName) overlaps Family label \(familyName): \(daycareCoin) / \(label)")
+                }
+                if let daycareLabel = nameBounds[daycareID], let familyLabel = nameBounds[familyID] {
+                    XCTAssertFalse(scaledToScreen(daycareLabel).intersects(scaledToScreen(familyLabel)),
+                                   "Daycare label \(daycareName) overlaps Family label \(familyName): \(daycareLabel) / \(familyLabel)")
+                }
+            }
+        }
+    }
+
+    func testOverviewFitTracksSavedPondOffsetsInsteadOfMeOrigin() throws {
+        let (manager, container) = try makeTestManager()
+        defer { withExtendedLifetime(container) {} }
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let alice = try manager.createPerson(name: "Alice")
+        let bob = try manager.createPerson(name: "Bob")
+        let family = try manager.createCircle(name: "Family")
+        let friends = try manager.createCircle(name: "Friends")
+        try manager.addToCircle(alice, circle: family)
+        try manager.addToCircle(bob, circle: friends)
+        try manager.createRelationship(from: me, to: alice, type: .friend, skipAutoAssign: true)
+        try manager.createRelationship(from: me, to: bob, type: .friend, skipAutoAssign: true)
+        let people = [me, alice, bob]
+        let scene = GoldfishGraphScene(size: CGSize(width: 390, height: 500))
+        scene.didUpdateGroups([family, friends])
+        _ = scene.debugLayout([GraphLevel(depth: 0, circleGroups: [CircleGroup(circle: nil, contacts: people)])])
+        scene.didUpdateDisclosure(PondDisclosure(people: people).snapshot)
+        scene.setPondLayoutOffsets([
+            family.id.uuidString: CGPoint(x: 820, y: 360),
+            friends.id.uuidString: CGPoint(x: 820, y: 360)
+        ])
+        scene.fitToGraph()
+
+        XCTAssertGreaterThan(scene.debugCameraPosition.x, 500,
+                             "Fitting the overview should follow the saved ponds instead of centering on Me's canonical origin")
+        XCTAssertGreaterThan(scene.debugCameraPosition.y, 100)
+        assertMeAbsentFromOrdinaryOverview(me, in: scene)
+    }
+
+    func testGuidedTourVisibilityToggleUpdatesMeNodeAndHitTesting() throws {
+        let (manager, container) = try makeTestManager()
+        defer { withExtendedLifetime(container) {} }
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let direct = try manager.createPerson(name: "Direct")
+        try manager.createRelationship(from: me, to: direct, type: .friend, skipAutoAssign: true)
+        let people = [me, direct]
+        let scene = GoldfishGraphScene(size: CGSize(width: 390, height: 500))
+        scene.didUpdateGroups([])
+        _ = scene.debugLayout([GraphLevel(depth: 0, circleGroups: [CircleGroup(circle: nil, contacts: people)])])
+        scene.didUpdateDisclosure(PondDisclosure(people: people).snapshot)
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 500))
+        view.presentScene(scene)
+
+        assertMeAbsentFromOrdinaryOverview(me, in: scene)
+        scene.showsMeDuringGuidedTour = true
+        XCTAssertTrue(scene.debugMeIsVisible)
+        XCTAssertTrue(scene.debugRevealedNodeIDs.contains(me.id))
+        guard let mePoint = scene.debugNodePositions[me.id] else {
+            XCTFail("A guided tour must place Me at a hittable graph position")
+            view.presentScene(nil)
+            return
+        }
+        XCTAssertTrue(scene.debugContactCandidateIDs(at: mePoint).contains(me.id),
+                      "Me should be a contact hit target during the guided lesson")
+
+        scene.showsMeDuringGuidedTour = false
+        assertMeAbsentFromOrdinaryOverview(me, in: scene)
+        view.presentScene(nil)
     }
 
     func testUnassignedPondAppearsOnlyWhenItsHiddenMemberIsRevealed() throws {
@@ -318,7 +540,8 @@ final class GraphSceneLayoutTests: XCTestCase {
         for selectedID in [nil, tom.id] {
             if let selectedID { disclosure.selectPondContact(id: selectedID) }
             scene.didUpdateDisclosure(disclosure.snapshot)
-            XCTAssertEqual(scene.debugFullIdentityIDs, disclosure.snapshot.visibleIDs)
+            let expectedVisibleIDs = disclosure.snapshot.visibleIDs.subtracting(people.filter(\.isMe).map(\.id))
+            XCTAssertEqual(scene.debugFullIdentityIDs, expectedVisibleIDs)
             let bounds = scene.debugVisibleIdentityBounds
             for (id, rect) in bounds {
                 for (otherID, otherRect) in bounds where id.uuidString < otherID.uuidString {
@@ -355,8 +578,17 @@ final class GraphSceneLayoutTests: XCTestCase {
                 return (person.name, position)
             })
         }
-        XCTAssertEqual(try directPositions(largeNetwork: false), try directPositions(largeNetwork: true),
-                       "Adding only indirect contacts must not rearrange the starting view")
+        let small = try directPositions(largeNetwork: false)
+        let large = try directPositions(largeNetwork: true)
+        XCTAssertEqual(Set(small.keys), Set(large.keys), "Both graphs should expose the same direct contacts")
+        for name in small.keys {
+            let first = try XCTUnwrap(small[name])
+            let second = try XCTUnwrap(large[name])
+            XCTAssertEqual(first.x, second.x, accuracy: 0.000001,
+                           "Adding only indirect contacts must not move \(name) horizontally")
+            XCTAssertEqual(first.y, second.y, accuracy: 0.000001,
+                           "Adding only indirect contacts must not move \(name) vertically")
+        }
     }
 
     func testLargePondKeepsDistinctHiddenSlotsAfterCompaction() throws {
@@ -482,12 +714,13 @@ final class GraphSceneLayoutTests: XCTestCase {
         ))
         XCTAssertFalse(scene.debugRenderedVisibleIDs.contains(child.id))
         XCTAssertEqual(scene.debugVisibleEdgeCount, 0)
-        XCTAssertEqual(scene.debugOverviewConnectorCount, 1)
-        assertOverviewConnectorsStopOutsideVisibleBanks(scene)
+        XCTAssertEqual(scene.debugOverviewConnectorCount, 0)
+        assertMeAbsentFromOrdinaryOverview(me, in: scene)
         scene.didUpdateZoom(scene.debugCameraZoom * 0.8)
-        assertOverviewConnectorsStopOutsideVisibleBanks(scene)
-        scene.didUpdateSearchMatches([child.id])
+        assertMeAbsentFromOrdinaryOverview(me, in: scene)
+        scene.didUpdateSearchMatches([child.id, me.id])
         XCTAssertTrue(scene.debugRenderedVisibleIDs.contains(child.id))
+        assertMeAbsentFromOrdinaryOverview(me, in: scene)
         XCTAssertEqual(scene.debugVisibleEdgeCount, 1)
         let directEdge = [me.id.uuidString, root.id.uuidString].sorted().joined(separator: "_")
         XCTAssertFalse(scene.debugVisibleEdgeKeys.contains(directEdge))
@@ -548,7 +781,7 @@ final class GraphSceneLayoutTests: XCTestCase {
         XCTAssertTrue(disclosure.snapshot.visibleIDs.contains(casey.id), "Returning to overview keeps expanded branches open")
     }
 
-    func testDeletingAPondRetiresItsOverviewConnector() throws {
+    func testDeletingAPondRetiresItsOverviewBank() throws {
         let (manager, container) = try makeTestManager()
         defer { withExtendedLifetime(container) {} }
         let me = try manager.createPerson(name: "You", isMe: true)
@@ -563,16 +796,16 @@ final class GraphSceneLayoutTests: XCTestCase {
         scene.didUpdateGroups(try manager.fetchAllCircles())
         _ = scene.debugLayout(levels)
         scene.didUpdateDisclosure(PondDisclosure(people: people).snapshot)
-        XCTAssertTrue(scene.debugOverviewConnectorPondIDs.contains(removedPondID))
+        XCTAssertTrue(scene.debugPondBasinBounds[removedPondID] != nil)
 
         try manager.deleteCircle(pond)
         scene.didUpdateGroups(try manager.fetchAllCircles())
         _ = scene.debugLayout(levels)
         scene.didUpdateDisclosure(PondDisclosure(people: people).snapshot)
 
-        XCTAssertFalse(scene.debugOverviewConnectorPondIDs.contains(removedPondID))
-        XCTAssertTrue(scene.debugOverviewConnectorPondIDs.contains("unassigned"))
-        assertOverviewConnectorsStopOutsideVisibleBanks(scene)
+        XCTAssertFalse(scene.debugPondBasinBounds.keys.contains(removedPondID))
+        XCTAssertNotNil(scene.debugPondBasinBounds["unassigned"])
+        XCTAssertEqual(scene.debugOverviewConnectorCount, 0)
     }
 
     func testDenseLayoutHasFiniteDistinctSlots() throws {
@@ -589,7 +822,8 @@ final class GraphSceneLayoutTests: XCTestCase {
         let scene = GoldfishGraphScene(size: CGSize(width: 390, height: 844))
         let slots = scene.debugLayout([GraphLevel(depth: 0, circleGroups: [CircleGroup(circle: nil, contacts: contacts)])])
         XCTAssertEqual(slots.count, contacts.count)
-        let values = Array(slots.values)
+        XCTAssertEqual(slots[me.id], .zero, "Me retains a canonical slot for explicit paths and the walkthrough")
+        let values = contacts.filter { !$0.isMe }.compactMap { slots[$0.id] }
         for (i, point) in values.enumerated() {
             XCTAssertTrue(point.x.isFinite && point.y.isFinite)
             for other in values.dropFirst(i + 1) {
@@ -662,7 +896,7 @@ final class GraphSceneLayoutTests: XCTestCase {
         XCTAssertEqual(first, reversed)
     }
 
-    func testOverviewKeepsPondSignageAndMeReadableAtPhoneWidth() throws {
+    func testWalkthroughKeepsPondSignageAndMeReadableAtPhoneWidth() throws {
         let (manager, container) = try makeTestManager()
         defer { withExtendedLifetime(container) {} }
         let me = try manager.createPerson(name: "Me", isMe: true)
@@ -678,11 +912,13 @@ final class GraphSceneLayoutTests: XCTestCase {
             }
         }
         let scene = GoldfishGraphScene(size: CGSize(width: 390, height: 700))
+        scene.showsMeDuringGuidedTour = true
         scene.didUpdateGroups(groups)
         _ = scene.debugLayout([GraphLevel(depth: 0, circleGroups: [CircleGroup(circle: nil, contacts: contacts)])])
         scene.fitToGraph()
         XCTAssertEqual(scene.debugPondLabelPointSizes.count, groups.count)
         XCTAssertTrue(scene.debugPondLabelPointSizes.allSatisfy { $0 >= 13.5 })
+        XCTAssertTrue(scene.debugMeIsVisible)
         XCTAssertTrue(scene.debugMeShowsIdentity)
         let camera = scene.debugCameraPosition
         let zoom = max(scene.debugCameraZoom, 0.001)
@@ -795,7 +1031,7 @@ final class GraphSceneLayoutTests: XCTestCase {
             revealedEdges: [PondDisclosureEdge(from: me.id, to: david.id)], parents: [david.id: me.id]
         ))
         XCTAssertEqual(scene.debugDisclosureVisibleIDs, [me.id, david.id])
-        XCTAssertEqual(scene.debugRenderedVisibleIDs, [me.id, david.id])
+        XCTAssertEqual(scene.debugRenderedVisibleIDs, [david.id])
         XCTAssertFalse(scene.debugDisclosureVisibleIDs.contains(lisa.id))
         XCTAssertFalse(scene.debugDisclosureVisibleIDs.contains(chris.id))
         XCTAssertEqual(scene.debugDisclosureHiddenCounts[david.id], 2)
@@ -871,7 +1107,7 @@ final class GraphSceneLayoutTests: XCTestCase {
         view.presentScene(scene)
         XCTAssertEqual(scene.debugDisclosureVisibleIDs, [me.id, david.id, lisa.id])
         XCTAssertTrue(scene.debugDisclosureExpandedIDs.contains(david.id))
-        XCTAssertEqual(scene.debugRenderedVisibleIDs, [me.id, david.id, lisa.id])
+        XCTAssertEqual(scene.debugRenderedVisibleIDs, [david.id, lisa.id])
     }
 
     func testDisclosureContextUsesReciprocalRoleAndAge() throws {
@@ -964,7 +1200,7 @@ final class GraphSceneLayoutTests: XCTestCase {
         let initialPositions = scene.debugNodePositions
         let initialCamera = (scene.debugCameraPosition, scene.debugCameraZoom)
         XCTAssertEqual(model.pondDisclosureSnapshot.directIDs, [david.id])
-        XCTAssertEqual(scene.debugRevealedNodeIDs, [me.id, david.id])
+        XCTAssertEqual(scene.debugRevealedNodeIDs, [david.id])
         XCTAssertNil(model.selectedContactID)
 
         // A normal model refresh must not re-fit the same canvas around the
@@ -977,7 +1213,7 @@ final class GraphSceneLayoutTests: XCTestCase {
         // This calls the same scene activation used by touchesEnded: it opens
         // the branch, selects David, and moves the camera to his cluster.
         scene.debugActivatePondContact(david.id)
-        XCTAssertEqual(scene.debugRevealedNodeIDs, [me.id, david.id, lisa.id, chris.id])
+        XCTAssertEqual(scene.debugRevealedNodeIDs, [david.id, lisa.id, chris.id])
         XCTAssertNil(model.selectedContactID)
         XCTAssertEqual(model.pondDisclosureSnapshot.focusRootID, david.id)
         let focusedCamera = (scene.debugCameraPosition, scene.debugCameraZoom)
@@ -991,7 +1227,7 @@ final class GraphSceneLayoutTests: XCTestCase {
         scene.debugActivatePondContact(lisa.id)
         XCTAssertEqual(model.selectedPondContactID, lisa.id)
         XCTAssertNil(model.selectedContactID)
-        XCTAssertEqual(scene.debugRevealedNodeIDs, [me.id, david.id, lisa.id, chris.id])
+        XCTAssertEqual(scene.debugRevealedNodeIDs, [david.id, lisa.id, chris.id])
         XCTAssertEqual(model.pondDisclosureSnapshot.focusRootID, david.id)
 
         // Re-activating an open contact is idempotent; it does not collapse the
@@ -1170,9 +1406,10 @@ final class GraphSceneLayoutTests: XCTestCase {
         }
         for heading in headingBounds {
             for identity in identityBounds {
-                XCTAssertFalse(heading.intersects(identity), "Pond heading must not occlude an identity token or Me label")
+                XCTAssertFalse(heading.intersects(identity), "Pond heading must not occlude an identity token")
             }
         }
+        assertPresentedPondsDoNotOverlap(scene)
 
         scene.didSelectContact(contacts[1].id)
         XCTAssertEqual(scene.debugSelectedLabelText, contacts[1].name)
@@ -1250,6 +1487,69 @@ final class PondRepositionTests: XCTestCase {
         model.activatePondContact(id: alice.id)
         return (container, manager, model, scene, me, family, friends, alice, bob, hidden, outsider,
                 store, defaults, suiteName)
+    }
+
+    func testLatentDaycareSlotsStayCanonicalWhenSavedOffsetSurvivesGraphReload() throws {
+        let container = try makeTestContainer()
+        defer { withExtendedLifetime(container) {} }
+        let manager = GoldfishDataManager(context: container.mainContext)
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let direct = try manager.createPerson(name: "Adriana")
+        let daycareMember = try manager.createPerson(name: "Riley")
+        let family = try manager.createCircle(name: "Family")
+        let daycare = try manager.createCircle(name: "Daycare")
+        try manager.addToCircle(direct, circle: family)
+        try manager.addToCircle(daycareMember, circle: daycare)
+        try manager.createRelationship(from: me, to: direct, type: .friend, skipAutoAssign: true)
+        try manager.createRelationship(from: direct, to: daycareMember, type: .friend, skipAutoAssign: true)
+        XCTAssertFalse(me.allRelationships.contains { $0.toContact.id == daycareMember.id || $0.fromContact.id == daycareMember.id },
+                       "The Daycare member must not be a direct Me neighbor")
+
+        let suiteName = "GoldfishLatentPondLayoutTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = PondLayoutStore(defaults: defaults)
+        let model = GraphViewModel(dataManager: manager, pondLayoutStore: store)
+        let scene = GoldfishGraphScene(size: CGSize(width: 390, height: 700))
+        scene.graphDelegate = model
+        model.sceneDelegate = scene
+        model.loadGraph()
+        let levels = try XCTUnwrap(model.graphLevels)
+        XCTAssertTrue(model.disclosureSnapshot.directIDs.contains(direct.id))
+        XCTAssertFalse(model.disclosureSnapshot.directIDs.contains(daycareMember.id))
+
+        let canonicalBefore = scene.debugLayout(levels)
+        let canonicalDaycareSlot = try XCTUnwrap(canonicalBefore[daycareMember.id])
+        let offset = CGPoint(x: 72, y: -41)
+        model.savePondLayoutOffset(offset, for: daycare.id.uuidString, meID: me.id)
+        scene.setPondLayoutOffsets(model.pondLayoutOffsets(forMeID: me.id))
+        XCTAssertEqual(scene.debugPondOffsets[daycare.id.uuidString], offset)
+        let movedDaycarePosition = try XCTUnwrap(scene.debugNodePositions[daycareMember.id])
+        XCTAssertEqual(movedDaycarePosition.x, canonicalDaycareSlot.x + offset.x, accuracy: 0.0001)
+        XCTAssertEqual(movedDaycarePosition.y, canonicalDaycareSlot.y + offset.y, accuracy: 0.0001)
+
+        let canonicalWithOffset = scene.debugLayout(levels)
+        XCTAssertEqual(canonicalWithOffset.count, canonicalBefore.count)
+        for id in canonicalBefore.keys {
+            let before = try XCTUnwrap(canonicalBefore[id])
+            let after = try XCTUnwrap(canonicalWithOffset[id])
+            XCTAssertEqual(after.x, before.x, accuracy: 0.0001,
+                           "Saved pond translations must not alter canonical x slots")
+            XCTAssertEqual(after.y, before.y, accuracy: 0.0001,
+                           "Saved pond translations must not alter canonical y slots")
+        }
+
+        let actualBeforeReload = scene.debugNodePositions
+        scene.debugReloadGraph(levels)
+        XCTAssertEqual(scene.debugPondOffsets[daycare.id.uuidString], offset)
+        for id in actualBeforeReload.keys {
+            let before = try XCTUnwrap(actualBeforeReload[id])
+            let after = try XCTUnwrap(scene.debugNodePositions[id])
+            XCTAssertEqual(after.x, before.x, accuracy: 0.0001,
+                           "Graph reload must reapply the saved offset exactly once")
+            XCTAssertEqual(after.y, before.y, accuracy: 0.0001,
+                           "Graph reload must preserve actual position for every node")
+        }
     }
 
     func testPondDragMovesHiddenMembersAndKeepsLabelsOutlinesAndRelationshipsAttached() throws {

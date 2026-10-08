@@ -545,6 +545,18 @@ private struct HomeContent: View {
         graphViewModel.selectedPondFilter = viewModel.selectedScopeID
         graphViewModel.loadGraph()
         graphViewModel.openRipple(id, initialTrail: initialTrail, searchRouteSummary: searchRouteSummary)
+        if graphViewModel.graphLevels?.flatMap(\.allContacts).first(where: { $0.id == id })?.isMe == true {
+            searchToRestoreAfterRipple = nil
+            selectedSearchPerson = nil
+            isSearchFocused = false
+            showSearchBar = false
+            viewModel.searchText = ""
+            viewModel.showFavoritesOnly = false
+            viewModel.selectScope(nil)
+            viewModel.viewMode = .graph
+            if !isHomeRouteVisible { navigationRootID = UUID() }
+            return
+        }
         guard graphViewModel.rippleFocus != nil else { return }
 
         searchToRestoreAfterRipple = showSearchBar && !viewModel.normalizedSearchText.isEmpty ? viewModel.searchText : nil

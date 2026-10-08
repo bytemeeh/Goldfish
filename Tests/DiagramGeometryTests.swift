@@ -27,11 +27,19 @@ final class DiagramGeometryTests: XCTestCase {
         let composition = DiagramGeometry.radial(groups)
         XCTAssertEqual(composition.slots.count, groups.reduce(0) { $0 + $1.members.count })
         let basins = Array(composition.basins.values)
+        let basinCenter = basins.reduce(DiagramGeometry.Point.zero) {
+            DiagramGeometry.Point(x: $0.x + $1.center.x, y: $0.y + $1.center.y)
+        }
+        XCTAssertEqual(basinCenter.x / Double(basins.count), 0, accuracy: 0.000001,
+                       "The composition should be centered on its ponds rather than reserving the origin for Me")
+        XCTAssertEqual(basinCenter.y / Double(basins.count), 0, accuracy: 0.000001,
+                       "The composition should be centered on its ponds rather than reserving the origin for Me")
         for (i, a) in basins.enumerated() {
             XCTAssertTrue(a.center.x.isFinite && a.center.y.isFinite)
-            XCTAssertGreaterThan(hypot(a.center.x, a.center.y), a.radius + 80)
             for b in basins.dropFirst(i + 1) {
-                XCTAssertGreaterThan(hypot(a.center.x - b.center.x, a.center.y - b.center.y), (a.radius + b.radius) * 1.04)
+                XCTAssertGreaterThanOrEqual(hypot(a.center.x - b.center.x, a.center.y - b.center.y),
+                                             (a.radius + b.radius) * 1.08 + 240,
+                                             "Unequal ponds need enough center separation for their actual radii")
             }
         }
         for group in groups {

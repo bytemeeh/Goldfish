@@ -286,17 +286,18 @@ final class RippleGraphTests: XCTestCase {
     func testPondRipplePagesReachEveryNeighborWithoutDuplicates() throws {
         let (manager, container) = try makeTestManager()
         defer { withExtendedLifetime(container) {} }
-        let me = try manager.createPerson(name: "Me", isMe: true)
+        _ = try manager.createPerson(name: "Me", isMe: true)
+        let root = try manager.createPerson(name: "Root")
         var contacts: [Person] = []
         for index in 0..<38 {
             let contact = try manager.createPerson(name: String(format: "Contact %02d", index))
-            try manager.createRelationship(from: me, to: contact, type: .friend, skipAutoAssign: true)
+            try manager.createRelationship(from: root, to: contact, type: .friend, skipAutoAssign: true)
             contacts.append(contact)
         }
 
         let viewModel = GraphViewModel(dataManager: manager)
         viewModel.loadGraph()
-        viewModel.openRipple(me.id)
+        viewModel.openRipple(root.id)
 
         XCTAssertEqual(viewModel.ripplePageCount, 10)
         XCTAssertEqual(viewModel.visibleRippleNeighbors.count, 4)
@@ -349,18 +350,19 @@ final class RippleGraphTests: XCTestCase {
     func testPondRipplePublishesVisibleSnapshotToScene() throws {
         let (manager, container) = try makeTestManager()
         defer { withExtendedLifetime(container) {} }
-        let me = try manager.createPerson(name: "Me", isMe: true)
+        _ = try manager.createPerson(name: "Me", isMe: true)
+        let root = try manager.createPerson(name: "Root")
         for index in 0..<6 {
             let contact = try manager.createPerson(name: "Contact \(index)")
-            try manager.createRelationship(from: me, to: contact, type: .friend, skipAutoAssign: true)
+            try manager.createRelationship(from: root, to: contact, type: .friend, skipAutoAssign: true)
         }
 
         let viewModel = GraphViewModel(dataManager: manager)
         let spy = RippleSceneSpy()
         viewModel.sceneDelegate = spy
         viewModel.loadGraph()
-        viewModel.openRipple(me.id)
-        XCTAssertEqual(spy.lastFocus?.contactID, me.id)
+        viewModel.openRipple(root.id)
+        XCTAssertEqual(spy.lastFocus?.contactID, root.id)
         XCTAssertEqual(spy.lastNeighbors.count, 4)
 
         viewModel.nextRipplePage()

@@ -85,34 +85,43 @@ enum DiagramGeometry {
             radii[group.id] = max(minimumBasinRadius,
                                   (slots.values.map { hypot($0.x, $0.y) }.max() ?? 0) + 90)
         }
+        // Pack ponds on measured concentric rings. The former single orbit left
+        // a permanent empty bay for Me in the middle of the map; the first pond
+        // now occupies that space, with later rings balanced around it.
         var centers: [String: Point] = [:]
-        for (index, group) in groups.enumerated() {
-            let radius = radii[group.id] ?? 125
-            let angle = .pi / 4 + Double(index) * 2 * .pi / Double(groups.count)
-            let orbit = radius + 160
-            // The Pond canvas is close to square once its inline inspector and
-            // controls take their rows. Use the available horizontal space so
-            // headings and banks do not stack into a narrow vertical strip.
-            var center = Point(x: cos(angle) * orbit * 1.09, y: sin(angle) * orbit * 1.03)
-            let distance = hypot(center.x, center.y)
-            let keepMeClear = max(1, (radius + 120) / max(distance, 1))
-            center.x *= keepMeClear
-            center.y *= keepMeClear
-            centers[group.id] = center
-        }
-        // One measured expansion guarantees separation even for uneven dense groups.
-        var expansion = 1.0
-        for (index, a) in groups.enumerated() {
-            for b in groups.dropFirst(index + 1) {
-                let ac = centers[a.id]!, bc = centers[b.id]!
-                let needed = ((radii[a.id] ?? 125) + (radii[b.id] ?? 125)) * 1.08 + 240
-                expansion = max(expansion, needed / max(hypot(ac.x - bc.x, ac.y - bc.y), 1))
+        let centerRadius = radii[groups[0].id] ?? 125
+        centers[groups[0].id] = .zero
+        var nextIndex = 1
+        var ring = 1
+        var previousOrbit = 0.0
+        var previousRingRadius = centerRadius
+        while nextIndex < groups.count {
+            let count = min(ring * 6, groups.count - nextIndex)
+            let ringGroups = Array(groups[nextIndex..<(nextIndex + count)])
+            let ringRadius = ringGroups.map { radii[$0.id] ?? 125 }.max() ?? 125
+            let radialClearance = previousOrbit + previousRingRadius + ringRadius + 240
+            let chordClearance = 2 * ringRadius * 1.08 + 240
+            let orbitForRing = count > 1
+                ? chordClearance / max(2 * sin(.pi / Double(count)), 0.001)
+                : radialClearance
+            let orbit = max(radialClearance, orbitForRing)
+            for (item, group) in ringGroups.enumerated() {
+                let angle = Double(item) * 2 * .pi / Double(count) + Double(ring % 2) * .pi / Double(count)
+                centers[group.id] = Point(x: cos(angle) * orbit, y: sin(angle) * orbit)
             }
+            previousOrbit = orbit
+            previousRingRadius = ringRadius
+            nextIndex += count
+            ring += 1
         }
+        // Center the packed composition as a whole. Translation preserves all
+        // clearances and makes the initial camera fit independent of Me's slot.
+        let centerX = groups.compactMap { centers[$0.id]?.x }.reduce(0, +) / Double(groups.count)
+        let centerY = groups.compactMap { centers[$0.id]?.y }.reduce(0, +) / Double(groups.count)
         var result = Composition()
         for group in groups {
             let initial = centers[group.id]!
-            let center = Point(x: initial.x * expansion, y: initial.y * expansion)
+            let center = Point(x: initial.x - centerX, y: initial.y - centerY)
             result.basins[group.id] = Basin(center: center, radius: radii[group.id] ?? 125)
             for (id, point) in local[group.id] ?? [:] {
                 result.slots[id] = Point(x: center.x + point.x, y: center.y + point.y)
