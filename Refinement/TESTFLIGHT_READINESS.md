@@ -2,7 +2,7 @@
 
 **Prepared:** 9 October 2026
 
-The release candidate has passed the current simulator test suite, and distribution signing is available. App Store Connect could not be checked because the Chrome session had expired and is awaiting account sign-in. Xcode confirmed upload success at 16:54 UTC on 9 October 2026 and reported the package processing. Review, TestFlight group and processing-complete states remain unverified. The source and signed archive declare version 1.0, build 3. The device archive and local App Store export succeeded.
+Build 3 passed verification, was signed and uploaded, and is now **Testing** in App Store Connect. It is assigned to the existing internal and external groups. Beta description, review notes and What to Test are saved. Automatic tester notifications were enabled. The source and signed archive declare version 1.0, build 3.
 
 ## Verified for this release pass
 
@@ -15,9 +15,9 @@ The release candidate has passed the current simulator test suite, and distribut
 | Support page | `https://goldfish-pond-support.bwjhhk9fbp.chatgpt.site/` — HTTP 200 via curl on 9 October 2026. |
 | Privacy page | `https://goldfish-pond-support.bwjhhk9fbp.chatgpt.site/privacy` — HTTP 200 via curl on 9 October 2026. |
 | Feedback email | `goldfish.pond.app@gmail.com`, configured in `Goldfish/Info.plist` and `project.yml`. |
-| TestFlight audience | The intended audience is approximately 50 testers; the actual existing tester count is unverified. Current group membership, build access, and notifications need an ASC check before rollout. |
+| TestFlight audience | One existing tester in Goldfish U18 — External 50; build 3 is Testing and assigned to the group. Intended audience size remains approximately 50. |
 
-The browser sign-in is the only known access blocker to confirming the current ASC state. After sign-in, check the existing app record and group; do not assume the historical app-creation/Terms-of-Service notes remain true. `get_site` and credential lookup both returned `NOT_FOUND` for site `appgprj_6ab957fad0048191856ed604429fdadd`. Do not edit or publish hosted source from this workspace. Ready-to-apply page copy is in [SUPPORT_SITE_UPDATE.md](SUPPORT_SITE_UPDATE.md).
+`get_site` and credential lookup both returned `NOT_FOUND` for site `appgprj_6ab957fad0048191856ed604429fdadd`. Do not edit or publish hosted source from this workspace. Ready-to-apply page copy is in [SUPPORT_SITE_UPDATE.md](SUPPORT_SITE_UPDATE.md).
 
 ## Product facts for release copy
 
@@ -35,10 +35,10 @@ Do not create a replacement group or invite new testers unless the current audie
 
 ## Remaining release work
 
-- Restore App Store Connect access, confirm existing app record, agreements, current TestFlight group, and tester count.
+- TestFlight access, app record, current group and tester count were verified. Public App Store compliance and listing completion remain separate work.
 - Build 3 source was committed and pushed: `7b63e4811671cb1c17d649e3e6a36e8cb29c2fa1`.
-- Archive, App Store export and upload succeeded. Confirm processing completion and any export-compliance questions in App Store Connect.
-- Enter or verify TestFlight metadata and current App Review contact details. Send the processed, approved build to the existing tester group.
+- Archive, export, upload and processing completed; build 3 is Testing for external testers.
+- TestFlight metadata was updated and the existing tester group has build 3. Verify contact preservation on the physical iPhone after updating.
 - Review the actual hosted support and privacy page contents after the additions in `SUPPORT_SITE_UPDATE.md` are applied.
 - For public App Store release, finish the App Privacy questionnaire, category, age rating, copyright, screenshots, localization, and store listing fields in App Store Connect. Use only screenshots of current app behavior.
 
