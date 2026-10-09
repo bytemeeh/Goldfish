@@ -19,6 +19,9 @@ struct SettingsView: View {
     @State private var exportURL: IdentifiableWrapper<URL>?
     @State private var showingImportDetails = false
     @State private var didOfferInitialImport = false
+    @State private var showingWelcomePreview = false
+    @AppStorage("appearancePreference") private var appearancePreference = AppAppearance.system.rawValue
+    @AppStorage("quietPondBackground") private var quietPondBackground = false
     private let startWithImport: Bool
 
     init(startWithImport: Bool = false) {
@@ -31,26 +34,19 @@ struct SettingsView: View {
     var body: some View {
         List {
 
-            // MARK: - Large title (signage board: marker-red bar + uppercase)
+            // MARK: - Page title
             Section {
-                VStack(alignment: .leading, spacing: GoldfishDS.Space.sm) {
-                    Rectangle()
-                        .fill(GoldfishDS.terracotta)
-                        .frame(width: 56, height: GoldfishDS.Rule.bar)
-                    Text("Settings")
-                        .font(.gfDisplay)
-                        .textCase(.uppercase)
-                        .kerning(1.5)
-                        .foregroundStyle(GoldfishDS.ink(.primary))
-                }
-                .padding(.top, GoldfishDS.Space.lg)
-                .padding(.bottom, GoldfishDS.Space.sm)
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 0,
-                                         leading: GoldfishDS.Space.pageMargin,
-                                         bottom: 0,
-                                         trailing: GoldfishDS.Space.pageMargin))
+                Text("Settings")
+                    .font(.largeTitle.weight(.light))
+                    .foregroundStyle(GoldfishDS.ink(.primary))
+                    .padding(.top, GoldfishDS.Space.lg)
+                    .padding(.bottom, GoldfishDS.Space.sm)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 0,
+                                             leading: GoldfishDS.Space.pageMargin,
+                                             bottom: 0,
+                                             trailing: GoldfishDS.Space.pageMargin))
             }
 
             // MARK: - Profile hero row
@@ -106,8 +102,43 @@ struct SettingsView: View {
                         walkthroughManager.replayWalkthrough(dataManager: dataManager)
                     }
                 }
+
+                SettingsActionRow(icon: "sparkles.rectangle.stack", label: "Preview Welcome") {
+                    showingWelcomePreview = true
+                }
             } header: {
                 SettingsSectionHeader("Configuration")
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0,
+                                     leading: GoldfishDS.Space.pageMargin,
+                                     bottom: 0,
+                                     trailing: GoldfishDS.Space.pageMargin))
+            .listRowSeparator(.hidden)
+
+            // MARK: - Appearance
+            Section {
+                Picker("Appearance", selection: $appearancePreference) {
+                    ForEach(AppAppearance.allCases) { appearance in
+                        Text(appearance.title).tag(appearance.rawValue)
+                    }
+                }
+                .font(.gfBody)
+                .tint(GoldfishDS.terracotta)
+                .accessibilityIdentifier("appearancePicker")
+
+                Toggle("Quiet pond background", isOn: $quietPondBackground)
+                    .font(.gfBody)
+                    .tint(GoldfishDS.terracotta)
+                    .accessibilityIdentifier("quietPondBackgroundToggle")
+            } header: {
+                SettingsSectionHeader("Appearance")
+            } footer: {
+                Text("Choose light or dark appearance, or follow your device setting. Quiet background lowers the watercolor while keeping it still.")
+                    .font(.gfMeta)
+                    .foregroundStyle(GoldfishDS.ink(.tertiary))
+                    .padding(.horizontal, GoldfishDS.Space.pageMargin)
+                    .padding(.top, GoldfishDS.Space.sm)
             }
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0,
@@ -422,7 +453,7 @@ struct SettingsView: View {
         )) { Button("OK") { viewModel.errorMessage = nil } } message: { Text(viewModel.errorMessage ?? "") }
         .alert(viewModel.importAlertTitle, isPresented: $viewModel.showImportCompletionAlert) {
             if (viewModel.lastImportResult?.importedCount ?? 0) > 0 {
-                Button("Organize people") { showingOrganization = true }
+                Button("Organize \(viewModel.lastImportResult?.importedCount ?? 0) people now") { showingOrganization = true }
             }
             if viewModel.hasImportDetails {
                 Button("Details") { showingImportDetails = true }
@@ -432,7 +463,10 @@ struct SettingsView: View {
             Text(viewModel.importAlertMessage)
         }
         .sheet(isPresented: $showingOrganization) {
-            NavigationStack { ContactOrganizationView(dataManager: dataManager, isDemoMode: false) }
+            NavigationStack {
+                ContactOrganizationView(dataManager: dataManager, isDemoMode: false,
+                                        initialContactIDs: viewModel.importedContactIDs)
+            }
         }
         .sheet(isPresented: $showingImportDetails) {
             ImportDetailsView(
@@ -479,6 +513,36 @@ struct SettingsView: View {
                 .environmentObject(demoModeManager)
                 .environmentObject(walkthroughManager)
                 .presentationCornerRadius(GoldfishDS.Radius.sheet)
+        }
+        .sheet(isPresented: $showingWelcomePreview) {
+            OnboardingSignInOverlay(previewOnly: true)
+                .environmentObject(dataManager)
+                .environmentObject(walkthroughManager)
+                .environmentObject(demoModeManager)
+                .environmentObject(ToastManager.shared)
+                .ignoresSafeArea()
+        }
+    }
+}
+
+enum AppAppearance: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .system: "System"
+        case .light: "Light"
+        case .dark: "Dark"
+        }
+    }
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
         }
     }
 }

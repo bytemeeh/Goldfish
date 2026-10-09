@@ -5,6 +5,8 @@ import os
 // MARK: - Import Result
 struct ImportResult: Sendable {
     var importedCount: Int = 0
+    /// IDs of contacts created by this import, for the post-import organization flow.
+    var importedContactIDs: Set<UUID> = []
     var skippedCount: Int = 0
     var errors: [String] = []
 
@@ -123,6 +125,7 @@ actor VCardImportService {
                     let person = try createPerson(from: vContact)
                     modelContext.insert(person)
                     result.importedCount += 1
+                    result.importedContactIDs.insert(person.id)
                     resolvedContacts.append((vContact, person))
 
                     // Map vCard UID to NEW person

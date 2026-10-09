@@ -36,6 +36,28 @@ final class GoldfishContactBundleTests: XCTestCase {
         XCTAssertEqual(try container.mainContext.fetch(FetchDescriptor<Person>()).filter(\.isMe).count, 1)
     }
 
+    func testImportResultSelectsOnlyNewContactsForOrganization() throws {
+        let shared = Person(name: "Already Here")
+        let added = Person(name: "New Person")
+        let source = try makeTestContainerForVCard()
+        source.mainContext.insert(shared)
+        source.mainContext.insert(added)
+        try source.mainContext.save()
+        let data = try GoldfishContactBundle.export(contacts: [shared, added])
+
+        let destination = try makeTestContainerForVCard()
+        let existing = Person(id: shared.id, name: shared.name)
+        destination.mainContext.insert(existing)
+        try destination.mainContext.save()
+
+        let result = try GoldfishContactBundle.importData(data, into: destination.mainContext)
+
+        XCTAssertEqual(result.addedPeople, 1)
+        XCTAssertEqual(result.reusedPeople, 1)
+        XCTAssertEqual(result.addedContactIDs, Set([added.id]))
+        XCTAssertFalse(result.addedContactIDs.contains(existing.id))
+    }
+
     func testImportRefinesAnExistingGenericParentRole() throws {
         let source = try makeTestContainerForVCard()
         let parent = Person(name: "Parent")

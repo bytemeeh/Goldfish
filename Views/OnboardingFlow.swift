@@ -6,6 +6,12 @@ import ContactsUI
 // MARK: - First-Run Introduction
 /// Introduces the product and makes the interactive sample-tour choice explicit.
 struct OnboardingSignInOverlay: View {
+    let previewOnly: Bool
+
+    init(previewOnly: Bool = false) {
+        self.previewOnly = previewOnly
+    }
+
     @EnvironmentObject var dataManager: GoldfishDataManager
     @EnvironmentObject var walkthroughManager: FeatureWalkthroughManager
     @EnvironmentObject var demoModeManager: DemoModeManager
@@ -16,6 +22,7 @@ struct OnboardingSignInOverlay: View {
     @Environment(\.colorSchemeContrast) private var accessibilityContrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dismiss) private var dismiss
     @ScaledMetric(relativeTo: .largeTitle) private var wordmarkFontSize: CGFloat = 56
     @State private var heroArtworkOpacity = 1.0
     @State private var welcomeContentOpacity = 1.0
@@ -85,7 +92,7 @@ struct OnboardingSignInOverlay: View {
         // Headless-verification hook: `SIMCTL_CHILD_GF_AUTO_ONBOARD=1 simctl launch …`
         // completes the sign-in step without a tap so CI/agents can reach the app.
         .onAppear {
-            if ProcessInfo.processInfo.environment["GF_AUTO_ONBOARD"] == "1" {
+            if !previewOnly, ProcessInfo.processInfo.environment["GF_AUTO_ONBOARD"] == "1" {
                 startPersonalPond()
             }
         }
@@ -167,54 +174,78 @@ struct OnboardingSignInOverlay: View {
                 .foregroundStyle(GoldfishDS.cream.opacity(0.88))
                 .padding(.top, 4)
 
-            Button {
-                beginWelcomeTransition(for: size, action: exploreSample)
-            } label: {
-                Text("EXPLORE A SAMPLE")
-                    .font(.gfLabel)
-                    .kerning(1.6)
-                    .foregroundStyle(Color.black)
-                    .frame(maxWidth: .infinity)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.vertical, 12)
-                    .frame(minHeight: 52)
-                    .background(
-                        RoundedRectangle(cornerRadius: GoldfishDS.Radius.control)
-                            .fill(GoldfishDS.cream)
-                    )
-            }
-            .buttonStyle(.plain)
-            .padding(.top, 24)
-            .accessibilityIdentifier("startSampleTourButton")
-            .accessibilityHint("Opens real sample contacts and a guided tour. You can end the tour at any time.")
-            .disabled(isTransitioning)
+            if previewOnly {
+                Button {
+                    beginWelcomeTransition(for: size, action: { dismiss() })
+                } label: {
+                    Text("ENTER POND")
+                        .font(.gfLabel)
+                        .kerning(1.4)
+                        .foregroundStyle(Color.black)
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 52)
+                        .background(GoldfishDS.cream, in: RoundedRectangle(cornerRadius: GoldfishDS.Radius.control))
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 24)
+                .accessibilityHint("Previews the transition without changing your data or preferences.")
+                .disabled(isTransitioning)
 
-            Button {
-                beginWelcomeTransition(for: size, action: startPersonalPond)
-            } label: {
-                Text("START MY POND")
-                    .font(.gfLabel)
-                    .kerning(1.4)
-                    .foregroundStyle(GoldfishDS.cream)
-                    .frame(maxWidth: .infinity)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.vertical, 12)
-                    .frame(minHeight: 52)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: GoldfishDS.Radius.control)
-                            .strokeBorder(
-                                GoldfishDS.cream.opacity(accessibilityContrast == .increased ? 1 : 0.82),
-                                lineWidth: accessibilityContrast == .increased ? 1.5 : 1
-                            )
-                    )
-            }
-            .buttonStyle(.plain)
-            .padding(.top, 10)
-            .accessibilityIdentifier("startPersonalPondButton")
-            .accessibilityHint("Starts with an empty personal pond and does not create sample contacts.")
-            .disabled(isTransitioning)
+                Button("Close preview") { dismiss() }
+                    .font(.gfMeta)
+                    .foregroundStyle(GoldfishDS.cream.opacity(0.92))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .padding(.top, 6)
+            } else {
+                Button {
+                    beginWelcomeTransition(for: size, action: exploreSample)
+                } label: {
+                    Text("EXPLORE A SAMPLE")
+                        .font(.gfLabel)
+                        .kerning(1.6)
+                        .foregroundStyle(Color.black)
+                        .frame(maxWidth: .infinity)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.vertical, 12)
+                        .frame(minHeight: 52)
+                        .background(
+                            RoundedRectangle(cornerRadius: GoldfishDS.Radius.control)
+                                .fill(GoldfishDS.cream)
+                        )
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 24)
+                .accessibilityIdentifier("startSampleTourButton")
+                .accessibilityHint("Opens real sample contacts and a guided tour. You can end the tour at any time.")
+                .disabled(isTransitioning)
 
-            Text("Your contacts stay stored on this device.")
+                Button {
+                    beginWelcomeTransition(for: size, action: startPersonalPond)
+                } label: {
+                    Text("START MY POND")
+                        .font(.gfLabel)
+                        .kerning(1.4)
+                        .foregroundStyle(GoldfishDS.cream)
+                        .frame(maxWidth: .infinity)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.vertical, 12)
+                        .frame(minHeight: 52)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: GoldfishDS.Radius.control)
+                                .strokeBorder(
+                                    GoldfishDS.cream.opacity(accessibilityContrast == .increased ? 1 : 0.82),
+                                    lineWidth: accessibilityContrast == .increased ? 1.5 : 1
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 10)
+                .accessibilityIdentifier("startPersonalPondButton")
+                .accessibilityHint("Starts with an empty personal pond and does not create sample contacts.")
+                .disabled(isTransitioning)
+            }
+
+            Text(previewOnly ? "Preview only. Your ponds and settings will stay as they are." : "Your contacts stay stored on this device.")
                 .font(.gfMeta)
                 .foregroundStyle(GoldfishDS.cream.opacity(0.82))
                 .multilineTextAlignment(.center)

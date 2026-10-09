@@ -283,6 +283,19 @@ private struct ExportScopeReview: View {
                 }
                 .listRowBackground(GoldfishDS.surface)
 
+                Section("Ponds included") {
+                    if ponds.isEmpty {
+                        Text("No pond assignments are included.")
+                            .font(.gfMeta).foregroundStyle(GoldfishDS.ink(.secondary)).frame(minHeight: 44)
+                    } else {
+                        ForEach(Array(ponds.enumerated()), id: \.offset) { _, name in
+                            Label(name, systemImage: "circle.grid.hex")
+                                .font(.gfBody).foregroundStyle(GoldfishDS.ink(.primary)).frame(minHeight: 44)
+                        }
+                    }
+                }
+                .listRowBackground(GoldfishDS.surface)
+
                 Section("Included people") {
                     ForEach(entries) { entry in
                         HStack(spacing: GoldfishDS.Space.md) {

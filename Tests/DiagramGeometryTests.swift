@@ -94,15 +94,11 @@ final class DiagramGeometryTests: XCTestCase {
             XCTAssertEqual(mean.x / Double(pondCount), 0, accuracy: 0.000001)
             XCTAssertEqual(mean.y / Double(pondCount), 0, accuracy: 0.000001)
 
-            XCTAssertEqual(basins[0].center.x, 0, accuracy: 0.000001,
-                           "A small map should use its center for a real pond")
-            XCTAssertEqual(basins[0].center.y, 0, accuracy: 0.000001,
-                           "A small map should use its center for a real pond")
+            XCTAssertLessThan(hypot(basins[0].center.x, basins[0].center.y),
+                              outerRadiiMean(basins),
+                              "A small map should retain a central pond")
             let outerRadii = basins.dropFirst().map { hypot($0.center.x, $0.center.y) }
-            for radius in outerRadii.dropFirst() {
-                XCTAssertEqual(radius, outerRadii[0], accuracy: 0.000001,
-                               "Outer ponds should share a balanced orbit around the center pond")
-            }
+            XCTAssertGreaterThan(outerRadii.min() ?? 0, hypot(basins[0].center.x, basins[0].center.y))
             for (index, basin) in basins.enumerated() {
                 for other in basins.dropFirst(index + 1) {
                     XCTAssertGreaterThanOrEqual(
@@ -112,6 +108,49 @@ final class DiagramGeometryTests: XCTestCase {
                     )
                 }
             }
+        }
+    }
+
+    private func outerRadiiMean(_ basins: [DiagramGeometry.Basin]) -> Double {
+        let radii = basins.dropFirst().map { hypot($0.center.x, $0.center.y) }
+        return radii.reduce(0, +) / Double(max(radii.count, 1))
+    }
+
+    func testThreePondsFormAnIrregularTriangleInsteadOfAVerticalStack() {
+        let groups = (0..<3).map { DiagramGeometry.Group(id: "pond-\($0)", members: [UUID()]) }
+        let composition = DiagramGeometry.radial(groups)
+        let centers = groups.compactMap { composition.basins[$0.id]?.center }
+        XCTAssertEqual(centers.count, 3)
+        XCTAssertGreaterThan(abs(centers[1].x - centers[2].x), 200)
+        let area = abs((centers[1].x - centers[0].x) * (centers[2].y - centers[0].y) -
+                       (centers[2].x - centers[0].x) * (centers[1].y - centers[0].y))
+        XCTAssertGreaterThan(area, 1_000)
+    }
+
+    func testRelatedPondsOccupyNeighboringOrbitSlots() {
+        let groups = (0..<7).map { DiagramGeometry.Group(id: "pond-\($0)", members: [UUID()]) }
+        let composition = DiagramGeometry.radial(groups, relatedPonds: [("pond-1", "pond-6")])
+        let first = composition.basins["pond-1"]!.center
+        let related = composition.basins["pond-6"]!.center
+        let unrelated = composition.basins["pond-4"]!.center
+        XCTAssertLessThan(hypot(first.x - related.x, first.y - related.y),
+                          hypot(first.x - unrelated.x, first.y - unrelated.y))
+    }
+
+    func testEquivalentNamedPondsKeepPositionsAcrossFreshIdentifiers() {
+        let titles = ["Family", "Friends", "Daycare", "Book Club"]
+        func layout() -> [DiagramGeometry.Basin] {
+            let groups = titles.map { title in
+                DiagramGeometry.Group(id: UUID().uuidString, members: [UUID()], seed: title)
+            }
+            let composition = DiagramGeometry.radial(groups)
+            return groups.compactMap { composition.basins[$0.id] }
+        }
+        let first = layout(), second = layout()
+        XCTAssertEqual(first.count, second.count)
+        for (a, b) in zip(first, second) {
+            XCTAssertEqual(a.center.x, b.center.x, accuracy: 0.000001)
+            XCTAssertEqual(a.center.y, b.center.y, accuracy: 0.000001)
         }
     }
 

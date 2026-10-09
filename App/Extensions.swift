@@ -2,6 +2,11 @@ import SwiftUI
 import SwiftData
 import Darwin
 
+extension Font {
+    /// Distinctive but quiet New York serif for pond names in the graph chrome.
+    static var gfPondTitle: Font { .system(.title3, design: .serif).weight(.regular) }
+}
+
 // MARK: - Color Hex Initializer (String)
 extension Color {
     /// Initialize Color from hex string (e.g. "#FF0000" or "FF0000").

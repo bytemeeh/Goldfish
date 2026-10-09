@@ -154,6 +154,11 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     private let initialRadius: CGFloat = 130
     private let basinStrokeWidth: CGFloat = 1.2
 
+    private func pondSeed(_ id: String) -> CGFloat {
+        let hash = id.utf8.reduce(UInt64(14695981039346656037)) { ($0 ^ UInt64($1)) &* 1099511628211 }
+        return CGFloat(hash % 1024) * 2 * .pi / 1024
+    }
+
     private var pondBasins: [String: SKNode] = [:]   // circleName -> track container
     private var pondLabels: [String: SKLabelNode] = [:]
     private struct PondInfo {
@@ -312,6 +317,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             guard let self, UIAccessibility.isReduceMotionEnabled else { return }
             self.interruptCameraAnimation()
             self.contentNode.enumerateChildNodes(withName: "//*") { node, _ in node.removeAllActions() }
+            self.contentNode.enumerateChildNodes(withName: "dragWake") { node, _ in node.removeFromParent() }
             for node in self.personNodes.values { node.setScale(1) }
             self.applyLayout(animated: false)
             self.fitToComposition(animated: false)
@@ -390,7 +396,12 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     /// position or ordinary camera state. Painted pond outlines intentionally
     /// grow around newly presented members while cached full geometry stays put.
     func didUpdateDisclosure(_ snapshot: PondDisclosureSnapshot) {
+        // The model delegate and SwiftUI's onChange can deliver the same value
+        // back-to-back. Replaying it would remove the newly started SpriteKit
+        // actions and snap the branch to its destination.
+        if sceneReady, !awaitsInitialDisclosureFit, disclosureSnapshot == snapshot { return }
         let previous = disclosureSnapshot
+        let newlyVisible = snapshot.visibleIDs.subtracting(previous?.visibleIDs ?? [])
         let hadEmphasis = previous?.focusRootID != nil || !(previous?.pathHighlightIDs.isEmpty ?? true)
         let hasEmphasis = snapshot.focusRootID != nil || !snapshot.pathHighlightIDs.isEmpty
         if !hadEmphasis && hasEmphasis {
@@ -406,9 +417,9 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             refreshMapMePosition()
             meNode.position = presentedPosition(for: meID)
         }
-        renderBasins(animated: false)
+        renderBasins(animated: previous != nil)
         renderLabels()
-        evaluateNodeVisibility(animated: !awaitsInitialDisclosureFit)
+        evaluateNodeVisibility(animated: !awaitsInitialDisclosureFit, emergingIDs: newlyVisible)
         updateLOD()
         arrangeNameLabels()
         renderEdges()
@@ -420,8 +431,10 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             let focusChanged = previous?.focusRootID != snapshot.focusRootID
             let clusterExpanded = previous?.focusedIDs != snapshot.focusedIDs
             let pathChanged = previous?.pathHighlightIDs != snapshot.pathHighlightIDs
-            if focusChanged || clusterExpanded || pathChanged {
+            if pathChanged {
                 fitFocusedCluster(animated: true)
+            } else if focusChanged || clusterExpanded {
+                revealFocusedClusterKeepingAnchor(snapshot)
             }
         }
         fitInitialDisclosureIfNeeded()
@@ -465,8 +478,14 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             // The inspector has a stable footprint while selecting/expanding.
             // An actual size change (rotation or Dynamic Type) needs a fresh
             // fit so the Pond stays inside its new viewport.
-            if disclosureSnapshot?.focusRootID != nil {
-                fitFocusedCluster(animated: false)
+            if let snapshot = disclosureSnapshot, snapshot.focusRootID != nil,
+               abs(oldSize.width - size.width) < 1 {
+                // The inspector changes the map height. Keep world points at
+                // the same screen Y instead of snapping to a fresh cluster fit.
+                cameraNode.position.y += (oldSize.height - size.height) / (2 * max(actualCameraZoom, 0.001))
+                revealFocusedClusterKeepingAnchor(snapshot)
+            } else if disclosureSnapshot?.focusRootID != nil {
+                fitFocusedCluster(animated: true)
             } else {
                 fitToComposition(animated: false)
             }
@@ -772,14 +791,23 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         // Signage remains readable in screen points when the composition is fitted.
         let zoom = max(currentZoom, 0.001)
         let scale = 1 / zoom
-        renderBasins(animated: false)
+        // Only a changed zoom alters the screen-aware bank geometry. Routine
+        // label refreshes must leave a disclosure's crossfade in flight.
+        if abs(zoom - lastLabelScaleZoom) > max(zoom * 0.005, 0.0001) {
+            renderBasins(animated: cameraNode.action(forKey: "cameraScale") != nil)
+        }
         for label in pondLabels.values { label.setScale(scale) }
         for (name, label) in pondLabels where !label.isHidden {
             label.position = presentedPondLabelAnchor(name)
         }
         for basin in pondBasins.values {
             for child in basin.children {
-                (child as? SKShapeNode)?.lineWidth = 1.2 / zoom
+                guard let shape = child as? SKShapeNode else { continue }
+                switch child.name {
+                case "bankEdge": shape.lineWidth = basinStrokeWidth / zoom
+                case "bankGrain": shape.lineWidth = 2.5 / zoom
+                default: break
+                }
             }
         }
         for node in personNodes.values { node.updateScreenScale(zoom: zoom) }
@@ -1329,9 +1357,19 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         }
         let assigned = Set(groups.flatMap(\.memberIDs))
         let unassigned = contacts.filter { !$0.isMe && !assigned.contains($0.id) }.map(\.id)
-        var inputs = groups.map { DiagramGeometry.Group(id: $0.id, members: $0.memberIDs) }
-        if !unassigned.isEmpty { inputs.append(.init(id: "unassigned", members: unassigned)) }
-        let composition = DiagramGeometry.radial(inputs)
+        var inputs = groups.map { DiagramGeometry.Group(id: $0.id, members: $0.memberIDs, seed: $0.title) }
+        if !unassigned.isEmpty { inputs.append(.init(id: "unassigned", members: unassigned, seed: "Unassigned")) }
+        let membership = Dictionary(uniqueKeysWithValues: inputs.flatMap { group in
+            group.members.map { ($0, group.id) }
+        })
+        let relatedPonds = contacts.flatMap { person in
+            person.allRelationships.compactMap { relationship -> (String, String)? in
+                guard let left = membership[relationship.fromContact.id],
+                      let right = membership[relationship.toContact.id], left != right else { return nil }
+                return (left, right)
+            }
+        }
+        let composition = DiagramGeometry.radial(inputs, relatedPonds: relatedPonds)
         for (id, point) in composition.slots { layoutSlots[id] = CGPoint(x: point.x, y: point.y) }
         // DiagramGeometry deliberately starts from UUID order. Within a pond,
         // that can put a second-degree contact between Me and a direct contact
@@ -1370,7 +1408,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             guard let basin = composition.basins[group.id] else { continue }
             let center = CGPoint(x: basin.center.x, y: basin.center.y)
             let radius = CGFloat(basin.radius)
-            let path = organicBasin(center: center, radius: radius, seed: CGFloat(groups.firstIndex { $0.id == group.id } ?? 0))
+            let path = organicBasin(center: center, radius: radius, seed: pondSeed(group.id))
             pondGeometries[group.id] = PondGeometry(
                 name: group.id, memberIDs: group.memberIDs, bisector: 0,
                 isEmpty: group.memberIDs.isEmpty, basinPath: path, discCenter: center,
@@ -1409,11 +1447,21 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         }
         guard !directByPond.isEmpty else { return false }
 
-        let inputs = directByPond.map { DiagramGeometry.Group(id: $0.info.id, members: $0.ids) }
+        let inputs = directByPond.map { DiagramGeometry.Group(id: $0.info.id, members: $0.ids, seed: $0.info.title) }
         // A one-person pond still needs room for its title and the person's
         // name. Reserve that space when placing groups, even though the
         // painted bank follows only the currently visible identities.
-        let baseline = DiagramGeometry.radial(inputs, minimumBasinRadius: 220)
+        let directMembership = Dictionary(uniqueKeysWithValues: inputs.flatMap { group in
+            group.members.map { ($0, group.id) }
+        })
+        let relatedPonds = uniqueContacts(graphLevelsCache).flatMap { person in
+            person.allRelationships.compactMap { relationship -> (String, String)? in
+                guard let left = directMembership[relationship.fromContact.id],
+                      let right = directMembership[relationship.toContact.id], left != right else { return nil }
+                return (left, right)
+            }
+        }
+        let baseline = DiagramGeometry.radial(inputs, minimumBasinRadius: 220, relatedPonds: relatedPonds)
         let peopleByID = Dictionary(uniqueKeysWithValues: uniqueContacts(graphLevelsCache).map { ($0.id, $0) })
 
         for entry in directByPond {
@@ -1573,7 +1621,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     private func organicBasin(center: CGPoint, radius: CGFloat, seed: CGFloat) -> CGPath {
         let points = (0..<12).map { index -> CGPoint in
             let a = CGFloat(index) * 2 * .pi / 12
-            let r = radius * (1 + 0.035 * sin(a * 3 + seed))
+            let r = radius * (1 + 0.028 * sin(a * 3 + seed) + 0.012 * sin(a * 5 + seed * 1.7))
             return CGPoint(x: center.x + cos(a) * r, y: center.y + sin(a) * r)
         }
         let path = CGMutablePath()
@@ -1658,21 +1706,114 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         fitToRect(bounds, minZoom: 0.001, maxZoom: 1.3, padding: 44, screenInset: 28, animated: animated, biasToMe: false)
     }
 
+    /// Expansion only widens the camera when a newly visible branch would fall
+    /// outside the usable viewport. The selected coin retains its screen point.
+    private func revealFocusedClusterKeepingAnchor(_ snapshot: PondDisclosureSnapshot) {
+        guard let selectedID = snapshot.selectedID ?? snapshot.focusRootID,
+              let anchorNode = personNodes[selectedID], !anchorNode.isHidden,
+              size.width > 0, size.height > 0 else { return }
+        let ids = snapshot.focusedIDs.union(snapshot.pathHighlightIDs)
+        let bounds = ids.compactMap { id -> CGRect? in
+            guard let node = personNodes[id], !node.isHidden else { return nil }
+            let point = presentedPosition(for: id)
+            return node.visibleIdentityBounds.offsetBy(dx: point.x, dy: point.y)
+        }.reduce(nil as CGRect?) { partial, next in
+            partial.map { $0.union(next) } ?? next
+        }
+        guard let bounds else { return }
+        let anchor = presentedPosition(for: selectedID)
+        let zoom = actualCameraZoom
+        let offset = CGPoint(x: (anchor.x - cameraNode.position.x) * zoom,
+                             y: (anchor.y - cameraNode.position.y) * zoom)
+        let width = max(100, size.width - 56)
+        let height = max(100, size.height - min(max(topObscuredInset, 0) + max(bottomObscuredInset, 0), size.height * 0.7) - 56)
+        let left = width / 2 + offset.x, right = width / 2 - offset.x
+        let bottom = height / 2 + offset.y, top = height / 2 - offset.y
+        guard min(left, right, bottom, top) > 12 else { return }
+        let desiredZoom = min(zoom,
+                              left / max(anchor.x - bounds.minX + 24, 1),
+                              right / max(bounds.maxX - anchor.x + 24, 1),
+                              bottom / max(anchor.y - bounds.minY + 24, 1),
+                              top / max(bounds.maxY - anchor.y + 24, 1))
+        guard desiredZoom.isFinite, desiredZoom > 0,
+              desiredZoom < zoom * 0.97 else { return }
+        let target = CGPoint(x: anchor.x - offset.x / desiredZoom,
+                             y: anchor.y - offset.y / desiredZoom)
+        let duration: TimeInterval = UIAccessibility.isReduceMotionEnabled ? 0 : 0.55
+        let move = SKAction.move(to: target, duration: duration)
+        move.timingMode = .easeInEaseOut
+        let scale = SKAction.scale(to: 1 / desiredZoom, duration: duration)
+        scale.timingMode = .easeInEaseOut
+        if duration == 0 {
+            cameraNode.position = target
+            cameraNode.setScale(1 / desiredZoom)
+        } else {
+            cameraNode.run(move, withKey: "cameraMove")
+            cameraNode.run(scale, withKey: "cameraScale")
+        }
+        currentZoom = desiredZoom
+        updateLOD()
+        updatePondLabelScales()
+        graphDelegate?.updateCameraFromScene(position: target, zoom: desiredZoom)
+    }
+
     private func renderBasins(animated: Bool) {
         for (name, basin) in pondBasins {
-            basin.removeAllChildren()
             guard pondGeometries[name] != nil, let path = presentedPondPath(name) else {
+                basin.removeAllChildren()
                 basin.isHidden = true
                 continue
             }
             basin.isHidden = !pondIsPresented(name)
-            let shape = SKShapeNode(path: path)
-            shape.fillColor = groupTone(name).withAlphaComponent(
-                GraphInk.traitForResolution.accessibilityContrast == .high ? 0.18 : 0.10)
-            shape.strokeColor = groupTone(name).withAlphaComponent(
-                GraphInk.traitForResolution.accessibilityContrast == .high ? 0.8 : 0.38)
-            shape.lineWidth = basinStrokeWidth
-            basin.addChild(shape)
+            let transition = animated && sceneReady && !UIAccessibility.isReduceMotionEnabled
+            for child in basin.children {
+                if child.name == "retiringBank" { child.removeFromParent(); continue }
+                child.removeAllActions()
+                if transition {
+                    child.name = "retiringBank"
+                    child.run(.sequence([.fadeOut(withDuration: 0.36), .removeFromParent()]))
+                } else {
+                    child.removeFromParent()
+                }
+            }
+            let tone = groupTone(name)
+            let fill = SKShapeNode(path: path)
+            fill.name = "bankFill"
+            fill.fillColor = tone.withAlphaComponent(GraphInk.traitForResolution.accessibilityContrast == .high ? 0.18 : 0.10)
+            fill.strokeColor = .clear
+            basin.addChild(fill)
+
+            let edge = SKShapeNode(path: path)
+            edge.name = "bankEdge"
+            edge.fillColor = .clear
+            edge.strokeColor = tone.withAlphaComponent(GraphInk.traitForResolution.accessibilityContrast == .high ? 0.8 : 0.45)
+            edge.lineWidth = basinStrokeWidth
+            basin.addChild(edge)
+
+            // Sparse pigment marks give the bank a soft watercolor grain.
+            let grain = SKShapeNode(path: path.copy(dashingWithPhase: 2, lengths: [1.5, 7]))
+            grain.name = "bankGrain"
+            grain.fillColor = .clear
+            grain.strokeColor = tone.withAlphaComponent(0.24)
+            grain.lineWidth = 2.5
+            basin.addChild(grain)
+            if !UIAccessibility.isReduceMotionEnabled {
+                let seed = name.utf8.reduce(UInt64(14695981039346656037)) { ($0 ^ UInt64($1)) &* 1099511628211 }
+                let dx: CGFloat = seed & 1 == 0 ? 1.4 : -1.4
+                let dy: CGFloat = seed & 2 == 0 ? 0.8 : -0.8
+                let halfCycle = 2.8 + Double(seed % 7) * 0.31
+                let drift = SKAction.moveBy(x: dx, y: dy, duration: halfCycle)
+                drift.timingMode = .easeInEaseOut
+                let motion = SKAction.repeatForever(.sequence([drift, drift.reversed()]))
+                edge.run(motion, withKey: "bankBreath")
+                grain.run(motion, withKey: "grainBreath")
+            }
+            if transition {
+                for child in [fill, edge, grain] {
+                    child.alpha = 0
+                    child.run(.fadeIn(withDuration: 0.42), withKey: "bankAppear")
+                }
+            }
         }
         if let drag = pondDragState { highlightPondStyle(drag.pondID) }
     }
@@ -1818,7 +1959,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
 
     // MARK: - Search / Solo Filtering
 
-    private func evaluateNodeVisibility(animated: Bool = true) {
+    private func evaluateNodeVisibility(animated: Bool = true, emergingIDs: Set<UUID> = []) {
         // A scene that has not been attached to an SKView has no action tick to
         // advance animations. Apply visibility immediately in that state so the
         // graph's logical state is deterministic for previews and layout tests.
@@ -1851,6 +1992,14 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             } else if node.isHidden {
                 node.isHidden = false
                 node.alpha = 0
+                if duration > 0, emergingIDs.contains(id),
+                   let parentID = disclosureParent(for: id), let parent = personNodes[parentID] {
+                    let target = presentedPosition(for: id)
+                    node.position = parent.position
+                    let move = SKAction.move(to: target, duration: 0.48)
+                    move.timingMode = .easeOut
+                    node.run(.sequence([move, .run { [weak self] in self?.renderEdges() }]), withKey: "slotMove")
+                }
             }
 
             if isSearchActive {
@@ -1929,6 +2078,17 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         }
     }
 
+    private func disclosureParent(for id: UUID) -> UUID? {
+        if let parent = disclosureSnapshot?.parents[id] { return parent }
+        if let parent = branchParentByChild[id] { return parent }
+        guard let snapshot = disclosureSnapshot else { return nil }
+        return snapshot.revealedEdges.compactMap { edge -> UUID? in
+            if edge.from == id, snapshot.visibleIDs.contains(edge.to) { return edge.to }
+            if edge.to == id, snapshot.visibleIDs.contains(edge.from) { return edge.from }
+            return nil
+        }.sorted { $0.uuidString < $1.uuidString }.first
+    }
+
     // MARK: - Touches (Drag nodes + Tap to select + 1-finger camera pan)
 
     private var draggedNode: PersonNode?
@@ -1942,6 +2102,82 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     private var touchHasMoved = false
     private var touchContactCandidateIDs: [UUID] = []
     private var hoverPondName: String? = nil
+    private var dragFeedbackPondIDs: Set<String> = []
+    private var dragPreviewLabel: SKLabelNode?
+    private var dragBendNode: SKShapeNode?
+    private var lastWakePoint: CGPoint?
+
+    private func showDragRipple(at point: CGPoint, radius: CGFloat = 16) {
+        guard !UIAccessibility.isReduceMotionEnabled else { return }
+        let ripple = SKShapeNode(circleOfRadius: radius)
+        ripple.name = "dragWake"
+        ripple.position = point
+        ripple.fillColor = .clear
+        ripple.strokeColor = GraphInk.indigo.withAlphaComponent(0.36)
+        ripple.lineWidth = 1.1 / max(currentZoom, 0.2)
+        ripple.zPosition = 3
+        contentNode.addChild(ripple)
+        let wakes = contentNode.children.filter { $0.name == "dragWake" }
+        if wakes.count > 3 { wakes.prefix(wakes.count - 3).forEach { $0.removeFromParent() } }
+        let grow = SKAction.scale(to: 1.65, duration: 0.38)
+        grow.timingMode = .easeOut
+        ripple.run(.sequence([.group([grow, .fadeOut(withDuration: 0.38)]), .removeFromParent()]))
+    }
+
+    private func updateDragPreview(for pondID: String?, at point: CGPoint) {
+        guard let pondID else {
+            dragPreviewLabel?.removeFromParent()
+            dragPreviewLabel = nil
+            dragBendNode?.removeFromParent()
+            dragBendNode = nil
+            return
+        }
+        if dragPreviewLabel == nil {
+            let label = SKLabelNode()
+            label.fontName = "AvenirNext-Medium"
+            label.fontSize = 12
+            label.fontColor = GraphInk.label
+            label.zPosition = 12
+            contentNode.addChild(label)
+            dragPreviewLabel = label
+        }
+        dragPreviewLabel?.text = "Move to \(groupTitle(pondID))"
+        dragPreviewLabel?.setScale(min(3, 1 / max(currentZoom, 0.2)))
+        dragPreviewLabel?.position = CGPoint(x: point.x, y: point.y + 36 / max(currentZoom, 0.2))
+        if let bounds = presentedPondPath(pondID)?.boundingBoxOfPath {
+            let distances = [abs(point.x - bounds.minX), abs(bounds.maxX - point.x),
+                             abs(point.y - bounds.minY), abs(bounds.maxY - point.y)]
+            if let nearest = distances.enumerated().min(by: { $0.element < $1.element }),
+               nearest.element * currentZoom < 44 {
+                let half = 22 / max(currentZoom, 0.2)
+                let lift = 11 / max(currentZoom, 0.2)
+                let path = CGMutablePath()
+                if nearest.offset < 2 {
+                    let x = nearest.offset == 0 ? bounds.minX : bounds.maxX
+                    path.move(to: CGPoint(x: x, y: point.y - half))
+                    path.addQuadCurve(to: CGPoint(x: x, y: point.y + half),
+                                      control: CGPoint(x: x + (nearest.offset == 0 ? -lift : lift), y: point.y))
+                } else {
+                    let y = nearest.offset == 2 ? bounds.minY : bounds.maxY
+                    path.move(to: CGPoint(x: point.x - half, y: y))
+                    path.addQuadCurve(to: CGPoint(x: point.x + half, y: y),
+                                      control: CGPoint(x: point.x, y: y + (nearest.offset == 2 ? -lift : lift)))
+                }
+                if dragBendNode == nil {
+                    let bend = SKShapeNode()
+                    bend.zPosition = 4
+                    contentNode.addChild(bend)
+                    dragBendNode = bend
+                }
+                dragBendNode?.path = path
+                dragBendNode?.strokeColor = groupTone(pondID).withAlphaComponent(0.68)
+                dragBendNode?.fillColor = .clear
+                dragBendNode?.lineWidth = 2 / max(currentZoom, 0.2)
+            } else {
+                dragBendNode?.path = nil
+            }
+        }
+    }
 
     private struct PondDragState {
         let pondID: String
@@ -2212,7 +2448,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             width: max(width, horizontalPadding * 2),
             height: max(maxY - minY + bottomPadding + topPadding, bottomPadding + topPadding)
         )
-        return organicPresentedBasin(in: bounds, seed: CGFloat(pondInfos.firstIndex { $0.id == name } ?? 0))
+        return organicPresentedBasin(in: bounds, seed: pondSeed(name))
     }
 
     /// A gently irregular ellipse keeps the original soft pond language while
@@ -2224,7 +2460,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         let points = (0..<16).map { index -> CGPoint in
             let angle = CGFloat(index) * 2 * .pi / 16
             let cosine = cos(angle), sine = sin(angle)
-            let ripple = 1 + 0.018 * sin(angle * 3 + seed)
+            let ripple = 1 + 0.028 * sin(angle * 3 + seed) + 0.012 * sin(angle * 5 + seed * 1.7)
             return CGPoint(x: center.x + cosine * rx * ripple,
                            y: center.y + sine * ry * ripple)
         }
@@ -2386,6 +2622,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         // Both direct and disclosed contacts use the same gesture threshold:
         // a stationary touch explores; a deliberate drag can connect or move.
         if let node = contactCandidates.first {
+            dragFeedbackPondIDs.removeAll()
             touchStartedOnPondID = nil
             draggedNode = node
             dragOriginalPosition = node.position
@@ -2398,7 +2635,6 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             dragOriginalPondID = pondID(for: node.personID) ?? dragOriginalContainingPondIDs.sorted().first
             node.removeAction(forKey: "bob")
             node.removeAction(forKey: "slotMove")
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             let scaleUp = SKAction.scale(to: 1.2, duration: UIAccessibility.isReduceMotionEnabled ? 0 : 0.15)
             scaleUp.timingMode = .easeOut
             node.run(scaleUp)
@@ -2437,11 +2673,19 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             if !touchHasMoved {
                 touchHasMoved = true
                 removeAction(forKey: "singleTap")
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                showDragRipple(at: node.position)
+                lastWakePoint = node.position
                 // Once this gesture becomes a drag, its overlapping hit
                 // candidates can no longer produce a chooser on release.
                 touchContactCandidateIDs.removeAll()
             }
             node.position = dragMarkerPosition(for: location)
+            if let lastWakePoint,
+               hypot(node.position.x - lastWakePoint.x, node.position.y - lastWakePoint.y) * currentZoom > 34 {
+                showDragRipple(at: node.position, radius: 8)
+                self.lastWakePoint = node.position
+            }
 
             // Snap detection: closest other node.
             var closestDist: CGFloat = snapDistance
@@ -2468,6 +2712,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
                     resetPondStyle(old)
                     hoverPondName = nil
                 }
+                updateDragPreview(for: nil, at: node.position)
             } else {
                 snapPreviewLine?.isHidden = true
                 snapPreviewLine?.path = nil
@@ -2477,8 +2722,15 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
                     if let old = hoverPondName, old != foundPondName {
                         resetPondStyle(old)
                     }
+                    if let foundPondName,
+                       hoverPondName != foundPondName,
+                       dragFeedbackPondIDs.insert(foundPondName).inserted {
+                        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                        showDragRipple(at: node.position, radius: 14)
+                    }
                     hoverPondName = foundPondName
                     if let new = hoverPondName { highlightPondStyle(new) }
+                    updateDragPreview(for: foundPondName, at: node.position)
                 }
             }
         } else {
@@ -2579,12 +2831,13 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         // Clean up preview state.
         if let targetID = snapTargetID { personNodes[targetID]?.setHoverGlow(false) }
         if let old = hoverPondName { resetPondStyle(old); hoverPondName = nil }
+        updateDragPreview(for: nil, at: node.position)
         snapPreviewLine?.isHidden = true
         snapPreviewLine?.path = nil
         snapTargetID = nil
 
         // No action → spring the node back to its layout slot (easeOut overshoot ~1.05).
-        springBackToSlot(node)
+        springBackToSlot(node, elastic: dropPondName != nil)
 
         draggedNode = nil
         touchHasMoved = false
@@ -2592,6 +2845,8 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         dragTouchOffset = .zero
         dragOriginalPondID = nil
         dragOriginalContainingPondIDs.removeAll()
+        dragFeedbackPondIDs.removeAll()
+        lastWakePoint = nil
         touchContactCandidateIDs.removeAll()
         touchStartedOnPondID = nil
         longPressPondCandidateID = nil
@@ -2613,6 +2868,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         node.run(SKAction.scale(to: 1.0, duration: UIAccessibility.isReduceMotionEnabled ? 0 : 0.15))
         if let targetID = snapTargetID { personNodes[targetID]?.setHoverGlow(false) }
         if let old = hoverPondName { resetPondStyle(old); hoverPondName = nil }
+        updateDragPreview(for: nil, at: node.position)
         snapPreviewLine?.isHidden = true
         snapPreviewLine?.path = nil
         snapTargetID = nil
@@ -2623,17 +2879,35 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         dragTouchOffset = .zero
         dragOriginalPondID = nil
         dragOriginalContainingPondIDs.removeAll()
+        dragFeedbackPondIDs.removeAll()
+        lastWakePoint = nil
         touchContactCandidateIDs.removeAll()
     }
 
-    /// crisp ease-out, no overshoot (trains, not water) — then refresh its edges.
-    private func springBackToSlot(_ node: PersonNode) {
+    /// Settle a released marker into its saved slot. A completed pond crossing
+    /// gets a small elastic finish while the review sheet decides the move.
+    private func springBackToSlot(_ node: PersonNode, elastic: Bool = false) {
         guard layoutSlots[node.personID] != nil else { return }
         let slot = presentedPosition(for: node.personID)
         node.removeAction(forKey: "slotMove")
 
-        let slide = SKAction.move(to: slot, duration: UIAccessibility.isReduceMotionEnabled ? 0 : 0.32)
-        slide.timingMode = .easeOut
+        let duration: TimeInterval = UIAccessibility.isReduceMotionEnabled ? 0 : 0.32
+        let slide: SKAction
+        if elastic && duration > 0 {
+            let dx = slot.x - node.position.x, dy = slot.y - node.position.y
+            let length = max(hypot(dx, dy), 1)
+            let overshoot = min(9 / max(currentZoom, 0.2), 15)
+            let beyond = CGPoint(x: slot.x + dx / length * overshoot,
+                                 y: slot.y + dy / length * overshoot)
+            let outward = SKAction.move(to: beyond, duration: 0.30)
+            outward.timingMode = .easeOut
+            let settle = SKAction.move(to: slot, duration: 0.12)
+            settle.timingMode = .easeInEaseOut
+            slide = .sequence([outward, settle])
+        } else {
+            slide = SKAction.move(to: slot, duration: duration)
+            slide.timingMode = .easeOut
+        }
         let updateEdges = SKAction.run { [weak self] in self?.renderEdges() }
         node.run(SKAction.sequence([slide, updateEdges]), withKey: "slotMove")
 
@@ -2938,6 +3212,18 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
             return (id, bounds.offsetBy(dx: point.x, dy: point.y))
         }.reduce(into: [:]) { $0[$1.0] = $1.1 }
     }
+    var debugDisclosureBadgeBounds: [UUID: CGRect] {
+        personNodes.compactMap { id, node -> (UUID, CGRect)? in
+            guard let bounds = node.disclosureBadgeBounds else { return nil }
+            return (id, bounds.offsetBy(dx: node.position.x, dy: node.position.y))
+        }.reduce(into: [:]) { $0[$1.0] = $1.1 }
+    }
+    var debugDisclosurePeekBounds: [UUID: CGRect] {
+        personNodes.compactMap { id, node -> (UUID, CGRect)? in
+            guard let bounds = node.disclosurePeekBounds else { return nil }
+            return (id, bounds.offsetBy(dx: node.position.x, dy: node.position.y))
+        }.reduce(into: [:]) { $0[$1.0] = $1.1 }
+    }
     var debugVisibleNameLabelBounds: [UUID: CGRect] {
         personNodes.compactMap { id, node -> (UUID, CGRect)? in
             guard !node.isHidden, node.alpha > 0.01, node.nameLabelIsVisible else { return nil }
@@ -2972,6 +3258,14 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         personNodes.values.first(where: { $0.isSelected })?.labelText
     }
     var debugNodePositions: [UUID: CGPoint] { personNodes.mapValues(\.position) }
+    var debugPresentedPositions: [UUID: CGPoint] {
+        Dictionary(uniqueKeysWithValues: personNodes.keys.map { ($0, presentedPosition(for: $0)) })
+    }
+    var debugDisclosureMovingIDs: Set<UUID> {
+        Set(personNodes.values.filter {
+            $0.action(forKey: "slotMove") != nil && $0.position != presentedPosition(for: $0.personID)
+        }.map(\.personID))
+    }
     var debugDisclosureVisibleIDs: Set<UUID> { disclosureSnapshot?.visibleIDs ?? [] }
     var debugDisclosureDirectIDs: Set<UUID> { disclosureSnapshot?.directIDs ?? [] }
     var debugDisclosureExpandedIDs: Set<UUID> { disclosureSnapshot?.expandedIDs ?? [] }
@@ -2995,7 +3289,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     private func resetPondStyle(_ name: String) {
         guard let basin = pondBasins[name] else { return }
         for child in basin.children {
-            guard let shape = child as? SKShapeNode else { continue }
+            guard child.name == "bankEdge", let shape = child as? SKShapeNode else { continue }
             shape.lineWidth = basinStrokeWidth
         }
     }
@@ -3003,7 +3297,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     private func highlightPondStyle(_ name: String) {
         guard let basin = pondBasins[name] else { return }
         for child in basin.children {
-            guard let shape = child as? SKShapeNode else { continue }
+            guard child.name == "bankEdge", let shape = child as? SKShapeNode else { continue }
             shape.lineWidth = basinStrokeWidth * 1.8
         }
     }
@@ -3020,12 +3314,16 @@ final class PersonNode: SKNode {
     private let hover = SKShapeNode()
     private let favorite = SKShapeNode(circleOfRadius: 3)
     private let disclosureCue = SKShapeNode()
+    private let disclosureCount = SKLabelNode()
+    private let disclosurePeek = SKNode()
     private let contextRole = SKNode()
     private let contextRoleLabel = SKLabelNode()
     private var contextRoleIcon: SKSpriteNode?
     private let petBadge = SKNode()
     private var disclosureHiddenCount = 0
     private var disclosureExpanded = false
+    private var lastScreenZoom: CGFloat = 1
+    private var lastVisualCoinScale: CGFloat = 1
     private var cachedIsPet = false
     /// Far-zoom identity token; it replaces anonymous dot-only LOD.
     private let compactToken = SKShapeNode(circleOfRadius: 7)
@@ -3065,6 +3363,9 @@ final class PersonNode: SKNode {
         addChild(favorite)
         addChild(disclosureCue)
         disclosureCue.zPosition = 8
+        disclosureCue.addChild(disclosureCount)
+        addChild(disclosurePeek)
+        disclosurePeek.zPosition = -0.5
         addChild(petBadge)
         petBadge.zPosition = 7
         addChild(contextRole)
@@ -3173,6 +3474,7 @@ final class PersonNode: SKNode {
             .font: GraphInk.serifFont(size: 9, weight: .medium),
             .foregroundColor: GraphInk.label
         ])
+        setDisclosureCue(hiddenCount: disclosureHiddenCount, expanded: disclosureExpanded)
         applyLOD()
         if selected {
             ring.isHidden = false
@@ -3187,6 +3489,8 @@ final class PersonNode: SKNode {
     func updateScreenScale(zoom: CGFloat) {
         let zoom = max(zoom, 0.001)
         let visualScale = max(1, (isMe ? 0.62 : 0.58) / zoom)
+        lastScreenZoom = zoom
+        lastVisualCoinScale = visualScale
         coin.setScale(visualScale)
         ring.setScale(visualScale)
         hover.setScale(visualScale)
@@ -3204,6 +3508,7 @@ final class PersonNode: SKNode {
         contextRole.setScale(1 / zoom)
         contextRole.position = CGPoint(x: -(contextRoleLabel.frame.width + 15) / 2,
                                       y: -(radius * visualScale + 28 / zoom))
+        layoutDisclosureAffordances()
         applyLOD()
     }
     func showFull() { lod = 0; applyLOD() }
@@ -3220,6 +3525,7 @@ final class PersonNode: SKNode {
         compactMark.isHidden = lod != 2
         petBadge.isHidden = !cachedIsPet || lod == 2
         disclosureCue.isHidden = disclosureHiddenCount == 0 && !disclosureExpanded
+        disclosurePeek.isHidden = disclosureHiddenCount == 0 || disclosureExpanded || lod == 2
         contextRole.isHidden = lod != 0 || contextRoleLabel.attributedText?.string.isEmpty != false
     }
     /// A quiet chevron communicates that a person can reveal or collapse more
@@ -3227,20 +3533,38 @@ final class PersonNode: SKNode {
     func setDisclosureCue(hiddenCount: Int, expanded: Bool) {
         disclosureHiddenCount = max(0, hiddenCount)
         disclosureExpanded = expanded
-        let path = CGMutablePath()
-        if expanded {
-            path.move(to: CGPoint(x: -5, y: 2)); path.addLine(to: CGPoint(x: 0, y: -3)); path.addLine(to: CGPoint(x: 5, y: 2))
-        } else {
-            path.move(to: CGPoint(x: -2, y: 5)); path.addLine(to: CGPoint(x: 3, y: 0)); path.addLine(to: CGPoint(x: -2, y: -5))
+        disclosureCue.path = CGPath(ellipseIn: CGRect(x: -8, y: -8, width: 16, height: 16), transform: nil)
+        disclosureCue.fillColor = GraphInk.background
+        disclosureCue.strokeColor = disclosureHighlighted ? GraphInk.indigo : GraphInk.secondaryLabel
+        disclosureCue.lineWidth = disclosureHighlighted ? 1.8 : 1.2
+        let text = disclosureHiddenCount > 0 ? (disclosureHiddenCount > 9 ? "9+" : "\(disclosureHiddenCount)") : "✓"
+        gfSetLabel(disclosureCount, text: text, size: disclosureHiddenCount > 9 ? 8 : 9,
+                   weight: .semibold, color: GraphInk.label)
+        disclosureCount.verticalAlignmentMode = .center
+        disclosureCount.horizontalAlignmentMode = .center
+        disclosurePeek.removeAllChildren()
+        if disclosureHiddenCount > 0 && !expanded {
+            for index in 0..<min(disclosureHiddenCount, 3) {
+                let dot = SKShapeNode(circleOfRadius: 1.7)
+                dot.fillColor = GraphInk.tertiaryLabel
+                dot.strokeColor = .clear
+                dot.position = CGPoint(x: -4 + CGFloat(index) * 4, y: 0)
+                disclosurePeek.addChild(dot)
+            }
         }
-        disclosureCue.path = path
-        disclosureCue.strokeColor = GraphInk.secondaryLabel
-        disclosureCue.fillColor = .clear
-        disclosureCue.lineWidth = 1.3
-        disclosureCue.lineCap = .round
-        disclosureCue.lineJoin = .round
-        disclosureCue.position = CGPoint(x: radius + 8, y: radius + 6)
+        layoutDisclosureAffordances()
         applyLOD()
+    }
+
+    private func layoutDisclosureAffordances() {
+        let zoom = max(lastScreenZoom, 0.001)
+        let coinReach = radius * lastVisualCoinScale
+        disclosureCue.setScale(1 / zoom)
+        disclosureCue.position = CGPoint(x: coinReach - 3 / zoom,
+                                         y: coinReach - 3 / zoom)
+        disclosurePeek.setScale(1 / zoom)
+        disclosurePeek.position = CGPoint(x: -coinReach + 2 / zoom,
+                                          y: coinReach * 0.38)
     }
 
     /// Adds a compact relationship label when a selected or nearby contact has
@@ -3295,11 +3619,21 @@ final class PersonNode: SKNode {
             let cueBounds = disclosureCue.calculateAccumulatedFrame()
             bounds = bounds.map { $0.union(cueBounds) } ?? cueBounds
         }
+        if !disclosurePeek.isHidden {
+            let peekBounds = disclosurePeek.calculateAccumulatedFrame()
+            bounds = bounds.map { $0.union(peekBounds) } ?? peekBounds
+        }
         if !contextRole.isHidden {
             let roleBounds = contextRole.calculateAccumulatedFrame()
             bounds = bounds.map { $0.union(roleBounds) } ?? roleBounds
         }
         return bounds ?? .zero
+    }
+    var disclosureBadgeBounds: CGRect? {
+        disclosureCue.isHidden ? nil : disclosureCue.calculateAccumulatedFrame()
+    }
+    var disclosurePeekBounds: CGRect? {
+        disclosurePeek.isHidden ? nil : disclosurePeek.calculateAccumulatedFrame()
     }
     var nameBounds: CGRect { nameLabel.calculateAccumulatedFrame() }
     func placeName(zoom: CGFloat, extraBelow: CGFloat = 0) {

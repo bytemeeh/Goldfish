@@ -270,7 +270,7 @@ final class DataIntegrityTests: XCTestCase {
 
 
 extension DataIntegrityTests {
-    func testTourActionWaitsForContinueAndIgnoresUnrelatedEvents() {
+    func testTourBranchActionRequiresExpansionAndWaitsForContinue() {
         let tour = FeatureWalkthroughManager()
         tour.isActive = true
         tour.currentStep = .profile
@@ -280,6 +280,14 @@ extension DataIntegrityTests {
         XCTAssertFalse(tour.justCompletedStep)
 
         tour.report(.openedProfile)
+        XCTAssertEqual(tour.currentStep, .profile)
+        XCTAssertFalse(tour.justCompletedStep)
+
+        tour.report(.createdLink)
+        XCTAssertEqual(tour.currentStep, .profile)
+        XCTAssertFalse(tour.justCompletedStep)
+
+        tour.report(.expandedConnections)
         XCTAssertEqual(tour.currentStep, .profile)
         XCTAssertTrue(tour.justCompletedStep)
 
@@ -700,8 +708,12 @@ extension DataIntegrityTests {
         XCTAssertTrue(tour.seedDemoDataIfNeeded(dataManager: manager))
         XCTAssertNotNil(tour.examplePersonID)
         XCTAssertEqual(tour.examplePersonName, "Priya Patel")
+        XCTAssertEqual(tour.branchPersonName, "Adriana")
+        XCTAssertNotNil(tour.branchPersonID)
         XCTAssertEqual(tour.suggestedConnectionName, "Me")
         XCTAssertTrue(tour.currentActionPrompt == nil)
+        tour.currentStep = .profile
+        XCTAssertEqual(tour.currentActionPrompt, "Tap Adriana to reveal her connections.")
         tour.currentStep = .link
         XCTAssertTrue(tour.currentActionPrompt?.contains("Priya Patel") == true)
 

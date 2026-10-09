@@ -79,3 +79,21 @@ The overview footer no longer reserves an empty selection panel. Controls use a 
 Validation: 314 tests passed after the final accessibility correction (`/tmp/goldfish-watercolor/PondAccessibilityFinalTests.xcresult`); Release simulator build succeeded (`/tmp/goldfish-watercolor/pond-accessibility-final-release.log`); `git diff --check` passed. Manually checked the 23- and 50-contact overviews, Pond/List switching, Adriana to Riley to Zach/Aaron expansion, maximum Dynamic Type layout, and accessible contact activation. The largest-text contact activation scrolled the selected row into view; CUA drag/wheel gestures did not reliably demonstrate manual scrolling. This is not a complete VoiceOver audit.
 
 Simulator captures are in `Refinement/pond-review-2026-10-09/` (local review artifacts). Used only the designated iPhone 17 Pro simulator, restored normal text/light appearance, and closed it afterward. Changes remain local; no commit, GitHub push, archive upload, or TestFlight release was performed in this pass.
+
+
+## 9 October — selected natural pond interaction pass
+
+Implemented the requested A1/A5, B1/B3/B4, C1/C2/C4/C5, D1/D3/D4/D5, E1/E2, F1–F4, G1–G4 and H1/H4 scope. Three cheaper execution agents handled appearance/replay, import/sharing, and scene geometry/motion; the orchestrator integrated their work and reviewed behavior in the simulator.
+
+- Persisted System/Light/Dark and a quiet-watercolor option. The selected background stays fixed; stronger accessibility contrast/transparency settings omit it. Welcome can be replayed, including its swim transition, without changing data or onboarding preferences.
+- Seeded asymmetric pond placement with relationship-aware proximity, stable direct-contact layout, subtle independently moving bank edges, and retained long-press arrangement/restore controls. Contacts and labels do not drift with the edges.
+- Pickup ripples, a bounded fading wake, local bank response, a destination preview, and one soft crossing haptic per destination per gesture. Existing deliberate crossing, confirmation and Undo behavior remains authoritative. Reduce Motion removes the decorative movement.
+- Readable connection-count badges and peek dots, inline parent-origin reveals, a visible exploration trail, consistent Back actions, relative relationship copy, and camera widening only when necessary. The selected inspector is smaller and does not cover newly revealed contacts with a redundant toast.
+- The sample tour requires expansion, creating a connection and focusing a pond. First-use tips and a dismissible update notice explain the changes.
+- Import organization receives only newly created contact IDs. Share this branch preselects the explored branch, excludes Me unless explicitly selected later, and reviews people, relationships, named ponds and note inclusion before export.
+
+Verification covers direct-name readability, unchanged direct layouts when only indirect contacts are added, counted badge size, branch animation destinations, duplicate/new imports, and tutorial event gating. An additional regression moves Linda from Family to Book Club and checks the resulting four-person Family layout. No model schema, signing, version or build-number change was made in this pass. These changes are not a new TestFlight upload.
+
+Manual simulator checks: dark/light settings, quiet-background toggle, welcome replay and safe return to Settings, inline Adriana expansion, branch-share selection and review, and pond-move confirmation/Undo availability. Physical-device haptic feel and a complete VoiceOver audit remain device checks. Captures: `Refinement/pond-review-2026-10-09/natural-pond/`. Automated build/test evidence: `/tmp/goldfish-natural-pond/`.
+
+Final verification: **322 tests, 0 failures** in `DeliveryTests.xcresult`; unsigned physical-iPhone Release build succeeded in `delivery-release.log`; `git diff --check` passed. After the last camera-height correction, native coordinate input returned `noWindowsAvailable`, so that exact animation still needs a hands-on check; earlier inline expansion and all automated scene checks passed. Simulator was closed after verification.

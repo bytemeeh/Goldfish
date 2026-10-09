@@ -349,6 +349,46 @@ final class GraphSceneLayoutTests: XCTestCase {
         }
     }
 
+    func testMovingLindaToBookClubKeepsEveryDirectNameReadable() throws {
+        let (manager, container) = try makeTestManager()
+        defer { withExtendedLifetime(container) {} }
+        try manager.performOnboarding(name: "You")
+        XCTAssertTrue(try DemoDataService(dataManager: manager).seedDemoData())
+        let linda = try XCTUnwrap(try manager.fetchAllPersons().first { $0.name == "Linda Miller" })
+        let bookClub = try XCTUnwrap(try manager.fetchAllCircles().first { $0.name == "Book Club" })
+        _ = try manager.changePondMembership(of: linda, to: bookClub)
+        let people = try manager.fetchAllPersons()
+        let groups = try manager.fetchAllCircles()
+        let disclosure = PondDisclosure(people: people).snapshot
+        let directOnMap = disclosure.visibleIDs.subtracting(people.filter(\.isMe).map(\.id))
+        XCTAssertEqual(directOnMap.count, 8)
+
+        for height: CGFloat in [430, 500] {
+            let scene = GoldfishGraphScene(size: CGSize(width: 390, height: height))
+            scene.didUpdateDisclosure(disclosure)
+            scene.didUpdateGroups(groups)
+            _ = scene.debugLayout([GraphLevel(depth: 0, circleGroups: [CircleGroup(circle: nil, contacts: people)])])
+            scene.didUpdateDisclosure(disclosure)
+            scene.fitAllNodesWithLabels(animated: false)
+            XCTAssertEqual(scene.debugFullIdentityIDs, directOnMap,
+                           "All direct names should remain visible after a valid pond move at height \(height)")
+            let labels = scene.debugVisibleNameLabelBounds
+            let coins = scene.debugVisibleCoinBounds
+            for id in directOnMap {
+                let label = try XCTUnwrap(labels[id])
+                let coin = try XCTUnwrap(coins[id])
+                XCTAssertEqual(label.midX, coin.midX, accuracy: 3 / max(scene.debugCameraZoom, 0.001))
+                XCTAssertLessThanOrEqual(label.maxY, coin.minY + 1)
+                for otherID in directOnMap where id.uuidString < otherID.uuidString {
+                    if let other = labels[otherID] {
+                        XCTAssertFalse(label.intersects(other), "Direct names should have separate space after the move")
+                    }
+                }
+            }
+            assertPondHeadingsStayAttached(scene)
+        }
+    }
+
     func testExpandedDaycareStaysClearOfFamilyAfterReturningHome() throws {
         let (manager, container) = try makeTestManager()
         defer { withExtendedLifetime(container) {} }
@@ -1103,6 +1143,34 @@ final class GraphSceneLayoutTests: XCTestCase {
         XCTAssertEqual(scene.debugDisclosureHiddenCounts[david.id], 2)
     }
 
+    func testDisclosureCountStaysReadableBesideCoinAtOverviewZoom() throws {
+        let (manager, container) = try makeTestManager()
+        defer { withExtendedLifetime(container) {} }
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let david = try manager.createPerson(name: "David")
+        let lisa = try manager.createPerson(name: "Lisa")
+        try manager.createRelationship(from: me, to: david, type: .friend)
+        try manager.createRelationship(from: david, to: lisa, type: .friend)
+        let people = [me, david, lisa]
+        let scene = GoldfishGraphScene(size: CGSize(width: 390, height: 500))
+        _ = scene.debugLayout([GraphLevel(depth: 0, circleGroups: [CircleGroup(circle: nil, contacts: people)])])
+        scene.didUpdateDisclosure(PondDisclosure(people: people).snapshot)
+        scene.didUpdateZoom(0.12)
+
+        let badge = try XCTUnwrap(scene.debugDisclosureBadgeBounds[david.id])
+        let peek = try XCTUnwrap(scene.debugDisclosurePeekBounds[david.id])
+        let coin = try XCTUnwrap(scene.debugVisibleCoinBounds[david.id])
+        let zoom = scene.debugCameraZoom
+        XCTAssertGreaterThanOrEqual(badge.width * zoom, 15)
+        XCTAssertLessThanOrEqual(badge.width * zoom, 19)
+        XCTAssertGreaterThan(badge.midX, coin.midX)
+        XCTAssertGreaterThan(badge.midY, coin.midY)
+        XCTAssertLessThan(peek.maxX, coin.midX)
+        XCTAssertGreaterThanOrEqual((coin.minX - peek.minX) * zoom, 0)
+        XCTAssertLessThanOrEqual((coin.minX - peek.minX) * zoom, 7,
+                                 "Peek dots should sit at the coin edge, not form a long row")
+    }
+
     func testDisclosureExpansionKeepsDavidAnchoredAndCollapseRestoresVisibility() throws {
         let (manager, container) = try makeTestManager()
         defer { withExtendedLifetime(container) {} }
@@ -1284,7 +1352,20 @@ final class GraphSceneLayoutTests: XCTestCase {
         XCTAssertEqual(model.pondDisclosureSnapshot.focusRootID, david.id)
         let focusedCamera = (scene.debugCameraPosition, scene.debugCameraZoom)
         XCTAssertTrue(focusedCamera.0 != initialCamera.0 || focusedCamera.1 != initialCamera.1)
-        XCTAssertEqual(scene.debugNodePositions, initialPositions)
+        XCTAssertEqual(scene.debugNodePositions[david.id], initialPositions[david.id])
+        XCTAssertEqual(scene.debugNodePositions[lisa.id], initialPositions[david.id],
+                       "A newly revealed contact begins at the parent before its move action advances")
+        XCTAssertEqual(scene.debugNodePositions[chris.id], initialPositions[david.id])
+        XCTAssertEqual(scene.debugDisclosureMovingIDs, [lisa.id, chris.id])
+        let destinations = scene.debugPresentedPositions
+        XCTAssertEqual(Set(destinations.keys), Set(initialPositions.keys))
+        for (id, original) in initialPositions {
+            let destination = try XCTUnwrap(destinations[id])
+            XCTAssertEqual(destination.x, original.x, accuracy: 0.001,
+                           "Opening a branch keeps the saved horizontal destination anchored")
+            XCTAssertEqual(destination.y, original.y, accuracy: 0.001,
+                           "Opening a branch keeps the saved vertical destination anchored")
+        }
         XCTAssertEqual(model.pondDisclosureSnapshot.parents[lisa.id], david.id)
         XCTAssertEqual(model.pondDisclosureSnapshot.parents[chris.id], david.id)
 

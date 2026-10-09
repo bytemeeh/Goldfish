@@ -244,6 +244,39 @@ final class VCardTests: XCTestCase {
         let remaining = try context.fetch(FetchDescriptor<Person>()).first!
         XCTAssertEqual(remaining.id, originalID)
     }
+
+    @MainActor
+    func testImportResultSelectsOnlyNewContactsForOrganization() async throws {
+        let container = try makeTestContainerForVCard()
+        let existing = Person(name: "Already Here", email: "here@example.com")
+        container.mainContext.insert(existing)
+        try container.mainContext.save()
+
+        let newID = UUID()
+        let cards = """
+        BEGIN:VCARD
+        VERSION:3.0
+        UID:\(UUID().uuidString)
+        FN:Already Here
+        N:;Already Here;;;
+        EMAIL;TYPE=INTERNET:here@example.com
+        END:VCARD
+        BEGIN:VCARD
+        VERSION:3.0
+        UID:\(newID.uuidString)
+        FN:New Person
+        N:;New Person;;;
+        END:VCARD
+        """
+
+        let result = try await VCardImportService(modelContainer: container)
+            .importContacts(cards.data(using: .utf8)!) { _ in }
+
+        XCTAssertEqual(result.importedCount, 1)
+        XCTAssertEqual(result.skippedCount, 1)
+        XCTAssertEqual(result.importedContactIDs, Set([newID]))
+        XCTAssertFalse(result.importedContactIDs.contains(existing.id))
+    }
     
     @MainActor
     func testRelationshipResolution() async throws {

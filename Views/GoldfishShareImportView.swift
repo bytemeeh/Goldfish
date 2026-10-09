@@ -98,7 +98,8 @@ struct GoldfishShareImportView: View {
         List {
             Section {
                 NavigationLink("Organize people") {
-                    ContactOrganizationView(dataManager: dataManager, isDemoMode: false)
+                    ContactOrganizationView(dataManager: dataManager, isDemoMode: false,
+                                             initialContactIDs: result.addedContactIDs)
                 }
                 Text("\(result.addedPeople) people added · \(result.reusedPeople) existing people recognized")
                 Text("\(result.connectionsAdded) relationships added · \(result.pondsAdded) ponds added")

@@ -29,6 +29,8 @@ private struct HomeContent: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
+    @AppStorage("pondExperienceUpdatesSeen") private var pondUpdatesSeen = false
+    @State private var showPondUpdates = false
     @State private var isHomeRouteVisible = true
     @State private var showSettings = false
     @State private var startSettingsWithImport = false
@@ -58,6 +60,32 @@ private struct HomeContent: View {
             mainNavigation
             .accessibilityHidden(!hasCompletedOnboarding)
             .allowsHitTesting(hasCompletedOnboarding)
+            .sheet(isPresented: $showPondUpdates) {
+                NavigationStack {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 24) {
+                            Text("A calmer, living pond").font(.largeTitle.weight(.light))
+                            Label("Follow people in place", systemImage: "point.3.connected.trianglepath.dotted").font(.headline)
+                            Text("Look for the small circles behind a person. Tap to reveal their connections; the trail brings you back.")
+                            Label("Move with a ripple", systemImage: "water.waves").font(.headline)
+                            Text("Drag a contact across a pond edge to preview a move. Release to review it. Hold a pond title to rearrange your space.")
+                            Label("Make it yours", systemImage: "sun.max").font(.headline)
+                            Text("Choose System, Light or Dark in Settings, quiet the watercolor, or replay the welcome without changing your contacts.")
+                            Button("Try the sample tour") {
+                                pondUpdatesSeen = true
+                                showPondUpdates = false
+                                walkthroughManager.replayWalkthrough(dataManager: dataManager)
+                            }.buttonStyle(.borderedProminent)
+                        }.padding(24)
+                    }
+                    .background(GoldfishDS.warmBlack)
+                    .navigationTitle("What’s new")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar { ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { pondUpdatesSeen = true; showPondUpdates = false }
+                    } }
+                }
+            }
             .sheet(item: $selectedSearchPerson) { person in
                 NavigationStack {
                     ContactDetailView(viewModel: ContactDetailViewModel(person: person, dataManager: dataManager),
@@ -209,6 +237,7 @@ private struct HomeContent: View {
                 if isActive {
                     searchToRestoreAfterRipple = nil
                     graphViewModel.closeRipple()
+                    graphViewModel.collapseAllPondConnections()
                 }
                 let demoMode = isActive || demoModeManager.isDemoModeActive
                 if viewModel.isDemoMode != demoMode {
@@ -283,7 +312,7 @@ private struct HomeContent: View {
                     graphViewModel.searchMatchedIDs = nil
                 case .profile:
                     if graphViewModel.selectedContactID == nil && selectedSearchPerson == nil,
-                       let exampleID = walkthroughManager.examplePersonID {
+                       let exampleID = walkthroughManager.branchPersonID {
                         graphViewModel.searchMatchedIDs = [exampleID]
                         graphViewModel.sceneDelegate?.centerOnContact(exampleID)
                     }
@@ -321,6 +350,7 @@ private struct HomeContent: View {
             // Resolve the explicit first-run choice without forcing sample data.
             .onChange(of: hasCompletedOnboarding) { _, completed in
                 if completed {
+                    pondUpdatesSeen = true
                     let sampleWasChosen = demoModeManager.isDemoModeActive
                     graphViewModel.isDemoMode = sampleWasChosen
                     viewModel.isDemoMode = sampleWasChosen
@@ -369,6 +399,19 @@ private struct HomeContent: View {
                         .padding(.horizontal, GoldfishDS.Space.pageMargin)
                         .padding(.top, 6)
                 } else { homeControls }
+                if hasCompletedOnboarding && !pondUpdatesSeen && !walkthroughManager.isActive && !showSearchBar {
+                    HStack {
+                        Button { showPondUpdates = true } label: {
+                            Label("What’s new in your pond", systemImage: "sparkles")
+                                .font(.gfCaption).frame(minHeight: 44)
+                        }
+                        Spacer()
+                        Button { pondUpdatesSeen = true } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }
+                            .accessibilityLabel("Dismiss what’s new")
+                    }
+                    .padding(.horizontal, GoldfishDS.Space.pageMargin)
+                    .foregroundStyle(GoldfishDS.ink(.secondary))
+                }
                 if demoModeManager.isDemoModeActive && !walkthroughManager.isActive {
                     sampleModeBar
                 }

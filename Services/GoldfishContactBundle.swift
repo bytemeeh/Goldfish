@@ -16,6 +16,7 @@ enum GoldfishContactBundle {
 
     struct GoldfishShareImportResult {
         let addedPeople: Int
+        let addedContactIDs: Set<UUID>
         let reusedPeople: Int
         let connectionsAdded: Int
         let pondsAdded: Int
@@ -154,6 +155,7 @@ enum GoldfishContactBundle {
             }
             var peopleByID = Dictionary(existingPeople.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
             var added = 0, reused = 0, connections = 0, pondsAdded = 0, organizationConflicts = 0
+            var addedContactIDs = Set<UUID>()
 
             for dto in bundle.people {
                 let person: Person
@@ -187,6 +189,7 @@ enum GoldfishContactBundle {
                                     postalCode: dto.postalCode)
                     person.createdAt = dto.createdAt; person.updatedAt = dto.updatedAt
                     context.insert(person); peopleByID[resolvedID] = person; added += 1
+                    addedContactIDs.insert(person.id)
                 }
                 peopleByID[dto.id] = person
                 for location in dto.locations where !person.isMe && !person.locations.contains(where: { $0.id == location.id }) {
@@ -263,7 +266,7 @@ enum GoldfishContactBundle {
                 }
             }
             try context.save()
-            return GoldfishShareImportResult(addedPeople: added, reusedPeople: reused,
+            return GoldfishShareImportResult(addedPeople: added, addedContactIDs: addedContactIDs, reusedPeople: reused,
                                              connectionsAdded: connections, pondsAdded: pondsAdded,
                                              organizationConflicts: organizationConflicts)
         } catch {

@@ -8,6 +8,7 @@ struct GoldfishApp: App {
     /// Tracks whether the user has completed the initial sign-in step.
     /// HomeView shows `OnboardingSignInOverlay` (over the ponds graph) until this is true.
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage("appearancePreference") private var appearancePreference = AppAppearance.system.rawValue
     
     /// The SwiftData container.
     @State private var modelContainer: ModelContainer?
@@ -161,6 +162,7 @@ struct GoldfishApp: App {
                     .environmentObject(demoModeManager)
                     .environmentObject(toastManager)
                     .tint(Color.goldfishAccent)
+                    .preferredColorScheme(AppAppearance(rawValue: appearancePreference)?.colorScheme ?? nil)
                     .onOpenURL { url in
                         do {
                             let staged = try GoldfishShareFile.stage(url)

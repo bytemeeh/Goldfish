@@ -26,6 +26,8 @@ final class SettingsViewModel: ObservableObject {
     @Published var importProgress: String = ""
     @Published var showImportCompletionAlert = false
     @Published var lastImportResult: ImportResult?
+    /// Newly created contacts selected when the user chooses “Organize people”.
+    @Published var importedContactIDs: Set<UUID> = []
     @Published var errorMessage: String?
     private var isConfigured = false
 
@@ -142,6 +144,7 @@ final class SettingsViewModel: ObservableObject {
             }
         }
         lastImportResult = result
+        importedContactIDs = result.importedContactIDs
         isImporting = false
         importProgress = ""
         showImportCompletionAlert = true

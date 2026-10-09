@@ -6,6 +6,7 @@ import SwiftUI
 enum WalkthroughEvent: Equatable {
     case openedSearchResult
     case openedProfile
+    case expandedConnections
     case createdLink
     case focusedPond
     case switchedToList
@@ -35,7 +36,7 @@ enum WalkthroughStep: Int, CaseIterable, Identifiable {
         switch self {
         case .welcome:  return "Welcome aboard"
         case .search:   return "Find any person"
-        case .profile:  return "Read the whole story"
+        case .profile:  return "Reveal a connection branch"
         case .link:     return "Make a connection"
         case .ponds:    return "Explore your ponds"
         case .views:    return "Pond or list"
@@ -48,11 +49,11 @@ enum WalkthroughStep: Int, CaseIterable, Identifiable {
     var description: String {
         switch self {
         case .welcome:
-            return "Open a person’s story, connect two people, then explore a pond."
+            return "Expand a connection branch, connect two people, then explore your ponds."
         case .search:
             return "Open a person to see the details that make them memorable."
         case .profile:
-            return "Each person carries a full page — notes, birthday, address, and every connection in their branches."
+            return "Expand a branch to reveal the next circle of connections."
         case .link:
             return "Connect two real sample people and see the relationship become part of the story."
         case .ponds:
@@ -71,7 +72,7 @@ enum WalkthroughStep: Int, CaseIterable, Identifiable {
         switch self {
         case .welcome: return "The sample pond is ready."
         case .search: return "You found a sample person; search can reach every name."
-        case .profile: return "You opened a person’s story, with their pond, notes, and connections together."
+        case .profile: return "You revealed another layer of the pond. Keep exploring the branches."
         case .link: return "You added a relationship, so the pond now shows a new branch."
         case .ponds: return "You focused a pond. Reveal more people as you explore its connections."
         case .views: return "You switched to the list, where every name appears in order."
@@ -84,7 +85,7 @@ enum WalkthroughStep: Int, CaseIterable, Identifiable {
     var actionPrompt: String? {
         switch self {
         case .search:  return nil
-        case .profile: return "Tap a person to open their story."
+        case .profile: return "Tap a person to reveal their connections."
         case .link:    return "Connect the sample person to Me, choose Friend, then tap Save."
         case .ponds:   return "Use the pond switcher at the bottom to focus a pond."
         case .views:   return nil
@@ -96,8 +97,8 @@ enum WalkthroughStep: Int, CaseIterable, Identifiable {
     /// The interaction that satisfies this step; the user continues explicitly.
     var completionEvent: WalkthroughEvent? {
         switch self {
-        case .search:  return nil
-        case .profile: return .openedProfile
+        case .search:  return .openedSearchResult
+        case .profile: return .expandedConnections
         case .link:    return .createdLink
         case .ponds:   return .focusedPond
         case .views:   return nil
@@ -159,6 +160,8 @@ class FeatureWalkthroughManager: ObservableObject {
     @Published var demoErrorMessage: String?
     @Published var examplePersonID: UUID?
     @Published var examplePersonName: String = "Priya Patel"
+    @Published private(set) var branchPersonID: UUID?
+    @Published private(set) var branchPersonName: String = "Adriana"
     @Published var suggestedConnectionName: String = "Me"
     @Published var exampleConnectionIsExisting = false
 
@@ -172,6 +175,8 @@ class FeatureWalkthroughManager: ObservableObject {
 
     var currentDescription: String {
         switch currentStep {
+        case .profile:
+            return "Expand \(branchPersonName)’s branch to reveal more connections."
         case .search:
             return "Search the sample pond for \(examplePersonName), then open their result."
         case .link:
@@ -186,7 +191,7 @@ class FeatureWalkthroughManager: ObservableObject {
     var currentActionPrompt: String? {
         switch currentStep {
         case .profile:
-            return "Tap \(examplePersonName) on the pond to open their story."
+            return "Tap \(branchPersonName) to reveal her connections."
         case .search:
             return "Tap Search, enter \(examplePersonName), then open that result."
         case .link:
@@ -312,6 +317,9 @@ class FeatureWalkthroughManager: ObservableObject {
             return
         }
         let demos = (try? dataManager.fetchAllPersons())?.filter { $0.isDemo } ?? []
+        let branchPerson = demos.first(where: { $0.name == "Adriana" }) ?? demos.first
+        branchPersonID = branchPerson?.id
+        branchPersonName = branchPerson?.name ?? "Adriana"
         let directlyConnectedIDs = Set(me.connectedContacts.map(\.id))
         // A useful replay target may have other relationships; it only needs to
         // be unlinked from the suggested contact so the lesson can create a real
@@ -513,6 +521,8 @@ class FeatureWalkthroughManager: ObservableObject {
         demoErrorMessage = nil
         examplePersonID = nil
         examplePersonName = "Priya Patel"
+        branchPersonID = nil
+        branchPersonName = "Adriana"
         suggestedConnectionName = "Me"
         exampleConnectionIsExisting = false
         isAdvancing = false

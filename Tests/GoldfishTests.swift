@@ -657,6 +657,8 @@ final class FeatureWalkthroughSequenceTests: XCTestCase {
         manager.nextStep()
         XCTAssertEqual(manager.currentStep, .profile)
         manager.report(.openedProfile)
+        XCTAssertFalse(manager.justCompletedStep)
+        manager.report(.expandedConnections)
         XCTAssertTrue(manager.justCompletedStep)
         manager.nextStep()
         XCTAssertEqual(manager.currentStep, .link)
