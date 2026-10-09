@@ -10,6 +10,8 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var showingImporter = false
+    @State private var showingOrganization = false
+    @State private var incomingGoldfishURL: IdentifiableWrapper<URL>?
     @State private var showingImportOptions = false
     @State private var showingPhonebookPicker = false
     @State private var showingLogoutAlert = false
@@ -211,7 +213,7 @@ struct SettingsView: View {
             Section {
                 SettingsNavRow(
                     icon: "square.and.arrow.up",
-                    label: "Export Contacts"
+                    label: "Share Contacts"
                 ) {
                     ContactExportSelectionView()
                         .environmentObject(dataManager)
@@ -220,6 +222,9 @@ struct SettingsView: View {
                     Rectangle().fill(GoldfishDS.ink(.hairline)).frame(height: 0.5).padding(.leading, 44)
                 }
 
+                NavigationLink {
+                    ContactOrganizationView(dataManager: dataManager, isDemoMode: demoModeManager.isDemoModeActive)
+                } label: { Label("Organize people", systemImage: "person.2.crop.square.stack") }
                 SettingsActionRow(icon: "square.and.arrow.down", label: "Import Contacts") {
                     showingImportOptions = true
                 }
@@ -240,7 +245,7 @@ struct SettingsView: View {
             } header: {
                 SettingsSectionHeader("Data")
             } footer: {
-                Text("Export selected people as a vCard. Goldfish can also restore included connections and pond membership. See Privacy for transfer limits.")
+                Text("Share selected people as a Goldfish bundle to preserve relationships and pond membership, or as a vCard for compatible contacts apps. Open a Goldfish bundle here to review it before importing.")
                     .font(.gfMeta)
                     .foregroundStyle(GoldfishDS.ink(.tertiary))
                     .padding(.horizontal, GoldfishDS.Space.pageMargin)
@@ -379,13 +384,17 @@ struct SettingsView: View {
         }
         .fileImporter(
             isPresented: $showingImporter,
-            allowedContentTypes: [.vCard],
+            allowedContentTypes: [.goldfishContactBundle, .vCard],
             allowsMultipleSelection: false
         ) { result in
             switch result {
             case .success(let urls):
                 if let url = urls.first {
-                    viewModel.importContacts(from: url)
+                    if url.pathExtension.lowercased() == "goldfish" {
+                        incomingGoldfishURL = IdentifiableWrapper(url)
+                    } else {
+                        viewModel.importContacts(from: url)
+                    }
                 }
             case .failure(let error):
                 viewModel.errorMessage = "Could not open file: " + error.localizedDescription
@@ -412,12 +421,18 @@ struct SettingsView: View {
             get: { viewModel.errorMessage != nil }, set: { if !$0 { viewModel.errorMessage = nil } }
         )) { Button("OK") { viewModel.errorMessage = nil } } message: { Text(viewModel.errorMessage ?? "") }
         .alert(viewModel.importAlertTitle, isPresented: $viewModel.showImportCompletionAlert) {
+            if (viewModel.lastImportResult?.importedCount ?? 0) > 0 {
+                Button("Organize people") { showingOrganization = true }
+            }
             if viewModel.hasImportDetails {
                 Button("Details") { showingImportDetails = true }
             }
             Button("OK", role: .cancel) { }
         } message: {
             Text(viewModel.importAlertMessage)
+        }
+        .sheet(isPresented: $showingOrganization) {
+            NavigationStack { ContactOrganizationView(dataManager: dataManager, isDemoMode: false) }
         }
         .sheet(isPresented: $showingImportDetails) {
             ImportDetailsView(
@@ -456,6 +471,13 @@ struct SettingsView: View {
         }
         .sheet(item: $exportURL) { wrapper in
             ShareSheet(activityItems: [wrapper.value])
+                .presentationCornerRadius(GoldfishDS.Radius.sheet)
+        }
+        .sheet(item: $incomingGoldfishURL) { wrapper in
+            GoldfishShareImportView(url: wrapper.value)
+                .environmentObject(dataManager)
+                .environmentObject(demoModeManager)
+                .environmentObject(walkthroughManager)
                 .presentationCornerRadius(GoldfishDS.Radius.sheet)
         }
     }

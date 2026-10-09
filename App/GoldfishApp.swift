@@ -14,6 +14,10 @@ struct GoldfishApp: App {
     
     /// Tracks initialization errors (e.g., corruption).
     @State private var databaseError: Error?
+    @State private var incomingShare: IdentifiableWrapper<URL>?
+    @State private var stagedShareURL: URL?
+    @State private var shareOpenError: String?
+    @State private var showPendingShareNotice = false
     
     /// The DataManager instance to inject into the environment.
     /// We keep it in @State so it survives view recycles, though in App it's stable.
@@ -42,8 +46,10 @@ struct GoldfishApp: App {
             }
             #endif
             #if DEBUG
-            let isPondReview = ProcessInfo.processInfo.arguments.contains("--review-pond-disclosure")
-            let isRippleReview = ProcessInfo.processInfo.arguments.contains("--review-ripples")
+            let arguments = ProcessInfo.processInfo.arguments
+            let isWelcomeMotionReview = arguments.contains("--welcome-motion-preview")
+            let isPondReview = arguments.contains("--review-pond-disclosure") || isWelcomeMotionReview
+            let isRippleReview = arguments.contains("--review-ripples")
             let isQualityReview = ProcessInfo.processInfo.arguments.contains("--review-network-50") || isRippleReview || isPondReview
             let isOnboardingReview = ProcessInfo.processInfo.arguments.contains("--review-onboarding")
             let container = try (isQualityReview || isOnboardingReview) ? GoldfishModelContainer.preview() : GoldfishModelContainer.production()
@@ -133,6 +139,16 @@ struct GoldfishApp: App {
                             .environmentObject(manager)
                     } else {
                         HomeView()
+#if DEBUG
+                            .overlay {
+                                if let preview = welcomeMotionPreview {
+                                    WelcomeMotionPreview(variant: preview.variant, autoplay: preview.autoplay)
+                                        .environmentObject(manager)
+                                        .environmentObject(walkthroughManager)
+                                        .environmentObject(demoModeManager)
+                                }
+                            }
+#endif
                     }
                 }
                     .transition(.opacity)
@@ -145,6 +161,38 @@ struct GoldfishApp: App {
                     .environmentObject(demoModeManager)
                     .environmentObject(toastManager)
                     .tint(Color.goldfishAccent)
+                    .onOpenURL { url in
+                        do {
+                            let staged = try GoldfishShareFile.stage(url)
+                            if let previous = stagedShareURL { try? FileManager.default.removeItem(at: previous) }
+                            stagedShareURL = staged
+                            incomingShare = IdentifiableWrapper(staged)
+                            showPendingShareNotice = !hasCompletedOnboarding
+                        } catch { shareOpenError = error.localizedDescription }
+                    }
+                    .sheet(item: Binding(
+                        get: { hasCompletedOnboarding ? incomingShare : nil },
+                        set: { incomingShare = $0 }
+                    ), onDismiss: {
+                        if let staged = stagedShareURL { try? FileManager.default.removeItem(at: staged) }
+                        stagedShareURL = nil
+                    }) { wrapper in
+                        GoldfishShareImportView(url: wrapper.value)
+                            .environmentObject(manager)
+                            .environmentObject(walkthroughManager)
+                            .environmentObject(demoModeManager)
+                    }
+                    .alert("Your shared contacts are ready", isPresented: $showPendingShareNotice) {
+                        Button("Continue") { }
+                    } message: {
+                        Text("Finish the welcome screen first. Then you can review and import the shared contacts and ponds.")
+                    }
+                    .alert("Could not open shared contacts", isPresented: Binding(
+                        get: { shareOpenError != nil }, set: { if !$0 { shareOpenError = nil } }
+                    )) {
+                        Button("OK") { shareOpenError = nil }
+                    } message: { Text(shareOpenError ?? "") }
+
             } else {
                 ProgressView()
             }
@@ -215,6 +263,17 @@ struct GoldfishApp: App {
         return false
         #endif
     }
+
+#if DEBUG
+    private var welcomeMotionPreview: (variant: WelcomeSwimVariant, autoplay: Bool)? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let flagIndex = arguments.firstIndex(of: "--welcome-motion-preview"),
+              arguments.indices.contains(flagIndex + 1),
+              let index = Int(arguments[flagIndex + 1]),
+              let variant = WelcomeSwimVariant(rawValue: index) else { return nil }
+        return (variant, arguments.contains("--welcome-motion-autoplay"))
+    }
+#endif
 
     private var debugScreenOverride: AnyView? {
         #if DEBUG

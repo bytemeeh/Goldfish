@@ -11,6 +11,8 @@ struct ContactDetailView: View {
     @EnvironmentObject var walkthroughManager: FeatureWalkthroughManager
     @AppStorage("isDemoModeActive") private var isDemoModeActive = false
     @State private var showAddRelationship = false
+    @State private var showBatchConnections = false
+    @State private var showContactShare = false
     @State private var showAddMemory = false
     @State private var relationshipToDelete: Relationship?
     var showsCloseButton = false
@@ -103,14 +105,15 @@ struct ContactDetailView: View {
                         .gfSectionLabel()
                     Spacer()
                     Button {
-                        showAddRelationship = true
+                        if walkthroughManager.isActive { showAddRelationship = true }
+                        else { showBatchConnections = true }
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(GoldfishDS.ink(.primary))
                             .frame(minWidth: 44, minHeight: 44)
                     }
-                    .accessibilityLabel("Add relationship")
+                    .accessibilityLabel("Add connections")
                     .accessibilityIdentifier("addRelationshipButton")
                     .walkthroughAnchor(step: .link)
                 }
@@ -167,6 +170,12 @@ struct ContactDetailView: View {
         .toolbarBackground(GoldfishDS.warmBlack, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { showContactShare = true } label: {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .accessibilityLabel("Share this person and connections")
+            }
             if showsCloseButton {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
@@ -187,6 +196,16 @@ struct ContactDetailView: View {
                     .safeAreaPadding(.bottom, 8)
             }
         }
+        .sheet(isPresented: $showContactShare) {
+            NavigationStack {
+                ContactExportSelectionView(selectedContactIDs: [viewModel.person.id])
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close") { showContactShare = false }
+                        }
+                    }
+            }
+        }
         .sheet(isPresented: $viewModel.isEditing, onDismiss: {
             viewModel.refreshData()
             NotificationCenter.default.post(name: .goldfishDataDidChange, object: nil)
@@ -195,6 +214,9 @@ struct ContactDetailView: View {
                 ContactFormView(viewModel: ContactFormViewModel(dataManager: dataManager, person: viewModel.person))
                     .environmentObject(dataManager)
             }
+        }
+        .sheet(isPresented: $showBatchConnections, onDismiss: { viewModel.refreshData() }) {
+            BatchConnectionsView(person: viewModel.person, dataManager: dataManager)
         }
         .sheet(isPresented: $showAddRelationship, onDismiss: { viewModel.refreshData() }) {
             AddRelationshipView(person: viewModel.person, dataManager: dataManager)

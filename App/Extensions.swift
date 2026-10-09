@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Darwin
 
 // MARK: - Color Hex Initializer (String)
 extension Color {
@@ -313,7 +314,7 @@ struct WalkthroughInlineGuide: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 4)
                 } else {
-                    VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 12) {
                         if let prompt = actionPromptOverride ?? walkthroughManager.currentActionPrompt,
                            !walkthroughManager.justCompletedStep {
                             HStack(alignment: .top, spacing: 10) {
@@ -332,9 +333,7 @@ struct WalkthroughInlineGuide: View {
 
                         if !isCompact && !(boundedMaximumHeight < 300 && step.isAction && !walkthroughManager.justCompletedStep) {
                             Text(step.title)
-                                .font(.gfName)
-                                .textCase(.uppercase)
-                                .kerning(1.4)
+                                .font(.gfBody.weight(.medium))
                                 .foregroundStyle(GoldfishDS.ink(.primary))
                         }
 
@@ -488,10 +487,16 @@ struct WalkthroughOverlayView: View {
                     WalkthroughInlineGuide(
                         maximumHeight: walkthroughManager.maximumOverlayHeight(in: geometry.frame(in: .global))
                     )
-                        .background(GeometryReader { cardGeometry in
-                            Color.clear.preference(key: WalkthroughCardFrameKey.self,
-                                                   value: cardGeometry.frame(in: .global))
-                        })
+                        .background {
+                            GeometryReader { cardGeometry in
+                                let frame = cardGeometry.frame(in: .global).integral
+                                Color.clear
+                                    .onAppear { publishOverlayFrame(frame) }
+                                    .onChange(of: frame) { _, newFrame in
+                                        publishOverlayFrame(newFrame)
+                                    }
+                            }
+                        }
                         .padding(.horizontal, 20)
                         .padding(.top, step.hintPlacement == .top ? 12 : 0)
                         .padding(.bottom, step.hintPlacement == .bottom ? 30 : 0)
@@ -502,13 +507,11 @@ struct WalkthroughOverlayView: View {
                 }
             }
         }
-        .onPreferenceChange(WalkthroughCardFrameKey.self) { frame in
-            let measured = frame.integral
-            if walkthroughManager.overlayFrame != measured {
-                walkthroughManager.overlayFrame = measured
+        .onDisappear {
+            DispatchQueue.main.async {
+                walkthroughManager.overlayFrame = .zero
             }
         }
-        .onDisappear { walkthroughManager.overlayFrame = .zero }
         .animation(GoldfishDS.Motion.settle, value: walkthroughManager.currentStep)
         .animation(GoldfishDS.Motion.snappy, value: walkthroughManager.justCompletedStep)
         .onAppear {
@@ -516,6 +519,26 @@ struct WalkthroughOverlayView: View {
             withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
                 pulse = true
             }
+        }
+    }
+
+    private func publishOverlayFrame(_ frame: CGRect) {
+        guard !frame.isEmpty,
+              frame.minX.isFinite, frame.minY.isFinite,
+              frame.width.isFinite, frame.height.isFinite else { return }
+        let measured = frame.integral
+        DispatchQueue.main.async {
+            guard walkthroughManager.overlayFrame != measured else { return }
+            walkthroughManager.overlayFrame = measured
+#if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--ui-layout-trace") {
+                let viewport = walkthroughManager.graphViewportFrame
+                let insets = walkthroughManager.graphObscuredInsets
+                let line = "[WalkthroughLayout] global overlay=\(measured) viewport=\(viewport) insets=(\(insets.top),\(insets.bottom))\n"
+                line.withCString { fputs($0, stdout) }
+                fflush(stdout)
+            }
+#endif
         }
     }
 
@@ -583,13 +606,6 @@ struct ShareSheet: UIViewControllerRepresentable {
 }
 
 // MARK: - UUID Identifiable
-
-private struct WalkthroughCardFrameKey: PreferenceKey {
-    static var defaultValue: CGRect = .zero
-    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
-        value = nextValue()
-    }
-}
 
 private struct WalkthroughCardContentHeightKey: PreferenceKey {
     static let defaultValue: CGFloat = 0

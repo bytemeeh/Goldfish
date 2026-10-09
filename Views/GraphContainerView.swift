@@ -17,6 +17,7 @@ struct GraphContainerView: View {
     @EnvironmentObject var demoModeManager: DemoModeManager
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var showsMapHelp = false
+    @State private var batchConnectionPerson: Person?
 
 
     @State private var scene = GoldfishGraphScene(size: CGSize(width: 390, height: 844))
@@ -30,6 +31,10 @@ struct GraphContainerView: View {
         let insets = walkthroughManager.graphObscuredInsets
         scene.topObscuredInset = insets.top
         scene.bottomObscuredInset = insets.bottom
+    }
+
+    private var tourCardCoversBottomControls: Bool {
+        walkthroughManager.isActive && walkthroughManager.currentStep.hintPlacement == .bottom
     }
 
     private var graphAccessibility: some View {
@@ -56,31 +61,28 @@ struct GraphContainerView: View {
 
     var body: some View {
         ZStack {
-            // Paper canvas behind the map and every empty/loading state, so it
-            // adapts to light/dark. The SKScene resolves the same paper tone, but
-            // this fills in when graphLevels == nil / hasNoData.
+            // Adaptive paper canvas behind the transparent map and every
+            // empty/loading state.
             GoldfishDS.warmBlack.ignoresSafeArea()
+                .sheet(item: $batchConnectionPerson) { person in
+                    BatchConnectionsView(person: person, dataManager: dataManager) { _ in
+                        viewModel.refreshGraph()
+                        viewModel.activatePondContact(id: person.id)
+                    }
+                }
 
             // MARK: - Map and footer
-            // Give the footer a real row below the map. A preference measured from
-            // an overlay can report the full screen during layout and incorrectly
-            // reserve that height inside SpriteKit's camera.
+            // Give the footer a real row below the map so the measured SpriteView
+            // frame stays aligned with the area SpriteKit actually renders.
             VStack(spacing: 0) {
-                if viewModel.graphLevels != nil && !viewModel.hasNoData {
+                if viewModel.graphLevels != nil && !viewModel.hasNoData && !dynamicTypeSize.isAccessibilitySize {
                     GeometryReader { proxy in
-                        SpriteView(scene: scene, options: [.allowsTransparency])
+                        ZStack {
+                            PondCanvasBackground()
+                                .allowsHitTesting(false)
+                            SpriteView(scene: scene, options: [.allowsTransparency])
                             .onAppear {
                                 scene.scaleMode = .resizeFill
-                                scene.onViewportChange = { [walkthroughManager] size, frame in
-                                    guard size.width >= 240, size.height >= 100,
-                                          frame.width >= 240, frame.height >= 100,
-                                          frame.width.isFinite, frame.height.isFinite,
-                                          frame.minX.isFinite, frame.minY.isFinite else { return }
-                                    DispatchQueue.main.async {
-                                        walkthroughManager.graphViewportFrame = frame.integral
-                                    }
-                                }
-                                scene.reportViewport()
                                 updateViewport(size: proxy.size, frame: proxy.frame(in: .global))
                             }
                             .onChange(of: proxy.size) { _, size in
@@ -99,12 +101,24 @@ struct GraphContainerView: View {
                             // scrolling rows. Hiding this representation avoids announcing
                             // the same people twice.
                             .accessibilityHidden(dynamicTypeSize.isAccessibilitySize)
+                        }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
 
-                if viewModel.graphLevels != nil && !viewModel.hasNoData {
-                    graphFooter
+                if viewModel.graphLevels != nil && !viewModel.hasNoData && !tourCardCoversBottomControls {
+                    if dynamicTypeSize.isAccessibilitySize {
+                        // A map cannot remain legible in the sliver left by very
+                        // large controls. Give the native exploration controls
+                        // and contact rows one continuous scrolling surface.
+                        ScrollView {
+                            graphFooter
+                                .padding(.top, 8)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        graphFooter
+                    }
                 }
             }
 
@@ -164,7 +178,7 @@ struct GraphContainerView: View {
             }
         }
         .overlay(alignment: .top) {
-            if let feedback = viewModel.latestPondReveal {
+            if let feedback = viewModel.latestPondReveal, !dynamicTypeSize.isAccessibilitySize {
                 revealFeedback(feedback)
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
@@ -326,9 +340,9 @@ struct GraphContainerView: View {
         viewModel.refreshGraph()
     }
 
-    /// Accept viewport changes only from the live SpriteView geometry callbacks.
-    /// Layout probes can propose offscreen or tiny frames; applying those to the
-    /// persistent scene would overwrite the real camera size during body evaluation.
+    /// Keep the viewport frame in SwiftUI's global coordinate space, matching
+    /// the walkthrough card measurement. The fixed SpriteView frame below is
+    /// the same rectangle SpriteKit renders into.
     private func updateViewport(size: CGSize, frame: CGRect) {
 #if DEBUG
         let layoutTraceEnabled = ProcessInfo.processInfo.arguments.contains("--ui-layout-trace")
@@ -345,10 +359,16 @@ struct GraphContainerView: View {
               abs(frame.height - size.height) <= 1 else { return }
 
         if scene.size != size { scene.size = size }
+        let measuredFrame = frame.integral
+        if walkthroughManager.graphViewportFrame != measuredFrame {
+            walkthroughManager.graphViewportFrame = measuredFrame
+        }
         updateObscuredInsets()
 #if DEBUG
         if layoutTraceEnabled {
-            print("[GoldfishLayout] proxy accepted scene=\(scene.size) insets=(\(scene.topObscuredInset),\(scene.bottomObscuredInset)) zoom=\(scene.currentZoomForDebug)")
+            let overlay = walkthroughManager.overlayFrame
+            let insets = walkthroughManager.graphObscuredInsets
+            print("[GoldfishLayout] global viewport=\(measuredFrame) overlay=\(overlay) insets=(\(insets.top),\(insets.bottom)) scene=\(scene.size) zoom=\(scene.currentZoomForDebug)")
         }
 #endif
     }
@@ -781,26 +801,23 @@ struct GraphContainerView: View {
     private var pondInspector: some View {
         Group {
             if dynamicTypeSize.isAccessibilitySize {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 10) {
-                        inspectorSummary
-                        inspectorActions
-                        accessibleVisiblePeople
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 10) {
+                    inspectorSummary
+                    inspectorActions
+                    accessibleVisiblePeople
                 }
-                .scrollBounceBehavior(.basedOnSize)
+                .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
-                    inspectorSummary
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                        .frame(height: 84, alignment: .topLeading)
+                    if viewModel.disclosureCurrentPerson != nil {
+                        inspectorSummary
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                    }
                     inspectorActions
-                        .frame(height: 44)
                 }
             }
         }
-        .frame(height: dynamicTypeSize.isAccessibilitySize ? 286 : 144, alignment: .top)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .tint(GoldfishDS.terracotta)
         .accessibilityElement(children: .contain)
     }
@@ -809,12 +826,15 @@ struct GraphContainerView: View {
     private var inspectorSummary: some View {
         if let person = viewModel.disclosureCurrentPerson {
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
+                let headingLayout = dynamicTypeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+                    : AnyLayout(HStackLayout(spacing: 6))
+                headingLayout {
                     Text(person.isMe ? "You" : person.name)
                         .font(dynamicTypeSize.isAccessibilitySize ? .headline : .gfName)
                         .foregroundStyle(GoldfishDS.ink(.primary))
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-                    Spacer(minLength: 0)
+                    if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 0) }
                     if viewModel.pondDisclosureSnapshot.focusRootID != nil {
                         Button {
                             viewModel.clearPondFocus()
@@ -891,17 +911,6 @@ struct GraphContainerView: View {
         Group {
             if let person = viewModel.disclosureCurrentPerson {
                 contactInspectorActions(for: person)
-            } else {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 8) {
-                        profileButton
-                        inspectorButton("Map help", systemImage: "questionmark.circle") { showsMapHelp = true }
-                    }
-                    VStack(alignment: .leading, spacing: 8) {
-                        profileButton
-                        inspectorButton("Map help", systemImage: "questionmark.circle") { showsMapHelp = true }
-                    }
-                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -909,16 +918,6 @@ struct GraphContainerView: View {
     }
 
     private var mePerson: Person? { allGraphPeople.first(where: { $0.isMe }) }
-
-    private var profileButton: some View {
-        Group {
-            if let mePerson {
-                inspectorButton("Your profile", systemImage: "person.crop.circle") {
-                    viewModel.selectContact(mePerson.id)
-                }
-            }
-        }
-    }
 
     private func contactInspectorActions(for person: Person) -> some View {
         let openContact = inspectorButton("Open contact", systemImage: "person.crop.circle") {
@@ -986,6 +985,12 @@ struct GraphContainerView: View {
         let snapshot = viewModel.pondDisclosureSnapshot
         let currentPersonID = viewModel.disclosureCurrentPerson?.id
         return Menu {
+            if let person = viewModel.disclosureCurrentPerson {
+                Button("Add connections", systemImage: "person.badge.plus") {
+                    viewModel.activatePondContact(id: person.id)
+                    batchConnectionPerson = person
+                }
+            }
             if let currentPersonID,
                viewModel.isPondConnectionsExpanded(currentPersonID),
                viewModel.hiddenPondNeighborCount(for: currentPersonID) > 0 {
@@ -993,6 +998,14 @@ struct GraphContainerView: View {
                     viewModel.showMorePondConnections(currentPersonID)
                 }
                 .accessibilityIdentifier("showMorePondConnections")
+            }
+            if currentPersonID == nil, let mePerson {
+                Button("Your profile", systemImage: "person.crop.circle") {
+                    viewModel.selectContact(mePerson.id)
+                }
+            }
+            if currentPersonID == nil {
+                Button("Map help", systemImage: "questionmark.circle") { showsMapHelp = true }
             }
             if snapshot.pathHighlightIDs.isEmpty, !snapshot.trail.isEmpty {
                 Button("Show connection path", systemImage: "point.topleft.down.curvedto.point.bottomright.up") {
@@ -1031,8 +1044,8 @@ struct GraphContainerView: View {
         } label: {
             Label("More", systemImage: "ellipsis")
                 .font(.gfCaption.weight(.medium))
-                .frame(minWidth: 44, minHeight: 44)
-                .padding(.horizontal, 8)
+                .labelStyle(.iconOnly)
+                .frame(width: 44, height: 44)
                 .background(GoldfishDS.surface, in: RoundedRectangle(cornerRadius: GoldfishDS.Radius.control))
                 .contentShape(Rectangle())
         }
@@ -1167,8 +1180,16 @@ struct GraphContainerView: View {
     private var graphFooter: some View {
         VStack(alignment: .leading, spacing: 4) {
             graphControlsRow
-            Divider().overlay(GoldfishDS.ink(.hairline))
-            pondInspector
+            if !walkthroughManager.isActive &&
+                (viewModel.disclosureCurrentPerson != nil || dynamicTypeSize.isAccessibilitySize) {
+                Divider().overlay(GoldfishDS.ink(.hairline))
+                pondInspector
+            } else if !walkthroughManager.isActive {
+                Text("Tap someone to explore their connections.")
+                    .font(.gfCaption)
+                    .foregroundStyle(GoldfishDS.ink(.secondary))
+                    .padding(.leading, 4)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -1192,20 +1213,23 @@ struct GraphContainerView: View {
                 HStack(spacing: 8) {
                     Spacer(minLength: 0)
                     compactRevealMenu
+                    if viewModel.disclosureCurrentPerson == nil { inspectorMoreMenu }
                     mapOptionsMenu
                 }
             }
         } else {
-            HStack(spacing: 8) {
-                myPondsButton
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    myPondsButton
+                    Spacer(minLength: 0)
+                    compactRevealMenu
+                    if viewModel.disclosureCurrentPerson == nil { inspectorMoreMenu }
+                    mapOptionsMenu
+                }
                 compactPondPicker
                     .walkthroughAnchor(step: .ponds)
-                    .layoutPriority(1)
-                Spacer(minLength: 0)
-                compactRevealMenu
-                mapOptionsMenu
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(minHeight: 44)
         }
     }
 
@@ -1214,18 +1238,11 @@ struct GraphContainerView: View {
             viewModel.showMyPonds()
         } label: {
             HStack(spacing: 6) {
-                ZStack {
-                    Circle().fill(GoldfishDS.warmBlack)
-                    Circle().fill(GoldfishDS.gold.opacity(0.16))
-                    Image("HeroKoi")
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 22, height: 22)
-                }
-                .frame(width: 22, height: 22)
-                .clipShape(Circle())
-                .overlay(Circle().strokeBorder(GoldfishDS.gold.opacity(0.5), lineWidth: 0.75))
-                .accessibilityHidden(true)
+                Image("WatercolorKoi")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 26, height: 26)
+                    .accessibilityHidden(true)
                 Text("My ponds")
                     .font(.gfMeta.weight(.semibold))
                     .lineLimit(1)
@@ -1269,7 +1286,7 @@ struct GraphContainerView: View {
                 Image(systemName: "chevron.down").font(.system(size: 10, weight: .semibold))
             }
             .foregroundStyle(GoldfishDS.ink(.primary))
-            .frame(minHeight: 44)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .contentShape(Rectangle())
         }
         .accessibilityLabel("Choose pond")

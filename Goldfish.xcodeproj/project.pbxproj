@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F19401373A4249B095E40001 /* WelcomeSwimScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = F19401373A4249B095E40002 /* WelcomeSwimScene.swift */; };
+		F19401373A4249B095E40003 /* WelcomeMotionPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = F19401373A4249B095E40004 /* WelcomeMotionPreview.swift */; };
 		16859C5825FBD8FCB94AD807 /* ReversibleDataOperationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63BD97D87691F11000720D84 /* ReversibleDataOperationTests.swift */; };
 		9421425080684F7535007064 /* ContactExperienceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6557D7B6C5D0B81350FE7C32 /* ContactExperienceTests.swift */; };
 		7842BBB74FB0D6663DCEF564 /* RelationshipContextService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 512A119A2B00FF37313368CC /* RelationshipContextService.swift */; };
@@ -32,6 +34,10 @@
 		3E7812D7337CD8B06E16EA69 /* CircleManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC459BB4CA97463F57C743CA /* CircleManagerView.swift */; };
 		428A259CD768E2AF8AAF8CD7 /* GoldfishApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B0D93096FA1C53C7456041 /* GoldfishApp.swift */; };
 		43E832C83A76AA8AC07FFE2A /* VCardExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A886EB6E13DD7F732B3B191 /* VCardExportService.swift */; };
+		81D74A27C3BD49178BD1643E /* ConnectionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6903298E4054CE2BAE9B234 /* ConnectionSession.swift */; };
+		377147CC9C834F06B9D69225 /* ContactOrganizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5BACA128A514AF883F3FD9A /* ContactOrganizationService.swift */; };
+		84BC6CED140C4AD0BE341EEA /* GoldfishShareFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 415A61821CB44FB19856536D /* GoldfishShareFile.swift */; };
+		C96F36F80FB24B6C8200575B /* GoldfishContactBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AAD0C0B60AA4E6183FC0D33 /* GoldfishContactBundle.swift */; };
 		4B610CD8A7A8B93670DB16FF /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99AF85323C2489A38837C910 /* Extensions.swift */; };
 		4D8BCFB37DF629DF16DF7D19 /* GraphService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49CD34AF5BA426B62604E12 /* GraphService.swift */; };
 		58B94D181ACB62212905B341 /* GoldfishGraphScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBBD93FA8F2D699FAB66621 /* GoldfishGraphScene.swift */; };
@@ -47,6 +53,10 @@
 		954FB5F1ED0AE12478D76A66 /* ContactListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B39C8260E0ECAC74E25B14DE /* ContactListView.swift */; };
 		9A8C1106844C5AC2220547B0 /* Location.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FF9B59925D7B3326355A75 /* Location.swift */; };
 		9E423FD0273861F5FE73D8B6 /* ContactExportSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B513AB037FC67502BDE35E66 /* ContactExportSelectionView.swift */; };
+		3333D98C82F541EC86C0CB6E /* ConnectionAnchorPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCCBED2FEE284671ADA099EC /* ConnectionAnchorPicker.swift */; };
+		F72B8C9B0B4E4E5FADA070B9 /* BatchConnectionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B49E31E5BC62422FB30BEA0F /* BatchConnectionsView.swift */; };
+		21E1DE13D12B4DFABDB48202 /* ContactOrganizationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A27C459A5734C1E877A026C /* ContactOrganizationView.swift */; };
+		F4C4E062453D4AAA98C32183 /* GoldfishShareImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CA9C6AE9AC9401696D66DB0 /* GoldfishShareImportView.swift */; };
 		A12178FE25EAC46313A6B449 /* GoldfishTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB7E247B3F4C3AF7C560516E /* GoldfishTests.swift */; };
 		A4D026AB7FDDC32C97590E53 /* DatabaseErrorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95A3B019259362813897CD33 /* DatabaseErrorView.swift */; };
 		A6A9AA43E6726AA1525CEDFC /* ContactRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D1A3C039925FC8835B046D7 /* ContactRowView.swift */; };
@@ -58,6 +68,8 @@
 		C54BCB99ADE0858E76FE6551 /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8E3DED1AC41D0D95F88ED0B /* HomeViewModel.swift */; };
 		C73B91046EB0E4140EDA8996 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF0B908F1589B9D32449F5A3 /* SettingsView.swift */; };
 		C876F2B08F4FCD2B482087D0 /* ContactPhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D78BF7A723944E3DBB95E364 /* ContactPhotoView.swift */; };
+		E5001B6019E74ED19DEC0459 /* ConnectionSessionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F41D19B87464EC1BA8320A6 /* ConnectionSessionCard.swift */; };
+		9C3C41B3589B4FC78DF9B7A1 /* PondCanvasBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C3C41B3589B4FC78DF9B7A2 /* PondCanvasBackground.swift */; };
 		CB8C6223524F67C1379D0F7B /* GoldfishColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84099033F26B00F9703BB69F /* GoldfishColors.swift */; };
 		D00193B89B1F4378A71B925B /* VCardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22FA52C98225A204657AE2D1 /* VCardTests.swift */; };
 		D47C868EB023692B7D1792FA /* ContactFormViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DC978DF10D6338667D1A78F /* ContactFormViewModel.swift */; };
@@ -86,6 +98,9 @@
 		C9E27FA2574814EEC6CC5934 /* SecurityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6B75B0832C299F0CB1950EA /* SecurityTests.swift */; };
 		3118EBCFDEA3436B0AA76577 /* StoreRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36E1FFEF2B29609D7F51CE9F /* StoreRecoveryTests.swift */; };
 		81B010AAA874E0F5ECD23772 /* TransferIntegrityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9770C52D459783890F03AE1 /* TransferIntegrityTests.swift */; };
+		60801FE9C47B4C34A3ED9EAC /* ConnectionSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CD72CD989C344D986CA1BA2 /* ConnectionSessionTests.swift */; };
+		96D0FACE5C014D64BC42548F /* ContactOrganizationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 065239D28F144F5393F4147B /* ContactOrganizationTests.swift */; };
+		99D1128AB1F748D9A4149AA7 /* GoldfishContactBundleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60EAF93F5C0D4E8C8C6481C9 /* GoldfishContactBundleTests.swift */; };
 		1020599106E5615103D5C8BC /* VCardParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 075DA340DC3854AB15A5991C /* VCardParserTests.swift */; };
 		79A1D931FC6F54815AB53AF8 /* VCardTextCodecTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26A97D47BC6A21B0CB7FBAC4 /* VCardTextCodecTests.swift */; };
 /* End PBXBuildFile section */
@@ -101,6 +116,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F19401373A4249B095E40002 /* WelcomeSwimScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeSwimScene.swift; sourceTree = "<group>"; };
+		F19401373A4249B095E40004 /* WelcomeMotionPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeMotionPreview.swift; sourceTree = "<group>"; };
 		63BD97D87691F11000720D84 /* ReversibleDataOperationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReversibleDataOperationTests.swift; sourceTree = "<group>"; };
 		6557D7B6C5D0B81350FE7C32 /* ContactExperienceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactExperienceTests.swift; sourceTree = "<group>"; };
 		512A119A2B00FF37313368CC /* RelationshipContextService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelationshipContextService.swift; sourceTree = "<group>"; };
@@ -146,6 +163,10 @@
 		95A3B019259362813897CD33 /* DatabaseErrorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseErrorView.swift; sourceTree = "<group>"; };
 		99AF85323C2489A38837C910 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		9A886EB6E13DD7F732B3B191 /* VCardExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCardExportService.swift; sourceTree = "<group>"; };
+		C6903298E4054CE2BAE9B234 /* ConnectionSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionSession.swift; sourceTree = "<group>"; };
+		A5BACA128A514AF883F3FD9A /* ContactOrganizationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactOrganizationService.swift; sourceTree = "<group>"; };
+		415A61821CB44FB19856536D /* GoldfishShareFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishShareFile.swift; sourceTree = "<group>"; };
+		2AAD0C0B60AA4E6183FC0D33 /* GoldfishContactBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishContactBundle.swift; sourceTree = "<group>"; };
 		A079D195EFCFE4FD2B14B7DF /* ContactFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactFormView.swift; sourceTree = "<group>"; };
 		A2D153727D39B6A0434CB9F2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = ../Goldfish/Assets.xcassets; sourceTree = "<group>"; };
 		A4013B831E17C1DAFD260E63 /* VCardExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCardExporter.swift; sourceTree = "<group>"; };
@@ -154,6 +175,10 @@
 		B1E6B8425027EED98DE4A82A /* Person.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Person.swift; sourceTree = "<group>"; };
 		B39C8260E0ECAC74E25B14DE /* ContactListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactListView.swift; sourceTree = "<group>"; };
 		B513AB037FC67502BDE35E66 /* ContactExportSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactExportSelectionView.swift; sourceTree = "<group>"; };
+		FCCBED2FEE284671ADA099EC /* ConnectionAnchorPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionAnchorPicker.swift; sourceTree = "<group>"; };
+		B49E31E5BC62422FB30BEA0F /* BatchConnectionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchConnectionsView.swift; sourceTree = "<group>"; };
+		5A27C459A5734C1E877A026C /* ContactOrganizationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactOrganizationView.swift; sourceTree = "<group>"; };
+		3CA9C6AE9AC9401696D66DB0 /* GoldfishShareImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishShareImportView.swift; sourceTree = "<group>"; };
 		B60B4485CDD5E2387715C6ED /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		BB68F40C7CE83693EE0BA98F /* GoldfishModelContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldfishModelContainer.swift; sourceTree = "<group>"; };
 		CAB1639DB0E83F4C9EEB7341 /* GraphViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphViewModel.swift; sourceTree = "<group>"; };
@@ -161,6 +186,8 @@
 		D3A49C20C5A36D698F6C0C28 /* Goldfish.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Goldfish.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D5778550682B283AF818B234 /* OnboardingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlow.swift; sourceTree = "<group>"; };
 		D78BF7A723944E3DBB95E364 /* ContactPhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactPhotoView.swift; sourceTree = "<group>"; };
+		8F41D19B87464EC1BA8320A6 /* ConnectionSessionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionSessionCard.swift; sourceTree = "<group>"; };
+		9C3C41B3589B4FC78DF9B7A2 /* PondCanvasBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PondCanvasBackground.swift; sourceTree = "<group>"; };
 		D7D6D567A57494FE76310713 /* PrivacyPolicyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyPolicyView.swift; sourceTree = "<group>"; };
 		D8E3DED1AC41D0D95F88ED0B /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
 		E23362045AC5C4ADADC9340E /* ContactDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactDetailView.swift; sourceTree = "<group>"; };
@@ -182,6 +209,9 @@
 		C6B75B0832C299F0CB1950EA /* SecurityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/SecurityTests.swift; sourceTree = SOURCE_ROOT; };
 		36E1FFEF2B29609D7F51CE9F /* StoreRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/StoreRecoveryTests.swift; sourceTree = SOURCE_ROOT; };
 		B9770C52D459783890F03AE1 /* TransferIntegrityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/TransferIntegrityTests.swift; sourceTree = SOURCE_ROOT; };
+		6CD72CD989C344D986CA1BA2 /* ConnectionSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/ConnectionSessionTests.swift; sourceTree = SOURCE_ROOT; };
+		065239D28F144F5393F4147B /* ContactOrganizationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/ContactOrganizationTests.swift; sourceTree = SOURCE_ROOT; };
+		60EAF93F5C0D4E8C8C6481C9 /* GoldfishContactBundleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/GoldfishContactBundleTests.swift; sourceTree = SOURCE_ROOT; };
 		075DA340DC3854AB15A5991C /* VCardParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/VCardParserTests.swift; sourceTree = SOURCE_ROOT; };
 		26A97D47BC6A21B0CB7FBAC4 /* VCardTextCodecTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/VCardTextCodecTests.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
@@ -200,6 +230,10 @@
 			isa = PBXGroup;
 			children = (
 				D78BF7A723944E3DBB95E364 /* ContactPhotoView.swift */,
+				8F41D19B87464EC1BA8320A6 /* ConnectionSessionCard.swift */,
+				9C3C41B3589B4FC78DF9B7A2 /* PondCanvasBackground.swift */,
+				F19401373A4249B095E40002 /* WelcomeSwimScene.swift */,
+				F19401373A4249B095E40004 /* WelcomeMotionPreview.swift */,
 				2D1A3C039925FC8835B046D7 /* ContactRowView.swift */,
 				07C06E74A48B5FB4A45AEFFE /* EmptyStateView.swift */,
 				2D180B577A15626E75412A7B /* WalkthroughAnchorKey.swift */,
@@ -236,6 +270,10 @@
 				A49CD34AF5BA426B62604E12 /* GraphService.swift */,
 				A4013B831E17C1DAFD260E63 /* VCardExporter.swift */,
 				9A886EB6E13DD7F732B3B191 /* VCardExportService.swift */,
+				C6903298E4054CE2BAE9B234 /* ConnectionSession.swift */,
+				A5BACA128A514AF883F3FD9A /* ContactOrganizationService.swift */,
+				415A61821CB44FB19856536D /* GoldfishShareFile.swift */,
+				2AAD0C0B60AA4E6183FC0D33 /* GoldfishContactBundle.swift */,
 				491C7C7FB18B72D3012F8B74 /* VCardImportService.swift */,
 				551C03B877AB16BAD7D978FF /* VCardParser.swift */,
 			);
@@ -285,6 +323,9 @@
 				26A97D47BC6A21B0CB7FBAC4 /* VCardTextCodecTests.swift */,
 				075DA340DC3854AB15A5991C /* VCardParserTests.swift */,
 				B9770C52D459783890F03AE1 /* TransferIntegrityTests.swift */,
+				6CD72CD989C344D986CA1BA2 /* ConnectionSessionTests.swift */,
+				065239D28F144F5393F4147B /* ContactOrganizationTests.swift */,
+				60EAF93F5C0D4E8C8C6481C9 /* GoldfishContactBundleTests.swift */,
 				36E1FFEF2B29609D7F51CE9F /* StoreRecoveryTests.swift */,
 				C6B75B0832C299F0CB1950EA /* SecurityTests.swift */,
 				1CB08A2DF556D90F6897FBCD /* ResetTests.swift */,
@@ -308,6 +349,10 @@
 				EC459BB4CA97463F57C743CA /* CircleManagerView.swift */,
 				E23362045AC5C4ADADC9340E /* ContactDetailView.swift */,
 				B513AB037FC67502BDE35E66 /* ContactExportSelectionView.swift */,
+				FCCBED2FEE284671ADA099EC /* ConnectionAnchorPicker.swift */,
+				B49E31E5BC62422FB30BEA0F /* BatchConnectionsView.swift */,
+				5A27C459A5734C1E877A026C /* ContactOrganizationView.swift */,
+				3CA9C6AE9AC9401696D66DB0 /* GoldfishShareImportView.swift */,
 				A079D195EFCFE4FD2B14B7DF /* ContactFormView.swift */,
 				B39C8260E0ECAC74E25B14DE /* ContactListView.swift */,
 				8CBBD93FA8F2D699FAB66621 /* GoldfishGraphScene.swift */,
@@ -439,6 +484,9 @@
 				79A1D931FC6F54815AB53AF8 /* VCardTextCodecTests.swift in Sources */,
 				1020599106E5615103D5C8BC /* VCardParserTests.swift in Sources */,
 				81B010AAA874E0F5ECD23772 /* TransferIntegrityTests.swift in Sources */,
+				60801FE9C47B4C34A3ED9EAC /* ConnectionSessionTests.swift in Sources */,
+				96D0FACE5C014D64BC42548F /* ContactOrganizationTests.swift in Sources */,
+				99D1128AB1F748D9A4149AA7 /* GoldfishContactBundleTests.swift in Sources */,
 				3118EBCFDEA3436B0AA76577 /* StoreRecoveryTests.swift in Sources */,
 				C9E27FA2574814EEC6CC5934 /* SecurityTests.swift in Sources */,
 				2413D7CD70E0398005F9DEE8 /* ResetTests.swift in Sources */,
@@ -477,10 +525,18 @@
 				DBE61B49C7B95B7BD9273EDD /* ContactDetailView.swift in Sources */,
 				3C32AC7FFFE8AEDDE2AFBD26 /* ContactDetailViewModel.swift in Sources */,
 				9E423FD0273861F5FE73D8B6 /* ContactExportSelectionView.swift in Sources */,
+				3333D98C82F541EC86C0CB6E /* ConnectionAnchorPicker.swift in Sources */,
+				F72B8C9B0B4E4E5FADA070B9 /* BatchConnectionsView.swift in Sources */,
+				21E1DE13D12B4DFABDB48202 /* ContactOrganizationView.swift in Sources */,
+				F4C4E062453D4AAA98C32183 /* GoldfishShareImportView.swift in Sources */,
 				6249248DF90C2E9D432A8197 /* ContactFormView.swift in Sources */,
 				D47C868EB023692B7D1792FA /* ContactFormViewModel.swift in Sources */,
 				954FB5F1ED0AE12478D76A66 /* ContactListView.swift in Sources */,
 				C876F2B08F4FCD2B482087D0 /* ContactPhotoView.swift in Sources */,
+				E5001B6019E74ED19DEC0459 /* ConnectionSessionCard.swift in Sources */,
+				9C3C41B3589B4FC78DF9B7A1 /* PondCanvasBackground.swift in Sources */,
+				F19401373A4249B095E40001 /* WelcomeSwimScene.swift in Sources */,
+				F19401373A4249B095E40003 /* WelcomeMotionPreview.swift in Sources */,
 				A6A9AA43E6726AA1525CEDFC /* ContactRowView.swift in Sources */,
 				A4D026AB7FDDC32C97590E53 /* DatabaseErrorView.swift in Sources */,
 				84A64E39C4878EB634727E64 /* DemoDataService.swift in Sources */,
@@ -511,6 +567,10 @@
 				C73B91046EB0E4140EDA8996 /* SettingsView.swift in Sources */,
 				1E1F04E4AE429CD72482FAC0 /* SettingsViewModel.swift in Sources */,
 				43E832C83A76AA8AC07FFE2A /* VCardExportService.swift in Sources */,
+				81D74A27C3BD49178BD1643E /* ConnectionSession.swift in Sources */,
+				377147CC9C834F06B9D69225 /* ContactOrganizationService.swift in Sources */,
+				84BC6CED140C4AD0BE341EEA /* GoldfishShareFile.swift in Sources */,
+				C96F36F80FB24B6C8200575B /* GoldfishContactBundle.swift in Sources */,
 				E82DD4151C3447C7DCB412B2 /* VCardExporter.swift in Sources */,
 				58F0B8A2CA118C06A0C4F4E5 /* VCardImportService.swift in Sources */,
 				D54CEDF6AED40B4A376B8051 /* VCardParser.swift in Sources */,

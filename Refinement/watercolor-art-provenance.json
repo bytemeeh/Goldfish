@@ -1,0 +1,9 @@
+{
+  "selection": "Option 2 — Soft watercolor, selected by user on 2026-10-08",
+  "hero": "Goldfish/Assets.xcassets/WatercolorHero.imageset/koi.png",
+  "heroTreatment": "Exact user-selected image, unmodified.",
+  "mark": "Goldfish/Assets.xcassets/WatercolorKoi.imageset/koi.png",
+  "generationMode": "Built-in image_gen",
+  "markPrompt": "Use case: background-extraction. Edit target is the user's selected soft watercolor koi artwork. Remove ONLY the ivory paper background, including the paper between flowing fins and under speckles, making real transparent alpha. Preserve exactly this fish's original soft pale coral watercolor paint, golden ochre washes, gentle edges, subtle pigment blooms, pose, long tail silhouette and proportions. Do not redraw, sharpen, darken, increase contrast, or increase saturation. Keep translucent watercolor paint translucent. No backdrop, paper rectangle, black plate, glow, shadow, white halo, text or new details. Entire fish uncropped with small transparent margin. This must look like the same selected watercolor when composited on warm ivory.",
+  "originalPreserved": "Goldfish/Assets.xcassets/HeroKoi.imageset/koi.png"
+}

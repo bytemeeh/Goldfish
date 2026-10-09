@@ -72,6 +72,7 @@ final class SettingsViewModel: ObservableObject {
         do {
             // Change launch flags only after the database deletion succeeds.
             try dataManager.resetAllData()
+            ConnectionSession.shared.finish()
             walkthroughManager.reset()
             demoModeManager.reset()
             let defaults = UserDefaults.standard

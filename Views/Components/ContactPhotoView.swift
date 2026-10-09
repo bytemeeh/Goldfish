@@ -36,7 +36,10 @@ struct ContactPhotoView: View {
                     .clipShape(Circle())
                     .overlay(Circle().strokeBorder(tone.opacity(0.5), lineWidth: 1))
             } else if isMe {
-                KoiCoin(size: size.rawValue)
+                Image("WatercolorKoi")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: size.rawValue, height: size.rawValue)
             } else {
                 PigmentCoin(name: name, tone: tone, size: size.rawValue)
             }
@@ -54,29 +57,6 @@ struct ContactPhotoView: View {
         .accessibilityLabel(isMe ? "You" : "\(name), \(hasValidPhoto ? "photo" : "mark")\(petSpeciesLabel.map { ", \($0)" } ?? "")")
     }
 
-}
-
-// MARK: - Koi coin (the "Me" token — the painted goldfish itself)
-private struct KoiCoin: View {
-    let size: CGFloat
-    var body: some View {
-        ZStack {
-            Circle().fill(GoldfishDS.warmBlack)
-            Circle().fill(GoldfishDS.gold.opacity(0.16))
-            Image("HeroKoi")
-                .resizable().scaledToFill()
-                .frame(width: size, height: size)
-                .scaleEffect(1.0)
-        }
-        .frame(width: size, height: size)
-        .clipShape(Circle())
-        .overlay(Circle().strokeBorder(GoldfishDS.gold.opacity(0.5), lineWidth: 0.75))
-        .background(
-            Circle().fill(GoldfishDS.gold.opacity(0.30))
-                .frame(width: size * 1.18, height: size * 1.18)
-                .blur(radius: size * 0.14)
-        )
-    }
 }
 
 // MARK: - Matte coin (a contact — solid pond tone with crisp initials)

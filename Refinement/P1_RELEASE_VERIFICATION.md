@@ -1,6 +1,6 @@
 # Goldfish P0/P1 integration verification
 
-27 September 2026. Goldfish only; Lines was not modified.
+27 September 2026. Goldfish only; Lines was not modified. This is a historical integration snapshot; current signing, build, test, and endpoint evidence is recorded in `TESTFLIGHT_READINESS.md` (9 October 2026).
 
 ## Implemented
 

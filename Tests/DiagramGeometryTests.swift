@@ -72,7 +72,71 @@ final class DiagramGeometryTests: XCTestCase {
         let points = ids.compactMap { composition.slots[$0] }
         for (index, point) in points.enumerated() {
             for other in points.dropFirst(index + 1) {
-                XCTAssertGreaterThanOrEqual(hypot(point.x - other.x, point.y - other.y), 219.9)
+                XCTAssertGreaterThanOrEqual(hypot(point.x - other.x, point.y - other.y), 299.9)
+            }
+        }
+    }
+
+    func testThreeToFivePondMapsUseBalancedCompactOrbits() {
+        for pondCount in 3...5 {
+            // The 50-contact fixture's largest three ponds plus an expanded
+            // Daycare branch exercise the uneven sizes seen in actual maps.
+            let groups = (0..<pondCount).map { index in
+                let members = (0..<([7, 4, 39, 4, 3][index])).map { _ in UUID() }
+                let names = ["Family", "Friends", "Community Choir", "Expanded-Daycare", "Book Club"]
+                return DiagramGeometry.Group(id: names[index], members: members)
+            }
+            let composition = DiagramGeometry.radial(groups)
+            let basins = groups.compactMap { composition.basins[$0.id] }
+            let mean = basins.reduce(DiagramGeometry.Point.zero) {
+                DiagramGeometry.Point(x: $0.x + $1.center.x, y: $0.y + $1.center.y)
+            }
+            XCTAssertEqual(mean.x / Double(pondCount), 0, accuracy: 0.000001)
+            XCTAssertEqual(mean.y / Double(pondCount), 0, accuracy: 0.000001)
+
+            XCTAssertEqual(basins[0].center.x, 0, accuracy: 0.000001,
+                           "A small map should use its center for a real pond")
+            XCTAssertEqual(basins[0].center.y, 0, accuracy: 0.000001,
+                           "A small map should use its center for a real pond")
+            let outerRadii = basins.dropFirst().map { hypot($0.center.x, $0.center.y) }
+            for radius in outerRadii.dropFirst() {
+                XCTAssertEqual(radius, outerRadii[0], accuracy: 0.000001,
+                               "Outer ponds should share a balanced orbit around the center pond")
+            }
+            for (index, basin) in basins.enumerated() {
+                for other in basins.dropFirst(index + 1) {
+                    XCTAssertGreaterThanOrEqual(
+                        hypot(basin.center.x - other.center.x, basin.center.y - other.center.y),
+                        (basin.radius + other.radius) * 1.08 + 240,
+                        "Unequal ponds need enough room for their contact labels and titles"
+                    )
+                }
+            }
+        }
+    }
+
+    func testTwentyThreeContactSampleCompositionUsesItsWholePopulation() {
+        let sizes = [5, 7, 3, 3, 4, 1] // Family, Friends, Professional, Book Club, Daycare, unassigned
+        let groups = sizes.enumerated().map { index, count in
+            DiagramGeometry.Group(id: "sample-\(index)", members: (0..<count).map { _ in UUID() })
+        }
+        let composition = DiagramGeometry.radial(groups)
+
+        XCTAssertEqual(composition.slots.count, 23)
+        XCTAssertEqual(composition.basins.count, sizes.count)
+        let basins = groups.compactMap { composition.basins[$0.id] }
+        let center = basins.reduce(DiagramGeometry.Point.zero) {
+            DiagramGeometry.Point(x: $0.x + $1.center.x, y: $0.y + $1.center.y)
+        }
+        XCTAssertEqual(center.x / Double(basins.count), 0, accuracy: 0.000001)
+        XCTAssertEqual(center.y / Double(basins.count), 0, accuracy: 0.000001)
+        for (index, basin) in basins.enumerated() {
+            for other in basins.dropFirst(index + 1) {
+                XCTAssertGreaterThanOrEqual(
+                    hypot(basin.center.x - other.center.x, basin.center.y - other.center.y),
+                    (basin.radius + other.radius) * 1.08 + 240,
+                    "All six sample ponds need a separate title and identity area"
+                )
             }
         }
     }

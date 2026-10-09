@@ -42,11 +42,22 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SWIFT_EMIT_LOC_STRINGS: true
         ENABLE_PREVIEWS: true
+      configs:
+        Debug:
+          DEVELOPMENT_TEAM: VL6L6N34D5
+          CODE_SIGN_STYLE: Automatic
+        Release:
+          DEVELOPMENT_TEAM: VL6L6N34D5
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER: Goldfish App Store 2026
     entitlements:
       path: Goldfish/Goldfish.entitlements
     info:
       path: Goldfish/Info.plist
       properties:
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "3"
         FeedbackSupportEmail: "goldfish.pond.app@gmail.com"
         GoldfishSupportURL: "https://goldfish-pond-support.bwjhhk9fbp.chatgpt.site/"
         GoldfishPrivacyPolicyURL: "https://goldfish-pond-support.bwjhhk9fbp.chatgpt.site/privacy"
@@ -55,6 +66,19 @@ targets:
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UILaunchScreen: {}
         CFBundleDisplayName: Goldfish
+        LSSupportsOpeningDocumentsInPlace: true
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Goldfish Contacts
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Owner
+            LSItemContentTypes: [app.pond.goldfish.contact-bundle]
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: app.pond.goldfish.contact-bundle
+            UTTypeDescription: Goldfish Contacts
+            UTTypeConformsTo: [public.json]
+            UTTypeTagSpecification:
+              public.filename-extension: [goldfish]
+              public.mime-type: application/vnd.goldfish.contacts+json
     dependencies: []
     scheme:
       testTargets:

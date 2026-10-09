@@ -286,7 +286,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         // the scene matches the current light/dark appearance (SKScene colors do not
         // auto-adapt). Re-resolved in traitCollectionDidChange below.
         GraphInk.traitForResolution = view.traitCollection
-        backgroundColor = GraphInk.background
+        backgroundColor = .clear
         anchorPoint = CGPoint(x: 0.5, y: 0.5)
 
         // SKScene colors don't auto-adapt to light/dark, so observe the hosting view's
@@ -328,7 +328,7 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
 
     /// Re-applies resolved system colors to every cached node after a light/dark switch.
     private func reskinForCurrentTrait() {
-        backgroundColor = GraphInk.background
+        backgroundColor = .clear
 
         updateNodesAndEdges(levels: graphLevelsCache)
         // Edges.
@@ -849,6 +849,9 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
     private func arrangeNameLabels() {
         let visible = personNodes.values.filter { !$0.isHidden && $0.wantsNameLabel }
             .sorted { a, b in a.isMe != b.isMe ? a.isMe : a.personID.uuidString < b.personID.uuidString }
+        // Keep names at the standard screen size while collision checks use
+        // their true counter-scaled frames.
+        for node in visible { node.setNameScale(max(1, 0.85 / max(currentZoom, 0.001))) }
         for node in visible { node.setNameCollisionHidden(false) }
         let canUseDisclosureShortNames = disclosureSnapshot != nil && visibleIdentityCount <= 8
         let coinBounds = Dictionary(uniqueKeysWithValues: personNodes.values.compactMap { node -> (UUID, CGRect)? in
@@ -872,19 +875,28 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
         for node in visible {
             let point = presentedPosition(for: node.personID)
             var placed = false
-            // Keep the relationship sublabel attached to the identity block;
-            // side placements leave the role stranded under the medallion.
-            let placements = node.contextRoleText == nil ? Array(0..<4) : [0]
-            for placement in placements {
-                node.placeName(placement, zoom: currentZoom)
-                let bounds = node.nameBounds.offsetBy(dx: point.x, dy: point.y).insetBy(dx: -3 / max(currentZoom, 0.001), dy: -2 / max(currentZoom, 0.001))
-                if !occupied.contains(where: { $0.intersects(bounds) }) &&
-                    !coinBounds.contains(where: { $0.key != node.personID && $0.value.intersects(bounds) }) {
+            // Names follow one visual rule throughout the map: centered below
+            // the contact. When a heading crowds the standard gap, step the
+            // centered label farther down before considering a shorter identity.
+            // This keeps a consistent under-node rule without hiding names or
+            // scattering them sideways.
+            func placeBelowCoin(maxScreenOffset: CGFloat = 0) -> Bool {
+                let zoom = max(currentZoom, 0.001)
+                let steps = Int(maxScreenOffset / 8)
+                for step in 0...steps {
+                    node.placeName(zoom: zoom, extraBelow: CGFloat(step * 8) / zoom)
+                    let bounds = node.nameBounds.offsetBy(dx: point.x, dy: point.y)
+                        .insetBy(dx: -3 / zoom, dy: -2 / zoom)
+                    guard !occupied.contains(where: { $0.intersects(bounds) }),
+                          !coinBounds.contains(where: { $0.key != node.personID && $0.value.intersects(bounds) }) else {
+                        continue
+                    }
                     occupied.append(bounds)
-                    placed = true
-                    break
+                    return true
                 }
+                return false
             }
+            placed = placeBelowCoin(maxScreenOffset: 8)
             if !placed && canUseDisclosureShortNames && !node.isMe &&
                 !node.isSelected {
                 // Keep small disclosed branches readable in the canvas. The
@@ -892,27 +904,10 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
                 // full saved name.
                 node.setDisclosureIdentityExpanded(false)
                 node.showFull()
-                // Free the identity to use a side placement when the attached
-                // secondary annotation would prevent its name from fitting.
+                // Keep the identity block attached beneath the contact when a
+                // secondary annotation would prevent the full name from fitting.
                 node.setContextRole(nil, symbol: nil)
-                for placement in 0..<4 {
-                    node.placeName(placement, zoom: currentZoom)
-                    let bounds = node.nameBounds.offsetBy(dx: point.x, dy: point.y)
-                        .insetBy(dx: -3 / max(currentZoom, 0.001), dy: -2 / max(currentZoom, 0.001))
-                    if !occupied.contains(where: { $0.intersects(bounds) }) &&
-                        !coinBounds.contains(where: { $0.key != node.personID && $0.value.intersects(bounds) }) {
-                        occupied.append(bounds)
-                        placed = true
-                        break
-                    }
-                }
-                if !placed {
-                    // A short identity is preferable to silently removing a
-                    // disclosed contact when every editorial slot is busy.
-                    node.placeName(0, zoom: currentZoom)
-                    occupied.append(node.nameBounds.offsetBy(dx: point.x, dy: point.y))
-                    placed = true
-                }
+                placed = placeBelowCoin(maxScreenOffset: 8)
             }
             if !placed && !node.isMe && !node.isSelected { node.setNameCollisionHidden(true) }
         }
@@ -2198,7 +2193,11 @@ final class GoldfishGraphScene: SKScene, GraphSceneDelegate {
 
         let zoom = max(currentZoom, 0.001)
         let horizontalPadding = min(170, 40 / zoom)
-        let topPadding = min(260, 78 / zoom)
+        let titleHeight = pondLabelText(for: name).size().height / zoom
+        let titleGap = min(60, 12 / zoom)
+        let nodeTopReach = 32 * max(1, 0.58 / zoom)
+        let reservedTitleBand = titleHeight + titleGap + nodeTopReach + 8 / zoom
+        let topPadding = max(min(420, 78 / zoom), reservedTitleBand)
         let bottomPadding = min(260, 62 / zoom)
         let minX = points.map(\.x).min() ?? geometry.discCenter.x
         let maxX = points.map(\.x).max() ?? geometry.discCenter.x
@@ -3108,36 +3107,47 @@ final class PersonNode: SKNode {
     func reskinForCurrentTrait() {
         coin.removeAllChildren()
         let tone = isMe ? GraphInk.gold : cachedGroupColor.resolvedColor(with: GraphInk.traitForResolution)
-        let crop = SKCropNode()
-        let mask = SKShapeNode(circleOfRadius: radius)
-        mask.fillColor = .white
-        mask.strokeColor = .clear
-        crop.maskNode = mask
-        let base = SKShapeNode(circleOfRadius: radius)
-        base.fillColor = tone
-        base.strokeColor = .clear
-        crop.addChild(base)
-        let image = cachedPhoto.flatMap { UIImage(data: $0) } ?? (isMe ? UIImage(named: "HeroKoi") : nil)
-        if let image {
-            let ratio = image.size.width / max(1, image.size.height)
-            let size = ratio >= 1 ? CGSize(width: radius * 2 * ratio, height: radius * 2) : CGSize(width: radius * 2, height: radius * 2 / ratio)
-            crop.addChild(SKSpriteNode(texture: SKTexture(image: image), size: size))
+        let photoImage = cachedPhoto.flatMap { UIImage(data: $0) }
+        if isMe, photoImage == nil {
+            if let image = UIImage(named: "WatercolorKoi") {
+                let diameter = radius * 2
+                let ratio = image.size.width / max(1, image.size.height)
+                let size = ratio >= 1
+                    ? CGSize(width: diameter, height: diameter / ratio)
+                    : CGSize(width: diameter * ratio, height: diameter)
+                coin.addChild(SKSpriteNode(texture: SKTexture(image: image), size: size))
+            }
         } else {
-            // One quiet matte surface keeps the initials readable and avoids
-            // competing flecks at small map sizes.
-            let initials = SKLabelNode()
-            initials.attributedText = NSAttributedString(string: Self.firstTwoInitials(cachedName), attributes: [
-                .font: GraphInk.serifFont(size: 16), .foregroundColor: GraphInk.contrastText(on: tone)
-            ])
-            initials.verticalAlignmentMode = .center
-            crop.addChild(initials)
+            let crop = SKCropNode()
+            let mask = SKShapeNode(circleOfRadius: radius)
+            mask.fillColor = .white
+            mask.strokeColor = .clear
+            crop.maskNode = mask
+            let base = SKShapeNode(circleOfRadius: radius)
+            base.fillColor = tone
+            base.strokeColor = .clear
+            crop.addChild(base)
+            if let image = photoImage {
+                let ratio = image.size.width / max(1, image.size.height)
+                let size = ratio >= 1 ? CGSize(width: radius * 2 * ratio, height: radius * 2) : CGSize(width: radius * 2, height: radius * 2 / ratio)
+                crop.addChild(SKSpriteNode(texture: SKTexture(image: image), size: size))
+            } else {
+                // One quiet matte surface keeps the initials readable and avoids
+                // competing flecks at small map sizes.
+                let initials = SKLabelNode()
+                initials.attributedText = NSAttributedString(string: Self.firstTwoInitials(cachedName), attributes: [
+                    .font: GraphInk.serifFont(size: 16), .foregroundColor: GraphInk.contrastText(on: tone)
+                ])
+                initials.verticalAlignmentMode = .center
+                crop.addChild(initials)
+            }
+            coin.addChild(crop)
+            let rim = SKShapeNode(circleOfRadius: radius)
+            rim.strokeColor = tone.withAlphaComponent(0.72)
+            rim.fillColor = .clear
+            rim.lineWidth = 1
+            coin.addChild(rim)
         }
-        coin.addChild(crop)
-        let rim = SKShapeNode(circleOfRadius: radius)
-        rim.strokeColor = isMe ? GraphInk.gold : tone.withAlphaComponent(0.72)
-        rim.fillColor = .clear
-        rim.lineWidth = 1
-        coin.addChild(rim)
         let identity = disclosureIdentityExpanded ? fittedName(maxWidth: 132) : Self.firstName(cachedName)
         gfSetLabel(nameLabel, text: identity, size: 13, weight: .medium, color: GraphInk.label)
         ring.strokeColor = GraphInk.indigo
@@ -3292,28 +3302,14 @@ final class PersonNode: SKNode {
         return bounds ?? .zero
     }
     var nameBounds: CGRect { nameLabel.calculateAccumulatedFrame() }
-    func placeName(_ placement: Int, zoom: CGFloat) {
+    func placeName(zoom: CGFloat, extraBelow: CGFloat = 0) {
         let zoom = max(zoom, 0.001)
         let reach = radius * coin.xScale + 6 / zoom
         nameLabel.horizontalAlignmentMode = .center
         nameLabel.verticalAlignmentMode = .top
-        nameLabel.position = CGPoint(x: 0, y: -reach)
-        // Relationship context is laid out immediately below the name. Keep
-        // the pair together whenever it is present, even when other names are
-        // using the normal collision-aware side placements.
-        if contextRoleText != nil { return }
-        if placement == 1 {
-            nameLabel.position.y = reach
-            nameLabel.verticalAlignmentMode = .bottom
-        } else if placement == 2 {
-            nameLabel.position = CGPoint(x: reach, y: 0)
-            nameLabel.horizontalAlignmentMode = .left
-            nameLabel.verticalAlignmentMode = .center
-        } else if placement == 3 {
-            nameLabel.position = CGPoint(x: -reach, y: 0)
-            nameLabel.horizontalAlignmentMode = .right
-            nameLabel.verticalAlignmentMode = .center
-        }
+        nameLabel.position = CGPoint(x: 0, y: -reach - max(0, extraBelow))
+        // Relationship context is laid out immediately below the name, keeping
+        // the entire identity block centered beneath the contact.
     }
     var showsIdentity: Bool { !coin.isHidden && !nameLabel.isHidden }
     var wantsNameLabel: Bool { lod == 0 }

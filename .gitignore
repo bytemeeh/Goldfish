@@ -59,5 +59,6 @@ playground.xcworkspace
 *~
 *.log
 *.png
+!Goldfish/Assets.xcassets/**/*.png
 temp_diff.patch
 test_script.swift

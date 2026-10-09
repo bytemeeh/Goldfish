@@ -294,7 +294,7 @@ final class GraphSceneLayoutTests: XCTestCase {
         let tom = try XCTUnwrap(people.first { $0.name == "Tom Miller" })
         let levels = [GraphLevel(depth: 0, circleGroups: [CircleGroup(circle: nil, contacts: people)])]
 
-        for height: CGFloat in [430, 540] {
+        for height: CGFloat in [430, 470, 540, 700] {
             let scene = GoldfishGraphScene(size: CGSize(width: 390, height: height))
             var disclosure = PondDisclosure(people: people)
             scene.didUpdateDisclosure(disclosure.snapshot)
@@ -309,7 +309,24 @@ final class GraphSceneLayoutTests: XCTestCase {
             func assertReadableIdentities(_ state: String, file: StaticString = #filePath, line: UInt = #line) {
                 let expected = disclosure.snapshot.visibleIDs
                 let expectedOnMap = expected.subtracting(people.filter(\.isMe).map(\.id))
-                XCTAssertEqual(scene.debugFullIdentityIDs, expectedOnMap, "Every visible contact needs an identity in \(state)", file: file, line: line)
+                let missingIdentityNames = people.filter {
+                    expectedOnMap.contains($0.id) && !scene.debugFullIdentityIDs.contains($0.id)
+                }.map(\.name)
+                XCTAssertEqual(scene.debugFullIdentityIDs, expectedOnMap,
+                               "Every visible contact needs an identity in \(state); missing: \(missingIdentityNames), zoom: \(scene.debugCameraZoom)",
+                               file: file, line: line)
+                let labels = scene.debugVisibleNameLabelBounds
+                let coins = scene.debugVisibleCoinBounds
+                for id in expectedOnMap {
+                    guard let label = labels[id], let coin = coins[id] else {
+                        XCTFail("Every visible contact needs a name beneath its coin in \(state)", file: file, line: line)
+                        continue
+                    }
+                    XCTAssertEqual(label.midX, coin.midX, accuracy: 3 / max(scene.debugCameraZoom, 0.001),
+                                   "A contact name should stay centered beneath its coin", file: file, line: line)
+                    XCTAssertLessThanOrEqual(label.maxY, coin.minY + 1,
+                                             "A contact name should sit below its coin", file: file, line: line)
+                }
                 let bounds = scene.debugVisibleIdentityBounds
                 for (id, rect) in bounds {
                     for (otherID, otherRect) in bounds where id.uuidString < otherID.uuidString {
@@ -351,8 +368,11 @@ final class GraphSceneLayoutTests: XCTestCase {
 
         let model = GraphViewModel(dataManager: manager)
         model.isDemoMode = true
-        let scene = GoldfishGraphScene(size: CGSize(width: 390, height: 700))
-        let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 700))
+        // Match the compact map viewport left after the app chrome and inspector
+        // take their space. Expanded branches must still retain readable names
+        // when the user returns to the overview.
+        let scene = GoldfishGraphScene(size: CGSize(width: 390, height: 490))
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 490))
         view.presentScene(scene)
         defer { view.presentScene(nil) }
         scene.graphDelegate = model
@@ -365,6 +385,7 @@ final class GraphSceneLayoutTests: XCTestCase {
         XCTAssertTrue(model.disclosureSnapshot.expandedIDs.contains(adriana.id))
         XCTAssertTrue(model.disclosureSnapshot.expandedIDs.contains(riley.id))
         XCTAssertTrue(model.disclosureSnapshot.visibleIDs.contains(selma.id))
+        assertVisibleNamesAvoidOtherCoins(in: scene)
 
         let positionsBeforeHome = scene.debugNodePositions
         model.showMyPonds()
@@ -391,6 +412,23 @@ final class GraphSceneLayoutTests: XCTestCase {
             scene.didUpdateZoom(scene.debugCameraZoom * zoomFactor)
             scene.didUpdateZoom(scene.debugCameraZoom / zoomFactor)
             assertVisibleNamesAvoidOtherCoins(in: scene)
+        }
+
+        let visibleLabels = scene.debugVisibleNameLabelBounds
+        let visibleCoins = scene.debugVisibleCoinBounds
+        for (id, label) in visibleLabels {
+            guard let coin = visibleCoins[id] else {
+                XCTFail("Every shown contact name needs its coin after returning home")
+                continue
+            }
+            XCTAssertEqual(label.midX, coin.midX, accuracy: 3 / max(scene.debugCameraZoom, 0.001),
+                           "Every shown expanded name stays centered beneath its coin")
+            XCTAssertLessThanOrEqual(label.maxY, coin.minY + 1,
+                                     "Every shown expanded name stays below its coin")
+            for (otherID, otherLabel) in visibleLabels where id.uuidString < otherID.uuidString {
+                XCTAssertFalse(label.intersects(otherLabel),
+                               "Shown expanded names must remain separate")
+            }
         }
 
         let familyIDs = Set(people.filter { $0.primaryCircle?.id == family.id }.map(\.id))
@@ -554,6 +592,34 @@ final class GraphSceneLayoutTests: XCTestCase {
         XCTAssertEqual(scene.debugNodePositions, positions)
         XCTAssertEqual(scene.debugCameraPosition, camera.0)
         XCTAssertEqual(scene.debugCameraZoom, camera.1)
+    }
+
+    func testContactNamesStayCenteredUnderTheirCoins() throws {
+        let (manager, container) = try makeTestManager()
+        defer { withExtendedLifetime(container) {} }
+        let me = try manager.createPerson(name: "You", isMe: true)
+        let circle = try manager.createCircle(name: "Family")
+        var people = [me]
+        for name in ["Ava", "Ben", "Cleo", "Drew", "Eli"] {
+            let person = try manager.createPerson(name: name)
+            try manager.addToCircle(person, circle: circle)
+            people.append(person)
+        }
+        let scene = GoldfishGraphScene(size: CGSize(width: 390, height: 700))
+        scene.didUpdateGroups([circle])
+        _ = scene.debugLayout([GraphLevel(depth: 0, circleGroups: [CircleGroup(circle: nil, contacts: people)])])
+        scene.fitToGraph()
+
+        let coins = scene.debugVisibleCoinBounds
+        let labels = scene.debugVisibleNameLabelBounds
+        for person in people where !person.isMe {
+            let coin = try XCTUnwrap(coins[person.id], "Each visible contact needs a coin")
+            let label = try XCTUnwrap(labels[person.id], "Each visible contact needs a name")
+            XCTAssertEqual(label.midX, coin.midX, accuracy: 3 / max(scene.debugCameraZoom, 0.001),
+                           "\(person.name)'s name should be centered under the coin")
+            XCTAssertLessThanOrEqual(label.maxY, coin.minY + 1,
+                                     "\(person.name)'s name should sit below the coin")
+        }
     }
 
     func testHiddenPopulationDoesNotCompressTheInitialDirectLayout() throws {

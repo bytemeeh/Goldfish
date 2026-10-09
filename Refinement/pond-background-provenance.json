@@ -1,0 +1,7 @@
+{
+  "sourceSelection": "codex-clipboard-385d0e17-efad-4b76-899a-b2f6ffd54151.png",
+  "asset": "Goldfish/Assets.xcassets/PondWatercolor.imageset/background.png",
+  "method": "Built-in image generation, reference-image edit",
+  "prompt": "Precise object edit. Extract the quiet background painting from this approved app mockup into a production background-only portrait image. Remove ALL interface: every text, header, icons, tabs, all oval pond outlines and fills, every contact dot and label, and black sidebars. Reconstruct the underlying continuous ivory watercolor paper and painting where interface was. Preserve this EXACT extremely faint watercolor goldfish pose, coral-pink and pale gold pigments, with delicate powder blue watery wash around the outside and creamy quiet center. Fish head at upper right and long flowing tails toward lower left/bottom. Preserve the very low contrast and whisper faint opacity of this approved image; do NOT increase saturation, sharpen, darken, or redesign the fish. Extend painting naturally over area formerly covered by top controls so artwork fills portrait canvas. No text, no circles, no UI, no frame, no new elements. This is stationary decorative app background, unobtrusive and calm.",
+  "runtime": "Stationary clipped map-only layer; opacity 0.55 in light appearance. Dark appearance uses transparent WatercolorKoi at 0.055. Decorative images are hidden from accessibility; Increase Contrast or Reduce Transparency removes the decoration."
+}

@@ -48,7 +48,7 @@ enum WalkthroughStep: Int, CaseIterable, Identifiable {
     var description: String {
         switch self {
         case .welcome:
-            return "Learn Goldfish in three small actions: meet a person, add a connection, and focus a pond."
+            return "Open a person’s story, connect two people, then explore a pond."
         case .search:
             return "Open a person to see the details that make them memorable."
         case .profile:

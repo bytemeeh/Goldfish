@@ -33,6 +33,11 @@ private struct HomeContent: View {
     @State private var showSettings = false
     @State private var startSettingsWithImport = false
     @State private var showAddContact = false
+    @State private var showOrganization = false
+    @State private var showConnectionPicker = false
+    @State private var connectionAnchor: Person?
+    @State private var pendingConnectionAnchor: Person?
+    @ObservedObject private var connectionSession = ConnectionSession.shared
     @State private var showSearchBar = false
     @State private var selectedSearchPerson: Person?
     @State private var searchToRestoreAfterRipple: String?
@@ -117,6 +122,33 @@ private struct HomeContent: View {
                 }
                 .presentationCornerRadius(GoldfishDS.Radius.sheet)
             }
+            .sheet(isPresented: $showOrganization) {
+                NavigationStack {
+                    ContactOrganizationView(dataManager: dataManager, isDemoMode: viewModel.isDemoMode)
+                }
+            }
+            .sheet(isPresented: $showConnectionPicker, onDismiss: {
+                if let person = pendingConnectionAnchor {
+                    viewModel.viewMode = .graph
+                    graphViewModel.activatePondContact(id: person.id)
+                }
+                connectionAnchor = pendingConnectionAnchor
+                pendingConnectionAnchor = nil
+            }) {
+                NavigationStack {
+                    ConnectionAnchorPicker(dataManager: dataManager, isDemoMode: viewModel.isDemoMode) { person in
+                        pendingConnectionAnchor = person
+                    }
+                }
+            }
+            .sheet(item: $connectionAnchor) { person in
+                BatchConnectionsView(person: person, dataManager: dataManager) { _ in
+                    viewModel.loadData()
+                    graphViewModel.refreshGraph()
+                    viewModel.viewMode = .graph
+                    graphViewModel.activatePondContact(id: person.id)
+                }
+            }
             .sheet(isPresented: $showAddContact, onDismiss: {
                 viewModel.loadData()
                 graphViewModel.refreshGraph()
@@ -194,7 +226,15 @@ private struct HomeContent: View {
             .walkthroughOverlay(isPresented: isWalkthroughOverlayPresented)
             // Any contact edit (e.g. ContactDetailView's Edit sheet) posts this so the
             // list and graph re-fetch and rebuild stale node visuals (name, line tone).
-            .onReceive(NotificationCenter.default.publisher(for: .goldfishDataDidChange)) { _ in
+            .onReceive(NotificationCenter.default.publisher(for: .goldfishDataDidChange)) { notification in
+                connectionSession.reconcile(container: dataManager.context.container)
+                if notification.userInfo?["goldfishSharedImport"] as? Bool == true {
+                    // Newly shared people may have no path to Me yet. Show them
+                    // immediately rather than hiding them behind collapsed ponds.
+                    viewModel.searchText = ""
+                    viewModel.selectedScopeID = nil
+                    viewModel.viewMode = .list
+                }
                 viewModel.loadData()
                 graphViewModel.refreshGraph()
             }
@@ -358,6 +398,16 @@ private struct HomeContent: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
+                if connectionSession.isActive && connectionSession.isDemoMode == viewModel.isDemoMode && !walkthroughManager.isActive {
+                    ConnectionSessionCard {
+                        if let id = connectionSession.anchorID {
+                            viewModel.viewMode = .graph
+                            graphViewModel.activatePondContact(id: id)
+                        }
+                    }
+                    .padding(.horizontal, GoldfishDS.Space.pageMargin)
+                    .background(GoldfishDS.warmBlack)
+                }
                 ZStack(alignment: .top) {
                     // Warm-black base behind graph / list / every empty state —
                     // never the system default pure black.
@@ -686,19 +736,28 @@ private struct HomeContent: View {
     }
 
     private var sampleModeBar: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: GoldfishDS.Space.sm) {
-                Label("Exploring sample contacts", systemImage: "sparkles")
-                    .font(.gfMeta)
-                    .foregroundStyle(GoldfishDS.ink(.secondary))
-                Spacer(minLength: GoldfishDS.Space.sm)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                // The heading already identifies sample mode. Keep its exit
+                // action reachable without repeating a full screen of context.
                 exitSampleButton
-            }
-            VStack(alignment: .leading, spacing: GoldfishDS.Space.xs) {
-                Label("Exploring sample contacts", systemImage: "sparkles")
-                    .font(.gfMeta)
-                    .foregroundStyle(GoldfishDS.ink(.secondary))
-                exitSampleButton
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: GoldfishDS.Space.sm) {
+                        Label("Exploring sample contacts", systemImage: "sparkles")
+                            .font(.gfMeta)
+                            .foregroundStyle(GoldfishDS.ink(.secondary))
+                        Spacer(minLength: GoldfishDS.Space.sm)
+                        exitSampleButton
+                    }
+                    VStack(alignment: .leading, spacing: GoldfishDS.Space.xs) {
+                        Label("Exploring sample contacts", systemImage: "sparkles")
+                            .font(.gfMeta)
+                            .foregroundStyle(GoldfishDS.ink(.secondary))
+                        exitSampleButton
+                    }
+                }
             }
         }
         .padding(.horizontal, GoldfishDS.Space.pageMargin)
@@ -731,10 +790,22 @@ private struct HomeContent: View {
             .accessibilityLabel("Search contacts")
             .accessibilityIdentifier("searchContactsButton")
             .walkthroughAnchor(step: .search)
-            Button { showAddContact = true } label: {
+            Menu {
+                Button("Add contact", systemImage: "person.badge.plus") { showAddContact = true }
+                Button("Organize people", systemImage: "person.2.crop.square.stack") { showOrganization = true }
+                Button("Add connections", systemImage: "point.3.connected.trianglepath.dotted") { showConnectionPicker = true }
+                if !connectionSession.isActive {
+                    Button("Connect five people", systemImage: "water.waves") {
+                        connectionSession.start(isDemoMode: viewModel.isDemoMode)
+                        showConnectionPicker = true
+                    }
+                } else {
+                    Button("End connection session", systemImage: "checkmark") { connectionSession.finish() }
+                }
+            } label: {
                 Image(systemName: "plus").frame(width: 44, height: 44)
             }
-            .accessibilityLabel("Add contact")
+            .accessibilityLabel("Add and organize contacts")
             .accessibilityIdentifier("addContactButton")
             Button {
                 startSettingsWithImport = false
