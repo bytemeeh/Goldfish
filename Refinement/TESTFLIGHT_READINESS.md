@@ -2,7 +2,7 @@
 
 **Prepared:** 9 October 2026
 
-The release candidate has passed the current simulator test suite, and distribution signing is available. App Store Connect could not be checked because the Chrome session had expired and is awaiting account sign-in. No current ASC upload, review, TestFlight group, or processed-build state is claimed here. The source and signed archive declare version 1.0, build 3. The device archive and local App Store export succeeded.
+The release candidate has passed the current simulator test suite, and distribution signing is available. App Store Connect could not be checked because the Chrome session had expired and is awaiting account sign-in. Xcode confirmed upload success at 16:54 UTC on 9 October 2026 and reported the package processing. Review, TestFlight group and processing-complete states remain unverified. The source and signed archive declare version 1.0, build 3. The device archive and local App Store export succeeded.
 
 ## Verified for this release pass
 
@@ -36,8 +36,8 @@ Do not create a replacement group or invite new testers unless the current audie
 ## Remaining release work
 
 - Restore App Store Connect access, confirm existing app record, agreements, current TestFlight group, and tester count.
-- Commit and push the verified build 3 source revision.
-- Archive and local App Store export succeeded. Complete upload, confirm build processing, and resolve Apple’s export-compliance questions.
+- Build 3 source was committed and pushed: `7b63e4811671cb1c17d649e3e6a36e8cb29c2fa1`.
+- Archive, App Store export and upload succeeded. Confirm processing completion and any export-compliance questions in App Store Connect.
 - Enter or verify TestFlight metadata and current App Review contact details. Send the processed, approved build to the existing tester group.
 - Review the actual hosted support and privacy page contents after the additions in `SUPPORT_SITE_UPDATE.md` are applied.
 - For public App Store release, finish the App Privacy questionnaire, category, age rating, copyright, screenshots, localization, and store listing fields in App Store Connect. Use only screenshots of current app behavior.
