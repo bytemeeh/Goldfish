@@ -21,7 +21,9 @@
 
 ## Distribution status
 
-Uploaded successfully at 10:23 Europe/Zurich on 14 October 2026. Xcode reported Upload succeeded and EXPORT SUCCEEDED; App Store Connect visibly lists version 1.0, build 5 as Processing. Build ID: `5d76ba6c-b39f-4d3e-ac61-6539ddb9ec21`. Not yet available to testers.
+Uploaded successfully at 10:23 Europe/Zurich on 14 October 2026. Xcode reported Upload succeeded and EXPORT SUCCEEDED. Processing completed, testing notes were saved, and the build was submitted for beta review for the existing Goldfish U18 — External 50 group (one tester). App Store Connect now visibly lists version 1.0, build 5 as **Approved**, with **Notify Testers** still available. Automatic notification was unchecked; no tester notification was sent and no new testers or groups were created. Build ID: `5d76ba6c-b39f-4d3e-ac61-6539ddb9ec21`.
+
+Final TestFlight evidence: `/Users/marcelmeeh/Documents/ChatGPT/Contacts/Goldfish-Releases/1.0-5/testflight-final.jpg`. The signed-in Apple and GitHub Chrome tabs were periodically refreshed during this run and left open. Simulator remains open for the requested manual edge-swipe confirmation; shut it down after that check.
 
 Existing TestFlight app verified as Goldfish: Relationship Journal, app ID 6816847677, account Marcel Meeh / goldfish.pond.app@gmail.com. Previous latest build is 1.0 (4), Testing. App Store Connect earlier displayed an updated Developer Program License Agreement requiring Account Holder review; user asked to handle it. No agreement was accepted by the agent, and it did not block this upload. Upload is explicitly authorized by the user; the remaining acceptance matrix is still pending and is not marked complete by this beta upload.
 
