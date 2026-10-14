@@ -13,6 +13,8 @@ final class ContactFormViewModel: ObservableObject {
     let existingPerson: Person?
     let isDemoMode: Bool
     @Published var errorMessage: String?
+    @Published private(set) var pondsLoadFailed = false
+    @Published private(set) var peopleLoadFailed = false
     private var initialFormState: [String] = []
     private var initialPhotoData: Data?
     
@@ -58,7 +60,7 @@ final class ContactFormViewModel: ObservableObject {
     
     // MARK: - Validation
     var isValid: Bool {
-        !firstName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !pondsLoadFailed && !peopleLoadFailed && !firstName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     
     private var formState: [String] {
@@ -76,7 +78,7 @@ final class ContactFormViewModel: ObservableObject {
     }
 
     var pageTitle: String {
-        existingPerson == nil ? (isDemoMode ? "New Demo Contact" : "New Contact") : "Edit Contact"
+        existingPerson == nil ? (isDemoMode ? "New sample contact" : "New Contact") : "Edit Contact"
     }
 
     var relationshipTypeSelection: RelationshipType? {
@@ -161,11 +163,22 @@ final class ContactFormViewModel: ObservableObject {
         initialPhotoData = photoData
     }
     
+    func retryChoices() {
+        errorMessage = nil
+        loadCircles()
+        loadPersons()
+    }
+
     private func loadPersons() {
-        if let persons = try? dataManager.fetchAllPersons() {
+        do {
+            let persons = try dataManager.fetchAllPersons()
             // Exclude current person to prevent self-connection
             self.allPersons = persons.filter { $0.id != self.existingPerson?.id && ($0.isMe || $0.isDemo == self.isDemoMode) }
                 .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+            peopleLoadFailed = false
+        } catch {
+            peopleLoadFailed = true
+            errorMessage = "Could not load people. Your draft is still here. " + error.localizedDescription
         }
     }
     
@@ -177,9 +190,11 @@ final class ContactFormViewModel: ObservableObject {
                 try dataManager.createSystemCircles()
                 circles = try dataManager.fetchAllCircles()
             }
-            self.allCircles = circles
+            self.allCircles = circles.filter { PondAssignmentPolicy.isEligible($0, isDemoMode: isDemoMode) }
+            pondsLoadFailed = false
         } catch {
-            print("Error loading circles: \(error)")
+            pondsLoadFailed = true
+            errorMessage = "Could not load ponds. Your draft is still here. " + error.localizedDescription
         }
     }
     
@@ -211,6 +226,14 @@ final class ContactFormViewModel: ObservableObject {
         
         do {
             try dataManager.performAtomicEdit {
+                let currentPonds = try dataManager.fetchAllCircles()
+                let previousIDs = Set(existingPerson?.circleContacts.filter { !$0.manuallyExcluded }.map { $0.circle.id } ?? [])
+                for id in selectedCircleIDs.subtracting(previousIDs) {
+                    guard let pond = currentPonds.first(where: { $0.id == id }),
+                          PondAssignmentPolicy.isEligible(pond, isDemoMode: isDemoMode) else {
+                        throw ContactOrganizationError.mixedDemoScope
+                    }
+                }
                 let savedPerson: Person
                 if let person = existingPerson {
                     // Update

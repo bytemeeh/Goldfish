@@ -22,6 +22,8 @@ struct AddRelationshipView: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var isSaving = false
+    @State private var showDiscardConfirmation = false
+    private var hasDraft: Bool { selectedTarget != nil || selectedType != nil }
 
     var body: some View {
         NavigationStack {
@@ -119,7 +121,7 @@ struct AddRelationshipView: View {
                         .foregroundStyle(GoldfishDS.ink(.primary))
                 }
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") { if hasDraft { showDiscardConfirmation = true } else { dismiss() } }
                         .font(.gfBody)
                         .foregroundStyle(GoldfishDS.ink(.secondary))
                 }
@@ -139,6 +141,11 @@ struct AddRelationshipView: View {
             } message: {
                 Text(errorMessage)
             }
+            .interactiveDismissDisabled(hasDraft)
+            .confirmationDialog("Discard changes?", isPresented: $showDiscardConfirmation, titleVisibility: .visible) {
+                Button("Discard changes", role: .destructive) { dismiss() }
+                Button("Keep editing", role: .cancel) { }
+            } message: { Text("Your unsaved connections will be lost.") }
             .onAppear { loadContacts() }
             .onChange(of: walkthroughManager.currentStep) { _, step in
                 if step != .link { dismiss() }

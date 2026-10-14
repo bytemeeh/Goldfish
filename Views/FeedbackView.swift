@@ -11,6 +11,8 @@ struct FeedbackView: View {
     @Environment(\.dismiss) private var dismiss
 
     private let recipient: String?
+    private let initialKind: FeedbackKind
+    private let initialArea: String
     private let diagnostics: FeedbackDiagnostics
     /// Captured once when this form opens; later interactions cannot rewrite the
     /// preview or report being prepared in this session.
@@ -35,8 +37,16 @@ struct FeedbackView: View {
     @State private var showingShareSheet = false
     @State private var mailOutcome: MailOutcome?
     @State private var copyConfirmationVisible = false
+    @State private var showDiscardConfirmation = false
+    private var hasDraft: Bool {
+        !message.isEmpty || !steps.isEmpty || !expectedResult.isEmpty || area != initialArea
+            || kind != initialKind || !includesAppDetails || includesInteractionHistory
+            || screenshotData != nil || isLoadingScreenshot
+    }
 
     init(initialKind: FeedbackKind = .bug, context: String? = nil) {
+        self.initialKind = initialKind
+        self.initialArea = context ?? ""
         self.recipient = FeedbackConfiguration.recipient
         self.diagnostics = FeedbackDiagnostics.current()
         _interactionHistory = State(initialValue: InteractionDiagnostics.snapshot())
@@ -373,11 +383,17 @@ struct FeedbackView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Done") { dismiss() }
+                Button("Close") { if hasDraft { showDiscardConfirmation = true } else { dismiss() } }
                     .font(.gfBody)
                     .foregroundStyle(GoldfishDS.ink(.secondary))
             }
         }
+        .navigationBarBackButtonHidden(hasDraft)
+        .interactiveDismissDisabled(hasDraft)
+        .confirmationDialog("Discard report?", isPresented: $showDiscardConfirmation, titleVisibility: .visible) {
+            Button("Discard report", role: .destructive) { dismiss() }
+            Button("Keep editing", role: .cancel) { }
+        } message: { Text("This report has not been saved by Goldfish. Closing it will discard your text and image.") }
         .onChange(of: message) { _, _ in didStartEditing = true }
         .task(id: selectedPhotoItem) {
             await loadScreenshot()

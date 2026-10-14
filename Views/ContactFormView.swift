@@ -69,6 +69,13 @@ struct ContactFormView: View {
                 Text("You stay at the center and do not belong to a group.")
                     .font(.gfBody)
                     .foregroundStyle(GoldfishDS.ink(.secondary))
+            } else if viewModel.pondsLoadFailed || viewModel.peopleLoadFailed {
+                VStack(alignment: .leading) {
+                    Text("Could not load editing choices. Your draft is still here.")
+                    Button("Retry") { viewModel.retryChoices() }
+                        .frame(minHeight: 44)
+                }
+                .padding(.vertical, GoldfishDS.Space.lg)
             } else if viewModel.allCircles.isEmpty {
                 Text("No ponds yet")
                     .font(.gfBody)
@@ -154,7 +161,7 @@ struct ContactFormView: View {
                     }
 
                     if viewModel.isDemoMode && viewModel.existingPerson == nil {
-                        Text("This person will be added to the demo. Turn off Show Demo Data in Settings to add your own contacts.")
+                        Text("This person will be added to the sample. Turn off Show sample contacts in Settings to add your own contacts.")
                             .font(.gfMeta)
                             .foregroundStyle(GoldfishDS.ink(.secondary))
                             .padding(.horizontal, GoldfishDS.Space.pageMargin)

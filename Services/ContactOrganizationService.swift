@@ -114,6 +114,10 @@ final class ContactOrganizationService {
                 throw ContactOrganizationError.missingPond
             }
 
+            guard let scope = selected.first?.isDemo,
+                  PondAssignmentPolicy.isEligible(pond, isDemoMode: scope) else {
+                throw ContactOrganizationError.mixedDemoScope
+            }
             var entries: [PondAssignmentUndoReceipt.Entry] = []
             for person in selected.sorted(by: { $0.id.uuidString < $1.id.uuidString }) {
                 let before = try membershipSnapshots(for: person.id)

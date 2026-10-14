@@ -14,7 +14,6 @@ struct SettingsView: View {
     @State private var incomingGoldfishURL: IdentifiableWrapper<URL>?
     @State private var showingImportOptions = false
     @State private var showingPhonebookPicker = false
-    @State private var showingLogoutAlert = false
     @State private var showingExportPrompt = false
     @State private var exportURL: IdentifiableWrapper<URL>?
     @State private var showingImportDetails = false
@@ -23,8 +22,10 @@ struct SettingsView: View {
     @AppStorage("appearancePreference") private var appearancePreference = AppAppearance.system.rawValue
     @AppStorage("quietPondBackground") private var quietPondBackground = false
     private let startWithImport: Bool
+    private let graphViewModel: GraphViewModel?
 
-    init(startWithImport: Bool = false) {
+    init(startWithImport: Bool = false, graphViewModel: GraphViewModel? = nil) {
+        self.graphViewModel = graphViewModel
         self.startWithImport = startWithImport
         // Placeholder — will be replaced in onAppear; needed because
         // @EnvironmentObject isn't available in init.
@@ -69,9 +70,11 @@ struct SettingsView: View {
                     .accessibilityLabel("Edit your profile, \(me.name)")
                     .accessibilityIdentifier("editProfileButton")
                 } else {
-                    Text("My Card not found")
-                        .font(.gfBody)
-                        .foregroundStyle(GoldfishDS.ink(.tertiary))
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Your profile is unavailable").font(.gfBody)
+                        Button("Retry") { viewModel.loadMePerson() }
+                            .frame(minHeight: 44)
+                    }
                 }
             } header: {
                 SettingsSectionHeader("Profile")
@@ -95,6 +98,15 @@ struct SettingsView: View {
                 .overlay(alignment: .bottom) {
                     Rectangle().fill(GoldfishDS.ink(.hairline)).frame(height: 0.5).padding(.leading, 44)
                 }
+
+                if let graphViewModel {
+                    SettingsActionRow(icon: "arrow.counterclockwise", label: "Restore automatic layout") {
+                        graphViewModel.restoreAutomaticPondLayout()
+                    }
+                    SettingsActionRow(icon: "plus.magnifyingglass", label: "Zoom in") { graphViewModel.zoomIn() }
+                    SettingsActionRow(icon: "minus.magnifyingglass", label: "Zoom out") { graphViewModel.zoomOut() }
+                }
+                SettingsNavRow(icon: "questionmark.circle", label: "Using the map") { MapHelpView() }
 
                 SettingsActionRow(icon: "hand.point.up.left.fill", label: "Replay Feature Tour") {
                     dismiss()
@@ -134,7 +146,7 @@ struct SettingsView: View {
             } header: {
                 SettingsSectionHeader("Appearance")
             } footer: {
-                Text("Choose light or dark appearance, or follow your device setting. Quiet background lowers the watercolor while keeping it still.")
+                Text("Choose light or dark appearance, or follow your device setting. Quiet pond background removes the watercolor goldfish.")
                     .font(.gfMeta)
                     .foregroundStyle(GoldfishDS.ink(.tertiary))
                     .padding(.horizontal, GoldfishDS.Space.pageMargin)
@@ -189,18 +201,18 @@ struct SettingsView: View {
                                      trailing: GoldfishDS.Space.pageMargin))
             .listRowSeparator(.hidden)
 
-            // MARK: - Demo Mode
+            // MARK: - Sample contacts
             Section {
                 HStack(spacing: GoldfishDS.Space.lg) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 15))
                         .frame(width: 20)
                         .foregroundStyle(GoldfishDS.ink(.tertiary))
-                    Text("Show Demo Data")
+                    Text("Show sample contacts")
                         .font(.gfBody)
                         .foregroundStyle(GoldfishDS.ink(.primary))
                     Spacer(minLength: 0)
-                    Toggle("Show Demo Data", isOn: Binding(
+                    Toggle("Show sample contacts", isOn: Binding(
                         get: { demoModeManager.isDemoModeActive },
                         set: { newValue in
                             if newValue {
@@ -218,16 +230,16 @@ struct SettingsView: View {
                 .padding(.vertical, GoldfishDS.Space.sm)
 
                 if walkthroughManager.isActive {
-                    Text("Demo data is on during the feature tour.")
+                    Text("Sample contacts are on during the feature tour.")
                         .font(.gfMeta)
                         .foregroundStyle(GoldfishDS.ink(.tertiary))
                         .padding(.leading, 36)
                         .padding(.bottom, GoldfishDS.Space.xs)
                 }
             } header: {
-                SettingsSectionHeader("Demo Mode")
+                SettingsSectionHeader("Sample contacts")
             } footer: {
-                Text("Demo mode shows sample contacts and connections to showcase all features. Your real data is safely hidden while demo mode is active.")
+                Text("Sample mode shows sample contacts and connections to showcase all features. Your real data is safely hidden while sample mode is active.")
                     .font(.gfMeta)
                     .foregroundStyle(GoldfishDS.ink(.tertiary))
                     .padding(.horizontal, GoldfishDS.Space.pageMargin)
@@ -340,11 +352,7 @@ struct SettingsView: View {
             // MARK: - Logout / Reset
             Section {
                 Button {
-                    if viewModel.hasManualContacts {
-                        showingExportPrompt = true
-                    } else {
-                        showingLogoutAlert = true
-                    }
+                    showingExportPrompt = true
                 } label: {
                     Text("Reset App")
                         .font(.gfLabel)
@@ -369,7 +377,7 @@ struct SettingsView: View {
                     .listRowInsets(EdgeInsets())
                     .textCase(nil)
             } footer: {
-                Text("Resetting permanently deletes all your local data and returns the app to its initial state.")
+                Text("Reset deletes all local contacts, connections and ponds, including samples and your profile. Appearance preferences are kept.")
                     .font(.gfMeta)
                     .foregroundStyle(GoldfishDS.ink(.tertiary))
                     .multilineTextAlignment(.center)
@@ -476,19 +484,8 @@ struct SettingsView: View {
             .presentationDetents([.medium, .large])
             .presentationCornerRadius(GoldfishDS.Radius.sheet)
         }
-        .alert("Reset Experience", isPresented: $showingLogoutAlert) {
-            Button("Delete All Local Data", role: .destructive) {
-                if viewModel.performReset(
-                    walkthroughManager: walkthroughManager,
-                    demoModeManager: demoModeManager
-                ) { dismiss() }
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("This will permanently delete ALL your contacts and connections. This action cannot be undone.")
-        }
-        .alert("Export Contacts?", isPresented: $showingExportPrompt) {
-            Button("Export First") {
+        .alert("Reset app?", isPresented: $showingExportPrompt) {
+            Button("Export contact copy") {
                 if let url = viewModel.generateExportURL() {
                     self.exportURL = IdentifiableWrapper(url)
                 }
@@ -501,7 +498,7 @@ struct SettingsView: View {
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("You have saved contacts. Export a copy first, then return here to reset. Delete All Local Data permanently deletes your contacts and connections.")
+            Text("Export a copy of your personal contacts before deleting your data. The vCard excludes sample contacts and is not a complete backup: empty ponds, saved layouts and some location data are omitted. Exporting or cancelling does not reset the app. Delete All Local Data removes personal and sample data, including your profile; appearance preferences are kept.")
         }
         .sheet(item: $exportURL) { wrapper in
             ShareSheet(activityItems: [wrapper.value])

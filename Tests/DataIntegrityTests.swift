@@ -713,7 +713,7 @@ extension DataIntegrityTests {
         XCTAssertEqual(tour.suggestedConnectionName, "Me")
         XCTAssertTrue(tour.currentActionPrompt == nil)
         tour.currentStep = .profile
-        XCTAssertEqual(tour.currentActionPrompt, "Tap Adriana to reveal her connections.")
+        XCTAssertEqual(tour.currentActionPrompt, "Tap Adriana, then choose Connections.")
         tour.currentStep = .link
         XCTAssertTrue(tour.currentActionPrompt?.contains("Priya Patel") == true)
 

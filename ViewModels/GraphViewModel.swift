@@ -33,6 +33,7 @@ protocol GraphSceneDelegate: AnyObject {
     func locateContacts(_ ids: Set<UUID>)
     func activateContactChoice(_ id: UUID)
     func didRestoreAutomaticPondLayout()
+    func restoreBrowsingCamera(position: CGPoint, zoom: CGFloat)
 }
 
 extension GraphSceneDelegate {
@@ -42,6 +43,10 @@ extension GraphSceneDelegate {
     func locateContacts(_ ids: Set<UUID>) {}
     func activateContactChoice(_ id: UUID) {}
     func didRestoreAutomaticPondLayout() {}
+    func restoreBrowsingCamera(position: CGPoint, zoom: CGFloat) {
+        didUpdateCameraPosition(position)
+        didUpdateZoom(zoom)
+    }
 }
 
 /// UserDefaults-backed offsets keep pond placement independent of the SwiftData
@@ -192,9 +197,85 @@ final class GraphViewModel: ObservableObject {
         }
     }
     
+    private struct ExplorationView {
+        var disclosure: PondDisclosure
+        let camera: CGPoint
+        let zoom: CGFloat
+        let explorerID: UUID?
+    }
+    private var explorationOrigin: ExplorationView?
+    private var explorationHistory: [ExplorationView] = []
+    private var explorerID: UUID?
+    @Published private(set) var explorationDepth = 0
+    @Published var hasExternalPondOrigin = false
+    @Published var overviewDisplaced = false
+    @Published var pendingPondMenuID: String?
+    @Published var requestedPondListID: String?
+
+    func recenterOverview() {
+        sceneDelegate?.fitToGraph()
+        overviewDisplaced = false
+    }
+    @Published private(set) var externalPondReturnTick = 0
+
+    private func captureExplorationOrigin() {
+        guard explorationOrigin == nil, let disclosure = pondDisclosure else { return }
+        explorationOrigin = ExplorationView(disclosure: disclosure, camera: cameraPosition, zoom: zoomLevel, explorerID: nil)
+    }
+
+    private func resetExplorationHistory() {
+        explorationOrigin = nil
+        explorationHistory.removeAll()
+        explorerID = nil
+        explorationDepth = 0
+        hasExternalPondOrigin = false
+    }
+
+    private func restoreExploration(_ saved: ExplorationView) {
+        var disclosure = saved.disclosure
+        disclosure.reload(people: graphLevels?.flatMap(\.allContacts) ?? [])
+        pondDisclosure = disclosure
+        explorerID = saved.explorerID
+        latestPondReveal = nil
+        publishDisclosure()
+        isUpdatingFromScene = true
+        cameraPosition = saved.camera
+        zoomLevel = saved.zoom
+        isUpdatingFromScene = false
+        sceneDelegate?.restoreBrowsingCamera(position: saved.camera, zoom: saved.zoom)
+    }
+
+    var pondReturnTitle: String {
+        !pondDisclosureSnapshot.pathHighlightIDs.isEmpty || !explorationHistory.isEmpty || hasExternalPondOrigin ? "Back" : "All ponds"
+    }
+
+    func returnFromPondExploration() {
+        if !pondDisclosureSnapshot.pathHighlightIDs.isEmpty {
+            clearConnectionPath()
+        } else if let previous = explorationHistory.popLast() {
+            restoreExploration(previous)
+            explorationDepth = explorationHistory.count
+        } else {
+            let returnsExternally = hasExternalPondOrigin
+            returnToPondOverview()
+            if returnsExternally { externalPondReturnTick += 1 }
+        }
+    }
+
+    func returnToPondOverview() {
+        let origin = explorationOrigin
+        resetExplorationHistory()
+        rippleFocus = nil
+        selectedContactID = nil
+        sceneDelegate?.didUpdateRipple(focus: nil, neighbors: [])
+        if let origin { restoreExploration(origin) }
+        else { pondDisclosure?.clearPondFocus(); publishDisclosure() }
+    }
+
     @Published var graphLevels: [GraphLevel]?
     @Published var isLoading: Bool = false
     @Published var hasNoData: Bool = false
+    @Published private(set) var graphLoadFailed = false
     @Published var errorMessage: String?
     private(set) var groups: [GoldfishCircle] = []
     
@@ -337,6 +418,7 @@ final class GraphViewModel: ObservableObject {
             levelsLoaded = true
             invalidateRippleFocusIfNeeded()
             let contacts = levels.flatMap(\.allContacts)
+            let deletedSelection = pondDisclosureSnapshot.selectedID.map { id in !contacts.contains { $0.id == id } } ?? false
             if var disclosure = pondDisclosure {
                 disclosure.reload(people: contacts)
                 pondDisclosure = disclosure
@@ -347,12 +429,20 @@ final class GraphViewModel: ObservableObject {
             sceneDelegate?.didUpdateGraphLevels(levels)
             publishRippleSnapshot()
             publishDisclosure()
+            if deletedSelection, explorationOrigin != nil {
+                let validIDs = Set(contacts.map(\.id))
+                explorationHistory.removeAll { $0.explorerID.map { !validIDs.contains($0) } ?? true }
+                if let previous = explorationHistory.popLast() {
+                    restoreExploration(previous)
+                    explorationDepth = explorationHistory.count
+                } else { returnToPondOverview() }
+            }
+            graphLoadFailed = false
             errorMessage = nil
         } catch {
-            graphLevels = []
-            sceneDelegate?.didUpdateGraphLevels([])
-            closeRipple()
-            errorMessage = error.localizedDescription
+            // A failed read must not destroy the last valid browsing state.
+            graphLoadFailed = true
+            errorMessage = "Could not load your pond. " + error.localizedDescription
         }
     }
 
@@ -383,6 +473,7 @@ final class GraphViewModel: ObservableObject {
             return
         }
 
+        captureExplorationOrigin()
         selectedContactID = nil
         let graph = rippleGraph
         let route: [UUID]
@@ -419,6 +510,7 @@ final class GraphViewModel: ObservableObject {
     }
 
     func closeRipple() {
+        resetExplorationHistory()
         rippleFocus = nil
         ripplePage = 0
         ripplePageCount = 0
@@ -460,8 +552,19 @@ final class GraphViewModel: ObservableObject {
     /// Activates a contact tap in the pond: select it, open its branch once,
     /// and keep the current focus root when it belongs to that branch.
     func activatePondContact(id: UUID) {
+        guard pondDisclosureSnapshot.visibleIDs.contains(id),
+              hiddenPondNeighborCount(for: id) > 0 || !isPondConnectionsExpanded(id) else { return }
+        captureExplorationOrigin()
+        if let explorerID, explorerID != id, var previous = pondDisclosure {
+            previous.selectPondContact(id: explorerID)
+            explorationHistory.append(ExplorationView(disclosure: previous, camera: cameraPosition, zoom: zoomLevel, explorerID: explorerID))
+        }
+        explorerID = id
+        explorationDepth = explorationHistory.count
         let visibleBefore = pondDisclosureSnapshot.visibleIDs
-        pondDisclosure?.activatePondContact(id: id)
+        if isPondConnectionsExpanded(id) { pondDisclosure?.showMorePondConnections(id: id) }
+        else { pondDisclosure?.activatePondContact(id: id) }
+        pondDisclosure?.focusExploration(on: id)
         publishDisclosure()
         publishRevealFeedback(visibleBefore: visibleBefore)
     }
@@ -486,7 +589,10 @@ final class GraphViewModel: ObservableObject {
 
     /// Returns to the all-ponds overview while keeping explicitly opened
     /// branches and saved pond positions intact.
+    // Compatibility entry for the guided tour and profile-home route.
+    // Ordinary browsing uses returnToPondOverview to restore its session origin.
     func showMyPonds() {
+        resetExplorationHistory()
         leavePondView()
         selectedContactID = nil
         searchMatchedIDs = nil
@@ -495,10 +601,7 @@ final class GraphViewModel: ObservableObject {
     }
 
     func showMorePondConnections(id: UUID) {
-        let visibleBefore = pondDisclosureSnapshot.visibleIDs
-        pondDisclosure?.showMorePondConnections(id: id)
-        publishDisclosure()
-        publishRevealFeedback(visibleBefore: visibleBefore)
+        activatePondContact(id: id)
     }
 
     func showMorePondConnections(_ id: UUID) {
@@ -532,6 +635,7 @@ final class GraphViewModel: ObservableObject {
     }
 
     func selectPondContact(id: UUID?) {
+        if id != nil { captureExplorationOrigin() }
         pondDisclosure?.selectPondContact(id: id)
         publishDisclosure()
     }
@@ -683,6 +787,7 @@ final class GraphViewModel: ObservableObject {
     /// A new search or pond filter ends the branch focus interaction while
     /// leaving an unrelated compatibility route selection intact.
     private func clearPondBranchFocusForScopeChange() {
+        resetExplorationHistory()
         latestPondReveal = nil
         if pondDisclosureSnapshot.focusRootID != nil {
             pondDisclosure?.clearPondFocus()

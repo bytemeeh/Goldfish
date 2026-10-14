@@ -25,20 +25,22 @@ final class CircleManagerViewModel: ObservableObject {
 
     // MARK: - Dependencies
     private let dataManager: GoldfishDataManager
+    private let isDemoMode: Bool
 
     // MARK: - State
     @Published var errorMessage: String?
     @Published var circles: [GoldfishCircle] = []
 
     // MARK: - Init
-    init(dataManager: GoldfishDataManager) {
+    init(dataManager: GoldfishDataManager, isDemoMode: Bool = false) {
         self.dataManager = dataManager
+        self.isDemoMode = isDemoMode
         loadCircles()
     }
 
     func loadCircles() {
         do {
-            self.circles = try dataManager.fetchAllCircles()
+            self.circles = try dataManager.fetchAllCircles().filter { PondAssignmentPolicy.isEligible($0, isDemoMode: isDemoMode) }
         } catch {
             errorMessage = "Could not load ponds: \(error.localizedDescription)"
         }
@@ -80,6 +82,10 @@ final class CircleManagerViewModel: ObservableObject {
 
     @discardableResult
     func deleteCircle(_ circle: GoldfishCircle) -> Bool {
+        guard PondAssignmentPolicy.isEligible(circle, isDemoMode: isDemoMode) else {
+            errorMessage = "This pond contains people from another scope and cannot be changed here."
+            return false
+        }
         do {
             try dataManager.deleteCircle(circle)
             loadCircles()
@@ -94,6 +100,10 @@ final class CircleManagerViewModel: ObservableObject {
 
     @discardableResult
     func updateCircle(_ circle: GoldfishCircle, name: String, emoji: String, color: String) -> Bool {
+        guard PondAssignmentPolicy.isEligible(circle, isDemoMode: isDemoMode) else {
+            errorMessage = "This pond contains people from another scope and cannot be changed here."
+            return false
+        }
         do {
             try dataManager.updateCircle(circle, name: name.trimmingCharacters(in: .whitespacesAndNewlines), emoji: emoji, color: color)
             loadCircles()

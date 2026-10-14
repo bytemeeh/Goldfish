@@ -3,8 +3,12 @@ import SwiftUI
 struct CircleManagerView: View {
     @EnvironmentObject var dataManager: GoldfishDataManager
 
+    @EnvironmentObject private var demoModeManager: DemoModeManager
+    @EnvironmentObject private var walkthroughManager: FeatureWalkthroughManager
+
     var body: some View {
-        CircleManagerContent(dataManager: dataManager)
+        CircleManagerContent(dataManager: dataManager,
+                             isDemoMode: demoModeManager.isDemoModeActive || walkthroughManager.isActive)
     }
 }
 
@@ -24,8 +28,8 @@ private struct CircleManagerContent: View {
     @State private var editName = ""
     @State private var editColor = Color.gray
 
-    init(dataManager: GoldfishDataManager) {
-        _viewModel = StateObject(wrappedValue: CircleManagerViewModel(dataManager: dataManager))
+    init(dataManager: GoldfishDataManager, isDemoMode: Bool) {
+        _viewModel = StateObject(wrappedValue: CircleManagerViewModel(dataManager: dataManager, isDemoMode: isDemoMode))
     }
 
     var body: some View {
@@ -218,6 +222,13 @@ private struct LineEditSheet: View {
 
     @FocusState private var nameFocused: Bool
     @State private var showDeleteConfirmation = false
+    @State private var showDiscardConfirmation = false
+    @State private var initialName: String?
+    @State private var initialColor: String?
+    private var hasDraft: Bool {
+        guard let initialName else { return false }
+        return lineName != initialName || lineColor.toHex() != initialColor
+    }
 
     private var currentNameFeedback: CircleManagerViewModel.NameFeedback {
         nameFeedback(lineName)
@@ -291,7 +302,7 @@ private struct LineEditSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", action: onCancel)
+                    Button("Cancel") { if hasDraft { showDiscardConfirmation = true } else { onCancel() } }
                         .font(.gfBody)
                         .foregroundStyle(GoldfishDS.ink(.secondary))
                 }
@@ -307,7 +318,15 @@ private struct LineEditSheet: View {
             Button("Delete Pond", role: .destructive) { onDelete?() }
             Button("Cancel", role: .cancel) { }
         } message: { Text("People and connections are kept. Members become unassigned.") }
-        .onAppear { nameFocused = !isSystem }
+        .interactiveDismissDisabled(hasDraft)
+        .confirmationDialog("Discard changes?", isPresented: $showDiscardConfirmation, titleVisibility: .visible) {
+            Button("Discard changes", role: .destructive, action: onCancel)
+            Button("Keep editing", role: .cancel) { }
+        } message: { Text("Your unsaved pond changes will be lost.") }
+        .onAppear {
+            if initialName == nil { initialName = lineName; initialColor = lineColor.toHex() }
+            nameFocused = !isSystem
+        }
     }
 }
 

@@ -57,7 +57,7 @@ targets:
       path: Goldfish/Info.plist
       properties:
         CFBundleShortVersionString: "1.0"
-        CFBundleVersion: "3"
+        CFBundleVersion: "5"
         FeedbackSupportEmail: "goldfish.pond.app@gmail.com"
         GoldfishSupportURL: "https://goldfish-pond-support.bwjhhk9fbp.chatgpt.site/"
         GoldfishPrivacyPolicyURL: "https://goldfish-pond-support.bwjhhk9fbp.chatgpt.site/privacy"

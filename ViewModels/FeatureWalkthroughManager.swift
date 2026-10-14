@@ -85,7 +85,7 @@ enum WalkthroughStep: Int, CaseIterable, Identifiable {
     var actionPrompt: String? {
         switch self {
         case .search:  return nil
-        case .profile: return "Tap a person to reveal their connections."
+        case .profile: return "Tap a person, then choose Connections to explore."
         case .link:    return "Connect the sample person to Me, choose Friend, then tap Save."
         case .ponds:   return "Use the pond switcher at the bottom to focus a pond."
         case .views:   return nil
@@ -191,7 +191,7 @@ class FeatureWalkthroughManager: ObservableObject {
     var currentActionPrompt: String? {
         switch currentStep {
         case .profile:
-            return "Tap \(branchPersonName) to reveal her connections."
+            return "Tap \(branchPersonName), then choose Connections."
         case .search:
             return "Tap Search, enter \(examplePersonName), then open that result."
         case .link:

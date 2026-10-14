@@ -105,6 +105,15 @@ struct PondDisclosure {
         rebuildSnapshot()
     }
 
+    /// Explicit exploration can refocus an already disclosed branch without
+    /// deriving navigation history from the relationship path.
+    mutating func focusExploration(on id: UUID) {
+        guard snapshot.visibleIDs.contains(id), id != meID else { return }
+        focusRootID = id
+        selectedID = id
+        rebuildSnapshot()
+    }
+
     /// Clears the branch highlight and inspector selection while keeping every
     /// explicitly opened branch available in the pond.
     mutating func clearPondFocus() {

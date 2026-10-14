@@ -131,7 +131,7 @@ struct ContactExportSelectionView: View {
 
                 Picker("Pond", selection: $selectedPondID) {
                     Text("All ponds").tag(UUID?.none)
-                    ForEach(allPonds.filter { pond in pond.circleContacts.contains { eligibleIDs.contains($0.contact.id) } }) { pond in
+                    ForEach(allPonds.filter { pond in pond.circleContacts.contains { !$0.manuallyExcluded && eligibleIDs.contains($0.contact.id) } }) { pond in
                         Text(pond.name).tag(Optional(pond.id))
                     }
                 }
@@ -149,7 +149,7 @@ struct ContactExportSelectionView: View {
                 Text("Goldfish bundles preserve relationships, ponds, contact details, and photos. Recipients must open the file in Goldfish to restore its structure. vCards work with common contacts apps, but cannot preserve the full structure.")
                     .font(.gfMeta).foregroundStyle(GoldfishDS.ink(.secondary)).fixedSize(horizontal: false, vertical: true)
                 if isDemoMode {
-                    Text("Showing demo contacts. Turn off Show Demo Data in Settings to share your own contacts.")
+                    Text("Showing sample contacts. Turn off Show sample contacts in Settings to share your own contacts.")
                         .font(.gfMeta).foregroundStyle(GoldfishDS.ink(.secondary))
                 }
             }
@@ -273,17 +273,19 @@ private struct ExportScopeReview: View {
         NavigationStack {
             List {
                 Section {
-                    Text(isDemoMode ? "Demo contacts" : "Your contacts").font(.gfBody)
-                    Text("\(entries.count) people · \(relationshipCount) internal relationships · \(ponds.count) ponds")
+                    Text(isDemoMode ? "Sample contacts" : "Your contacts").font(.gfBody)
+                    Text("\(entries.count) \(entries.count == 1 ? "person" : "people") · \(relationshipCount) internal \(relationshipCount == 1 ? "relationship" : "relationships") · \(ponds.count) \(ponds.count == 1 ? "pond" : "ponds")")
                         .font(.gfMeta).foregroundStyle(GoldfishDS.ink(.secondary))
                     Text("Names, contact details, and photos are included. \(format == .goldfish ? (includeNotes ? "Notes are included." : "Notes are omitted.") : "Notes are included when present.") \(format == .goldfish ? "The recipient needs Goldfish to open this bundle and preserve its structure." : "A vCard cannot preserve full relationships and pond structure.")")
                         .font(.gfMeta).foregroundStyle(GoldfishDS.ink(.secondary)).fixedSize(horizontal: false, vertical: true)
-                    Text("Your card is included only if you selected it. Demo contacts and real contacts are kept in separate sharing scopes.")
+                    Text("Your card is included only if you selected it. Sample contacts and real contacts are kept in separate sharing scopes.")
                         .font(.gfMeta).foregroundStyle(GoldfishDS.ink(.secondary)).fixedSize(horizontal: false, vertical: true)
                 }
                 .listRowBackground(GoldfishDS.surface)
 
-                Section("Ponds included") {
+                Section("Pond metadata included") {
+                    Text("Includes active assignments and saved exclusions that prevent automatic reassignment. A listed pond does not necessarily contain an active member in this file.")
+                        .font(.gfMeta).foregroundStyle(GoldfishDS.ink(.secondary))
                     if ponds.isEmpty {
                         Text("No pond assignments are included.")
                             .font(.gfMeta).foregroundStyle(GoldfishDS.ink(.secondary)).frame(minHeight: 44)

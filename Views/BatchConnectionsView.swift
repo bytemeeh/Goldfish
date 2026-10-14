@@ -23,6 +23,8 @@ struct BatchConnectionsView: View {
     @State private var saving = false
     @State private var errorMessage: String?
     @State private var showAllExistingPeople = false
+    @State private var showDiscardConfirmation = false
+    private var hasDraft: Bool { !selectedIDs.isEmpty }
 
     init(person: Person, dataManager: GoldfishDataManager, onSaved: @escaping ([UUID]) -> Void = { _ in }) {
         self.person = person
@@ -91,7 +93,7 @@ struct BatchConnectionsView: View {
                         .foregroundStyle(GoldfishDS.ink(.primary))
                 }
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") { if hasDraft { showDiscardConfirmation = true } else { dismiss() } }
                         .font(.gfBody).foregroundStyle(GoldfishDS.ink(.secondary))
                         .frame(minWidth: 44, minHeight: 44)
                 }
@@ -104,6 +106,11 @@ struct BatchConnectionsView: View {
             )) {
                 Button("OK") { errorMessage = nil }
             } message: { Text(errorMessage ?? "Please try again.") }
+            .interactiveDismissDisabled(hasDraft)
+            .confirmationDialog("Discard changes?", isPresented: $showDiscardConfirmation, titleVisibility: .visible) {
+                Button("Discard changes", role: .destructive) { dismiss() }
+                Button("Keep editing", role: .cancel) { }
+            } message: { Text("Your unsaved connections will be lost.") }
             .task { loadContacts() }
         }
         .tint(GoldfishDS.terracotta)

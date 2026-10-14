@@ -10,8 +10,10 @@ struct ContactRowView: View {
     let person: Person
     let relationshipSummary: String?
     let pondSummary: String?
+    let showsPondSummary: Bool
 
-    init(person: Person, relationshipSummary: String? = nil, pondSummary: String? = nil) {
+    init(person: Person, relationshipSummary: String? = nil, pondSummary: String? = nil, showsPondSummary: Bool = true) {
+        self.showsPondSummary = showsPondSummary
         self.person = person
         self.relationshipSummary = relationshipSummary
         self.pondSummary = pondSummary
@@ -70,7 +72,7 @@ struct ContactRowView: View {
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                if let displayedPondSummary {
+                if showsPondSummary, let displayedPondSummary {
                     Text(displayedPondSummary)
                         .font(.gfCaption)
                         .foregroundStyle(GoldfishDS.ink(.quaternary))

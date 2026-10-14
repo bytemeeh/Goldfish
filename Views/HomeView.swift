@@ -43,6 +43,14 @@ private struct HomeContent: View {
     @State private var showSearchBar = false
     @State private var selectedSearchPerson: Person?
     @State private var searchToRestoreAfterRipple: String?
+    private struct PondEntryOrigin {
+        let mode: HomeViewMode
+        let query: String
+        let showsSearch: Bool
+        let scope: String?
+        let favorites: Bool
+    }
+    @State private var pondEntryOrigin: PondEntryOrigin?
     @State private var navigationRootID = UUID()
     @State private var contactToDelete: Person?
     @FocusState private var isSearchFocused: Bool
@@ -143,7 +151,7 @@ private struct HomeContent: View {
                 graphViewModel.refreshGraph()
             }) {
                 NavigationStack {
-                    SettingsView(startWithImport: startSettingsWithImport)
+                    SettingsView(startWithImport: startSettingsWithImport, graphViewModel: graphViewModel)
                         .environmentObject(dataManager)
                         .environmentObject(walkthroughManager)
                         .environmentObject(demoModeManager)
@@ -158,7 +166,7 @@ private struct HomeContent: View {
             .sheet(isPresented: $showConnectionPicker, onDismiss: {
                 if let person = pendingConnectionAnchor {
                     viewModel.viewMode = .graph
-                    graphViewModel.activatePondContact(id: person.id)
+                    graphViewModel.selectPondContact(id: person.id)
                 }
                 connectionAnchor = pendingConnectionAnchor
                 pendingConnectionAnchor = nil
@@ -174,7 +182,7 @@ private struct HomeContent: View {
                     viewModel.loadData()
                     graphViewModel.refreshGraph()
                     viewModel.viewMode = .graph
-                    graphViewModel.activatePondContact(id: person.id)
+                    graphViewModel.selectPondContact(id: person.id)
                 }
             }
             .sheet(isPresented: $showAddContact, onDismiss: {
@@ -279,16 +287,23 @@ private struct HomeContent: View {
                 if newMode == .list {
                     InteractionDiagnostics.record(.modeCommittedList)
                     searchToRestoreAfterRipple = nil
-                    graphViewModel.leavePondView()
                     walkthroughManager.report(.switchedToList)
                 }
             }
-            .onChange(of: graphViewModel.rippleFocus?.id) { oldID, newID in
-                if oldID != nil, newID == nil, let query = searchToRestoreAfterRipple {
-                    searchToRestoreAfterRipple = nil
-                    viewModel.searchText = query
-                    showSearchBar = true
-                }
+            .onChange(of: graphViewModel.requestedPondListID) { _, pondID in
+                guard let pondID else { return }
+                viewModel.selectScope(pondID)
+                viewModel.viewMode = .list
+                graphViewModel.requestedPondListID = nil
+            }
+            .onChange(of: graphViewModel.externalPondReturnTick) { _, _ in
+                guard let origin = pondEntryOrigin else { return }
+                pondEntryOrigin = nil
+                viewModel.selectScope(origin.scope)
+                viewModel.showFavoritesOnly = origin.favorites
+                viewModel.searchText = origin.query
+                showSearchBar = origin.showsSearch
+                viewModel.viewMode = origin.mode
             }
             // ── Walkthrough action detection ──
             // The view layer reports real interactions; the manager advances the
@@ -399,22 +414,6 @@ private struct HomeContent: View {
                         .padding(.horizontal, GoldfishDS.Space.pageMargin)
                         .padding(.top, 6)
                 } else { homeControls }
-                if hasCompletedOnboarding && !pondUpdatesSeen && !walkthroughManager.isActive && !showSearchBar {
-                    HStack {
-                        Button { showPondUpdates = true } label: {
-                            Label("What’s new in your pond", systemImage: "sparkles")
-                                .font(.gfCaption).frame(minHeight: 44)
-                        }
-                        Spacer()
-                        Button { pondUpdatesSeen = true } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }
-                            .accessibilityLabel("Dismiss what’s new")
-                    }
-                    .padding(.horizontal, GoldfishDS.Space.pageMargin)
-                    .foregroundStyle(GoldfishDS.ink(.secondary))
-                }
-                if demoModeManager.isDemoModeActive && !walkthroughManager.isActive {
-                    sampleModeBar
-                }
                 if showSearchBar {
                     VStack(spacing: 0) {
                         adaptiveSearchEntry
@@ -445,7 +444,7 @@ private struct HomeContent: View {
                     ConnectionSessionCard {
                         if let id = connectionSession.anchorID {
                             viewModel.viewMode = .graph
-                            graphViewModel.activatePondContact(id: id)
+                            graphViewModel.selectPondContact(id: id)
                         }
                     }
                     .padding(.horizontal, GoldfishDS.Space.pageMargin)
@@ -456,8 +455,9 @@ private struct HomeContent: View {
                     // never the system default pure black.
                     GoldfishDS.warmBlack.ignoresSafeArea()
 
-                    if viewModel.viewMode == .graph {
-                        GraphContainerView(viewModel: graphViewModel)
+                    // Retain the same scene while List is active so a mode
+                    // switch cannot replace the camera or exploration state.
+                    GraphContainerView(viewModel: graphViewModel, isActive: viewModel.viewMode == .graph && !isSearchOverlayPresented)
                             .onChange(of: viewModel.isSearching) { _, active in
                                 if active && !viewModel.normalizedSearchText.isEmpty {
                                     graphViewModel.searchMatchedIDs = Set(viewModel.filteredContacts.map(\.id))
@@ -478,9 +478,10 @@ private struct HomeContent: View {
                                 graphViewModel.isDemoMode = demoMode
                                 viewModel.isDemoMode = demoMode
                             }
-                            .accessibilityHidden(isSearchOverlayPresented)
-                            .allowsHitTesting(!isSearchOverlayPresented)
-                    } else {
+                            .opacity(viewModel.viewMode == .graph ? 1 : 0)
+                            .accessibilityHidden(viewModel.viewMode != .graph || isSearchOverlayPresented)
+                            .allowsHitTesting(viewModel.viewMode == .graph && !isSearchOverlayPresented)
+                    if viewModel.viewMode == .list {
                         contactsList
                             .onAppear { InteractionDiagnostics.record(.listDestinationAppeared) }
                             .accessibilityHidden(isSearchOverlayPresented)
@@ -503,8 +504,6 @@ private struct HomeContent: View {
                                 viewModel: viewModel,
                                 onSelect: { person in
                                     isSearchFocused = false
-                                    showSearchBar = false
-                                    viewModel.searchText = ""
                                     selectedSearchPerson = person
                                     walkthroughManager.report(.openedSearchResult)
                                 }
@@ -513,6 +512,17 @@ private struct HomeContent: View {
                         }
                     }
                 }
+            }
+            .overlay {
+                HomeEdgeSwipe(mode: viewModel.viewMode,
+                              isEnabled: isHomeRouteVisible && !showSearchBar && !showSettings &&
+                                !showAddContact && !showOrganization && !showConnectionPicker &&
+                                selectedSearchPerson == nil && connectionAnchor == nil &&
+                                graphViewModel.selectedContactID == nil && hasCompletedOnboarding) { mode in
+                    requestViewMode(mode)
+                }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
             }
             .onAppear { isHomeRouteVisible = true }
             .onDisappear { isHomeRouteVisible = false }
@@ -637,7 +647,11 @@ private struct HomeContent: View {
         graphViewModel.isDemoMode = viewModel.isDemoMode
         graphViewModel.selectedPondFilter = viewModel.selectedScopeID
         graphViewModel.loadGraph()
+        pondEntryOrigin = PondEntryOrigin(mode: viewModel.viewMode, query: viewModel.searchText,
+                                          showsSearch: showSearchBar, scope: viewModel.selectedScopeID,
+                                          favorites: viewModel.showFavoritesOnly)
         graphViewModel.openRipple(id, initialTrail: initialTrail, searchRouteSummary: searchRouteSummary)
+        graphViewModel.hasExternalPondOrigin = true
         if graphViewModel.graphLevels?.flatMap(\.allContacts).first(where: { $0.id == id })?.isMe == true {
             searchToRestoreAfterRipple = nil
             selectedSearchPerson = nil
@@ -664,21 +678,21 @@ private struct HomeContent: View {
     }
 
     private var homeControls: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: GoldfishDS.Space.sm) {
-                scopeLabel
-                Spacer(minLength: GoldfishDS.Space.sm)
-                modeControls.frame(width: 132)
-                actionControls
-            }
-            VStack(alignment: .leading, spacing: GoldfishDS.Space.sm) {
-                HStack(spacing: GoldfishDS.Space.sm) {
-                    scopeLabel
-                    Spacer(minLength: GoldfishDS.Space.sm)
+        VStack(alignment: .leading, spacing: 0) {
+            // Keep navigation and actions in stable positions across browsing states.
+            // Scope gets its own line instead of competing with five controls.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 16) {
+                    modeControls.fixedSize(horizontal: true, vertical: false)
+                    Spacer(minLength: 0)
                     actionControls
                 }
-                modeControls
+                VStack(alignment: .leading, spacing: 4) {
+                    actionControls.frame(maxWidth: .infinity, alignment: .trailing)
+                    modeControls
+                }
             }
+            scopeLabel
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
@@ -719,7 +733,9 @@ private struct HomeContent: View {
             .accessibilityHint("Choose all ponds, one pond, or unassigned contacts")
             .accessibilityIdentifier("listPondPicker")
         } else {
-            scopeText
+            if demoModeManager.isDemoModeActive && !walkthroughManager.isActive {
+                Menu { exitSampleButton } label: { scopeText.frame(minHeight: 44) }
+            } else { scopeText }
         }
     }
 
@@ -746,20 +762,12 @@ private struct HomeContent: View {
     private func modeButton(_ title: String, mode: HomeViewMode) -> some View {
         let isSelected = viewModel.viewMode == mode
         return Button {
-            switch mode {
-            case .graph:
-                InteractionDiagnostics.record(.modeRequestedPond)
-            case .list:
-                InteractionDiagnostics.record(.modeRequestedList)
-            }
-            guard viewModel.viewMode != mode else { return }
-            UISelectionFeedbackGenerator().selectionChanged()
-            viewModel.viewMode = mode
+            requestViewMode(mode)
         } label: {
             Text(title)
                 .font(.gfBody.weight(.medium))
                 .foregroundStyle(isSelected ? GoldfishDS.terracotta : GoldfishDS.ink(.secondary))
-                .frame(maxWidth: .infinity, minHeight: 44)
+                .frame(minWidth: 64, maxWidth: .infinity, minHeight: 44)
                 .padding(.horizontal, 4)
                 .padding(.vertical, 2)
                 .background(isSelected ? GoldfishDS.terracotta.opacity(0.14) : Color.clear,
@@ -776,6 +784,16 @@ private struct HomeContent: View {
         .accessibilityLabel(title)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityIdentifier(mode == .graph ? "graphViewButton" : "listViewButton")
+    }
+
+    private func requestViewMode(_ mode: HomeViewMode) {
+        switch mode {
+        case .graph: InteractionDiagnostics.record(.modeRequestedPond)
+        case .list: InteractionDiagnostics.record(.modeRequestedList)
+        }
+        guard viewModel.viewMode != mode else { return }
+        UISelectionFeedbackGenerator().selectionChanged()
+        viewModel.viewMode = mode
     }
 
     private var sampleModeBar: some View {
@@ -912,6 +930,9 @@ private struct HomeContent: View {
             switch viewModel.listState {
             case .loading:
                 ProgressView()
+            case .failed(let message):
+                EmptyStateView(systemImage: "exclamationmark.triangle", headline: "People unavailable", subtext: message,
+                               actionLabel: "Retry", action: { viewModel.loadData() })
             case .emptyGlobal:
                 EmptyStateView(
                     systemImage: "circle.hexagongrid",
@@ -956,7 +977,7 @@ private struct HomeContent: View {
                                     )
                                     .environmentObject(dataManager)
                                 } label: {
-                                    ContactRowView(person: person)
+                                    ContactRowView(person: person, showsPondSummary: false)
                                         .gfHeroSource(id: person.id, in: heroNS)
                                 }
                                 .listRowInsets(EdgeInsets(top: 2, leading: GoldfishDS.Space.pageMargin,
@@ -1017,6 +1038,68 @@ extension View {
             self.matchedTransitionSource(id: id, in: ns)
         } else {
             self
+        }
+    }
+}
+
+// Edge ownership leaves ordinary canvas drags and List scrolling untouched.
+enum HomeEdgeSwipePolicy {
+    static func destination(from mode: HomeViewMode, translation: CGPoint) -> HomeViewMode? {
+        guard abs(translation.x) >= 64, abs(translation.x) > abs(translation.y) * 1.5 else { return nil }
+        switch mode {
+        case .graph: return translation.x < 0 ? .list : nil
+        case .list: return translation.x > 0 ? .graph : nil
+        }
+    }
+}
+
+private struct HomeEdgeSwipe: UIViewRepresentable {
+    let mode: HomeViewMode
+    let isEnabled: Bool
+    let onSwitch: (HomeViewMode) -> Void
+
+    func makeUIView(context: Context) -> EdgeView { EdgeView() }
+    func updateUIView(_ view: EdgeView, context: Context) {
+        view.mode = mode
+        view.onSwitch = onSwitch
+        view.edgeGesture.edges = mode == .graph ? .right : .left
+        view.edgeGesture.isEnabled = isEnabled
+    }
+    static func dismantleUIView(_ view: EdgeView, coordinator: ()) { view.detach() }
+
+    final class EdgeView: UIView, UIGestureRecognizerDelegate {
+        var mode: HomeViewMode = .graph
+        var onSwitch: ((HomeViewMode) -> Void)?
+        private weak var gestureWindow: UIWindow?
+        lazy var edgeGesture: UIScreenEdgePanGestureRecognizer = {
+            let gesture = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(handleEdge(_:)))
+            gesture.edges = .right
+            gesture.maximumNumberOfTouches = 1
+            gesture.cancelsTouchesInView = true
+            gesture.delegate = self
+            return gesture
+        }()
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            detach()
+            if let window {
+                window.addGestureRecognizer(edgeGesture)
+                gestureWindow = window
+            }
+        }
+        func detach() {
+            gestureWindow?.removeGestureRecognizer(edgeGesture)
+            gestureWindow = nil
+        }
+        override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            guard let window, !isHidden, bounds.contains(gestureRecognizer.location(in: self)),
+                  window.rootViewController?.presentedViewController == nil else { return false }
+            return true
+        }
+        @objc private func handleEdge(_ gesture: UIScreenEdgePanGestureRecognizer) {
+            guard gesture.state == .ended,
+                  let destination = HomeEdgeSwipePolicy.destination(from: mode, translation: gesture.translation(in: self)) else { return }
+            onSwitch?(destination)
         }
     }
 }

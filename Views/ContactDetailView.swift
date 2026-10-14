@@ -341,7 +341,7 @@ struct ContactDetailView: View {
             if let relationship = viewModel.relationshipSummary {
                 storyLine(icon: "person.2", title: "Connection", value: relationship)
             }
-            if let pond = viewModel.pondSummary {
+            if pondName == nil, let pond = viewModel.pondSummary {
                 storyLine(icon: "circle.hexagongrid", title: "Membership", value: pond)
             }
             if let notes = viewModel.person.notes, !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

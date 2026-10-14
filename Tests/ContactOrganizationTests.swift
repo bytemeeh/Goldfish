@@ -166,6 +166,44 @@ final class ContactOrganizationTests: XCTestCase {
         XCTAssertTrue(relation.isPrimary)
     }
 
+    func testScopePolicyProtectsBothDirectionsAndRejectsStaleManagementActions() throws {
+        let (manager, container) = try makeTestManager()
+        try manager.createSystemCircles()
+        let personal = try manager.createPerson(name: "Personal")
+        let sample = try manager.createPerson(name: "Sample", isDemo: true)
+        let personalPond = try manager.createCircle(name: "Private", color: "#123456", emoji: "")
+        let samplePond = try manager.createCircle(name: "Example", color: "#654321", emoji: "")
+        let neutral = try manager.createCircle(name: "Empty", color: "#123456", emoji: "")
+        try manager.addToCircle(personal, circle: personalPond)
+        try manager.addToCircle(sample, circle: samplePond)
+        for scope in [false, true] {
+            let allowed = scope ? samplePond : personalPond
+            let denied = scope ? personalPond : samplePond
+            let vm = CircleManagerViewModel(dataManager: manager, isDemoMode: scope)
+            XCTAssertTrue(vm.circles.contains { $0.id == allowed.id })
+            XCTAssertFalse(vm.circles.contains { $0.id == denied.id })
+            XCTAssertTrue(vm.circles.contains { $0.id == neutral.id })
+            XCTAssertFalse(vm.deleteCircle(denied))
+            XCTAssertFalse(vm.updateCircle(denied, name: "Wrong", emoji: "", color: "#000000"))
+            let form = ContactFormViewModel(dataManager: manager, isDemoMode: scope)
+            XCTAssertFalse(form.allCircles.contains { $0.id == denied.id })
+            form.firstName = "Should not save"
+            form.selectedCircleIDs = [denied.id]
+            XCTAssertFalse(form.save())
+        }
+        let service = ContactOrganizationService(container: container)
+        XCTAssertThrowsError(try service.assignPeople(ids: [sample.id], to: personalPond.id))
+        XCTAssertThrowsError(try service.assignPeople(ids: [personal.id], to: samplePond.id))
+        XCTAssertEqual(try manager.fetchAllPersons().count, 2)
+        XCTAssertEqual(personal.primaryCircle?.id, personalPond.id)
+        XCTAssertEqual(sample.primaryCircle?.id, samplePond.id)
+        XCTAssertEqual(personalPond.name, "Private")
+        XCTAssertEqual(samplePond.name, "Example")
+        let shared = try XCTUnwrap(manager.fetchAllCircles().first { $0.isSystem })
+        XCTAssertTrue(PondAssignmentPolicy.isEligible(shared, isDemoMode: true))
+        XCTAssertTrue(PondAssignmentPolicy.isEligible(shared, isDemoMode: false))
+    }
+
     private func snapshots(_ person: Person) -> [PondMembershipSnapshot] {
         person.circleContacts.map {
             PondMembershipSnapshot(membershipID: $0.id, circleID: $0.circle.id,

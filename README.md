@@ -8,6 +8,8 @@ First run offers **Explore a Sample** or **Start My Pond**. Sample data and pers
 
 ## TestFlight preparation
 
+The next pond-interface work follows the [consolidated pond simplification plan](Refinement/POND_SIMPLIFICATION_PLAN.md), including its three interface states, P0 traceability and verification gates.
+
 See [current release plan](Refinement/TESTFLIGHT_READINESS.md) and [executed checks and remaining blockers](Refinement/P1_RELEASE_VERIFICATION.md). Historical product and submission documents elsewhere in this repository describe earlier concepts and are not release claims.
 
 After Apple membership activation, confirm the support configuration and run `GOLDFISH_TEAM_ID=YOUR_ACTIVATED_TEAM_ID Tools/archive-testflight.sh`, or Archive in Xcode with automatic signing. The helper creates an archive but does not upload it. Validate and distribute through Xcode Organizer; external TestFlight access requires Apple's beta approval.

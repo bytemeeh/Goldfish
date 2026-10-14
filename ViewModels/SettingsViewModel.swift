@@ -54,7 +54,7 @@ final class SettingsViewModel: ObservableObject {
         do {
             self.mePerson = try dataManager.fetchMePerson()
         } catch {
-            print("Error fetching ME person: \(error)")
+            errorMessage = "Could not load your profile. " + error.localizedDescription
         }
     }
 

@@ -64,10 +64,7 @@ struct ContactOrganizationView: View {
     /// System ponds are shared by design.
     private var availablePonds: [GoldfishCircle] {
         ponds.filter { pond in
-            guard !pond.isSystem else { return true }
-            let activePeople = pond.circleContacts.filter { !$0.manuallyExcluded && !$0.contact.isMe }.map(\.contact)
-            let hasOtherScope = activePeople.contains { $0.isDemo != isDemoMode }
-            return !hasOtherScope
+            PondAssignmentPolicy.isEligible(pond, isDemoMode: isDemoMode)
         }.sorted {
             if $0.sortOrder != $1.sortOrder { return $0.sortOrder < $1.sortOrder }
             let order = $0.name.localizedCaseInsensitiveCompare($1.name)

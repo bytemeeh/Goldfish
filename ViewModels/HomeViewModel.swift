@@ -20,6 +20,7 @@ enum HomeViewMode: String, CaseIterable, Identifiable {
 // MARK: - List State
 enum ListViewState: Equatable {
     case loading
+    case failed(String)
     case populated
     case emptySearch
     case emptyPond(String)
@@ -126,7 +127,7 @@ final class HomeViewModel: ObservableObject {
             }
         } catch {
             errorMessage = "Could not load contacts: \(error.localizedDescription)"
-            if contacts.isEmpty { listState = .emptyGlobal }
+            if contacts.isEmpty { listState = .failed("Could not load people. Your saved data has not been changed.") }
         }
     }
     

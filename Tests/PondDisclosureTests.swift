@@ -4,6 +4,86 @@ import CoreGraphics
 
 @MainActor
 final class PondDisclosureTests: XCTestCase {
+    func testExplicitExplorationHistoryRestoresDisclosureWithoutRollingBackEdits() throws {
+        let (manager, container) = try makeTestManager()
+        defer { withExtendedLifetime(container) {} }
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let a = try manager.createPerson(name: "A")
+        let b = try manager.createPerson(name: "B")
+        let c = try manager.createPerson(name: "C")
+        try manager.createRelationship(from: me, to: a, type: .friend)
+        try manager.createRelationship(from: a, to: b, type: .friend)
+        try manager.createRelationship(from: b, to: c, type: .friend)
+        let model = GraphViewModel(dataManager: manager)
+        model.loadGraph()
+        let overview = model.disclosureSnapshot.visibleIDs
+        model.cameraPosition = CGPoint(x: 15, y: 25)
+        model.zoomLevel = 0.7
+        model.selectPondContact(a.id)
+        XCTAssertEqual(model.disclosureSnapshot.visibleIDs, overview)
+        XCTAssertEqual(model.explorationDepth, 0)
+        model.activatePondContact(id: a.id)
+        let firstBranch = model.disclosureSnapshot.visibleIDs
+        model.selectPondContact(b.id)
+        XCTAssertEqual(model.explorationDepth, 0)
+        model.activatePondContact(id: b.id)
+        XCTAssertEqual(model.explorationDepth, 1)
+        XCTAssertEqual(model.disclosureSnapshot.focusRootID, b.id)
+        XCTAssertTrue(model.disclosureSnapshot.visibleIDs.contains(c.id))
+        b.name = "Edited B"
+        model.returnFromPondExploration()
+        XCTAssertEqual(model.disclosureSnapshot.visibleIDs, firstBranch)
+        XCTAssertEqual(model.selectedPondContactID, a.id)
+        XCTAssertEqual(b.name, "Edited B")
+        model.returnFromPondExploration()
+        XCTAssertEqual(model.disclosureSnapshot.visibleIDs, overview)
+        XCTAssertNil(model.selectedPondContactID)
+        XCTAssertEqual(model.cameraPosition, CGPoint(x: 15, y: 25))
+        XCTAssertEqual(model.zoomLevel, 0.7)
+        model.selectPondContact(a.id)
+        model.activatePondContact(id: a.id)
+        XCTAssertEqual(model.disclosureSnapshot.visibleIDs, firstBranch)
+        XCTAssertFalse(model.isPondConnectionsExpanded(b.id))
+    }
+
+    func testPaginationAndPathReturnDoNotCreateExtraHistory() throws {
+        let (manager, container) = try makeTestManager()
+        defer { withExtendedLifetime(container) {} }
+        let me = try manager.createPerson(name: "Me", isMe: true)
+        let a = try manager.createPerson(name: "A")
+        let b = try manager.createPerson(name: "B")
+        try manager.createRelationship(from: me, to: a, type: .friend)
+        try manager.createRelationship(from: a, to: b, type: .friend)
+        for index in 0..<5 {
+            let child = try manager.createPerson(name: "Child \(index)")
+            try manager.createRelationship(from: b, to: child, type: .friend)
+        }
+        let model = GraphViewModel(dataManager: manager)
+        model.loadGraph()
+        model.selectPondContact(a.id)
+        model.hasExternalPondOrigin = true
+        model.activatePondContact(id: a.id)
+        model.selectPondContact(b.id)
+        model.activatePondContact(id: b.id)
+        XCTAssertEqual(model.explorationDepth, 1)
+        XCTAssertEqual(model.hiddenPondNeighborCount(for: b.id), 1)
+        model.showMorePondConnections(b.id)
+        XCTAssertEqual(model.explorationDepth, 1)
+        XCTAssertEqual(model.hiddenPondNeighborCount(for: b.id), 0)
+        model.showConnectionPath()
+        XCTAssertFalse(model.disclosureSnapshot.pathHighlightIDs.isEmpty)
+        model.returnFromPondExploration()
+        XCTAssertTrue(model.disclosureSnapshot.pathHighlightIDs.isEmpty)
+        XCTAssertEqual(model.explorationDepth, 1)
+        XCTAssertEqual(model.externalPondReturnTick, 0)
+        model.returnFromPondExploration()
+        XCTAssertEqual(model.selectedPondContactID, a.id)
+        XCTAssertEqual(model.externalPondReturnTick, 0)
+        model.returnFromPondExploration()
+        XCTAssertEqual(model.externalPondReturnTick, 1)
+        XCTAssertFalse(model.hasExternalPondOrigin)
+    }
+
     @discardableResult
     private func link(_ from: Person, _ to: Person, _ type: RelationshipType = .friend) -> Relationship {
         let relationship = Relationship(from: from, to: to, type: type)
@@ -569,7 +649,7 @@ final class PondDisclosureTests: XCTestCase {
         XCTAssertEqual(viewModel.selectedPondFilter, "friends-pond")
     }
 
-    func testMyPondsHomeClearsTransientScopeButKeepsBranchesAndSavedLayout() throws {
+    func testLegacyHomeClearsTransientScopeButKeepsBranchesAndSavedLayout() throws {
         let (manager, container) = try makeTestManager()
         defer { withExtendedLifetime(container) {} }
         let me = try manager.createPerson(name: "Me", isMe: true)
@@ -600,7 +680,7 @@ final class PondDisclosureTests: XCTestCase {
         viewModel.activatePondContact(id: child.id)
         viewModel.showConnectionPath()
         let expanded = viewModel.disclosureSnapshot.expandedIDs
-        XCTAssertEqual(viewModel.disclosureSnapshot.focusRootID, root.id)
+        XCTAssertEqual(viewModel.disclosureSnapshot.focusRootID, child.id)
         XCTAssertFalse(viewModel.disclosureSnapshot.pathHighlightIDs.isEmpty)
         XCTAssertTrue(expanded.contains(root.id))
         XCTAssertTrue(expanded.contains(child.id))
@@ -844,6 +924,33 @@ final class PondDisclosureTests: XCTestCase {
         XCTAssertNil(viewModel.rippleFocus)
         XCTAssertTrue(viewModel.disclosureSnapshot.trail.isEmpty)
         XCTAssertEqual(viewModel.disclosureSnapshot.visibleIDs, Set([me.id, short.id, long.id]))
+    }
+
+    func testPondOriginMovementCancelsPressWithoutRoutingIntoCameraPan() {
+        var routing = PondTouchRoutingPolicy()
+        routing.begin(onPond: true)
+
+        XCTAssertEqual(routing.routeSingleFingerMove(distanceFromStart: 5, pondDragActive: false),
+                       .waitForPondPress)
+        XCTAssertEqual(routing.routeSingleFingerMove(distanceFromStart: 9, pondDragActive: false),
+                       .cancelPondPress)
+        // Once the long-press recognizer fails, later movement remains owned
+        // by this pond-origin touch until release instead of panning the map.
+        XCTAssertEqual(routing.routeSingleFingerMove(distanceFromStart: 40, pondDragActive: false),
+                       .cancelPondPress)
+
+        routing.finish()
+        routing.begin(onPond: false)
+        XCTAssertEqual(routing.routeSingleFingerMove(distanceFromStart: 40, pondDragActive: false),
+                       .cameraPan)
+    }
+
+    func testRecognizedPondLongPressContinuesRoutingMovementToThatPond() {
+        var routing = PondTouchRoutingPolicy()
+        routing.begin(onPond: true)
+
+        XCTAssertEqual(routing.routeSingleFingerMove(distanceFromStart: 24, pondDragActive: true),
+                       .movePond)
     }
 }
 

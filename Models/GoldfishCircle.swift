@@ -145,6 +145,14 @@ final class GoldfishCircle {
 /// A pond describes how someone belongs in your network, not just their role
 /// relative to another contact. Shared by interactive creation and vCard import.
 enum PondAssignmentPolicy {
+    /// Built-in ponds are shared. Custom ponds with records from another scope
+    /// are protected, including historical exclusions and legacy mixed ponds.
+    static func isEligible(_ pond: GoldfishCircle, isDemoMode: Bool) -> Bool {
+        pond.isSystem || !pond.circleContacts.contains {
+            !$0.contact.isMe && $0.contact.isDemo != isDemoMode
+        }
+    }
+
     static func suggestedCircle(
         for person: Person,
         relatedTo other: Person,

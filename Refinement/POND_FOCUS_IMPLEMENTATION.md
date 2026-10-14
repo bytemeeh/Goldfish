@@ -1,6 +1,6 @@
 # Goldfish pond refinement — 6 October 2026
 
-This is the current implementation and integration record. Earlier release documents describe their dated verification runs, not the state of this change. Goldfish only; Lines is outside scope.
+This is a historical implementation and integration record. The [13 October pond simplification plan](POND_SIMPLIFICATION_PLAN.md) governs the next implementation and supersedes conflicting interaction and control-visibility requirements below. Dated verification runs do not establish the state of subsequent changes. Goldfish only; Lines is outside scope.
 
 ## Agreed scope
 
